@@ -96,6 +96,53 @@ final class Session: Identifiable, Equatable {
         hasSubmitted = true
     }
 
+    /// Polling 응답 기반 출석 상태 동기화
+    ///
+    /// 서버에서 받은 최신 상태가 현재와 다를 때만 업데이트합니다.
+    /// - 기존 Attendance가 있으면 status만 교체한 복사본으로 갱신
+    /// - 기존 Attendance가 없으면 최소 Attendance 생성
+    /// - 서버가 최종 확정(출석/지각/결석)하면 hasSubmitted 초기화
+    func updateStatusFromPolling(
+        _ serverStatus: AttendanceStatus,
+        userId: UserID
+    ) {
+        // raw status로 비교
+        // (computed attendanceStatus는 hasSubmitted 기반 pendingApproval 매핑이 있어 불필요한 mutation 발생)
+        if let existing = attendance {
+            guard existing.status != serverStatus else { return }
+        } else {
+            guard serverStatus != .beforeAttendance else { return }
+        }
+
+        if let existing = attendance {
+            let updated = Attendance(
+                sessionId: existing.sessionId,
+                userId: existing.userId,
+                type: existing.type,
+                status: serverStatus,
+                locationVerification: existing.locationVerification,
+                reason: existing.reason
+            )
+            attendanceLoadable = .loaded(updated)
+        } else {
+            let minimal = Attendance(
+                sessionId: id,
+                userId: userId,
+                type: .gps,
+                status: serverStatus,
+                locationVerification: nil,
+                reason: nil
+            )
+            attendanceLoadable = .loaded(minimal)
+        }
+
+        // 서버가 최종 상태 확정 시 hasSubmitted 리셋
+        if serverStatus != .beforeAttendance
+            && serverStatus != .pendingApproval {
+            hasSubmitted = false
+        }
+    }
+
     /// 출석 버튼에 표시할 텍스트
     ///
     /// 위치 권한, 지오펜스 상태, 시간대에 따라 적절한 메시지를 반환합니다.
