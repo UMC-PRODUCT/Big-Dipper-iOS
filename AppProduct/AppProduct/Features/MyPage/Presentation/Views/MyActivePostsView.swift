@@ -129,7 +129,7 @@ struct MyActivePostsView: View {
 
     private func errorView(error: AppError) -> some View {
         ContentUnavailableView {
-            Label("로딩 실패", systemImage: "exclamationmark.triangle")
+            Label("불러오지 못했어요", systemImage: "exclamationmark.triangle")
         } description: {
             Text(error.localizedDescription)
         } actions: {

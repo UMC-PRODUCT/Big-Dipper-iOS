@@ -218,7 +218,7 @@ final class OperatorStudyManagementViewModel {
             studyGroupDetailsHasNext = nextPage.hasNext
         } catch let error as DomainError {
             alertPrompt = AlertPrompt(
-                title: "로딩 실패",
+                title: "불러오지 못했어요",
                 message: error.userMessage,
                 positiveBtnTitle: "확인"
             )
