@@ -17,7 +17,7 @@ struct TrophyListResponse: Codable {
     let week: String
     let challengerName: String
     let challengerProfileImage: String?
-    let school: String
+    let school: String?
     let part: String
     let title: String
     let content: String
@@ -28,7 +28,7 @@ extension TrophyListResponse {
     func toFameItem() -> CommunityFameItemModel {
         CommunityFameItemModel(
             week: Int(week) ?? 0,
-            university: school,
+            university: school ?? "알 수 없음",
             profileImage: challengerProfileImage,
             userName: challengerName,
             part: UMCPartType(apiValue: part) ?? .pm,
