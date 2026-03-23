@@ -113,7 +113,8 @@ final class ActivityRepository: ActivityRepositoryProtocol, @unchecked Sendable 
                 location: Coordinate(
                     latitude: detail.latitude,
                     longitude: detail.longitude
-                )
+                ),
+                isAllDay: detail.isAllDay
             ),
             initialAttendance: mapAttendance(
                 schedule: schedule
