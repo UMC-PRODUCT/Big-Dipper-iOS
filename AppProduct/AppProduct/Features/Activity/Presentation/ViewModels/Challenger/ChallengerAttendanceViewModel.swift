@@ -25,16 +25,26 @@ final class ChallengerAttendanceViewModel {
 
     private var statusObserver: (any NSObjectProtocol)?
 
+    /// 폴링 대상 세션 (View에서 주입)
+    private var pollingSessions: [Session] = []
+
+    /// 폴링 시 Session 상태 업데이트용 userId
+    private var pollingUserId: UserID?
+
     /// 폴링 설정
     private enum PollingConfig {
         static let intervalSeconds: Int = 30
     }
 
-    /// 출석 가능한 세션이 있는지 확인
-    private var hasActiveSession: Bool {
-        guard case .loaded(let schedules) = availableSchedules
-        else { return false }
-        return !schedules.isEmpty
+    /// 진행 중인 세션이 하나라도 있는지 확인
+    private func hasActiveSession(in sessions: [Session]) -> Bool {
+        sessions.contains { session in
+            let status = OperatorSessionStatus.from(
+                startTime: session.info.startTime,
+                endTime: session.info.endTime
+            )
+            return status == .inProgress
+        }
     }
 
     // MARK: - Init
@@ -90,8 +100,34 @@ final class ChallengerAttendanceViewModel {
         do {
             let schedules = try await challengeAttendanceUseCase.fetchAvailableSchedules()
             availableSchedules = .loaded(schedules)
+            syncSessionStates()
         } catch {
             // 배경 갱신 실패는 무시
+        }
+    }
+
+    /// 폴링으로 받은 서버 상태를 Session 객체에 동기화
+    ///
+    /// `AvailableAttendanceSchedule.scheduleId`와
+    /// `Session.id`를 매칭하여 상태를 전파합니다.
+    @MainActor
+    private func syncSessionStates() {
+        guard case .loaded(let schedules) = availableSchedules,
+              let userId = pollingUserId else { return }
+
+        let scheduleMap: [String: AttendanceStatus] = Dictionary(
+            uniqueKeysWithValues: schedules.map {
+                (String($0.scheduleId), $0.status)
+            }
+        )
+
+        for session in pollingSessions {
+            if let serverStatus = scheduleMap[session.id.value] {
+                session.updateStatusFromPolling(
+                    serverStatus,
+                    userId: userId
+                )
+            }
         }
     }
 
@@ -103,19 +139,27 @@ final class ChallengerAttendanceViewModel {
         _ = await (schedules, history)
     }
 
-    /// 출석 가능 세션이 있을 때 주기적으로 상태를 갱신합니다.
+    /// 폴링에 필요한 세션 및 userId를 설정합니다.
+    ///
+    /// View 초기화 시 한 번 호출합니다.
+    @MainActor
+    func configurePollingSessions(
+        _ sessions: [Session],
+        userId: UserID
+    ) {
+        self.pollingSessions = sessions
+        self.pollingUserId = userId
+    }
+
+    /// 세션 진행 중일 때 주기적으로 상태를 갱신합니다.
     ///
     /// `.task` 모디파이어에서 호출하면 뷰 사라질 때
     /// 자동 취소됩니다.
+    /// 세션 시간 기반으로 진행 중 여부를 판단합니다.
     @MainActor
-    func startPollingIfNeeded() async {
-        // isComplete는 .loaded 또는 .failed 모두 true.
-        // .failed 시 hasActiveSession이 false이므로
-        // 폴링 미시작.
-        guard availableSchedules.isComplete, myHistory.isComplete else { return }
-
+    func startPollingIfNeeded(sessions: [Session]) async {
         while !Task.isCancelled {
-            guard hasActiveSession else { return }
+            guard hasActiveSession(in: sessions) else { return }
             try? await Task.sleep(for: .seconds(
                 PollingConfig.intervalSeconds
             ))
@@ -134,6 +178,7 @@ final class ChallengerAttendanceViewModel {
         do {
             let schedules = try await challengeAttendanceUseCase.fetchAvailableSchedules()
             availableSchedules = .loaded(schedules)
+            syncSessionStates()
         } catch {
             availableSchedules = .failed(.unknown(
                 message: error.localizedDescription

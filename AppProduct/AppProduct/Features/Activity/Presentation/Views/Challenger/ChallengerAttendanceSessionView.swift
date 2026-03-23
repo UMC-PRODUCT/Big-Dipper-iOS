@@ -105,12 +105,19 @@ struct ChallengerAttendanceSessionView: View {
             DefaultConstant.defaultContentBottomMargins,
             for: .scrollContent)
         .task {
+            // configurePollingSessions는 반드시 fetch보다 먼저 호출
+            // syncSessionStates()가 pollingSessions에 의존
+            attendanceViewModel.configurePollingSessions(
+                sessions,
+                userId: userId
+            )
             await attendanceViewModel.fetchAvailableSchedules()
             await attendanceViewModel.fetchMyHistory()
         }
-        .task(id: attendanceViewModel.availableSchedules.isComplete) {
-            guard attendanceViewModel.availableSchedules.isComplete else { return }
-            await attendanceViewModel.startPollingIfNeeded()
+        .task {
+            await attendanceViewModel.startPollingIfNeeded(
+                sessions: sessions
+            )
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
