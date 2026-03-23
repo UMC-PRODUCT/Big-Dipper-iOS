@@ -168,7 +168,10 @@ extension NetworkError: LocalizedError {
             return "로그인이 필요합니다."
         case .tokenRefreshFailed, .noRefreshToken, .maxRetryExceeded:
             return "세션이 만료되었습니다. 다시 로그인해주세요."
-        case .requestFailed(let statusCode, _):
+        case .requestFailed(let statusCode, let data):
+            if let serverMessage = Self.parseServerMessage(from: data) {
+                return serverMessage
+            }
             switch statusCode {
             case 400...499:
                 return "요청을 처리할 수 없습니다. 다시 시도해주세요."
@@ -184,6 +187,17 @@ extension NetworkError: LocalizedError {
         case .timeout:
             return "서버 응답이 늦어지고 있어요. 잠시 후 다시 시도해주세요."
         }
+    }
+
+    /// 서버 응답 데이터에서 에러 메시지를 추출합니다.
+    private static func parseServerMessage(from data: Data?) -> String? {
+        guard let data else { return nil }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let message = json["message"] as? String,
+              !message.isEmpty else {
+            return nil
+        }
+        return message
     }
 
     /// 에러 심각도

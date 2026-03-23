@@ -2,7 +2,7 @@
 //  VoteAllVotersSheet.swift
 //  AppProduct
 //
-//  Created by Claude on 3/16/26.
+//  Created by euijjang97 on 3/16/26.
 //
 
 import SwiftUI

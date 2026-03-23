@@ -68,6 +68,7 @@ struct AppProductApp: App {
                 .environment(\.di, container)
                 .environment(\.appFlow, appFlow)
                 .modelContainer(sharedModelContainer)
+                .alertPrompt(item: errorAlertBinding)
                 .onAppear(perform: configureAppDelegateIfNeeded)
                 .onReceive(
                     NotificationCenter.default.publisher(for: .authSessionExpired)
@@ -155,6 +156,31 @@ extension AppProductApp {
         withAnimation {
             appState = state
         }
+    }
+
+    /// ErrorHandler의 currentError를 AlertPrompt 바인딩으로 변환합니다.
+    private var errorAlertBinding: Binding<AlertPrompt?> {
+        Binding(
+            get: {
+                guard let presentable = errorHandler.currentError else {
+                    return nil
+                }
+                return AlertPrompt(
+                    title: presentable.title,
+                    message: presentable.message,
+                    positiveBtnTitle: presentable.showRetry ? "재시도" : "확인",
+                    positiveBtnAction: presentable.showRetry
+                        ? { Task { await presentable.retryAction?() } }
+                        : nil,
+                    negativeBtnTitle: presentable.showRetry ? "닫기" : nil
+                )
+            },
+            set: { newValue in
+                if newValue == nil {
+                    errorHandler.clearError()
+                }
+            }
+        )
     }
 
     /// 루트 화면 전환에 사용하는 공통 트랜지션
