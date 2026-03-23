@@ -172,7 +172,7 @@ struct ChallengerAttendanceSessionView: View {
 
             case .failed(let error):
                 RetryContentUnavailableView(
-                    title: "로딩 실패",
+                    title: "불러오지 못했어요",
                     systemImage: "exclamationmark.triangle",
                     description: error.userMessage,
                     isRetrying: attendanceViewModel.isRetrying
@@ -226,7 +226,7 @@ struct ChallengerAttendanceSessionView: View {
                 }
             case .failed(let error):
                 RetryContentUnavailableView(
-                    title: "로딩 실패",
+                    title: "불러오지 못했어요",
                     systemImage: "exclamationmark.triangle",
                     description: error.userMessage,
                     isRetrying: attendanceViewModel.isRetrying
