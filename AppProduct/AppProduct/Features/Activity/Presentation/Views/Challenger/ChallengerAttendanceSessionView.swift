@@ -24,6 +24,7 @@ private final class MapViewModelCache {
 
 struct ChallengerAttendanceSessionView: View {
     @State private var expandedSessionId: Session.ID?
+    @Environment(\.scenePhase) private var scenePhase
     @State private var attendanceViewModel: ChallengerAttendanceViewModel
     @State private var mapViewModelCache = MapViewModelCache()
 
@@ -106,6 +107,17 @@ struct ChallengerAttendanceSessionView: View {
         .task {
             await attendanceViewModel.fetchAvailableSchedules()
             await attendanceViewModel.fetchMyHistory()
+        }
+        .task(id: attendanceViewModel.availableSchedules.isComplete) {
+            guard attendanceViewModel.availableSchedules.isComplete else { return }
+            await attendanceViewModel.startPollingIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task {
+                    await attendanceViewModel.refreshAfterForeground()
+                }
+            }
         }
         .onDisappear {
             Task {

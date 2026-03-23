@@ -17,6 +17,7 @@ struct OperatorAttendanceSectionView: View {
 
     @State private var viewModel: OperatorAttendanceViewModel
     @State private var selectedPendingSessionId: UUID?
+    @Environment(\.scenePhase) private var scenePhase
 
     private let container: DIContainer
     private let errorHandler: ErrorHandler
@@ -57,6 +58,17 @@ struct OperatorAttendanceSectionView: View {
             // 상위 컨테이너에서 한 번만 호출 (View 교체로 인한 Task 취소 방지)
             if viewModel.sessionsState.isIdle {
                 await viewModel.fetchSessions()
+            }
+        }
+        .task(id: viewModel.sessionsState.isComplete) {
+            guard viewModel.sessionsState.isComplete else { return }
+            await viewModel.startPollingIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task {
+                    await viewModel.refreshSessions()
+                }
             }
         }
         .alertPrompt(item: $viewModel.alertPrompt)

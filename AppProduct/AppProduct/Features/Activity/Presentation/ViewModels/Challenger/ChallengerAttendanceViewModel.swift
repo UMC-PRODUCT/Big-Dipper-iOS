@@ -25,6 +25,18 @@ final class ChallengerAttendanceViewModel {
 
     private var statusObserver: (any NSObjectProtocol)?
 
+    /// 폴링 설정
+    private enum PollingConfig {
+        static let intervalSeconds: Int = 30
+    }
+
+    /// 출석 가능한 세션이 있는지 확인
+    private var hasActiveSession: Bool {
+        guard case .loaded(let schedules) = availableSchedules
+        else { return false }
+        return !schedules.isEmpty
+    }
+
     // MARK: - Init
 
     init(
@@ -68,6 +80,48 @@ final class ChallengerAttendanceViewModel {
             myHistory = .loaded(history)
         } catch {
             // 배경 갱신 실패는 무시
+        }
+    }
+
+    /// 출석 가능 일정 갱신 (로딩 상태 변경 없이)
+    @MainActor
+    private func refreshAvailableSchedules() async {
+        guard !availableSchedules.isLoading else { return }
+        do {
+            let schedules = try await challengeAttendanceUseCase.fetchAvailableSchedules()
+            availableSchedules = .loaded(schedules)
+        } catch {
+            // 배경 갱신 실패는 무시
+        }
+    }
+
+    /// 앱 foreground 복귀 시 전체 갱신 (두 API 병렬 호출)
+    @MainActor
+    func refreshAfterForeground() async {
+        async let schedules: Void = refreshAvailableSchedules()
+        async let history: Void = refreshMyHistory()
+        _ = await (schedules, history)
+    }
+
+    /// 출석 가능 세션이 있을 때 주기적으로 상태를 갱신합니다.
+    ///
+    /// `.task` 모디파이어에서 호출하면 뷰 사라질 때
+    /// 자동 취소됩니다.
+    @MainActor
+    func startPollingIfNeeded() async {
+        // isComplete는 .loaded 또는 .failed 모두 true.
+        // .failed 시 hasActiveSession이 false이므로
+        // 폴링 미시작.
+        guard availableSchedules.isComplete, myHistory.isComplete else { return }
+
+        while !Task.isCancelled {
+            guard hasActiveSession else { return }
+            try? await Task.sleep(for: .seconds(
+                PollingConfig.intervalSeconds
+            ))
+            guard !Task.isCancelled else { break }
+            await refreshAvailableSchedules()
+            await refreshMyHistory()
         }
     }
 

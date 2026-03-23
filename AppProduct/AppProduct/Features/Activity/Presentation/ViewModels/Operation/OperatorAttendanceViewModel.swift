@@ -23,6 +23,11 @@ final class OperatorAttendanceViewModel {
         case failed    // API 에러 또는 내부 상태 오류
     }
 
+    /// 폴링 설정
+    private enum PollingConfig {
+        static let intervalSeconds: Int = 15
+    }
+
     private var container: DIContainer
     private var errorHandler: ErrorHandler
     private var useCase: OperatorAttendanceUseCaseProtocol
@@ -41,6 +46,19 @@ final class OperatorAttendanceViewModel {
 
     /// 현재 처리 중인 멤버 ID (해당 버튼만 ProgressView 표시)
     private(set) var processingMemberIds: Set<UUID> = []
+
+    /// 진행 중인 세션이 하나라도 있는지 확인
+    private var hasActiveSession: Bool {
+        guard case .loaded(let sessions) = sessionsState
+        else { return false }
+        return sessions.contains { session in
+            let status = OperatorSessionStatus.from(
+                startTime: session.session.info.startTime,
+                endTime: session.session.info.endTime
+            )
+            return status == .inProgress
+        }
+    }
 
     // MARK: - Init
 
@@ -358,6 +376,74 @@ final class OperatorAttendanceViewModel {
     func rejectDirectly(member: OperatorPendingMember, sessionId: UUID) {
         Task {
             await rejectAttendance(memberId: member.id, sessionId: sessionId)
+        }
+    }
+
+    // MARK: - Polling
+
+    /// 세션 목록 배경 갱신 (로딩 상태 변경 없이)
+    ///
+    /// 폴링 시 UI 깜빡임을 방지하기 위해
+    /// Loadable.loading 전환 없이 데이터를 갱신합니다.
+    @MainActor
+    func refreshSessions() async {
+        guard !sessionsState.isLoading else { return }
+
+        // 기존 pending members 보존용
+        let existingMembers: [String: [OperatorPendingMember]]
+        if case .loaded(let current) = sessionsState {
+            existingMembers = Dictionary(
+                uniqueKeysWithValues: current.compactMap {
+                    guard let id = $0.serverID else { return nil }
+                    return (id, $0.pendingMembers)
+                }
+            )
+        } else {
+            existingMembers = [:]
+        }
+
+        do {
+            let statsList = try await useCase
+                .fetchScheduleStats()
+            var updated: [OperatorSessionAttendance] = []
+            for stats in statsList {
+                let session = Self.makeSession(from: stats)
+                let key = String(stats.scheduleId)
+                updated.append(OperatorSessionAttendance(
+                    serverID: key,
+                    session: session,
+                    attendanceRate: stats.attendanceRate,
+                    attendedCount: stats.presentCount,
+                    totalCount: stats.totalCount,
+                    pendingCount: stats.pendingCount,
+                    pendingMembers: existingMembers[key] ?? []
+                ))
+            }
+            sessionsState = .loaded(updated)
+        } catch {
+            // 백그라운드 갱신 실패는 무시 (기존 데이터 유지)
+        }
+    }
+
+    /// 세션 진행 중일 때 주기적으로 데이터를 갱신합니다.
+    ///
+    /// `.task` 모디파이어에서 호출하면 뷰 사라질 때
+    /// 자동 취소됩니다.
+    /// 진행 중인 세션이 없으면 폴링을 중단합니다.
+    @MainActor
+    func startPollingIfNeeded() async {
+        // isComplete는 .loaded 또는 .failed 모두 true.
+        // .failed 시 hasActiveSession이 false이므로
+        // 아래 guard에서 즉시 return 되어 폴링 미시작.
+        guard sessionsState.isComplete else { return }
+
+        while !Task.isCancelled {
+            guard hasActiveSession else { return }
+            try? await Task.sleep(for: .seconds(
+                PollingConfig.intervalSeconds
+            ))
+            guard !Task.isCancelled else { break }
+            await refreshSessions()
         }
     }
 
