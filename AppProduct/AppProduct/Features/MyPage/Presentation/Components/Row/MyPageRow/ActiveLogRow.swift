@@ -57,9 +57,13 @@ struct ActiveLogRow: View, Equatable {
     }
     
     /// 파트 이름을 표시하는 텍스트 뷰
+    /// Admin 파트는 표시하지 않습니다.
+    @ViewBuilder
     private var part: some View {
-        Text(row.part.name)
-            .appFont(.subheadline, color: .black)
+        if row.part != .admin {
+            Text(row.part.name)
+                .appFont(.subheadline, color: .black)
+        }
     }
     
     /// 직책(역할)을 표시하는 뱃지 뷰
