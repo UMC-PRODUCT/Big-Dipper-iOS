@@ -22,6 +22,7 @@ struct SessionInfo: Identifiable, Equatable {
     let startTime: Date
     let endTime: Date
     let location: Coordinate
+    var isAllDay: Bool = false
 }
 
 import CoreLocation

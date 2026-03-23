@@ -158,23 +158,33 @@ final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol {
         let lateThreshold = TimeInterval(AttendancePolicy.lateThresholdMinutes * 60)
         let startTime = info.startTime
 
-        // 세션 시작 - threshold 이전이면 너무 이름
-        if now < startTime.addingTimeInterval(-onTimeThreshold) {
-            return .tooEarly
-        }
+        if info.isAllDay {
+            if now < startTime.addingTimeInterval(-onTimeThreshold) {
+                return .tooEarly
+            }
+            if now <= info.endTime {
+                return .onTime
+            }
+            return .expired
+        } else {
+            // 세션 시작 - threshold 이전이면 너무 이름
+            if now < startTime.addingTimeInterval(-onTimeThreshold) {
+                return .tooEarly
+            }
 
-        // 세션 시작 ± threshold 내이면 정시 출석 가능
-        if now <= startTime.addingTimeInterval(onTimeThreshold) {
-            return .onTime
-        }
+            // 세션 시작 ± threshold 내이면 정시 출석 가능
+            if now <= startTime.addingTimeInterval(onTimeThreshold) {
+                return .onTime
+            }
 
-        // 세션 시작 + lateThreshold 내이면 지각 시간대
-        if now <= startTime.addingTimeInterval(lateThreshold) {
-            return .lateWindow
-        }
+            // 세션 시작 + lateThreshold 내이면 지각 시간대
+            if now <= startTime.addingTimeInterval(lateThreshold) {
+                return .lateWindow
+            }
 
-        // 그 이후는 마감
-        return .expired
+            // 그 이후는 마감
+            return .expired
+        }
     }
 
     /// 지오코딩

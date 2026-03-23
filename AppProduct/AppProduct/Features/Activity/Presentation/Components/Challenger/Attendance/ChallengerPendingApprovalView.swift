@@ -21,6 +21,8 @@ struct ChallengerPendingApprovalView: View {
         static let backgroundOpacity: CGFloat = 0.1
     }
 
+    @State private var isRotating = false
+
     // MARK: - Body
 
     var body: some View {
@@ -39,9 +41,14 @@ struct ChallengerPendingApprovalView: View {
 
     private var iconView: some View {
         Image(systemName: "arrow.trianglehead.2.counterclockwise")
-            .symbolEffect(.pulse.wholeSymbol)
             .font(.system(size: Constant.iconSize))
             .foregroundStyle(.yellow)
+            .rotationEffect(.degrees(isRotating ? 360 : 0))
+            .onAppear {
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                    isRotating = true
+                }
+            }
     }
 
     private var titleText: some View {

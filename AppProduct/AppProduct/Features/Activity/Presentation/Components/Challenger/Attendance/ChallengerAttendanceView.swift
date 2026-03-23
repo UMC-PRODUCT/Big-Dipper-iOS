@@ -67,7 +67,7 @@ struct ChallengerAttendanceView: View, Equatable {
                 lateReasonButton
             }
         }
-        .animation(.smooth, value: session.attendanceStatus)
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: session.attendanceStatus)
         .animation(.easeInOut(duration: 0.2), value: isMapReady)
         .task {
             try? await Task.sleep(for: Constants.mapLoadDelay)
@@ -101,16 +101,28 @@ struct ChallengerAttendanceView: View, Equatable {
                         in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true))
                     .glassEffectID(
                         Constants.attendanceActionId, in: attendanceNamespace)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.95).combined(with: .opacity),
+                        removal: .scale(scale: 0.95).combined(with: .opacity)
+                    ))
 
             case .beforeAttendance:
                 // 출석 버튼
                 attendanceButton
                     .glassEffectID(
                         Constants.attendanceActionId, in: attendanceNamespace)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.95).combined(with: .opacity),
+                        removal: .scale(scale: 0.95).combined(with: .opacity)
+                    ))
 
             case .present, .late, .absent:
                 // 확정 상태 - 버튼 비활성화
                 attendanceButton
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.95).combined(with: .opacity),
+                        removal: .scale(scale: 0.95).combined(with: .opacity)
+                    ))
             }
         }
     }
