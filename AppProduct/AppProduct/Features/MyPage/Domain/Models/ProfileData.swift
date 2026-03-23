@@ -48,15 +48,44 @@ struct SocialConnection: Identifiable, Equatable, Hashable {
 struct ActivityLog: Identifiable, Equatable, Hashable {
     /// 활동 기록의 고유 식별자
     var id: UUID = .init()
-    
+
     /// 활동 당시의 파트 (기획, 디자인, 서버 등)
     var part: UMCPartType
-    
+
     /// 활동 기수 (예: 11기, 12기)
     var generation: Int
-    
-    /// 맡았던 역할 (회장, 팀원 등)
-    var role: ManagementTeam
+
+    /// 맡았던 역할 목록 (같은 기수/파트에서 여러 역할을 가질 수 있음)
+    var roles: [ManagementTeam]
+
+    /// 가장 높은 우선순위의 역할 (기존 호환용)
+    var role: ManagementTeam {
+        roles.max() ?? .challenger
+    }
+
+    init(
+        id: UUID = .init(),
+        part: UMCPartType,
+        generation: Int,
+        role: ManagementTeam
+    ) {
+        self.id = id
+        self.part = part
+        self.generation = generation
+        self.roles = [role]
+    }
+
+    init(
+        id: UUID = .init(),
+        part: UMCPartType,
+        generation: Int,
+        roles: [ManagementTeam]
+    ) {
+        self.id = id
+        self.part = part
+        self.generation = generation
+        self.roles = roles
+    }
 }
 
 /// 외부 소셜/포트폴리오 링크 정보를 나타내는 모델입니다.
