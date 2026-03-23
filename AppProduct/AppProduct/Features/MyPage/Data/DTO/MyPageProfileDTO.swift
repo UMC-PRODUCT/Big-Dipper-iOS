@@ -293,12 +293,40 @@ extension MyPageProfileResponseDTO {
             )
         }
 
-        return (roleLogs + challengerLogs).sorted { lhs, rhs in
+        let allLogs = roleLogs + challengerLogs
+        let merged = mergeAdminLogs(allLogs)
+
+        return merged.sorted { lhs, rhs in
             if lhs.generation == rhs.generation {
                 return lhs.role > rhs.role
             }
             return lhs.generation > rhs.generation
         }
+    }
+
+    /// 같은 기수의 Admin 이력을 하나로 병합합니다.
+    private func mergeAdminLogs(_ logs: [ActivityLog]) -> [ActivityLog] {
+        var adminByGen: [Int: [ManagementTeam]] = [:]
+        var result: [ActivityLog] = []
+
+        for log in logs {
+            if log.part == .admin {
+                adminByGen[log.generation, default: []].append(log.role)
+            } else {
+                result.append(log)
+            }
+        }
+
+        for (gen, adminRoles) in adminByGen {
+            let sortedRoles = adminRoles.sorted(by: >)
+            result.append(ActivityLog(
+                part: .admin,
+                generation: gen,
+                roles: sortedRoles
+            ))
+        }
+
+        return result
     }
 
     /// 서버 응답의 외부 링크 필드를 `SocialLinkType` 기반 `[ProfileLink]` 배열로 변환합니다.

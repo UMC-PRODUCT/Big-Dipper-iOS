@@ -68,16 +68,22 @@ struct ActiveLogRow: View, Equatable {
     
     /// 직책(역할)을 표시하는 뱃지 뷰
     /// 역할별 고유 색상을 배경색으로 사용합니다.
+    /// 여러 역할이 있는 경우 (같은 기수 Admin) 모든 역할을 나열합니다.
     @ViewBuilder
     private var role: some View {
-        if row.role != .challenger {
-            Text(row.role.displayName)
-                .appFont(.footnote, weight: .medium, color: row.role.textColor)
-                .padding(Constants.padding)
-                .glassEffect(
-                    .clear.tint(row.role.backgroundColor),
-                    in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius)
-                )
+        let displayRoles = row.roles.filter { $0 != .challenger }
+        if !displayRoles.isEmpty {
+            HStack(spacing: DefaultSpacing.spacing4) {
+                ForEach(displayRoles, id: \.self) { role in
+                    Text(role.displayName)
+                        .appFont(.footnote, weight: .medium, color: role.textColor)
+                        .padding(Constants.padding)
+                        .glassEffect(
+                            .clear.tint(role.backgroundColor),
+                            in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius)
+                        )
+                }
+            }
         }
     }
 }
