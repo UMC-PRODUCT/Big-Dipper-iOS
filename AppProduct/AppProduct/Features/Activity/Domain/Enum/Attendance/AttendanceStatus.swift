@@ -63,16 +63,19 @@ extension AttendanceStatus {
     ///
     /// - Parameter serverStatus: 서버 응답 status 필드
     ///   (e.g., "PRESENT", "LATE", "ABSENT", "PENDING",
-    ///    "PRESENT_PENDING", "LATE_PENDING")
+    ///    "PRESENT_PENDING", "LATE_PENDING", "EXCUSED",
+    ///    "EXCUSED_PENDING")
     init(serverStatus: String) {
         switch serverStatus {
-        case "PRESENT":
+        case "PRESENT", "EXCUSED":
             self = .present
         case "LATE":
             self = .late
         case "ABSENT":
             self = .absent
         case "PENDING":
+            self = .beforeAttendance
+        case "PRESENT_PENDING", "LATE_PENDING", "EXCUSED_PENDING":
             self = .pendingApproval
         default:
             if serverStatus.hasSuffix("_PENDING") {

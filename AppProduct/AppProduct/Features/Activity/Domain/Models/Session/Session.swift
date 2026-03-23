@@ -75,6 +75,7 @@ final class Session: Identifiable, Equatable {
     func canSubmitReason() -> Bool {
         !isLoading
         && !hasSubmitted
+        && attendanceStatus == .beforeAttendance
     }
 
     init(info: SessionInfo, initialAttendance: Attendance? = nil) {
