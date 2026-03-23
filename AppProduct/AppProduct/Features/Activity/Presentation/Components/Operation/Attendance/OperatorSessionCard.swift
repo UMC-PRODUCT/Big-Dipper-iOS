@@ -150,6 +150,7 @@ struct OperatorSessionCard: View, Equatable {
             }
             .padding(ActivityConstants.statusCardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .glassEffect(
