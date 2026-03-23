@@ -56,7 +56,7 @@ final class BaseMapViewModel {
             center: .init(
                 latitude: info.location.latitude,
                 longitude: info.location.longitude),
-            span: .init(latitudeDelta: 0.003, longitudeDelta: 0.003)))
+            span: .init(latitudeDelta: 0.002, longitudeDelta: 0.002)))
     }
     
     /// 출석용 지오펜스 모니터링 시작
