@@ -33,6 +33,8 @@ class ScheduleDetailViewModel {
     var canEditSchedule: Bool = false
     /// 일정 삭제 가능 여부 (DELETE/MANAGE)
     var canDeleteSchedule: Bool = false
+    /// 일정 삭제 진행 중 여부
+    var isDeleting: Bool = false
 
     // MARK: - Init
     init(scheduleId: Int) {

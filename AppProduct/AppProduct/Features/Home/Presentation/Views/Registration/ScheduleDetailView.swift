@@ -119,16 +119,23 @@ struct ScheduleDetailView: View {
                 }
 
                 if viewModel.canDeleteSchedule {
-                    Button(role: .destructive, action: {
-                        viewModel.deleteAlertAction {
-                            dismiss()
-                            Task { @MainActor in
-                                await deleteSchedule(scheduleId: loadedData.scheduleId)
+                    if viewModel.isDeleting {
+                        ProgressView()
+                            .tint(.red)
+                    } else {
+                        Button(role: .destructive, action: {
+                            viewModel.deleteAlertAction {
+                                Task { @MainActor in
+                                    let success = await deleteSchedule(
+                                        scheduleId: loadedData.scheduleId
+                                    )
+                                    if success { dismiss() }
+                                }
                             }
+                        }) {
+                            Image(systemName: "trash")
+                                .foregroundStyle(.red)
                         }
-                    }) {
-                        Image(systemName: "trash")
-                            .foregroundStyle(.red)
                     }
                 }
             }
@@ -180,13 +187,19 @@ struct ScheduleDetailView: View {
 
     /// 일정과 출석부를 함께 삭제합니다.
     /// - Parameter scheduleId: 삭제할 일정 ID
+    /// - Returns: 삭제 성공 여부
     @MainActor
-    private func deleteSchedule(scheduleId: Int) async {
+    @discardableResult
+    private func deleteSchedule(scheduleId: Int) async -> Bool {
+        viewModel.isDeleting = true
+        defer { viewModel.isDeleting = false }
+
         do {
             let provider = di.resolve(HomeUseCaseProviding.self)
             try await provider.deleteScheduleUseCase.execute(
                 scheduleId: scheduleId
             )
+            return true
         } catch {
             errorHandler.handle(error, context: ErrorContext(
                 feature: "Home",
@@ -199,6 +212,7 @@ struct ScheduleDetailView: View {
                     )
                 }
             ))
+            return false
         }
     }
 
