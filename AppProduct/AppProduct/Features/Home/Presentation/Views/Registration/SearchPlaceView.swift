@@ -259,29 +259,56 @@ struct SearchMapView: View {
         }
     }
 
-    /// 검색 결과가 있을 때만 검색 위치 섹션을 노출합니다.
+    /// 검색 결과 상태에 따라 검색 위치 섹션을 노출합니다.
     @ViewBuilder
     private var mapSearchResult: some View {
-        if !viewModel.searchResult.isEmpty {
-            Section(content: {
-                List(viewModel.searchResult, rowContent: { place in
-                    SearchContent(place: place) {
-                        Task {
-                            await viewModel.addRecentPlace(place)
-                            await viewModel.clear()
-                            placeSelected(.init(
-                                name: place.name,
-                                address: place.address ?? "도로명 주소 없음",
-                                coordinate: place.coordinate
-                            ))
-                            dismiss()
+        switch viewModel.searchResult {
+        case .idle:
+            EmptyView()
+
+        case .loading:
+            Section(header: generateHeader(.search)) {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+
+        case .loaded(let results):
+            if !results.isEmpty {
+                Section(header: generateHeader(.search)) {
+                    List(results, rowContent: { place in
+                        SearchContent(place: place) {
+                            Task {
+                                await viewModel.addRecentPlace(place)
+                                await viewModel.clear()
+                                placeSelected(.init(
+                                    name: place.name,
+                                    address: place.address ?? "도로명 주소 없음",
+                                    coordinate: place.coordinate
+                                ))
+                                dismiss()
+                            }
                         }
-                    }
-                    .equatable()
-                })
-            }, header: {
-                generateHeader(.search)
-            })
+                        .equatable()
+                    })
+                }
+            } else {
+                Section(header: generateHeader(.search)) {
+                    ContentUnavailableView(
+                        "검색 결과가 없습니다",
+                        systemImage: "magnifyingglass",
+                        description: Text("다른 검색어로 다시 시도해보세요.")
+                    )
+                }
+            }
+
+        case .failed(let error):
+            Section(header: generateHeader(.search)) {
+                ContentUnavailableView(
+                    error.errorDescription ?? "검색에 실패했습니다",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("다른 검색어로 다시 시도해보세요.")
+                )
+            }
         }
     }
 }
