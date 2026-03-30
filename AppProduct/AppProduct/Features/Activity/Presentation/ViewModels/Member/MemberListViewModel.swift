@@ -164,7 +164,7 @@ final class MemberListViewModel {
     func openChallengerMemberDetail(
         _ member: MemberManagementItem
     ) async {
-        guard let challengerId = member.challengerID else {
+        guard member.challengerID != nil else {
             selectedMember = member
             return
         }
@@ -173,51 +173,37 @@ final class MemberListViewModel {
         defer { isLoadingMemberDetail = false }
 
         let memberId = member.memberID ?? 0
-
-        async let recordsTask = try? fetchMembersUseCase.fetchAttendanceRecords(
-            challengerId: challengerId
-        )
-        async let pointHistoryTask = try? fetchMembersUseCase.fetchPointHistory(
-            challengerId: challengerId
-        )
         async let generationsTask = try? fetchMembersUseCase.fetchAllGenerations(
             memberId: memberId
         )
-        async let genPointsTask = try? fetchMembersUseCase
-            .fetchGenerationPointSummaries(memberId: memberId)
 
-        let records = await recordsTask ?? member.attendanceRecords
-        let pointHistory = await pointHistoryTask ?? member.penaltyHistory
+        var detailedMember = await fetchMemberDetail(for: member)
+
         let generations = await generationsTask ?? member.generation
-        let generationPoints = await genPointsTask ?? []
+        if !generations.isEmpty {
+            detailedMember = MemberManagementItem(
+                id: detailedMember.id,
+                memberID: detailedMember.memberID,
+                challengerID: detailedMember.challengerID,
+                profile: detailedMember.profile,
+                name: detailedMember.name,
+                nickname: detailedMember.nickname,
+                generation: generations,
+                school: detailedMember.school,
+                position: detailedMember.position,
+                part: detailedMember.part,
+                penalty: detailedMember.penalty,
+                rewardPoints: detailedMember.rewardPoints,
+                badge: detailedMember.badge,
+                managementTeam: detailedMember.managementTeam,
+                attendanceRecords: detailedMember.attendanceRecords,
+                penaltyHistory: detailedMember.penaltyHistory,
+                canViewPenaltyHistory: detailedMember.canViewPenaltyHistory,
+                generationPoints: detailedMember.generationPoints
+            )
+        }
 
-        let penaltyItems = pointHistory.filter { !$0.pointType.isReward }
-        let rewardItems = pointHistory.filter { $0.pointType.isReward }
-        let totalPenalty = penaltyItems.isEmpty
-            ? member.penalty
-            : penaltyItems.reduce(0) { $0 + $1.penaltyScore }
-        let totalReward = rewardItems.reduce(0) { $0 + $1.penaltyScore }
-
-        selectedMember = MemberManagementItem(
-            id: member.id,
-            memberID: member.memberID,
-            challengerID: member.challengerID,
-            profile: member.profile,
-            name: member.name,
-            nickname: member.nickname,
-            generation: generations.isEmpty ? member.generation : generations,
-            school: member.school,
-            position: member.position,
-            part: member.part,
-            penalty: totalPenalty,
-            rewardPoints: totalReward,
-            badge: member.badge,
-            managementTeam: member.managementTeam,
-            attendanceRecords: records,
-            penaltyHistory: pointHistory,
-            canViewPenaltyHistory: true,
-            generationPoints: generationPoints
-        )
+        selectedMember = detailedMember
     }
 
     /// 포인트 기록을 삭제합니다.
@@ -272,9 +258,66 @@ final class MemberListViewModel {
             return
         }
 
+        let detailedMember = await fetchMemberDetail(
+            for: resolvedMember
+        )
+
         selectedMember = memberWithStableSheetIdentity(
             base: member,
-            updated: resolvedMember
+            updated: detailedMember
+        )
+    }
+
+    /// 멤버의 상세 정보(출석 기록, 포인트 히스토리, 기수 포인트)를 조회합니다.
+    @MainActor
+    private func fetchMemberDetail(
+        for member: MemberManagementItem
+    ) async -> MemberManagementItem {
+        guard let challengerId = member.challengerID else {
+            return member
+        }
+
+        let memberId = member.memberID ?? 0
+
+        async let recordsTask = try? fetchMembersUseCase.fetchAttendanceRecords(
+            challengerId: challengerId
+        )
+        async let pointHistoryTask = try? fetchMembersUseCase.fetchPointHistory(
+            challengerId: challengerId
+        )
+        async let genPointsTask = try? fetchMembersUseCase
+            .fetchGenerationPointSummaries(memberId: memberId)
+
+        let records = await recordsTask ?? member.attendanceRecords
+        let pointHistory = await pointHistoryTask ?? member.penaltyHistory
+        let generationPoints = await genPointsTask ?? []
+
+        let penaltyItems = pointHistory.filter { !$0.pointType.isReward }
+        let rewardItems = pointHistory.filter { $0.pointType.isReward }
+        let totalPenalty = penaltyItems.isEmpty
+            ? member.penalty
+            : penaltyItems.reduce(0) { $0 + $1.penaltyScore }
+        let totalReward = rewardItems.reduce(0) { $0 + $1.penaltyScore }
+
+        return MemberManagementItem(
+            id: member.id,
+            memberID: member.memberID,
+            challengerID: member.challengerID,
+            profile: member.profile,
+            name: member.name,
+            nickname: member.nickname,
+            generation: member.generation,
+            school: member.school,
+            position: member.position,
+            part: member.part,
+            penalty: totalPenalty,
+            rewardPoints: totalReward,
+            badge: member.badge,
+            managementTeam: member.managementTeam,
+            attendanceRecords: records,
+            penaltyHistory: pointHistory,
+            canViewPenaltyHistory: true,
+            generationPoints: generationPoints
         )
     }
 
