@@ -14,6 +14,8 @@ struct PostDetailDTO: Codable {
     let content: String
     let category: String
     let authorId: String?
+    let authorChallengerId: String?
+    let authorMemberId: String?
     let authorName: String?
     let authorNickname: String?
     let challengerNickname: String?
@@ -24,7 +26,7 @@ struct PostDetailDTO: Codable {
     let writeTime: String
     let likeCount: String
     let isLiked: Bool
-    let isAuthor: Bool
+    let isAuthor: Bool?
     let scrapCount: String
     let isScrapped: Bool
 
@@ -34,6 +36,8 @@ struct PostDetailDTO: Codable {
         case content
         case category
         case authorId
+        case authorChallengerId
+        case authorMemberId
         case authorName
         case authorNickname
         case challengerNickname
@@ -56,6 +60,8 @@ struct PostDetailDTO: Codable {
         content = try container.decode(String.self, forKey: .content)
         category = try container.decode(String.self, forKey: .category)
         authorId = container.decodeFlexibleOptionalString(forKey: .authorId)
+        authorChallengerId = container.decodeFlexibleOptionalString(forKey: .authorChallengerId)
+        authorMemberId = container.decodeFlexibleOptionalString(forKey: .authorMemberId)
         authorName = try container.decodeIfPresent(String.self, forKey: .authorName)
         authorNickname = container.decodeFirstNonEmptyString(
             forKeys: [.authorNickname, .challengerNickname]
@@ -68,7 +74,7 @@ struct PostDetailDTO: Codable {
         writeTime = try container.decode(String.self, forKey: .writeTime)
         likeCount = try container.decodeFlexibleString(forKey: .likeCount)
         isLiked = try container.decode(Bool.self, forKey: .isLiked)
-        isAuthor = try container.decode(Bool.self, forKey: .isAuthor)
+        isAuthor = try container.decodeIfPresent(Bool.self, forKey: .isAuthor)
         scrapCount = try container.decodeFlexibleString(forKey: .scrapCount)
         isScrapped = try container.decode(Bool.self, forKey: .isScrapped)
     }
@@ -227,7 +233,7 @@ extension PostDetailDTO {
             scrapCount: Int(scrapCount) ?? 0,
             isLiked: isLiked,
             isScrapped: isScrapped,
-            isAuthor: isAuthor,
+            isAuthor: isAuthor ?? false,
             lightningInfo: lightningInfo?.toModel()
         )
     }
