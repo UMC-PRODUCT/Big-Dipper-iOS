@@ -15,7 +15,7 @@ class SearchPlaceViewModel {
     /// 검색어 입력값
     var searchPlace: String = ""
     /// 검색 결과 리스트
-    var searchResult: [PlaceSearchResult] = .init()
+    var searchResult: Loadable<[PlaceSearchResult]> = .idle
     /// 최근 검색 장소 리스트
     var recentPlaces: [RecentPlace] = .init()
     
@@ -100,7 +100,7 @@ class SearchPlaceViewModel {
     
     /// 검색 데이터 초기화(결과 및 쿼리)
     func clear() async {
-        searchResult.removeAll()
+        searchResult = .idle
         searchPlace.removeAll()
     }
     
@@ -108,10 +108,23 @@ class SearchPlaceViewModel {
     /// 검색 쿼리로 장소 검색 수행
     /// - Parameter query: 검색어
     public func search(query: String) async {
+        guard !query.isEmpty else {
+            searchResult = .loaded([])
+            return
+        }
+
+        searchResult = .loading
         do {
-            self.searchResult =  try await self.performSearch(query: query)
+            let results = try await performSearch(query: query)
+            searchResult = .loaded(results)
+        } catch is MKError {
+            searchResult = .failed(.unknown(message: "검색 결과를 찾을 수 없습니다"))
         } catch {
-            errorHandler.handle(error, context: .init(feature: "MapSearchError", action: "MapSearchError"))
+            searchResult = .idle
+            errorHandler.handle(
+                error,
+                context: .init(feature: "MapSearchError", action: "MapSearchError")
+            )
         }
     }
     
