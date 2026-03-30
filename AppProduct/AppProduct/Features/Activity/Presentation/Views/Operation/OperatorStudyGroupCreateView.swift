@@ -45,7 +45,7 @@ struct OperatorStudyGroupCreateView: View {
 
     fileprivate enum Constants {
         static let allParts: [UMCPartType] = UMCPartType.allCases
-        static let participantText: String = "초대받은 챌린저"
+        static let participantText: String = "초대받은 스터디원"
         static let chevronImage: String = "chevron.right"
         static let leaderPlaceholderText: String = "담당 파트장을 선택하세요"
         static let groupNamePlaceholder: String = "그룹 이름 지정"

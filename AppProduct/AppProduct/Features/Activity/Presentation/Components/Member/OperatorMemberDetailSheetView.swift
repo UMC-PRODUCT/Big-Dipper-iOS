@@ -235,18 +235,16 @@ struct OperatorMemberDetailSheetView: View {
             .navigationTitle("상벌점 부여")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") {
-                        showPointForm = false
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("확정") {
+                ToolBarCollection.CancelBtn { }
+                ToolBarCollection.ConfirmBtn(
+                    action: {
                         pointReason = ""
                         showReasonAlert = true
-                    }
-                    .disabled(!isConfirmEnabled)
-                }
+                    },
+                    disable: !isConfirmEnabled,
+                    isLoading: isSubmittingPoint,
+                    dismissOnTap: false
+                )
             }
             .alert("사유 입력", isPresented: $showReasonAlert) {
                 TextField("사유를 입력하세요", text: $pointReason)
@@ -439,7 +437,6 @@ struct OperatorMemberDetailSheetView: View {
         .listRowSpacing(DefaultSpacing.spacing8)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
-//        .frame(height: scrollViewHeight)
     }
 
     private func penaltyHistoryRow(_ history: OperatorMemberPenaltyHistory) -> some View {

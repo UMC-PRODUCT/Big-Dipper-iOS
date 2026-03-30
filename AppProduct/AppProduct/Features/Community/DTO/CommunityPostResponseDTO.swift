@@ -92,7 +92,7 @@ struct PostListItemDTO: Codable {
     let commentCount: String
     let likeCount: String
     let isLiked: Bool
-    let isAuthor: Bool
+    let isAuthor: Bool?
     let lightningInfo: LightningInfoDTO?
 
     private enum CodingKeys: String, CodingKey {
@@ -136,7 +136,7 @@ struct PostListItemDTO: Codable {
         commentCount = try container.decodeFlexibleString(forKey: .commentCount)
         likeCount = try container.decodeFlexibleString(forKey: .likeCount)
         isLiked = try container.decode(Bool.self, forKey: .isLiked)
-        isAuthor = try container.decode(Bool.self, forKey: .isAuthor)
+        isAuthor = try container.decodeIfPresent(Bool.self, forKey: .isAuthor) ?? false
         lightningInfo = try container.decodeIfPresent(LightningInfoDTO.self, forKey: .lightningInfo)
     }
 }
@@ -200,7 +200,7 @@ extension PostListItemDTO {
             commentCount: Int(commentCount) ?? 0,
             scrapCount: 0,
             isLiked: isLiked,
-            isAuthor: isAuthor,
+            isAuthor: isAuthor ?? false,
             lightningInfo: lightningInfo?.toModel(),
         )
     }
