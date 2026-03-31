@@ -73,9 +73,10 @@ class ScheduleDetailViewModel {
     }
 
     /// Apple Maps 앱에서 해당 좌표 열기
-    func mapLinkTapped(latitude: Double, longitude: Double) {
+    func mapLinkTapped(latitude: Double, longitude: Double, locationName: String?) {
         let location = CLLocation(latitude: latitude, longitude: longitude)
         let mapItem = MKMapItem(location: location, address: nil)
+        mapItem.name = locationName ?? roadAddress
         mapItem.openInMaps()
     }
 

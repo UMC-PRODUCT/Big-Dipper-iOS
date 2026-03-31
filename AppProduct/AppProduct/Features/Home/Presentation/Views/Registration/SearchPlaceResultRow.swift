@@ -2,7 +2,7 @@
 //  SearchPlaceResultRow.swift
 //  AppProduct
 //
-//  Created by OpenAI euijjang97 on 3/13/26.
+//  Created by euijjang97 on 3/13/26.
 //
 
 import MapKit

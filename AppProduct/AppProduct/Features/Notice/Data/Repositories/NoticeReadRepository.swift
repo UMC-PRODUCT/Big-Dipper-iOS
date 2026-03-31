@@ -2,7 +2,7 @@
 //  NoticeReadRepository.swift
 //  AppProduct
 //
-//  Created by OpenAI on 3/12/26.
+//  Created by euijjang97 on 3/12/26.
 //
 
 import Foundation

@@ -237,7 +237,8 @@ struct ScheduleDetailView: View {
                 onMapLinkTapped: {
                     viewModel.mapLinkTapped(
                         latitude: data.latitude,
-                        longitude: data.longitude
+                        longitude: data.longitude,
+                        locationName: data.locationName
                     )
                 }
             )
