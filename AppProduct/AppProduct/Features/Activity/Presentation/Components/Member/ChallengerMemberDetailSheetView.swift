@@ -7,7 +7,12 @@
 
 import SwiftUI
 
+/// 챌린저 멤버 상세 정보를 표시하는 바텀 시트 뷰
+///
+/// 프로필, 기수별 상벌점 요약, 출석/활동 기록을 표시합니다.
+/// 복수 기수 사용자의 경우 `Picker`를 통해 기수를 전환할 수 있습니다.
 struct ChallengerMemberDetailSheetView: View {
+
     // MARK: - Property
 
     @Environment(\.dismiss) private var dismiss
@@ -38,11 +43,12 @@ struct ChallengerMemberDetailSheetView: View {
         static let partTagOpacity: Double = 0.14
         static let partStrokeOpacity: Double = 0.4
         static let partStrokeWidth: CGFloat = 1
+        static let pointIconSize: CGFloat = 14
     }
 
-    // MARK: - Computed Properties
+    // MARK: - Computed Property
 
-    /// 현재 기수 표시 (마지막 기수)
+    /// 단일 기수 사용자의 기수 텍스트 (예: "9기")
     private var currentGeneration: String {
         if hasMultipleGenerations,
            let lastGisu = member.generationPoints.map(\.gisu).max() {
@@ -55,26 +61,27 @@ struct ChallengerMemberDetailSheetView: View {
         return gens.last ?? member.generation
     }
 
-    /// 복수 기수 여부
+    /// 복수 기수 보유 여부
     private var hasMultipleGenerations: Bool {
         member.generationPoints.count > 1
     }
 
-    /// 현재 선택된 기수의 요약 데이터
+    /// 현재 선택된 기수의 포인트 요약 데이터
     private var selectedSummary: GenerationPointSummary? {
         member.generationPoints.first { $0.gisu == selectedGisu }
     }
 
-    /// 현재 선택된 기수의 상점
+    /// 표시할 상점 (선택된 기수 우선, 없으면 전체 합산)
     private var displayRewardPoints: Double {
         selectedSummary?.reward ?? member.rewardPoints
     }
 
-    /// 현재 선택된 기수의 벌점
+    /// 표시할 벌점 (선택된 기수 우선, 없으면 전체 합산)
     private var displayPenaltyPoints: Double {
         selectedSummary?.penalty ?? member.penalty
     }
 
+    /// 출석 기록 수에 따라 동적으로 계산된 시트 높이
     private var dynamicSheetHeight: CGFloat {
         let recordCount = member.attendanceRecords.count
 
@@ -83,36 +90,30 @@ struct ChallengerMemberDetailSheetView: View {
         }
 
         let visibleRecords = min(recordCount, Constants.maxVisibleRecords)
-        let recordsHeight = (CGFloat(visibleRecords) * Constants.recordRowHeight)
-        + (CGFloat(max(0, visibleRecords - 1)) * DefaultSpacing.spacing8)
-
+        let recordsHeight = CGFloat(visibleRecords) * Constants.recordRowHeight
+            + CGFloat(max(0, visibleRecords - 1)) * DefaultSpacing.spacing8
         let calculatedHeight = Constants.baseHeight + recordsHeight
 
         return max(Constants.minSheetHeight, min(calculatedHeight, Constants.maxSheetHeight))
     }
 
+    /// 출석 기록 리스트 영역의 높이
     private var scrollViewHeight: CGFloat {
         let recordCount = member.attendanceRecords.count
-
-        if recordCount == 0 {
-            return Constants.emptyRecordHeight
-        }
+        guard recordCount > 0 else { return Constants.emptyRecordHeight }
 
         let visibleRecords = min(recordCount, Constants.maxVisibleRecords)
-        let recordsHeight = (CGFloat(visibleRecords) * Constants.recordRowHeight)
-        + (CGFloat(max(0, visibleRecords - 1)) * DefaultSpacing.spacing8)
-
-        return recordsHeight
+        return CGFloat(visibleRecords) * Constants.recordRowHeight
+            + CGFloat(max(0, visibleRecords - 1)) * DefaultSpacing.spacing8
     }
 
     // MARK: - Body
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: DefaultSpacing.spacing32) {
                 memberInfoView
-
                 summaryCardView
-
                 recordView
             }
             .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
@@ -123,6 +124,7 @@ struct ChallengerMemberDetailSheetView: View {
 
     // MARK: - SubView
 
+    /// 프로필 이미지, 닉네임/이름, 파트·학교·운영진 배지를 표시
     private var memberInfoView: some View {
         HStack(spacing: DefaultSpacing.spacing12) {
             RemoteImage(urlString: member.profile ?? "", size: Constants.profileSize)
@@ -130,25 +132,10 @@ struct ChallengerMemberDetailSheetView: View {
             VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
                 Text("\(member.nickname)/\(member.name)")
                     .appFont(.bodyEmphasis)
+
                 HStack(spacing: DefaultSpacing.spacing8) {
-                    Text(member.part.name)
-                        .appFont(.callout, color: member.part.color)
-                        .padding(Constants.tagPadding)
-                        .background(
-                            member.part.color.opacity(Constants.partTagOpacity),
-                            in: Capsule()
-                        )
-                        .overlay {
-                            Capsule()
-                                .stroke(
-                                    member.part.color.opacity(Constants.partStrokeOpacity),
-                                    lineWidth: Constants.partStrokeWidth
-                                )
-                        }
-                    Text(member.school)
-                        .appFont(.callout, color: .black)
-                        .padding(Constants.tagPadding)
-                        .background(.white, in: Capsule())
+                    partTag
+                    schoolTag
                     if member.managementTeam != .challenger {
                         ManagementTeamBadgePresenter(managementTeam: member.managementTeam)
                     }
@@ -157,75 +144,109 @@ struct ChallengerMemberDetailSheetView: View {
         }
     }
 
+    /// 파트 태그 (색상 배경 + 테두리)
+    private var partTag: some View {
+        Text(member.part.name)
+            .appFont(.callout, color: member.part.color)
+            .padding(Constants.tagPadding)
+            .background(
+                member.part.color.opacity(Constants.partTagOpacity),
+                in: Capsule()
+            )
+            .overlay {
+                Capsule()
+                    .stroke(
+                        member.part.color.opacity(Constants.partStrokeOpacity),
+                        lineWidth: Constants.partStrokeWidth
+                    )
+            }
+    }
+
+    /// 학교 태그
+    private var schoolTag: some View {
+        Text(member.school)
+            .appFont(.callout, color: .black)
+            .padding(Constants.tagPadding)
+            .background(.white, in: Capsule())
+    }
+
+    /// 활동 기수 · 상점 · 벌점 요약 카드
     private var summaryCardView: some View {
         VStack(spacing: .zero) {
             summaryRow(title: "활동 기수") {
                 if hasMultipleGenerations {
-                    generationMenu
+                    generationChips
                 } else {
                     Text(currentGeneration)
                         .appFont(.subheadlineEmphasis)
+                        .contentTransition(.numericText())
                 }
             }
 
             Divider()
 
-            summaryRow(title: "상점") {
-                Text(String(format: "%.0f", displayRewardPoints))
-                    .appFont(.subheadlineEmphasis, color: .green)
-            }
+            HStack(spacing: .zero) {
+                pointColumn(
+                    icon: "plus.circle.fill",
+                    iconColor: .green,
+                    label: "상점",
+                    value: displayRewardPoints,
+                    valueColor: .green
+                )
 
-            Divider()
+                Divider()
+                    .frame(height: 48)
 
-            summaryRow(title: "벌점") {
-                Text(String(format: "%.0f", displayPenaltyPoints))
-                    .appFont(.subheadlineEmphasis, color: .red)
+                pointColumn(
+                    icon: "minus.circle.fill",
+                    iconColor: .red,
+                    label: "벌점",
+                    value: displayPenaltyPoints,
+                    valueColor: .red
+                )
             }
+            .padding(.vertical, Constants.summaryRowVerticalPadding)
         }
         .padding(.horizontal, Constants.listPadding.leading)
         .background(.white, in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
         .glass()
+        .animation(.smooth(duration: 0.3), value: selectedGisu)
     }
 
-    private var generationMenu: some View {
-        Menu {
-            Picker("기수 선택", selection: $selectedGisu) {
-                ForEach(member.generationPoints) { summary in
-                    Text("\(summary.gisu)기")
-                        .tag(summary.gisu)
-                }
-            }
-        } label: {
-            HStack(spacing: DefaultSpacing.spacing4) {
-                Text("\(selectedGisu)기")
-                    .appFont(.subheadlineEmphasis)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.grey500)
+    /// 복수 기수 전환 인라인 칩 셀렉터
+    private var generationChips: some View {
+        HStack(spacing: DefaultSpacing.spacing4) {
+            ForEach(member.generationPoints) { summary in
+                Text("\(summary.gisu)기")
+                    .appFont(
+                        selectedGisu == summary.gisu
+                            ? .subheadlineEmphasis : .subheadline,
+                        color: selectedGisu == summary.gisu
+                            ? .white : .grey700
+                    )
+                    .padding(Constants.tagPadding)
+                    .background(
+                        selectedGisu == summary.gisu
+                            ? Color.accentColor : Color.grey200,
+                        in: Capsule()
+                    )
+                    .onTapGesture {
+                        withAnimation(.smooth(duration: 0.3)) {
+                            selectedGisu = summary.gisu
+                        }
+                    }
             }
         }
-        .foregroundStyle(.primary)
     }
 
-    // MARK: - Function
-
-    private func summaryRow<Content: View>(
-        title: String,
-        @ViewBuilder value: () -> Content
-    ) -> some View {
-        HStack {
-            Text(title)
-                .appFont(.subheadline, color: .grey700)
-            Spacer()
-            value()
-        }
-        .padding(.vertical, Constants.summaryRowVerticalPadding)
-    }
-
+    /// 출석/활동 기록 섹션
     private var recordView: some View {
         VStack(alignment: .leading) {
-            Label("출석/활동 기록", systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90")
-                .appFont(.title3Emphasis)
+            Label(
+                "출석/활동 기록",
+                systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
+            )
+            .appFont(.title3Emphasis)
 
             if member.attendanceRecords.isEmpty {
                 emptyRecordView
@@ -235,6 +256,7 @@ struct ChallengerMemberDetailSheetView: View {
         }
     }
 
+    /// 출석 기록이 없을 때 표시되는 빈 상태 뷰
     private var emptyRecordView: some View {
         VStack(spacing: DefaultSpacing.spacing8) {
             Image(systemName: "calendar.badge.exclamationmark")
@@ -248,11 +270,12 @@ struct ChallengerMemberDetailSheetView: View {
         .glass()
     }
 
+    /// 출석 기록 리스트 뷰
     private var recordListView: some View {
-        List(member.attendanceRecords, rowContent: { record in
+        List(member.attendanceRecords) { record in
             attendanceRecordRow(record)
                 .listRowBackground(Color.clear)
-        })
+        }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
@@ -261,6 +284,47 @@ struct ChallengerMemberDetailSheetView: View {
         .glass()
     }
 
+    // MARK: - Function
+
+    /// 상벌점 2열 레이아웃의 개별 컬럼
+    private func pointColumn(
+        icon: String,
+        iconColor: Color,
+        label: String,
+        value: Double,
+        valueColor: Color
+    ) -> some View {
+        VStack(spacing: DefaultSpacing.spacing4) {
+            HStack(spacing: DefaultSpacing.spacing4) {
+                Image(systemName: icon)
+                    .font(.system(size: Constants.pointIconSize))
+                    .foregroundStyle(iconColor)
+                Text(label)
+                    .appFont(.footnote, color: .grey700)
+            }
+
+            Text(String(format: "%.0f", value))
+                .appFont(.calloutEmphasis, color: valueColor)
+                .contentTransition(.numericText())
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// 요약 카드의 개별 행 (타이틀 + 우측 값)
+    private func summaryRow<Content: View>(
+        title: String,
+        @ViewBuilder value: () -> Content
+    ) -> some View {
+        HStack {
+            Text(title)
+                .appFont(.subheadline, color: .grey700)
+            Spacer()
+            value()
+        }
+        .padding(.vertical, Constants.summaryRowVerticalPadding)
+    }
+
+    /// 출석 기록 개별 행 (상태 태그 + 세션 제목)
     private func attendanceRecordRow(_ record: MemberAttendanceRecord) -> some View {
         HStack(spacing: DefaultSpacing.spacing16) {
             Text(record.status.displayText)
@@ -277,9 +341,11 @@ struct ChallengerMemberDetailSheetView: View {
     }
 }
 
+// MARK: - Preview
+
 #Preview {
     Text("Preview")
-        .sheet(isPresented: .constant(true), content: {
+        .sheet(isPresented: .constant(true)) {
             ChallengerMemberDetailSheetView(
                 member: .init(
                     profile: nil,
@@ -316,6 +382,7 @@ struct ChallengerMemberDetailSheetView: View {
                         GenerationPointSummary(gisu: 8, reward: 2, penalty: 1),
                         GenerationPointSummary(gisu: 9, reward: 0, penalty: 1)
                     ]
-                ))
-            })
+                )
+            )
+        }
 }

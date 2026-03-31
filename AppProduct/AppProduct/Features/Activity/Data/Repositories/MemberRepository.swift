@@ -252,7 +252,7 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
             of: GenerationPointSummary?.self
         ) { group in
             for record in records where record.gisu > 0 {
-                group.addTask { [adapter, decoder] in
+                group.addTask { @MainActor [adapter, decoder] in
                     guard let response = try? await adapter.request(
                         MyPageRouter.getChallengerProfile(
                             challengerId: record.challengerId
