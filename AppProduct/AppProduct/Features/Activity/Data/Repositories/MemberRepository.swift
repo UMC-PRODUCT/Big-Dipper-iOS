@@ -243,7 +243,62 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
         memberId: Int
     ) async throws -> [GenerationPointSummary] {
         let profile = try await fetchMemberProfile(memberId: memberId)
-        return makeGenerationPointSummaries(from: profile, memberId: memberId)
+        let records = profile.challengerRecords.filter {
+            $0.memberId == memberId || $0.memberId == 0
+        }
+        guard !records.isEmpty else { return [] }
+
+        return await withTaskGroup(
+            of: GenerationPointSummary?.self
+        ) { group in
+            for record in records where record.gisu > 0 {
+                group.addTask { [adapter, decoder] in
+                    guard let response = try? await adapter.request(
+                        MyPageRouter.getChallengerProfile(
+                            challengerId: record.challengerId
+                        )
+                    ),
+                    let apiResponse = try? decoder.decode(
+                        APIResponse<ChallengerMemberDTO>.self,
+                        from: response.data
+                    ),
+                    let challenger = try? apiResponse.unwrap() else {
+                        return GenerationPointSummary(
+                            gisu: record.gisu, reward: 0, penalty: 0
+                        )
+                    }
+
+                    let reward = challenger.challengerPoints
+                        .filter {
+                            let resolved = ChallengerPointType(
+                                rawValue: $0.pointType.rawValue
+                            )
+                            return resolved?.isReward == true
+                        }
+                        .reduce(0.0) { $0 + abs($1.point) }
+                    let penalty = challenger.challengerPoints
+                        .filter {
+                            let resolved = ChallengerPointType(
+                                rawValue: $0.pointType.rawValue
+                            )
+                            return resolved == nil || !(resolved!.isReward)
+                        }
+                        .reduce(0.0) { $0 + abs($1.point) }
+
+                    return GenerationPointSummary(
+                        gisu: record.gisu,
+                        reward: reward,
+                        penalty: penalty
+                    )
+                }
+            }
+
+            var summaries: [GenerationPointSummary] = []
+            for await summary in group {
+                if let summary { summaries.append(summary) }
+            }
+            return summaries.sorted { $0.gisu < $1.gisu }
+        }
     }
 }
 

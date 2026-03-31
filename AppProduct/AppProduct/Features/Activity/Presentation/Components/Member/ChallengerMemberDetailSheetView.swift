@@ -12,7 +12,14 @@ struct ChallengerMemberDetailSheetView: View {
 
     @Environment(\.dismiss) private var dismiss
     var member: MemberManagementItem
-    @State private var selectedGisu: Int?
+    @State private var selectedGisu: Int
+
+    init(member: MemberManagementItem) {
+        self.member = member
+        _selectedGisu = State(
+            initialValue: member.generationPoints.map(\.gisu).max() ?? 0
+        )
+    }
 
     private enum Constants {
         static let tagPadding: EdgeInsets = .init(top: 4, leading: 8, bottom: 4, trailing: 8)
@@ -55,8 +62,7 @@ struct ChallengerMemberDetailSheetView: View {
 
     /// 현재 선택된 기수의 요약 데이터
     private var selectedSummary: GenerationPointSummary? {
-        guard let gisu = selectedGisu else { return nil }
-        return member.generationPoints.first { $0.gisu == gisu }
+        member.generationPoints.first { $0.gisu == selectedGisu }
     }
 
     /// 현재 선택된 기수의 상점
@@ -152,7 +158,7 @@ struct ChallengerMemberDetailSheetView: View {
     }
 
     private var summaryCardView: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: .zero) {
             summaryRow(title: "활동 기수") {
                 if hasMultipleGenerations {
                     generationMenu
@@ -182,39 +188,23 @@ struct ChallengerMemberDetailSheetView: View {
     }
 
     private var generationMenu: some View {
-        Group {
-            if selectedGisu != nil {
-                Button {
-                    withAnimation { selectedGisu = nil }
-                } label: {
-                    generationLabel
+        Menu {
+            Picker("기수 선택", selection: $selectedGisu) {
+                ForEach(member.generationPoints) { summary in
+                    Text("\(summary.gisu)기")
+                        .tag(summary.gisu)
                 }
-                .buttonStyle(.plain)
-            } else {
-                Menu {
-                    ForEach(member.generationPoints) { summary in
-                        Button {
-                            selectedGisu = summary.gisu
-                        } label: {
-                            Text("\(summary.gisu)기")
-                        }
-                    }
-                } label: {
-                    generationLabel
-                }
-                .foregroundStyle(.primary)
+            }
+        } label: {
+            HStack(spacing: DefaultSpacing.spacing4) {
+                Text("\(selectedGisu)기")
+                    .appFont(.subheadlineEmphasis)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.grey500)
             }
         }
-    }
-
-    private var generationLabel: some View {
-        HStack(spacing: DefaultSpacing.spacing4) {
-            Text(selectedGisu.map { "\($0)기" } ?? currentGeneration)
-                .appFont(.subheadlineEmphasis)
-            Image(systemName: "chevron.up.chevron.down")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.grey500)
-        }
+        .foregroundStyle(.primary)
     }
 
     // MARK: - Function
