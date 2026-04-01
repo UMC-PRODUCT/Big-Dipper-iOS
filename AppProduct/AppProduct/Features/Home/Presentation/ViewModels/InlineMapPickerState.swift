@@ -81,11 +81,12 @@ final class InlineMapPickerState {
         }
     }
 
-    /// 사용자의 현재 위치를 다시 조회해 지도와 선택 핀을 갱신합니다.
+    /// 사용자의 현재 위치를 다시 조회해 카메라를 이동하고 선택 핀을 갱신합니다.
     @MainActor
     func moveToCurrentLocation() async {
         do {
             let coordinate = try await LocationManager.shared.getCurrentLocation()
+            moveCamera(to: coordinate)
             await selectCoordinate(coordinate)
         } catch {
             LocationManager.shared.requestAuthorization()
