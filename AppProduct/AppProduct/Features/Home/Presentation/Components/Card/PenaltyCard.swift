@@ -26,6 +26,8 @@ struct PenaltyCard: View, Equatable {
     @State private var isHorizontalDrag: Bool?
     /// 팝오버 필터 (nil이면 닫힘)
     @State private var popoverFilter: PointLogFilter?
+    /// chartAngleSelection 선택 값
+    @State private var selectedChartAngle: Int?
 
     fileprivate enum PointLogFilter {
         case reward
@@ -104,13 +106,16 @@ struct PenaltyCard: View, Equatable {
 
     /// 상점/벌점 도넛 차트
     private func pointChart(generation: GenerationData) -> some View {
-        let hasData = generation.rewardPoint > 0 || generation.penaltyPoint > 0
+        let hasData = generation.rewardPoint != 0 || generation.penaltyPoint != 0
+        let selectedFilter: PointLogFilter? = selectedChartAngle.map {
+            $0 <= abs(generation.rewardPoint) ? .reward : .penalty
+        }
 
         return HStack(spacing: DefaultSpacing.spacing24) {
             ZStack {
                 Chart {
                     SectorMark(
-                        angle: .value("상점", hasData ? generation.rewardPoint : 0),
+                        angle: .value("상점", hasData ? abs(generation.rewardPoint) : 0),
                         innerRadius: .ratio(Constants.innerRadius),
                         angularInset: 2
                     )
@@ -121,9 +126,10 @@ struct PenaltyCard: View, Equatable {
                             endPoint: .trailing
                         )
                     )
+                    .opacity(selectedFilter == nil || selectedFilter == .reward ? 1.0 : 0.3)
 
                     SectorMark(
-                        angle: .value("벌점", hasData ? generation.penaltyPoint : 0),
+                        angle: .value("벌점", hasData ? abs(generation.penaltyPoint) : 0),
                         innerRadius: .ratio(Constants.innerRadius),
                         angularInset: 2
                     )
@@ -134,6 +140,7 @@ struct PenaltyCard: View, Equatable {
                             endPoint: .trailing
                         )
                     )
+                    .opacity(selectedFilter == nil || selectedFilter == .penalty ? 1.0 : 0.3)
 
                     if !hasData {
                         SectorMark(
@@ -145,7 +152,11 @@ struct PenaltyCard: View, Equatable {
                 }
                 .chartLegend(.hidden)
                 .frame(width: Constants.chartSize, height: Constants.chartSize)
-                .allowsHitTesting(false)
+                .chartAngleSelection(value: $selectedChartAngle)
+                .onChange(of: selectedChartAngle) { _, newAngle in
+                    guard hasData, let value = newAngle else { return }
+                    popoverFilter = value <= abs(generation.rewardPoint) ? .reward : .penalty
+                }
 
                 VStack(spacing: 2) {
                     Text("\(generation.rewardPoint + generation.penaltyPoint)")
@@ -154,30 +165,13 @@ struct PenaltyCard: View, Equatable {
                         .appFont(.caption2, color: .grey500)
                 }
                 .allowsHitTesting(false)
-
-                // 차트 영역 탭 감지 오버레이
-                Color.clear
-                    .frame(width: Constants.chartSize, height: Constants.chartSize)
-                    .contentShape(Circle())
-                    .onTapGesture { location in
-                        guard hasData else { return }
-                        let size = Constants.chartSize
-                        let center = CGPoint(x: size / 2, y: size / 2)
-                        let dx = location.x - center.x
-                        let dy = location.y - center.y
-                        // 12시 기준 시계방향 각도
-                        var angle = atan2(dx, -dy) * 180.0 / .pi
-                        if angle < 0 { angle += 360.0 }
-                        let total = Double(
-                            generation.rewardPoint + generation.penaltyPoint
-                        )
-                        let rewardDeg = Double(generation.rewardPoint) / total * 360.0
-                        popoverFilter = angle <= rewardDeg ? .reward : .penalty
-                    }
             }
             .popover(isPresented: Binding(
                 get: { popoverFilter != nil },
-                set: { if !$0 { popoverFilter = nil } }
+                set: { if !$0 {
+                    popoverFilter = nil
+                    selectedChartAngle = nil
+                }}
             )) {
                 PointLogPopover(
                     logs: generation.pointLogs.filter {
@@ -290,7 +284,7 @@ fileprivate struct PointLogPopover: View {
 
                     Spacer()
 
-                    Text(log.isReward ? "+\(log.point)" : "\(log.point)")
+                    Text(log.isReward ? "+\(abs(log.point))" : "-\(abs(log.point))")
                         .appFont(.subheadline, color: log.isReward ? .indigo500 : .indigo300)
 
                     Text(log.date)
