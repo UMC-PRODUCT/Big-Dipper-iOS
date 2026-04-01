@@ -44,7 +44,6 @@ struct BaseMapComponent: View, Equatable {
         .mapStyle(.standard)
         .mapControls {
             MapCompass()
-            MapUserLocationButton()
         }
     }
 
