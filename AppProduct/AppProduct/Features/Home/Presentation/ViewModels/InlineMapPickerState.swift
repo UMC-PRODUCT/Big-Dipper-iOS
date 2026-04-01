@@ -103,6 +103,20 @@ final class InlineMapPickerState {
         isResolvingPlace = false
     }
 
+    /// POI 탭 시 커스텀 핀 없이 장소 정보만 역지오코딩합니다.
+    ///
+    /// 애플 맵 기본 POI 말풍선을 유지하기 위해 `selectedCoordinate`를 nil로 초기화하며,
+    /// 역지오코딩 결과로 하단 카드의 장소 정보만 갱신합니다.
+    ///
+    /// - Parameter coordinate: POI의 좌표입니다.
+    @MainActor
+    func selectPOICoordinate(_ coordinate: CLLocationCoordinate2D) async {
+        selectedCoordinate = nil
+        isResolvingPlace = true
+        selectedPlace = await reverseGeocodePlaceInfo(for: coordinate)
+        isResolvingPlace = false
+    }
+
     // MARK: - Private Function
 
     @MainActor
