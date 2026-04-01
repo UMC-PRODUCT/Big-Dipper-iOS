@@ -66,7 +66,7 @@ struct InlineMapPlacePicker: View {
                 guard let feature else { return }
                 poiTip.invalidate(reason: .actionPerformed)
                 Task {
-                    await state.selectPOICoordinate(feature.coordinate)
+                    await state.selectPOICoordinate(feature.coordinate, poiName: feature.title)
                 }
             }
             .simultaneousGesture(
