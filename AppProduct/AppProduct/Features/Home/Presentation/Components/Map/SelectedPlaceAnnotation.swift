@@ -52,11 +52,8 @@ struct SelectedPlaceAnnotation: View {
             }
             .padding(.horizontal, DefaultSpacing.spacing12)
             .padding(.vertical, DefaultSpacing.spacing8)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(.white)
-                    .glass()
-            )
+            .clipShape(.capsule)
+            .glassEffect(.clear, in: .capsule)
             .transition(
                 .asymmetric(
                     insertion: .scale(scale: 0.88, anchor: .bottom)

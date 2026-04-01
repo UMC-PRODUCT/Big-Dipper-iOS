@@ -10,6 +10,7 @@ import KakaoSDKAuth
 import KakaoSDKCommon
 import SwiftData
 import SwiftUI
+import TipKit
 
 /// UMC 동아리 운영 관리 앱의 진입점
 ///
@@ -56,6 +57,7 @@ struct AppProductApp: App {
                 modelContext: sharedModelContainer.mainContext
             )
         )
+        try? Tips.configure()
     }
     
     // MARK: - Body

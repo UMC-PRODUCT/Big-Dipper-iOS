@@ -8,6 +8,7 @@
 import CoreLocation
 import MapKit
 import SwiftUI
+import TipKit
 
 /// Apple 지도에서 핀을 찍어 장소를 선택하는 뷰
 ///
@@ -39,6 +40,11 @@ struct MapPlacePickerView: View {
     @State private var isResolvingPlace: Bool = false
     /// 초기 카메라/선택 상태를 한 번만 구성하기 위한 플래그입니다.
     @State private var hasInitializedState: Bool = false
+    /// 애플 맵 기본 POI 말풍선 표시를 위한 선택된 지도 피처입니다.
+    @State private var selectedMapFeature: MapFeature?
+
+    /// POI 길게 누르기 안내 팁입니다.
+    private let poiTip = POILongPressTip()
 
     /// 레이아웃과 지도 기본값을 모아둔 상수입니다.
     private enum Constants {
@@ -95,8 +101,9 @@ struct MapPlacePickerView: View {
     /// 핀 선택과 사용자 위치를 표시하는 지도 본문입니다.
     private var mapContent: some View {
         MapReader { proxy in
-            Map(position: $cameraPosition) {
-                if let selectedCoordinate {
+            Map(position: $cameraPosition, selection: $selectedMapFeature) {
+                // POI가 선택된 경우 커스텀 핀을 숨기고 애플 맵 기본 말풍선을 표시합니다.
+                if let selectedCoordinate, selectedMapFeature == nil {
                     Annotation(
                         "선택한 위치",
                         coordinate: selectedCoordinate,
@@ -111,10 +118,30 @@ struct MapPlacePickerView: View {
             .mapControls {
                 MapCompass()
             }
+            .overlay(alignment: .top) {
+                TipView(poiTip, arrowEdge: .none)
+                    .glassEffect()
+                    .padding(.horizontal, DefaultSpacing.spacing16)
+            }
+            .onChange(of: selectedMapFeature) { _, feature in
+                guard let feature else { return }
+                // POI 탭: 애플 맵 기본 말풍선 유지, 하단 카드 정보만 갱신
+                poiTip.invalidate(reason: .actionPerformed)
+                Task {
+                    await selectPOICoordinate(feature.coordinate, poiName: feature.title)
+                }
+            }
             .simultaneousGesture(
                 SpatialTapGesture()
                     .onEnded { value in
-                        handleMapTap(value, proxy: proxy)
+                        let location = value.location
+                        Task { @MainActor in
+                            // Map의 selectedMapFeature 상태 업데이트를 기다린 후 POI 여부를 판단합니다.
+                            await Task.yield()
+                            guard selectedMapFeature == nil else { return }
+                            guard let coordinate = proxy.convert(location, from: .local) else { return }
+                            Task { await selectCoordinate(coordinate) }
+                        }
                     }
             )
         }
@@ -211,6 +238,34 @@ struct MapPlacePickerView: View {
         moveCamera(to: coordinate)
         isResolvingPlace = true
         selectedPlace = await reverseGeocodePlaceInfo(for: coordinate)
+        isResolvingPlace = false
+    }
+
+    /// POI 탭 시 커스텀 핀 없이 장소 정보만 역지오코딩합니다.
+    ///
+    /// 애플 맵 기본 POI 말풍선을 유지하기 위해 `selectedCoordinate`를 nil로 초기화하며,
+    /// 역지오코딩 결과로 하단 카드의 장소 정보를 갱신합니다.
+    /// POI 이름이 제공된 경우 역지오코딩 결과의 이름 대신 POI 이름을 우선 사용합니다.
+    ///
+    /// - Parameters:
+    ///   - coordinate: POI의 좌표입니다.
+    ///   - poiName: 애플 맵에서 제공하는 POI 이름입니다.
+    @MainActor
+    private func selectPOICoordinate(
+        _ coordinate: CLLocationCoordinate2D,
+        poiName: String? = nil
+    ) async {
+        selectedCoordinate = nil
+        isResolvingPlace = true
+        var place = await reverseGeocodePlaceInfo(for: coordinate)
+        if let poiName {
+            place = PlaceSearchInfo(
+                name: poiName,
+                address: place.address,
+                coordinate: place.coordinate
+            )
+        }
+        selectedPlace = place
         isResolvingPlace = false
     }
 
@@ -366,7 +421,7 @@ private struct SelectionCardView: View {
         } else if isResolvingPlace {
             resolvingContent
         } else {
-            Text("지도를 탭해서 위치를 선택하세요.")
+            Text("탭으로 주소를 선택하거나, POI를 길게 눌러 장소를 선택하세요.")
                 .appFont(.subheadline, color: .grey600)
         }
     }
