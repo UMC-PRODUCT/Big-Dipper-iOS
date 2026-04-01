@@ -120,7 +120,6 @@ struct MapPlacePickerView: View {
             }
             .overlay(alignment: .top) {
                 TipView(poiTip, arrowEdge: .none)
-                    .padding(.top, DefaultSpacing.spacing12)
                     .padding(.horizontal, DefaultSpacing.spacing16)
             }
             .onChange(of: selectedMapFeature) { _, feature in
