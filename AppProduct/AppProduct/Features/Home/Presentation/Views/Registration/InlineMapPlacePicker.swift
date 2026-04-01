@@ -55,7 +55,6 @@ struct InlineMapPlacePicker: View {
             .mapStyle(.standard)
             .mapControls {
                 MapCompass()
-                MapUserLocationButton()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(alignment: .top) {
