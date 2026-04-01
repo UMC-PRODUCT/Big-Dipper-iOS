@@ -215,25 +215,29 @@ fileprivate struct MissionSubmissionView: View, Equatable {
     }
 
     private var linkInput: some View {
-        TextField("https://...", text: Binding(
+        TextField("", text: Binding(
             get: { linkText },
-            set: { onLinkTextChanged($0) }
-        ))
+            set: { onLinkTextChanged($0) }),
+                  prompt: textfieldPlaceholder)
         .focused(focusedMissionID, equals: missionID)
-        .appFont(.footnote, weight: .regular, color: .grey500)
         .padding(DefaultConstant.defaultTextFieldPadding)
-        .background(
-            RoundedRectangle(cornerRadius: DefaultConstant.defaultCornerRadius)
-                .strokeBorder(
-                    hasError ? Color.red : Color.grey300,
-                    lineWidth: Constants.borderWidth)
-        )
+        .overlay(content: {
+            RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
+                .fill(.clear)
+                .strokeBorder(.grey300, style: .init())
+        })
         .transition(
             .asymmetric(
                 insertion: .scale(scale: 0.95).combined(with: .opacity),
                 removal: .scale(scale: 0.95).combined(with: .opacity)
             )
         )
+    }
+    
+    private var textfieldPlaceholder: Text {
+        Text("https://...")
+            .font(.app(.footnote))
+            .foregroundStyle(Color(.placeholderText))
     }
 }
 

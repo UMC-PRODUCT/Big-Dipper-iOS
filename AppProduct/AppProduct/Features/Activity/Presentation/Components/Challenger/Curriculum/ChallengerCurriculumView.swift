@@ -58,7 +58,7 @@ struct ChallengerCurriculumView: View {
             for: .scrollContent
         )
         .background(.white)
-        .keyboardDismissToolbar(focusedID: $focusedMissionID)
+        .scrollDismissesKeyboard(.immediately)
     }
 
     // MARK: - View Components
