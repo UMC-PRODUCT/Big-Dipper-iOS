@@ -33,22 +33,7 @@ struct OperatorStudyManagementView: View {
     @AppStorage(AppStorageKey.challengerId)
     private var currentChallengerId: Int = 0
 
-    @State private var selectedTab: ManagementTab = .submission
     @State private var showCreateView = false
-
-    /// 관리 화면 탭 구분
-    private enum ManagementTab: Int, CaseIterable {
-        case submission
-        case groupManagement
-
-        /// 탭 표시 제목
-        var title: String {
-            switch self {
-            case .submission: "제출 현황"
-            case .groupManagement: "스터디 그룹 관리"
-            }
-        }
-    }
 
     // MARK: - Initializer
 
@@ -73,82 +58,16 @@ struct OperatorStudyManagementView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("관리", selection: $selectedTab) {
-                ForEach(ManagementTab.allCases, id: \.self) { tab in
-                    Text(tab.title).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-            .padding(.vertical, DefaultSpacing.spacing8)
-
-            switch selectedTab {
-            case .submission:
-                submissionContentView
-
-            case .groupManagement:
-                groupManagementContentView
-            }
-        }
-        .task(id: selectedTab) {
-            if selectedTab == .submission {
-                await viewModel.fetchSubmissionMembers()
-            } else {
-                await viewModel.fetchGroupManagementData()
-            }
+        groupManagementContentView
+        .task {
+            await viewModel.fetchGroupManagementData()
         }
         .toolbar {
-            if selectedTab == .submission {
-                ToolBarCollection.StudyWeekFilter(
-                    weeks: viewModel.weeks,
-                    selection: $viewModel.selectedWeek,
-                    onChange: viewModel.selectWeek
-                )
-                ToolBarCollection.StudyGroupFilter(
-                    studyGroups: viewModel.studyGroups,
-                    selection: $viewModel.selectedStudyGroup,
-                    onChange: viewModel.selectStudyGroup
-                )
-            } else if canCreateStudyGroup {
+            if canCreateStudyGroup {
                 ToolBarCollection.AddBtn {
                     showCreateView = true
                 }
             }
-        }
-        .sheet(
-            item: $viewModel.selectedMemberForReview,
-            onDismiss: { viewModel.presentPendingAlert() }
-        ) { member in
-            OperatorStudyReviewSheet(
-                member: member,
-                onApprove: { feedback in
-                    await viewModel.submitReviewApproval(
-                        member: member,
-                        feedback: feedback
-                    )
-                },
-                onReject: { feedback in
-                    await viewModel.submitReviewRejection(
-                        member: member,
-                        feedback: feedback
-                    )
-                }
-            )
-        }
-        .sheet(
-            item: $viewModel.selectedMemberForBest,
-            onDismiss: { viewModel.presentPendingAlert() }
-        ) { member in
-            OperatorBestWorkbookSheet(
-                member: member,
-                onSelect: { recommendation in
-                    await viewModel.submitBestWorkbookSelection(
-                        member: member,
-                        recommendation: recommendation
-                    )
-                }
-            )
         }
         .sheet(
             item: $viewModel.addMemberGroup,
@@ -185,26 +104,6 @@ struct OperatorStudyManagementView: View {
     /// 스터디 그룹 생성 권한 확인 (보유 역할 중 회장/부회장 포함 여부)
     private var canCreateStudyGroup: Bool {
         userSession.hasAnyRole { $0.canCreateStudyGroup }
-    }
-
-    // MARK: - Submission Content View
-
-    @ViewBuilder
-    private var submissionContentView: some View {
-        switch viewModel.membersState {
-        case .idle, .loading:
-            loadingView(message: "제출 현황 불러오는 중...")
-
-        case .loaded(let members):
-            if members.isEmpty {
-                emptyView
-            } else {
-                memberListView(members: members)
-            }
-
-        case .failed(let error):
-            errorView(error: error)
-        }
     }
 
     // MARK: - Group Management View
@@ -321,13 +220,6 @@ struct OperatorStudyManagementView: View {
 
     // MARK: - Empty View
 
-    private var emptyView: some View {
-        emptyContentView(
-            title: "제출 현황 관리",
-            message: "과제를 제출한 스터디원이 없습니다."
-        )
-    }
-
     private func emptyContentView(
         title: String,
         message: String
@@ -341,56 +233,7 @@ struct OperatorStudyManagementView: View {
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
 
-    // MARK: - Member List View
-
-    private func memberListView(members: [StudyMemberItem]) -> some View {
-        List {
-            ForEach(members) { member in
-                OperatorStudyMemberCard(member: member)
-                    .equatable()
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(
-                        top: DefaultSpacing.spacing4,
-                        leading: DefaultConstant.defaultSafeHorizon,
-                        bottom: DefaultSpacing.spacing4,
-                        trailing: DefaultConstant.defaultSafeHorizon
-                    ))
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button {
-                            viewModel.openReviewSheet(for: member)
-                        } label: {
-                            Label("검토", systemImage: "checkmark.circle.fill")
-                        }
-                        .tint(.indigo500)
-
-                        Button {
-                            if viewModel.isBestSelectionDisabled(for: member) {
-                                viewModel.showBestSelectionDisabledAlert()
-                            } else {
-                                viewModel.selectedMemberForBest = member
-                            }
-                        } label: {
-                            Label("베스트", systemImage: "trophy")
-                        }
-                        .tint(
-                            viewModel.isBestSelectionDisabled(for: member) ? .gray : .orange
-                        )
-                    }
-            }
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .contentMargins(.bottom, DefaultConstant.defaultContentBottomMargins, for: .scrollContent)
-    }
-
     // MARK: - Error View
-
-    private func errorView(error: AppError) -> some View {
-        errorView(error: error) {
-            await viewModel.fetchSubmissionMembers()
-        }
-    }
 
     private func errorView(
         error: AppError,
