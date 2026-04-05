@@ -1,15 +1,7 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
-let project = Project(
+let project = coreProject(
     name: "CoreDesignSystem",
-    targets: [
-        .target(
-            name: "CoreDesignSystem",
-            destinations: .iOS,
-            product: .staticFramework,
-            bundleId: "dev.umc.core.designsystem",
-            deploymentTargets: .iOS("26.0"),
-            sources: ["Sources/**"]
-        )
-    ]
+    bundleIdSuffix: "designsystem"
 )
