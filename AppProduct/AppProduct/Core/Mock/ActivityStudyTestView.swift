@@ -18,9 +18,7 @@ struct ActivityStudyTestView: View {
                 totalCount: 8
             ),
             missions: MissionPreviewData.iosMissions
-        ) { mission, type, link in
-            print("제출: \(mission.title) - \(type) - \(link ?? "없음")")
-        }
+        )
     }
 }
 

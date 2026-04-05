@@ -16,19 +16,11 @@ import SwiftUI
 struct ChallengerCurriculumView: View {
 
     // MARK: - Property
-    @FocusState private var focusedMissionID: UUID?
 
     /// 커리큘럼 진행률 정보 (파트명, 완료 수, 전체 수)
     let curriculumModel: CurriculumProgressModel
     /// 미션 카드 목록 (주차별 미션 정보)
     let missions: [MissionCardModel]
-    
-    /// 미션 제출 시 호출되는 콜백
-    /// - Parameters:
-    ///   - mission: 제출 대상 미션
-    ///   - type: 제출 타입 (링크 또는 완료만)
-    ///   - link: 링크 URL (링크 타입일 경우)
-    var onMissionSubmit: (MissionCardModel, MissionSubmissionType, String?) -> Void
     
     // MARK: - Constants
 
@@ -38,13 +30,31 @@ struct ChallengerCurriculumView: View {
         static let bottomPadding: CGFloat = 12
     }
 
+    // MARK: - Computed Property
+
+    /// 잠금 해제된(열린) 미션 수 (.locked, .notStarted 제외)
+    private var openedProgressModel: CurriculumProgressModel {
+        let openedCount = missions.filter {
+            $0.status != .locked && $0.status != .notStarted
+        }.count
+        return CurriculumProgressModel(
+            id: curriculumModel.id,
+            partType: curriculumModel.partType,
+            partName: curriculumModel.partName,
+            curriculumTitle: curriculumModel.curriculumTitle,
+            completedCount: curriculumModel.completedCount,
+            totalCount: curriculumModel.totalCount,
+            openedCount: openedCount
+        )
+    }
+
     // MARK: - Body
 
     var body: some View {
         ScrollView {
             VStack(spacing: DefaultSpacing.spacing24) {
                 // Header
-                ChallengerCurriculumProgressCard(model: curriculumModel)
+                ChallengerCurriculumProgressCard(model: openedProgressModel)
                     .equatable()
                 // Mission List
                 missionListSection
@@ -78,12 +88,7 @@ struct ChallengerCurriculumView: View {
                     .equatable()
 
                     // Right: MissionCard
-                    ChallengerMissionCard(
-                        model: mission,
-                        focusedMissionID: $focusedMissionID
-                    ) { submissionType, link in
-                        onMissionSubmit(mission, submissionType, link)
-                    }
+                    ChallengerMissionCard(model: mission)
                     .padding(.bottom, isLast ? 0 : Constants.bottomPadding)
                 }
                 .overlay(alignment: .topLeading) {
@@ -106,59 +111,38 @@ struct ChallengerCurriculumView: View {
 
 #if DEBUG
 #Preview("ChallengerCurriculumView - iOS") {
-    struct PreviewWrapper: View {
-        var body: some View {
-            ChallengerCurriculumView(
-                curriculumModel: CurriculumProgressModel(
-                    partName: "iOS PART CURRICULUM",
-                    curriculumTitle: "Swift 기초 문법",
-                    completedCount: 2,
-                    totalCount: 8
-                ),
-                missions: MissionPreviewData.iosMissions
-            ) { mission, type, link in
-                print("제출: \(mission.title) - \(type) - \(link ?? "없음")")
-            }
-        }
-    }
-    return PreviewWrapper()
+    ChallengerCurriculumView(
+        curriculumModel: CurriculumProgressModel(
+            partName: "iOS PART CURRICULUM",
+            curriculumTitle: "Swift 기초 문법",
+            completedCount: 2,
+            totalCount: 8
+        ),
+        missions: MissionPreviewData.iosMissions
+    )
 }
 
 #Preview("ChallengerCurriculumView - Web") {
-    struct PreviewWrapper: View {
-        var body: some View {
-            ChallengerCurriculumView(
-                curriculumModel: CurriculumProgressModel(
-                    partName: "WEB PART CURRICULUM",
-                    curriculumTitle: "웹 프론트엔드 기초",
-                    completedCount: 5,
-                    totalCount: 10
-                ),
-                missions: MissionPreviewData.webMissions
-            ) { mission, type, link in
-                print("제출: \(mission.title) - \(type) - \(link ?? "없음")")
-            }
-        }
-    }
-    return PreviewWrapper()
+    ChallengerCurriculumView(
+        curriculumModel: CurriculumProgressModel(
+            partName: "WEB PART CURRICULUM",
+            curriculumTitle: "웹 프론트엔드 기초",
+            completedCount: 5,
+            totalCount: 10
+        ),
+        missions: MissionPreviewData.webMissions
+    )
 }
 
 #Preview("ChallengerCurriculumView - All Status") {
-    struct PreviewWrapper: View {
-        var body: some View {
-            ChallengerCurriculumView(
-                curriculumModel: CurriculumProgressModel(
-                    partName: "SERVER PART CURRICULUM",
-                    curriculumTitle: "SpringBoot 실습",
-                    completedCount: 3,
-                    totalCount: 6
-                ),
-                missions: MissionPreviewData.allStatusMissions
-            ) { mission, type, link in
-                print("제출: \(mission.title) - \(type) - \(link ?? "없음")")
-            }
-        }
-    }
-    return PreviewWrapper()
+    ChallengerCurriculumView(
+        curriculumModel: CurriculumProgressModel(
+            partName: "SERVER PART CURRICULUM",
+            curriculumTitle: "SpringBoot 실습",
+            completedCount: 3,
+            totalCount: 6
+        ),
+        missions: MissionPreviewData.allStatusMissions
+    )
 }
 #endif

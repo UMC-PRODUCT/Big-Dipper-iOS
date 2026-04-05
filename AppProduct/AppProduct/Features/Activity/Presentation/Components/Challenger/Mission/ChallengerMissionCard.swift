@@ -15,24 +15,13 @@ struct ChallengerMissionCard: View {
     // MARK: - Property
 
     private let model: MissionCardModel
-    private var focusedMissionID: FocusState<UUID?>.Binding
-    private var onSubmit: (MissionSubmissionType, String?) -> Void
 
     @State private var isExpanded: Bool = false
-    @State private var submissionType: MissionSubmissionType = .link
-    @State private var linkText: String = ""
 
     // MARK: - Initializer
 
-    init(
-        model: MissionCardModel,
-        focusedMissionID: FocusState<UUID?>.Binding,
-        onSubmit: @escaping (MissionSubmissionType, String?) -> Void
-    ) {
+    init(model: MissionCardModel) {
         self.model = model
-        self.focusedMissionID = focusedMissionID
-        self.onSubmit = onSubmit
-        self._submissionType = State(initialValue: model.missionType.defaultSubmissionType)
     }
 
     // MARK: - Body
@@ -41,21 +30,11 @@ struct ChallengerMissionCard: View {
         ChallengerMissionCardPresenter(
             model: model,
             isExpanded: isExpanded,
-            submissionType: submissionType,
-            linkText: linkText,
-            focusedMissionID: focusedMissionID,
             onToggleExpanded: {
                 withAnimation(.easeInOut(duration: DefaultConstant.animationTime)) {
                     isExpanded.toggle()
                 }
-            },
-            onSubmissionTypeChanged: { newType in
-                submissionType = newType
-            },
-            onLinkTextChanged: { newText in
-                linkText = newText
-            },
-            onSubmit: onSubmit
+            }
         )
         .equatable()
     }
@@ -69,21 +48,13 @@ fileprivate struct ChallengerMissionCardPresenter: View, Equatable {
 
     let model: MissionCardModel
     let isExpanded: Bool
-    let submissionType: MissionSubmissionType
-    let linkText: String
-    var focusedMissionID: FocusState<UUID?>.Binding
     let onToggleExpanded: () -> Void
-    let onSubmissionTypeChanged: (MissionSubmissionType) -> Void
-    let onLinkTextChanged: (String) -> Void
-    let onSubmit: (MissionSubmissionType, String?) -> Void
 
     // MARK: - Equatable
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.model == rhs.model &&
-        lhs.isExpanded == rhs.isExpanded &&
-        lhs.submissionType == rhs.submissionType &&
-        lhs.linkText == rhs.linkText
+        lhs.isExpanded == rhs.isExpanded
     }
 
     // MARK: - Body
@@ -97,15 +68,7 @@ fileprivate struct ChallengerMissionCardPresenter: View, Equatable {
             )
 
             if isExpanded {
-                ChallengerMissionCardContent(
-                    model: model,
-                    submissionType: submissionType,
-                    linkText: linkText,
-                    focusedMissionID: focusedMissionID,
-                    onSubmissionTypeChanged: onSubmissionTypeChanged,
-                    onLinkTextChanged: onLinkTextChanged,
-                    onSubmit: onSubmit
-                )
+                ChallengerMissionCardContent(model: model)
                 .transition(.asymmetric(
                     insertion: .scale(scale: DefaultConstant.transitionScale).combined(with: .opacity),
                     removal: .scale(scale: DefaultConstant.transitionScale).combined(with: .opacity)))
@@ -127,67 +90,31 @@ fileprivate struct ChallengerMissionCardPresenter: View, Equatable {
 
 #if DEBUG
 #Preview("ChallengerMissionCard - All Status") {
-    struct PreviewWrapper: View {
-        @FocusState private var focusedMissionID: UUID?
-
-        var body: some View {
-            ScrollView {
-                VStack(spacing: 20) {
-                    ForEach(MissionPreviewData.allStatusMissions) { mission in
-                        ChallengerMissionCard(
-                            model: mission,
-                            focusedMissionID: $focusedMissionID
-                        ) { type, link in
-                            print("제출: \(type) - \(link ?? "없음")")
-                        }
-                    }
-                }
-                .padding()
+    ScrollView {
+        VStack(spacing: 20) {
+            ForEach(MissionPreviewData.allStatusMissions) { mission in
+                ChallengerMissionCard(model: mission)
             }
-            .background(Color.grey100)
         }
+        .padding()
     }
-    return PreviewWrapper()
+    .background(Color.grey100)
 }
 
 #Preview("ChallengerMissionCard - iOS Missions") {
-    struct PreviewWrapper: View {
-        @FocusState private var focusedMissionID: UUID?
-
-        var body: some View {
-            ScrollView {
-                VStack(spacing: 16) {
-                    ForEach(MissionPreviewData.iosMissions) { mission in
-                        ChallengerMissionCard(
-                            model: mission,
-                            focusedMissionID: $focusedMissionID
-                        ) { type, link in
-                            print("제출: \(type) - \(link ?? "없음")")
-                        }
-                    }
-                }
-                .padding()
+    ScrollView {
+        VStack(spacing: 16) {
+            ForEach(MissionPreviewData.iosMissions) { mission in
+                ChallengerMissionCard(model: mission)
             }
-            .background(Color.grey100)
         }
+        .padding()
     }
-    return PreviewWrapper()
+    .background(Color.grey100)
 }
 
 #Preview("ChallengerMissionCard - Single") {
-    struct PreviewWrapper: View {
-        @FocusState private var focusedMissionID: UUID?
-
-        var body: some View {
-            ChallengerMissionCard(
-                model: MissionPreviewData.singleMission,
-                focusedMissionID: $focusedMissionID
-            ) { type, link in
-                print("제출: \(type) - \(link ?? "없음")")
-            }
-            .padding()
-        }
-    }
-    return PreviewWrapper()
+    ChallengerMissionCard(model: MissionPreviewData.singleMission)
+        .padding()
 }
 #endif

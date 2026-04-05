@@ -84,9 +84,17 @@ struct ChallengerMissionCardHeader: View, Equatable {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    @ViewBuilder
     private var statusText: some View {
-        Text(model.status.displayText)
-            .appFont(.footnote, color: model.status.foregroundColor)
+        switch model.status {
+        case .pendingApproval, .pass, .fail:
+            Text(model.status.displayText)
+                .appFont(.footnote, color: model.status.foregroundColor)
+        default:
+            Text(model.missionTitle)
+                .appFont(.footnote, color: .grey500)
+                .lineLimit(1)
+        }
     }
 
     private var chevronIcon: some View {

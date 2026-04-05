@@ -54,11 +54,7 @@ struct ChallengerStudyView: View {
             ChallengerCurriculumView(
                 curriculumModel: data.progress,
                 missions: data.missions
-            ) { mission, type, link in
-                Task {
-                    await viewModel.submitMission(mission, type: type, link: link)
-                }
-            }
+            )
 
         case .failed(let error):
             errorView(error: error, viewModel: viewModel)
