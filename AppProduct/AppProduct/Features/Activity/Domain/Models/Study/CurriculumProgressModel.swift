@@ -20,23 +20,24 @@ struct CurriculumProgressModel: Equatable, Identifiable {
     let curriculumTitle: String
     let completedCount: Int
     let totalCount: Int
+    let openedCount: Int
 
     // MARK: - Computed Property
 
-    /// 달성률 (0.0 ~ 1.0)
+    /// 열린 미션 비율 (0.0 ~ 1.0)
     var progress: Double {
         guard totalCount > 0 else { return 0 }
-        return Double(completedCount) / Double(totalCount)
+        return Double(openedCount) / Double(totalCount)
     }
 
-    /// 달성률 퍼센트 (0 ~ 100)
+    /// 열린 미션 퍼센트 (0 ~ 100)
     var progressPercentage: Int {
         Int(progress * 100)
     }
 
-    /// 완료 텍스트 (예: "2/8 완료")
+    /// 열림 텍스트 (예: "2/8 열림")
     var completionText: String {
-        "\(completedCount)/\(totalCount) 완료"
+        "\(openedCount)/\(totalCount) 열림"
     }
 
     /// 파트 메인 컬러
@@ -88,7 +89,8 @@ struct CurriculumProgressModel: Equatable, Identifiable {
         partName: String,
         curriculumTitle: String,
         completedCount: Int,
-        totalCount: Int
+        totalCount: Int,
+        openedCount: Int = 0
     ) {
         self.id = id
         self.partType = partType
@@ -96,5 +98,6 @@ struct CurriculumProgressModel: Equatable, Identifiable {
         self.curriculumTitle = curriculumTitle
         self.completedCount = completedCount
         self.totalCount = totalCount
+        self.openedCount = openedCount
     }
 }

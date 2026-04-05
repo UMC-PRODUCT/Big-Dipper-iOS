@@ -26,7 +26,7 @@ struct ChallengerMissionCardContent: View, Equatable {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
             switch model.status {
             case .notStarted, .inProgress:
-                missionTitleText
+                EmptyView()
             case .pendingApproval, .pass, .fail:
                 missionTitleText
                 statusResultView
