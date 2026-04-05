@@ -1,19 +1,11 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
-let project = Project(
+let project = coreProject(
     name: "CoreNetwork",
-    targets: [
-        .target(
-            name: "CoreNetwork",
-            destinations: .iOS,
-            product: .staticFramework,
-            bundleId: "dev.umc.core.network",
-            deploymentTargets: .iOS("26.0"),
-            sources: ["Sources/**"],
-            dependencies: [
-                .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
-                .external(name: "Moya"),
-            ]
-        )
+    bundleIdSuffix: "network",
+    dependencies: [
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        .external(name: "Moya"),
     ]
 )

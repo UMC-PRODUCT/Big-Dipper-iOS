@@ -1,18 +1,10 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
-let project = Project(
+let project = coreProject(
     name: "CoreDI",
-    targets: [
-        .target(
-            name: "CoreDI",
-            destinations: .iOS,
-            product: .staticFramework,
-            bundleId: "dev.umc.core.di",
-            deploymentTargets: .iOS("26.0"),
-            sources: ["Sources/**"],
-            dependencies: [
-                .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
-            ]
-        )
+    bundleIdSuffix: "di",
+    dependencies: [
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ]
 )
