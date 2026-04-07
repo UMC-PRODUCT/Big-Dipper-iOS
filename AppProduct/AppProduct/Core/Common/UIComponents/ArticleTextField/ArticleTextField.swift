@@ -73,6 +73,7 @@ struct ArticleTextField: View {
         let editor = TextEditor(text: $text)
             .font(.app(placeholder.placeholderFont))
             .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
             .scrollIndicators(.hidden)
             .overlay(alignment: .topLeading) {
                 if text.isEmpty && focused?.wrappedValue != true {
