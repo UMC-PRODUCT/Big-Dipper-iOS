@@ -81,17 +81,8 @@ struct OperatorStudyManagementView: View {
                 challenger: $viewModel.selectedChallengers
             )
         }
-        .sheet(item: $viewModel.editingGroup) { group in
-            OperatorStudyGroupEditSheet(
-                detail: group,
-                onSave: { name, part in
-                    await viewModel.updateGroup(
-                        groupID: group.id,
-                        name: name,
-                        part: part
-                    )
-                }
-            )
+        .sheet(item: $viewModel.editingGroup) { _ in
+            OperatorStudyGroupEditSheet(viewModel: viewModel)
         }
         .navigationDestination(isPresented: $showCreateView) {
             OperatorStudyGroupCreateView(viewModel: viewModel)
