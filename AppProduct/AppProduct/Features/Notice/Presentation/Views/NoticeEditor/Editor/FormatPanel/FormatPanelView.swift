@@ -2,7 +2,7 @@
 //  FormatPanelView.swift
 //  AppProduct
 //
-//  Created by OpenAI Codex on 4/8/26.
+//  Created by OpenAI euijjang97 on 4/8/26.
 //
 
 import SwiftUI

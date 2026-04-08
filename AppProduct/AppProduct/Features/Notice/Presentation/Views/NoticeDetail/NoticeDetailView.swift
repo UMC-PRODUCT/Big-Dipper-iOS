@@ -388,10 +388,10 @@ struct NoticeDetailView: View {
         async let detailTask: Void = viewModel.fetchNoticeDetail()
         async let permissionTask: Void = viewModel.fetchNoticePermission()
         async let markAsReadTask = viewModel.markAsReadIfNeeded()
-
-        await markAsReadTask
+        
         await detailTask
         await permissionTask
+        _ = await markAsReadTask
         // statics는 markAsRead 완료 후 순차 조회하여 서버 반영값을 정확히 수신
         await viewModel.prefetchReadStaticsIfNeeded()
     }

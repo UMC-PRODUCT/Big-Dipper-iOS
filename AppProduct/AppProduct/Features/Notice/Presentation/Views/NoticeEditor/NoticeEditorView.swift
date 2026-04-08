@@ -40,6 +40,15 @@ struct NoticeEditorView: View {
     /// 링크 추가 직후 자동 스크롤/포커스에 사용할 링크 ID
     @State private var newlyAddedLinkID: UUID?
 
+    /// 목록 스타일 선택 다이얼로그 노출 여부
+    @State private var isEditorListDialogPresented = false
+
+    /// 사진 첨부 피커 노출 여부
+    @State private var isPhotoPickerPresented = false
+
+    /// 현재 선택된 형광펜 색상 (nil = 없음)
+    @State private var selectedHighlightColor: HighlightColor? = nil
+
     /// 제목/내용 입력 포커스 제어
     @FocusState private var isTitleFieldFocused: Bool
     @FocusState private var isContentFieldFocused: Bool
@@ -86,6 +95,8 @@ struct NoticeEditorView: View {
 
         /// 하단 액세서리와 본문이 겹치지 않도록 확보하는 여백
         static let contentBottomInset: CGFloat = 0
+        static let editorToolbarHeight: CGFloat = 44
+        static let toolbarItemSpacing: CGFloat = 12
 
         /// 링크 카드와 하단 액세서리 사이 추가 간격
         static let linkSectionBottomPadding: CGFloat = DefaultSpacing.spacing8
@@ -155,6 +166,16 @@ struct NoticeEditorView: View {
         }
         .fullScreenCover(isPresented: $viewModel.showVoting, content: votingSheet)
         .alertPrompt(item: $viewModel.alertPrompt)
+        .sheet(
+            isPresented: Binding(
+                get: { viewModel.editorToolbarViewModel.isFormatPanelVisible },
+                set: { if !$0 { viewModel.editorToolbarViewModel.dismissFormatPanel() } }
+            )
+        ) {
+            FormatPanelView(viewModel: viewModel.editorToolbarViewModel)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Content
@@ -227,57 +248,148 @@ struct NoticeEditorView: View {
 
     // MARK: - Bottom Safe Area
 
-    /// 하단 안전 영역: 첨부 도구 + 알림 토글
+    /// 하단 안전 영역: 첨부·서식 도구 툴바
     private func bottomSafeAreaContent() -> some View {
         HStack {
             attachmentToolbar
             Spacer()
-
-            if !viewModel.isEditMode {
-                alarmToggle
-                    .glassEffect()
-            }
         }
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
         .padding(.bottom, DefaultSpacing.spacing16)
     }
 
-    /// 첨부 도구(사진/링크/투표) 영역
+    /// 첨부·서식 도구 통합 스크롤 툴바
     private var attachmentToolbar: some View {
         GlassEffectContainer {
-            HStack {
-                photoPickerButton
-                toolButton(icon: "link", action: addLinkAttachment)
-
-                if !viewModel.isEditMode {
-                    toolButton(icon: "chart.bar.fill", action: viewModel.showVotingFormSheet)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    scrollableToolbarItems
                 }
             }
+            .frame(height: Constants.editorToolbarHeight)
         }
         .glassEffect()
+        .confirmationDialog(
+            "목록 스타일",
+            isPresented: $isEditorListDialogPresented,
+            titleVisibility: .visible
+        ) {
+            Button("구분점") { viewModel.editorToolbarViewModel.applyList(.bullet) }
+            Button("대시선") { viewModel.editorToolbarViewModel.applyList(.dash) }
+            Button("숫자") { viewModel.editorToolbarViewModel.applyList(.number) }
+            Button("취소", role: .cancel) {}
+        }
     }
 
-    /// 사진 첨부 버튼
-    private var photoPickerButton: some View {
-        PhotosPicker(
+    private var scrollableToolbarItems: some View {
+        let toolVM = viewModel.editorToolbarViewModel
+        return HStack(spacing: Constants.toolbarItemSpacing) {
+            // 서식 도구
+            toolButton(
+                icon: "textformat.size",
+                tint: toolVM.isFormatPanelVisible ? .indigo500 : .black
+            ) {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                toolVM.toggleFormatPanel()
+            }
+            toolButton(icon: "list.bullet") { isEditorListDialogPresented = true }
+            toolButton(icon: "tablecells", action: {})
+            // 첨부 도구
+            attachmentMenuButton
+            toolButton(icon: "link", action: addLinkAttachment)
+            // 기타 도구
+            toolButton(icon: "sparkles", action: handleTapAI)
+            highlightMenuButton
+        }
+    }
+
+    /// 클립 버튼 → 사진/투표 첨부 메뉴
+    private var attachmentMenuButton: some View {
+        Menu {
+            Button {
+                isPhotoPickerPresented = true
+            } label: {
+                Label("사진", systemImage: "photo.fill")
+            }
+
+            if !viewModel.isEditMode {
+                Button {
+                    viewModel.showVotingFormSheet()
+                } label: {
+                    Label("투표", systemImage: "checklist")
+                }
+            }
+        } label: {
+            Image(systemName: "paperclip")
+                .font(.system(size: Constants.toolButtonIconSize))
+                .foregroundStyle(.black)
+                .frame(width: Constants.toolButtonFrame.width, height: Constants.toolButtonFrame.height)
+                .padding(DefaultConstant.defaultBtnPadding)
+        }
+        .photosPicker(
+            isPresented: $isPhotoPickerPresented,
             selection: $viewModel.selectedPhotoItems,
             maxSelectionCount: 10,
             matching: .images
-        ) {
-            Image(systemName: "photo.fill")
+        )
+    }
+
+    /// 형광펜 색상 메뉴 버튼
+    private var highlightMenuButton: some View {
+        Menu {
+            Button {
+                selectedHighlightColor = nil
+                viewModel.editorToolbarViewModel.clearHighlight()
+            } label: {
+                if selectedHighlightColor == nil {
+                    Label("없음", systemImage: "checkmark")
+                } else {
+                    Text("없음")
+                }
+            }
+
+            ForEach(HighlightColor.allCases, id: \.self) { option in
+                Button {
+                    selectedHighlightColor = option
+                    viewModel.editorToolbarViewModel.applyHighlight(color: option.swiftUIColor)
+                } label: {
+                    Label {
+                        Text(option.name)
+                    } icon: {
+                        Image(systemName: "circle.fill")
+                            .foregroundStyle(option.swiftUIColor)
+                    }
+                    if selectedHighlightColor == option {
+                        Image(systemName: "checkmark")
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "pencil.and.outline")
                 .font(.system(size: Constants.toolButtonIconSize))
-                .foregroundStyle(.black)
+                .foregroundStyle(selectedHighlightColor.map { $0.swiftUIColor } ?? .black)
                 .frame(width: Constants.toolButtonFrame.width, height: Constants.toolButtonFrame.height)
                 .padding(DefaultConstant.defaultBtnPadding)
         }
     }
 
     /// 툴바 아이콘 버튼 공통 구성
-    private func toolButton(icon: String, action: @escaping () -> Void) -> some View {
+    private func toolButton(icon: String, tint: Color = .black, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: Constants.toolButtonIconSize))
-                .foregroundStyle(.black)
+                .foregroundStyle(tint)
+                .frame(width: Constants.toolButtonFrame.width, height: Constants.toolButtonFrame.height)
+                .padding(DefaultConstant.defaultBtnPadding)
+        }
+    }
+
+    /// 서식 텍스트 버튼 (B/I/U/S)
+    private func textFormatButton(_ title: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: Constants.toolButtonIconSize, weight: isActive ? .semibold : .regular))
+                .foregroundStyle(isActive ? Color.indigo500 : .black)
                 .frame(width: Constants.toolButtonFrame.width, height: Constants.toolButtonFrame.height)
                 .padding(DefaultConstant.defaultBtnPadding)
         }
@@ -302,10 +414,7 @@ struct NoticeEditorView: View {
             NoticeRichTextView(
                 toolbarViewModel: viewModel.editorToolbarViewModel,
                 attributedText: $viewModel.richAttributedContent,
-                placeholder: "내용을 입력해주세요.",
-                onInsertImage: handleInsertImage,
-                onInsertLink: handleInsertLink,
-                onTapAI: handleTapAI
+                placeholder: "내용을 입력해주세요."
             )
             .frame(maxHeight: .infinity, alignment: .top)
             .onChange(of: viewModel.richAttributedContent) { _, newValue in
@@ -418,6 +527,14 @@ struct NoticeEditorView: View {
                 itemLabel: menuItemLabel,
                 itemIcon: { $0.labelIcon }
             )
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    viewModel.allowAlert.toggle()
+                } label: {
+                    Image(systemName: viewModel.allowAlert ? "bell.fill" : "bell.slash.fill")
+                }
+                .tint(viewModel.allowAlert ? .indigo500 : .secondary)
+            }
             ToolBarCollection.AddBtn(
                 action: saveNotice,
                 disable: !viewModel.canSubmit,
@@ -639,12 +756,6 @@ struct NoticeEditorView: View {
 
     // MARK: - Rich Editor Handlers
 
-    /// 사진 첨부 버튼 탭: 기존 PhotosPicker 플로우 재사용
-    private func handleInsertImage() {
-        // PhotosPicker는 기존 하단 툴바의 photoPickerButton에서 처리
-        // NoticeRichTextView의 onInsertImage는 향후 PhotosPicker 시트 트리거로 확장 가능
-    }
-
     /// 링크 삽입 버튼 탭: 기존 링크 첨부 로직 재사용
     private func handleInsertLink() {
         addLinkAttachment()
@@ -663,4 +774,30 @@ struct NoticeEditorView: View {
         return trimmed.isEmpty ? fallback : trimmed
     }
 
+}
+
+// MARK: - HighlightColor
+
+private enum HighlightColor: CaseIterable {
+    case purple, pink, orange, mint, blue
+
+    var name: String {
+        switch self {
+        case .purple: return "보라색"
+        case .pink:   return "분홍색"
+        case .orange: return "주황색"
+        case .mint:   return "민트색"
+        case .blue:   return "파란색"
+        }
+    }
+
+    var swiftUIColor: Color {
+        switch self {
+        case .purple: return .purple.opacity(0.35)
+        case .pink:   return .pink.opacity(0.35)
+        case .orange: return .orange.opacity(0.35)
+        case .mint:   return .mint.opacity(0.35)
+        case .blue:   return .blue.opacity(0.35)
+        }
+    }
 }

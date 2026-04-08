@@ -2,7 +2,7 @@
 //  DefaultToolbarView.swift
 //  AppProduct
 //
-//  Created by Codex on 4/8/26.
+//  Created by euijjang97 on 4/8/26.
 //
 
 import SwiftUI
@@ -11,8 +11,6 @@ import SwiftUI
 struct DefaultToolbarView: View {
     @Bindable var viewModel: EditorToolbarViewModel
     var onInsertTable: () -> Void
-    var onInsertImage: () -> Void
-    var onInsertLink: () -> Void
     var onTapAI: () -> Void
     var onTapHighlight: () -> Void
 
@@ -25,7 +23,6 @@ struct DefaultToolbarView: View {
             formatButton
             listButton
             tableButton
-            imageButton
             aiButton
             highlightButton
         }
@@ -69,10 +66,6 @@ struct DefaultToolbarView: View {
         toolbarButton(icon: Constants.tableIcon, action: onInsertTable)
     }
 
-    private var imageButton: some View {
-        toolbarButton(icon: Constants.imageIcon, action: onInsertImage)
-    }
-
     private var aiButton: some View {
         toolbarButton(icon: Constants.aiIcon, action: onTapAI)
     }
@@ -107,7 +100,6 @@ struct DefaultToolbarView: View {
         static let formatIcon: String = "textformat.size"
         static let listIcon: String = "list.bullet"
         static let tableIcon: String = "tablecells"
-        static let imageIcon: String = "paperclip"
         static let aiIcon: String = "sparkles"
         static let highlightIcon: String = "highlighter"
 

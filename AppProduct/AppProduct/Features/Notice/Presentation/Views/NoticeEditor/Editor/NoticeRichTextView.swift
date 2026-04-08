@@ -2,7 +2,7 @@
 //  NoticeRichTextView.swift
 //  AppProduct
 //
-//  Created by OpenAI Codex on 4/8/26.
+//  Created by OpenAI euijjang97 on 4/8/26.
 //
 
 import SwiftUI
@@ -16,31 +16,13 @@ struct NoticeRichTextView: View {
     @Binding var attributedText: NSAttributedString
     var placeholder: String
 
-    // MARK: - Toolbar Callbacks
-
-    /// 테이블 삽입 버튼 탭 핸들러
-    var onInsertTable: () -> Void = {}
-    /// 사진 첨부 버튼 탭 핸들러
-    var onInsertImage: () -> Void = {}
-    /// 링크 삽입 버튼 탭 핸들러
-    var onInsertLink: () -> Void = {}
-    /// AI 도우미 버튼 탭 핸들러
-    var onTapAI: () -> Void = {}
-    /// 형광펜 버튼 탭 핸들러
-    var onTapHighlight: () -> Void = {}
-
     // MARK: - Body
 
     var body: some View {
         _RichTextViewRepresentable(
             toolbarViewModel: toolbarViewModel,
             attributedText: $attributedText,
-            placeholder: placeholder,
-            onInsertTable: onInsertTable,
-            onInsertImage: onInsertImage,
-            onInsertLink: onInsertLink,
-            onTapAI: onTapAI,
-            onTapHighlight: onTapHighlight
+            placeholder: placeholder
         )
     }
 }
@@ -54,24 +36,11 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
     @Bindable var toolbarViewModel: EditorToolbarViewModel
     @Binding var attributedText: NSAttributedString
     var placeholder: String
-    var onInsertTable: () -> Void
-    var onInsertImage: () -> Void
-    var onInsertLink: () -> Void
-    var onTapAI: () -> Void
-    var onTapHighlight: () -> Void
 
     // MARK: - UIViewRepresentable
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
-        let accessoryView = EditorAccessoryView(
-            toolbarViewModel: toolbarViewModel,
-            onInsertTable: onInsertTable,
-            onInsertImage: onInsertImage,
-            onInsertLink: onInsertLink,
-            onTapAI: onTapAI,
-            onTapHighlight: onTapHighlight
-        )
 
         textView.delegate = context.coordinator
         textView.isScrollEnabled = false
@@ -79,12 +48,7 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         textView.font = UIFont.preferredFont(forTextStyle: .body)
         textView.adjustsFontForContentSizeCategory = true
         textView.attributedText = attributedText
-        textView.inputAccessoryView = accessoryView
 
-        accessoryView.translatesAutoresizingMaskIntoConstraints = false
-        accessoryView.heightAnchor.constraint(equalToConstant: EditorAccessoryView.Constants.toolbarHeight).isActive = true
-
-        context.coordinator.accessoryView = accessoryView
         context.coordinator.installPlaceholderIfNeeded(in: textView)
         context.coordinator.updatePlaceholder(in: textView)
 
@@ -104,29 +68,6 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
 
         uiView.font = UIFont.preferredFont(forTextStyle: .body)
         toolbarViewModel.textStorage = uiView.textStorage
-
-        if let accessoryView = uiView.inputAccessoryView as? EditorAccessoryView {
-            accessoryView.update(
-                toolbarViewModel: toolbarViewModel,
-                onInsertTable: onInsertTable,
-                onInsertImage: onInsertImage,
-                onInsertLink: onInsertLink,
-                onTapAI: onTapAI,
-                onTapHighlight: onTapHighlight
-            )
-            context.coordinator.accessoryView = accessoryView
-        } else {
-            let accessoryView = EditorAccessoryView(
-                toolbarViewModel: toolbarViewModel,
-                onInsertTable: onInsertTable,
-                onInsertImage: onInsertImage,
-                onInsertLink: onInsertLink,
-                onTapAI: onTapAI,
-                onTapHighlight: onTapHighlight
-            )
-            uiView.inputAccessoryView = accessoryView
-            context.coordinator.accessoryView = accessoryView
-        }
 
         context.coordinator.installPlaceholderIfNeeded(in: uiView)
         context.coordinator.updatePlaceholder(in: uiView)
@@ -153,7 +94,6 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         // MARK: - Property
 
         var parent: _RichTextViewRepresentable
-        weak var accessoryView: EditorAccessoryView?
         private var isEditing = false
 
         // MARK: - Initializer
@@ -243,138 +183,6 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
 
         private enum Constants {
             static let placeholderTag = 92_601
-        }
-    }
-}
-
-// MARK: - Toolbar Assembly
-
-private final class EditorAccessoryView: UIView {
-
-    enum Constants {
-        static let toolbarHeight: CGFloat = 44
-    }
-
-    private let hostingController = UIHostingController(rootView: AnyView(EmptyView()))
-
-    init(
-        toolbarViewModel: EditorToolbarViewModel,
-        onInsertTable: @escaping () -> Void,
-        onInsertImage: @escaping () -> Void,
-        onInsertLink: @escaping () -> Void,
-        onTapAI: @escaping () -> Void,
-        onTapHighlight: @escaping () -> Void
-    ) {
-        super.init(frame: .init(x: 0, y: 0, width: 0, height: Constants.toolbarHeight))
-
-        backgroundColor = .clear
-        // 포맷 패널이 accessory view 경계 밖으로 올라올 수 있도록 clipsToBounds = false
-        clipsToBounds = false
-        autoresizingMask = [.flexibleWidth]
-
-        hostingController.view.backgroundColor = .clear
-        hostingController.view.clipsToBounds = false
-        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-
-        addSubview(hostingController.view)
-
-        NSLayoutConstraint.activate([
-            hostingController.view.leadingAnchor.constraint(equalTo: leadingAnchor),
-            hostingController.view.trailingAnchor.constraint(equalTo: trailingAnchor),
-            hostingController.view.bottomAnchor.constraint(equalTo: bottomAnchor),
-            hostingController.view.heightAnchor.constraint(equalToConstant: Constants.toolbarHeight)
-        ])
-
-        update(
-            toolbarViewModel: toolbarViewModel,
-            onInsertTable: onInsertTable,
-            onInsertImage: onInsertImage,
-            onInsertLink: onInsertLink,
-            onTapAI: onTapAI,
-            onTapHighlight: onTapHighlight
-        )
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        nil
-    }
-
-    override var intrinsicContentSize: CGSize {
-        CGSize(width: UIView.noIntrinsicMetric, height: Constants.toolbarHeight)
-    }
-
-    func update(
-        toolbarViewModel: EditorToolbarViewModel,
-        onInsertTable: @escaping () -> Void,
-        onInsertImage: @escaping () -> Void,
-        onInsertLink: @escaping () -> Void,
-        onTapAI: @escaping () -> Void,
-        onTapHighlight: @escaping () -> Void
-    ) {
-        hostingController.rootView = AnyView(
-            EditorAccessoryRootView(
-                toolbarViewModel: toolbarViewModel,
-                onInsertTable: onInsertTable,
-                onInsertImage: onInsertImage,
-                onInsertLink: onInsertLink,
-                onTapAI: onTapAI,
-                onTapHighlight: onTapHighlight
-            )
-        )
-    }
-}
-
-private struct EditorAccessoryRootView: View {
-
-    @Bindable var toolbarViewModel: EditorToolbarViewModel
-    var onInsertTable: () -> Void
-    var onInsertImage: () -> Void
-    var onInsertLink: () -> Void
-    var onTapAI: () -> Void
-    var onTapHighlight: () -> Void
-
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            // 포맷 패널: 툴바 위로 슬라이드업
-            if toolbarViewModel.isFormatPanelVisible {
-                FormatPanelView(viewModel: toolbarViewModel)
-                    .padding(.horizontal, 8)
-                    .offset(y: -EditorAccessoryView.Constants.toolbarHeight)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .zIndex(1)
-            }
-
-            // 메인 툴바
-            toolbarContent
-                .frame(maxWidth: .infinity)
-                .frame(height: EditorAccessoryView.Constants.toolbarHeight)
-                .background(.ultraThinMaterial)
-                .zIndex(0)
-        }
-        .animation(.easeInOut(duration: 0.2), value: toolbarViewModel.isFormatPanelVisible)
-    }
-
-    @ViewBuilder
-    private var toolbarContent: some View {
-        switch toolbarViewModel.toolbarMode {
-        case .default:
-            DefaultToolbarView(
-                viewModel: toolbarViewModel,
-                onInsertTable: onInsertTable,
-                onInsertImage: onInsertImage,
-                onInsertLink: onInsertLink,
-                onTapAI: onTapAI,
-                onTapHighlight: onTapHighlight
-            )
-        case .textSelected:
-            TextSelectedToolbarView(
-                viewModel: toolbarViewModel,
-                onInsertLink: onInsertLink,
-                onTapHighlight: onTapHighlight
-            )
-        case .tableCell:
-            TableCellToolbarView(viewModel: toolbarViewModel)
         }
     }
 }
