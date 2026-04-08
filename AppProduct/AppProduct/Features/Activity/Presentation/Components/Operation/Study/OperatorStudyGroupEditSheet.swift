@@ -14,14 +14,8 @@ struct OperatorStudyGroupEditSheet: View {
     // MARK: - Property
 
     @Environment(\.dismiss) private var dismiss
-    @State private var name: String
-    @State private var selectedPart: UMCPartType
+    @Bindable var viewModel: OperatorStudyManagementViewModel
     @State private var isSaving = false
-
-    /// 수정 대상 그룹 정보
-    let detail: StudyGroupInfo
-    /// 저장 완료 콜백 (이름, 파트 전달)
-    let onSave: (String, UMCPartType) async -> Bool
 
     fileprivate enum Constants {
         static let allParts: [UMCPartType] = UMCPartType.allCases
@@ -36,17 +30,9 @@ struct OperatorStudyGroupEditSheet: View {
 
     // MARK: - Initializer
 
-    /// - Parameters:
-    ///   - detail: 수정할 그룹 정보 (초기값으로 사용)
-    ///   - onSave: 저장 시 호출될 콜백
-    init(
-        detail: StudyGroupInfo,
-        onSave: @escaping (String, UMCPartType) async -> Bool
-    ) {
-        self.detail = detail
-        self.onSave = onSave
-        _name = State(initialValue: detail.name)
-        _selectedPart = State(initialValue: detail.part)
+    /// - Parameter viewModel: 스터디 관리 ViewModel (`editingName`, `editingPart`로 상태를 관리합니다)
+    init(viewModel: OperatorStudyManagementViewModel) {
+        self.viewModel = viewModel
     }
 
     // MARK: - Body
@@ -86,7 +72,7 @@ struct OperatorStudyGroupEditSheet: View {
             Text("그룹 이름")
                 .appFont(.subheadline, color: .grey700)
 
-            TextField("그룹 이름 지정", text: $name)
+            TextField("그룹 이름 지정", text: $viewModel.editingName)
                 .multilineTextAlignment(.leading)
                 .foregroundStyle(.black)
                 .autocorrectionDisabled(true)
@@ -110,12 +96,12 @@ struct OperatorStudyGroupEditSheet: View {
             Menu {
                 ForEach(Constants.allParts, id: \.self) { part in
                     Button {
-                        selectedPart = part
+                        viewModel.editingPart = part
                     } label: {
                         HStack {
                             Image(systemName: part.icon)
                             Text(part.name)
-                            if selectedPart == part {
+                            if viewModel.editingPart == part {
                                 Image(systemName: "checkmark")
                             }
                         }
@@ -124,10 +110,10 @@ struct OperatorStudyGroupEditSheet: View {
                 }
             } label: {
                 HStack(spacing: Constants.blockSpacing) {
-                    Image(systemName: selectedPart.icon)
-                        .foregroundStyle(selectedPart.color)
-                    Text(selectedPart.name)
-                        .appFont(.body, color: selectedPart.color)
+                    Image(systemName: viewModel.editingPart.icon)
+                        .foregroundStyle(viewModel.editingPart.color)
+                    Text(viewModel.editingPart.name)
+                        .appFont(.body, color: viewModel.editingPart.color)
                     Spacer()
                     Image(systemName: "chevron.up.chevron.down")
                         .foregroundStyle(.grey500)
@@ -145,7 +131,7 @@ struct OperatorStudyGroupEditSheet: View {
     // MARK: - Action
 
     private var isSaveDisabled: Bool {
-        name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        viewModel.editingName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func submit() {
@@ -154,9 +140,14 @@ struct OperatorStudyGroupEditSheet: View {
         isSaving = true
 
         Task { @MainActor in
-            let isSuccess = await onSave(
-                name.trimmingCharacters(in: .whitespacesAndNewlines),
-                selectedPart
+            guard let groupID = viewModel.editingGroup?.id else {
+                isSaving = false
+                return
+            }
+            let isSuccess = await viewModel.updateGroup(
+                groupID: groupID,
+                name: viewModel.editingName.trimmingCharacters(in: .whitespacesAndNewlines),
+                part: viewModel.editingPart
             )
             isSaving = false
             if isSuccess {

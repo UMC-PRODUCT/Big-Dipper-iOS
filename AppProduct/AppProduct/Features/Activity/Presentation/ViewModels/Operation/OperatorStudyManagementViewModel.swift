@@ -49,6 +49,12 @@ final class OperatorStudyManagementViewModel {
     /// 편집 중인 그룹 (시트 표시용)
     var editingGroup: StudyGroupInfo?
 
+    /// 편집 시트 이름 입력 상태
+    var editingName: String = ""
+
+    /// 편집 시트 파트 선택 상태
+    var editingPart: UMCPartType = .pm
+
     /// 멤버 추가 대상 그룹 (시트 표시용)
     var addMemberGroup: StudyGroupInfo?
 
@@ -403,6 +409,8 @@ final class OperatorStudyManagementViewModel {
 
     /// 그룹 편집 시트 표시
     func showEditSheet(for group: StudyGroupInfo) {
+        editingName = group.name
+        editingPart = group.part
         editingGroup = group
     }
 
