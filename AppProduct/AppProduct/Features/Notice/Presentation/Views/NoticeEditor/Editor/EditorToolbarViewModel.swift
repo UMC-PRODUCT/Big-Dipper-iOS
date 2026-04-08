@@ -54,6 +54,12 @@ final class EditorToolbarViewModel {
     /// UITextView 연결 후 주입받는 편집 대상 텍스트 스토리지입니다.
     weak var textStorage: NSTextStorage?
 
+    /// 타이핑 속성 제어를 위한 UITextView 참조입니다.
+    weak var textView: UITextView?
+
+    /// 사용자가 명시적으로 활성화한 형광펜 색상입니다. nil이면 비활성 상태입니다.
+    private(set) var activeHighlightColor: UIColor?
+
     /// 현재 UITextView의 선택 범위입니다.
     var selectedRange: NSRange = NSRange(location: 0, length: 0)
 
@@ -175,32 +181,55 @@ final class EditorToolbarViewModel {
         adjustParagraphIndent(by: -indentStep)
     }
 
-    /// 선택 영역의 배경 강조 색상을 적용합니다.
+    /// 선택 영역의 배경 강조 색상을 적용하고, 이후 입력되는 텍스트에도 해당 색을 유지합니다.
     @MainActor
     func applyHighlight(color: Color) {
-        guard let storage = textStorage else { return }
-        let clampedRange = clampedSelectedRange(in: storage)
-        guard clampedRange.length > 0 else { return }
+        let uiColor = UIColor(color)
+        activeHighlightColor = uiColor
 
-        storage.beginEditing()
-        storage.addAttribute(.backgroundColor, value: UIColor(color), range: clampedRange)
-        storage.endEditing()
+        // 선택 영역이 있으면 기존 텍스트에도 적용
+        if let storage = textStorage {
+            let clampedRange = clampedSelectedRange(in: storage)
+            if clampedRange.length > 0 {
+                storage.beginEditing()
+                storage.addAttribute(.backgroundColor, value: uiColor, range: clampedRange)
+                storage.endEditing()
+            }
+        }
+
+        // 이후 입력 텍스트에도 적용 (typingAttributes)
+        textView?.typingAttributes[.backgroundColor] = uiColor
 
         syncFormattingState()
     }
 
-    /// 선택 영역의 배경 강조 색상을 제거합니다.
+    /// 선택 영역의 배경 강조 색상을 제거하고, 이후 입력되는 텍스트의 하이라이트도 해제합니다.
     @MainActor
     func clearHighlight() {
-        guard let storage = textStorage else { return }
-        let clampedRange = clampedSelectedRange(in: storage)
-        guard clampedRange.length > 0 else { return }
+        activeHighlightColor = nil
 
-        storage.beginEditing()
-        storage.removeAttribute(.backgroundColor, range: clampedRange)
-        storage.endEditing()
+        // 선택 영역이 있으면 기존 텍스트에서도 제거
+        if let storage = textStorage {
+            let clampedRange = clampedSelectedRange(in: storage)
+            if clampedRange.length > 0 {
+                storage.beginEditing()
+                storage.removeAttribute(.backgroundColor, range: clampedRange)
+                storage.endEditing()
+            }
+        }
+
+        // 이후 입력 텍스트 하이라이트 해제
+        textView?.typingAttributes.removeValue(forKey: .backgroundColor)
 
         syncFormattingState()
+    }
+
+    /// 활성 하이라이트 색상이 있으면 typingAttributes에 재적용합니다.
+    /// UIKit이 커서 이동 시 typingAttributes를 덮어쓰는 문제를 방지합니다.
+    @MainActor
+    func reapplyActiveHighlightIfNeeded() {
+        guard let uiColor = activeHighlightColor else { return }
+        textView?.typingAttributes[.backgroundColor] = uiColor
     }
 
     /// 포맷 패널 노출 상태를 토글합니다.

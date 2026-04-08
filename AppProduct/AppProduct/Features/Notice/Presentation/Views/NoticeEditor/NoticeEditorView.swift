@@ -46,8 +46,8 @@ struct NoticeEditorView: View {
     /// 사진 첨부 피커 노출 여부
     @State private var isPhotoPickerPresented = false
 
-    /// 현재 선택된 형광펜 색상 (nil = 없음)
-    @State private var selectedHighlightColor: HighlightColor? = nil
+    /// 현재 선택된 형광펜 색상 (.none = 비활성)
+    @State private var selectedHighlightColor: HighlightColor = .none
 
     /// 제목/내용 입력 포커스 제어
     @FocusState private var isTitleFieldFocused: Bool
@@ -166,6 +166,18 @@ struct NoticeEditorView: View {
         }
         .fullScreenCover(isPresented: $viewModel.showVoting, content: votingSheet)
         .alertPrompt(item: $viewModel.alertPrompt)
+        .onChange(of: selectedHighlightColor) { _, newValue in
+            print("[Highlight] 선택 변경 → \(newValue.name)")
+            Task { @MainActor in
+                if let color = newValue.swiftUIColor {
+                    print("[Highlight] applyHighlight 호출 → \(newValue.name)")
+                    viewModel.editorToolbarViewModel.applyHighlight(color: color)
+                } else {
+                    print("[Highlight] clearHighlight 호출")
+                    viewModel.editorToolbarViewModel.clearHighlight()
+                }
+            }
+        }
         .sheet(
             isPresented: Binding(
                 get: { viewModel.editorToolbarViewModel.isFormatPanelVisible },
@@ -337,37 +349,34 @@ struct NoticeEditorView: View {
     /// 형광펜 색상 메뉴 버튼
     private var highlightMenuButton: some View {
         Menu {
-            Button {
-                selectedHighlightColor = nil
-                viewModel.editorToolbarViewModel.clearHighlight()
-            } label: {
-                if selectedHighlightColor == nil {
-                    Label("없음", systemImage: "checkmark")
-                } else {
-                    Text("없음")
+            Section {
+                Button {
+                    selectedHighlightColor = .none
+                } label: {
+                    Label("없음", systemImage: selectedHighlightColor == .none ? "checkmark" : "xmark")
                 }
             }
 
-            ForEach(HighlightColor.allCases, id: \.self) { option in
-                Button {
-                    selectedHighlightColor = option
-                    viewModel.editorToolbarViewModel.applyHighlight(color: option.swiftUIColor)
-                } label: {
-                    Label {
-                        Text(option.name)
-                    } icon: {
-                        Image(systemName: "circle.fill")
-                            .foregroundStyle(option.swiftUIColor)
-                    }
-                    if selectedHighlightColor == option {
-                        Image(systemName: "checkmark")
+            Section {
+                ForEach(HighlightColor.colorCases, id: \.self) { option in
+                    Button {
+                        selectedHighlightColor = option
+                    } label: {
+                        Label {
+                            Text(option.name)
+                        } icon: {
+                            Image(uiImage: option.circleImage)
+                        }
+                        if selectedHighlightColor == option {
+                            Image(systemName: "checkmark")
+                        }
                     }
                 }
             }
         } label: {
             Image(systemName: "pencil.and.outline")
                 .font(.system(size: Constants.toolButtonIconSize))
-                .foregroundStyle(selectedHighlightColor.map { $0.swiftUIColor } ?? .black)
+               .foregroundStyle(selectedHighlightColor.displayColor)
                 .frame(width: Constants.toolButtonFrame.width, height: Constants.toolButtonFrame.height)
                 .padding(DefaultConstant.defaultBtnPadding)
         }
@@ -779,10 +788,14 @@ struct NoticeEditorView: View {
 // MARK: - HighlightColor
 
 private enum HighlightColor: CaseIterable {
-    case purple, pink, orange, mint, blue
+    case none, purple, pink, orange, mint, blue
+
+    /// 팔레트에 표시할 색상 케이스 (없음 제외)
+    static var colorCases: [HighlightColor] { [.purple, .pink, .orange, .mint, .blue] }
 
     var name: String {
         switch self {
+        case .none:   return "없음"
         case .purple: return "보라색"
         case .pink:   return "분홍색"
         case .orange: return "주황색"
@@ -791,13 +804,38 @@ private enum HighlightColor: CaseIterable {
         }
     }
 
-    var swiftUIColor: Color {
+    /// 텍스트에 적용되는 반투명 배경 색상 (none이면 nil)
+    var swiftUIColor: Color? {
         switch self {
+        case .none:   return nil
         case .purple: return .purple.opacity(0.35)
         case .pink:   return .pink.opacity(0.35)
         case .orange: return .orange.opacity(0.35)
         case .mint:   return .mint.opacity(0.35)
         case .blue:   return .blue.opacity(0.35)
         }
+    }
+
+    /// 메뉴 아이콘에 표시되는 진한 색상
+    var displayColor: Color {
+        switch self {
+        case .none:   return .black
+        case .purple: return .purple
+        case .pink:   return .pink
+        case .orange: return .orange
+        case .mint:   return .mint
+        case .blue:   return .blue
+        }
+    }
+
+    /// Menu 아이콘용 컬러 원형 UIImage (template 렌더링 무시)
+    var circleImage: UIImage {
+        let size = CGSize(width: 18, height: 18)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { ctx in
+            UIColor(displayColor).setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(origin: .zero, size: size))
+        }
+        return image.withRenderingMode(.alwaysOriginal)
     }
 }

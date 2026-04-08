@@ -53,6 +53,7 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         context.coordinator.updatePlaceholder(in: textView)
 
         toolbarViewModel.textStorage = textView.textStorage
+        toolbarViewModel.textView = textView
 
         return textView
     }
@@ -68,6 +69,7 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
 
         uiView.font = UIFont.preferredFont(forTextStyle: .body)
         toolbarViewModel.textStorage = uiView.textStorage
+        toolbarViewModel.textView = uiView
 
         context.coordinator.installPlaceholderIfNeeded(in: uiView)
         context.coordinator.updatePlaceholder(in: uiView)
@@ -114,6 +116,7 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
             parent.toolbarViewModel.selectedRange = textView.selectedRange
             parent.toolbarViewModel.toolbarMode = textView.selectedRange.length > 0 ? .textSelected : .default
             parent.toolbarViewModel.syncFormattingState()
+            parent.toolbarViewModel.reapplyActiveHighlightIfNeeded()
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
