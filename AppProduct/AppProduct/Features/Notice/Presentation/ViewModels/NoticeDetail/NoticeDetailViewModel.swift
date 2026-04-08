@@ -66,6 +66,9 @@ final class NoticeDetailViewModel {
     /// 투표 응답 전송 진행 상태
     var isSubmittingVote: Bool = false
 
+    /// 공지 상세 초기 fetch 완료 전까지 투표 영역 로딩 표시 여부
+    var isVoteLoading: Bool = true
+
     /// 공지 ID
     let noticeID: Int
 

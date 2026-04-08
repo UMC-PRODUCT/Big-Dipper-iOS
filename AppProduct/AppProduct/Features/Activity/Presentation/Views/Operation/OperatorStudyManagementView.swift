@@ -166,12 +166,10 @@ struct OperatorStudyManagementView: View {
                         }
                     )
                     .equatable()
-                    .onAppear {
-                        Task {
-                            await viewModel.loadMoreGroupManagementDataIfNeeded(
-                                currentGroupID: group.id
-                            )
-                        }
+                    .task {
+                        await viewModel.loadMoreGroupManagementDataIfNeeded(
+                            currentGroupID: group.id
+                        )
                     }
                 }
 

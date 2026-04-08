@@ -17,6 +17,7 @@ extension NoticeDetailViewModel {
         if noticeState.isIdle {
             noticeState = .loading
         }
+        defer { isVoteLoading = false }
 
         do {
             let noticeDetail = try await noticeUseCase.getDetailNotice(noticeId: noticeID)

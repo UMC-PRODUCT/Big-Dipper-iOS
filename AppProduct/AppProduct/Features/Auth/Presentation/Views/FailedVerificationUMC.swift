@@ -160,7 +160,7 @@ struct FailedVerificationUMC: View {
         )
         .padding(.top, Constants.verifyButtonTopPadding)
         .disabled(isInteractionDisabled)
-        .onAppear {
+        .task {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isBouncing = true
             }
