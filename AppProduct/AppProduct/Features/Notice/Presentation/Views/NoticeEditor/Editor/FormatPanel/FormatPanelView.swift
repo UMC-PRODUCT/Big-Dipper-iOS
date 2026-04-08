@@ -1,0 +1,325 @@
+//
+//  FormatPanelView.swift
+//  AppProduct
+//
+//  Created by OpenAI Codex on 4/8/26.
+//
+
+import SwiftUI
+
+fileprivate struct HighlightOption {
+    let name: String
+    let color: Color
+}
+
+fileprivate enum Constants {
+    static let containerSpacing: CGFloat = 16
+    static let containerPadding: CGFloat = 16
+    static let containerCornerRadius: CGFloat = 16
+    static let paragraphSpacing: CGFloat = 8
+    static let paragraphRowVerticalPadding: CGFloat = 2
+    static let paragraphHorizontalPadding: CGFloat = 14
+    static let paragraphVerticalPadding: CGFloat = 8
+    static let controlSpacing: CGFloat = 6
+    static let controlButtonSize: CGFloat = 30
+    static let controlCornerRadius: CGFloat = 10
+    static let closeButtonSize: CGFloat = 28
+    static let indicatorSize: CGFloat = 14
+    static let paletteSpacing: CGFloat = 6
+    static let paletteTopPadding: CGFloat = 8
+    static let paletteCircleSize: CGFloat = 20
+    static let activeColor: Color = .indigo500
+    static let inactiveBackgroundColor: Color = .secondary.opacity(0.14)
+    static let inactiveForegroundColor: Color = .secondary
+    static let activeForegroundColor: Color = .white
+    static let paragraphStyles: [EditorParagraphStyle] = [.title, .heading, .subheading, .body, .mono]
+    static let highlightPalette: [HighlightOption] = [
+        .init(name: "노랑", color: .yellow.opacity(0.4)),
+        .init(name: "녹색", color: .green.opacity(0.35)),
+        .init(name: "파랑", color: .blue.opacity(0.35)),
+        .init(name: "분홍", color: .pink.opacity(0.35)),
+        .init(name: "주황", color: .orange.opacity(0.35))
+    ]
+}
+
+/// 공지 에디터에서 단락/인라인/목록 서식을 제어하는 패널
+struct FormatPanelView: View {
+
+    // MARK: - Property
+
+    @Bindable var viewModel: EditorToolbarViewModel
+    @State private var isHighlightPalettePresented = false
+    @State private var selectedHighlightIndex = 0
+
+    private var selectedHighlightColor: Color {
+        Constants.highlightPalette[selectedHighlightIndex].color
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Constants.containerSpacing) {
+            header
+            paragraphRow
+            inlineRow
+            listRow
+        }
+        .padding(Constants.containerPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: Constants.containerCornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Constants.containerCornerRadius, style: .continuous))
+    }
+
+    private var header: some View {
+        HStack {
+            Text("포맷")
+                .appFont(.bodyEmphasis, color: .black)
+
+            Spacer()
+
+            Button(action: viewModel.dismissFormatPanel) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: Constants.closeButtonSize, height: Constants.closeButtonSize)
+                    .foregroundStyle(.secondary)
+                    .background(Constants.inactiveBackgroundColor, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("포맷 패널 닫기")
+        }
+    }
+
+    // MARK: - Row1 Paragraph
+
+    private var paragraphRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Constants.paragraphSpacing) {
+                ForEach(Constants.paragraphStyles, id: \.self) { style in
+                    Button {
+                        viewModel.applyParagraphStyle(style)
+                    } label: {
+                        Text(paragraphTitle(for: style))
+                            .appFont(.subheadlineEmphasis, color: paragraphForegroundColor(for: style))
+                            .lineLimit(1)
+                            .padding(.horizontal, Constants.paragraphHorizontalPadding)
+                            .padding(.vertical, Constants.paragraphVerticalPadding)
+                            .background(paragraphBackground(for: style), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(paragraphTitle(for: style))
+                }
+            }
+            .padding(.vertical, Constants.paragraphRowVerticalPadding)
+        }
+    }
+
+    // MARK: - Row2 Inline
+
+    private var inlineRow: some View {
+        HStack(alignment: .top, spacing: Constants.containerSpacing) {
+            HStack(spacing: Constants.controlSpacing) {
+                formatToggleButton(
+                    title: "B",
+                    isActive: viewModel.isBold,
+                    accessibilityLabel: "굵게"
+                ) {
+                    viewModel.toggleBold()
+                }
+
+                formatToggleButton(
+                    title: "I",
+                    isActive: viewModel.isItalic,
+                    accessibilityLabel: "기울임"
+                ) {
+                    viewModel.toggleItalic()
+                }
+
+                formatToggleButton(
+                    title: "U",
+                    isActive: viewModel.isUnderline,
+                    accessibilityLabel: "밑줄"
+                ) {
+                    viewModel.toggleUnderline()
+                }
+
+                formatToggleButton(
+                    title: "S",
+                    isActive: viewModel.isStrikethrough,
+                    accessibilityLabel: "취소선"
+                ) {
+                    viewModel.toggleStrikethrough()
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            VStack(alignment: .trailing, spacing: Constants.paletteTopPadding) {
+                HStack(spacing: Constants.controlSpacing) {
+                    iconButton(
+                        systemName: "highlighter",
+                        isActive: isHighlightPalettePresented,
+                        accessibilityLabel: "형광펜 색상 선택"
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isHighlightPalettePresented.toggle()
+                        }
+                    }
+
+                    Circle()
+                        .fill(selectedHighlightColor)
+                        .frame(width: Constants.indicatorSize, height: Constants.indicatorSize)
+                        .overlay {
+                            Circle()
+                                .stroke(Constants.inactiveForegroundColor.opacity(0.18), lineWidth: 1)
+                        }
+                        .accessibilityHidden(true)
+                }
+
+                if isHighlightPalettePresented {
+                    HStack(spacing: Constants.paletteSpacing) {
+                        ForEach(Array(Constants.highlightPalette.enumerated()), id: \.offset) { index, option in
+                            Button {
+                                selectedHighlightIndex = index
+                                viewModel.applyHighlight(color: option.color)
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isHighlightPalettePresented = false
+                                }
+                            } label: {
+                                Circle()
+                                    .fill(option.color)
+                                    .frame(width: Constants.paletteCircleSize, height: Constants.paletteCircleSize)
+                                    .overlay {
+                                        Circle()
+                                            .stroke(
+                                                selectedHighlightIndex == index ? Constants.activeColor : .clear,
+                                                lineWidth: 2
+                                            )
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(option.name) 형광펜")
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+        }
+    }
+
+    // MARK: - Row3 List
+
+    private var listRow: some View {
+        HStack(spacing: Constants.controlSpacing) {
+            iconButton(
+                systemName: "list.bullet",
+                accessibilityLabel: "글머리 기호 목록"
+            ) {
+                viewModel.applyList(.bullet)
+            }
+
+            iconButton(
+                systemName: "list.dash",
+                accessibilityLabel: "대시 목록"
+            ) {
+                viewModel.applyList(.dash)
+            }
+
+            iconButton(
+                systemName: "list.number",
+                accessibilityLabel: "숫자 목록"
+            ) {
+                viewModel.applyList(.number)
+            }
+
+            iconButton(
+                systemName: "decrease.indent",
+                accessibilityLabel: "내어쓰기"
+            ) {
+                viewModel.applyOutdent()
+            }
+
+            iconButton(
+                systemName: "increase.indent",
+                accessibilityLabel: "들여쓰기"
+            ) {
+                viewModel.applyIndent()
+            }
+
+            iconButton(
+                systemName: "text.quote",
+                isActive: viewModel.isBlockquote,
+                accessibilityLabel: "인용구"
+            ) {
+                viewModel.toggleBlockquote()
+            }
+        }
+    }
+
+    // MARK: - Private
+
+    private func paragraphTitle(for style: EditorParagraphStyle) -> String {
+        switch style {
+        case .title:
+            return "제목"
+        case .heading:
+            return "머리말"
+        case .subheading:
+            return "부머리말"
+        case .body:
+            return "본문"
+        case .mono:
+            return "모노"
+        }
+    }
+
+    private func paragraphBackground(for style: EditorParagraphStyle) -> Color {
+        viewModel.paragraphStyle == style ? Constants.activeColor : Constants.inactiveBackgroundColor
+    }
+
+    private func paragraphForegroundColor(for style: EditorParagraphStyle) -> Color {
+        viewModel.paragraphStyle == style ? Constants.activeForegroundColor : Constants.inactiveForegroundColor
+    }
+
+    private func formatToggleButton(
+        title: String,
+        isActive: Bool,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 15, weight: .bold, design: .default))
+                .frame(width: Constants.controlButtonSize, height: Constants.controlButtonSize)
+                .foregroundStyle(isActive ? Constants.activeForegroundColor : Constants.inactiveForegroundColor)
+                .background(buttonBackground(isActive: isActive))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func iconButton(
+        systemName: String,
+        isActive: Bool = false,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: Constants.controlButtonSize, height: Constants.controlButtonSize)
+                .foregroundStyle(isActive ? Constants.activeForegroundColor : Constants.inactiveForegroundColor)
+                .background(buttonBackground(isActive: isActive))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    @ViewBuilder
+    private func buttonBackground(isActive: Bool) -> some View {
+        RoundedRectangle(cornerRadius: Constants.controlCornerRadius, style: .continuous)
+            .fill(isActive ? Constants.activeColor : Constants.inactiveBackgroundColor)
+    }
+}

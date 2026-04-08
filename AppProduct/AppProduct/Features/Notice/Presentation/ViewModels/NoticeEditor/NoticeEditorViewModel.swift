@@ -115,8 +115,14 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     /// 공지사항 제목
     var title: String = ""
 
-    /// 공지사항 본문
+    /// 공지사항 본문 (일반 텍스트 — 서버 전송용)
     var content: String = ""
+
+    /// 리치 텍스트 에디터 툴바 ViewModel
+    var editorToolbarViewModel: EditorToolbarViewModel = EditorToolbarViewModel()
+
+    /// 리치 텍스트 에디터 본문 (NSAttributedString — 로컬 편집용)
+    var richAttributedContent: NSAttributedString = NSAttributedString(string: "")
 
     /// 투표 폼 시트 표시 여부
     var showVoting: Bool = false

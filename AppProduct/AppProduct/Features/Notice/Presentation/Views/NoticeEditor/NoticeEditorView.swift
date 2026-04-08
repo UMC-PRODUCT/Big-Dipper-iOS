@@ -298,12 +298,20 @@ struct NoticeEditorView: View {
 
             Divider()
 
-            ArticleTextField(
-                placeholder: .content,
-                text: $viewModel.content,
-                focused: $isContentFieldFocused
+            // 리치 텍스트 에디터 (NSAttributedString 기반)
+            NoticeRichTextView(
+                toolbarViewModel: viewModel.editorToolbarViewModel,
+                attributedText: $viewModel.richAttributedContent,
+                placeholder: "내용을 입력해주세요.",
+                onInsertImage: handleInsertImage,
+                onInsertLink: handleInsertLink,
+                onTapAI: handleTapAI
             )
             .frame(maxHeight: .infinity, alignment: .top)
+            .onChange(of: viewModel.richAttributedContent) { _, newValue in
+                // 서버 전송용 Markdown String으로 동기화
+                viewModel.content = MarkdownSerializer.serialize(newValue)
+            }
         }
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
         .padding(.top, DefaultSpacing.spacing24)
@@ -627,6 +635,24 @@ struct NoticeEditorView: View {
     private func handleUserContextChanged(gisuId: Int, chapterId: Int) {
         let editorGisuId = selectedGisuId ?? gisuId
         viewModel.updateUserContext(gisuId: editorGisuId, chapterId: chapterId)
+    }
+
+    // MARK: - Rich Editor Handlers
+
+    /// 사진 첨부 버튼 탭: 기존 PhotosPicker 플로우 재사용
+    private func handleInsertImage() {
+        // PhotosPicker는 기존 하단 툴바의 photoPickerButton에서 처리
+        // NoticeRichTextView의 onInsertImage는 향후 PhotosPicker 시트 트리거로 확장 가능
+    }
+
+    /// 링크 삽입 버튼 탭: 기존 링크 첨부 로직 재사용
+    private func handleInsertLink() {
+        addLinkAttachment()
+    }
+
+    /// AI 도우미 버튼 탭
+    private func handleTapAI() {
+        // 추후 AI 기능 시트 연결
     }
 
     // MARK: - Helper
