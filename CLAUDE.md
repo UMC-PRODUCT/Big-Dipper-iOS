@@ -5,12 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **UMC(University MakeUs Challenge) 동아리 운영 관리 앱**
-Swift 6.3 + SwiftUI + iOS 18.0+ 기반 (Liquid Glass 지원)
+SwiftUI + iOS 26.2+ 기반 (Liquid Glass 지원)
 
 - **App Statement**: "Focus on Growth, We Handle the Ops"
 - **목적**: 동아리 운영 도구 일원화 (디스코드/구글시트/노션 분산 문제 해결)
-- **주요 모듈**: 인증/온보딩, 홈 대시보드, 공지사항, 운영/학교 관리, 스터디/활동, 커뮤니티
+- **주요 모듈**: 인증/온보딩, 홈 대시보드, 공지사항, 운영/학교 관리, 스터디/활동, 커뮤니티, 마이페이지
 - **Killer Features**: The Ping (공지 수신 확인), Mobile-First Admin, GPS 기반 스마트 출석
+- **현재 버전**: 1.7.0
 
 ## Build & Run
 
@@ -24,6 +25,99 @@ xcodebuild -project AppProduct/AppProduct.xcodeproj -scheme AppProduct -configur
 # 테스트 실행
 xcodebuild -project AppProduct/AppProduct.xcodeproj -scheme AppProduct test
 ```
+
+## Tuist 모듈 구조 (UMCApp)
+
+`UMCApp/` 폴더는 Tuist 기반의 별도 모듈화 프로젝트입니다. `AppProduct/`와 병행하여 관리됩니다.
+
+### 전체 구조
+
+```
+UMCApp/
+├── Project.swift                  # 앱 타겟 정의
+├── Workspace.swift                # 전체 워크스페이스 (Core/*, Features/* glob)
+├── Tuist.swift                    # Tuist 시스템 설정
+├── Tuist/
+│   ├── Package.swift              # SPM 외부 의존성 (Moya, Kingfisher)
+│   └── ProjectDescriptionHelpers/
+│       ├── Project+Core.swift     # Core 모듈 공통 헬퍼
+│       └── Project+Feature.swift  # Feature 모듈 공통 헬퍼
+├── Core/                          # 5개 공유 인프라 모듈
+│   ├── Foundation/                # 기반 유틸리티, Config
+│   ├── Network/                   # 네트워크 레이어 (Moya)
+│   ├── DesignSystem/              # 디자인 토큰, 색상
+│   ├── UIComponents/              # 공용 UI 컴포넌트 (Kingfisher)
+│   └── DI/                        # 의존성 주입 컨테이너
+└── Features/                      # 6개 기능 모듈
+    ├── Auth/
+    ├── Home/
+    ├── Notice/
+    ├── Activity/
+    ├── Community/
+    └── MyPage/
+```
+
+### 모듈 의존성 방향
+
+```
+App Target (UMCApp)
+    ↓
+Feature Presentation  (Domain + CoreDesignSystem + CoreUIComponents)
+    ↓
+Feature Domain        (UMCFoundation)
+Feature Data          (Domain + CoreNetwork + UMCFoundation)
+    ↓
+Core Modules          (Foundation / Network / DesignSystem / UIComponents / DI)
+    ↓
+External Packages     (Moya 15.0.3 / Kingfisher 8.6.1)
+```
+
+### Feature 모듈 구조
+
+각 Feature는 Clean Architecture에 따라 **3개 타겟**으로 분리됩니다.
+
+| 타겟 | Product Type | Bundle ID 패턴 | Sources |
+|------|-------------|----------------|---------|
+| `{Name}Domain` | `.staticFramework` | `dev.umc.feature.{name}.domain` | `Domain/Sources/**` |
+| `{Name}Data` | `.staticFramework` | `dev.umc.feature.{name}.data` | `Data/Sources/**` |
+| `{Name}Presentation` | `.staticFramework` | `dev.umc.feature.{name}.presentation` | `Presentation/Sources/**` |
+
+### ProjectDescriptionHelpers
+
+보일러플레이트 제거를 위해 두 개의 헬퍼 함수를 사용합니다.
+
+```swift
+// Core 모듈 생성
+coreProject(
+    name: "CoreNetwork",
+    bundleIdSuffix: "network",
+    dependencies: [.target(name: "UMCFoundation"), .external(name: "Moya")]
+)
+
+// Feature 모듈 생성 (3개 타겟 자동 생성)
+featureProject(
+    name: "Auth",
+    domainExtraDependencies: [],
+    dataExtraDependencies: [],
+    presentationExtraDependencies: []
+)
+```
+
+### 외부 의존성
+
+| 패키지 | 버전 | 사용처 |
+|--------|------|--------|
+| Moya | 15.0.3 | CoreNetwork |
+| Kingfisher | 8.6.1 | CoreUIComponents |
+
+### 주요 설정
+
+- **Deployment Target**: iOS 26.0 (전체 타겟 공통)
+- **Product Type**: 모든 모듈 `.staticFramework`
+- **Bundle ID**: Core → `dev.umc.core.*` / Feature → `dev.umc.feature.*.*`
+- **Workspace**: glob 패턴(`Core/*`, `Features/*`)으로 서브프로젝트 자동 포함
+
+---
 
 ## Architecture
 
@@ -232,6 +326,44 @@ final class SomeViewModel {
 
 토큰 정의: `DefaultConstant.swift`, `DefaultSpacing.swift`
 
+### 레이아웃 상수 (`DefaultConstant`)
+
+| 상수 | 값 | 용도 |
+|------|----|------|
+| `defaultSafeHorizon` | 16 | 좌우 기본 여백 |
+| `defaultSafeTop` | 20 | 상단 기본 여백 |
+| `defaultSafeBottom` | 56 | 하단 탭바 safe area |
+| `defaultCornerRadius` | 30 | 기본 모서리 반경 |
+| `concentricRadius` | 40 | ConcentricRectangle 최소 반경 |
+| `defaultCapsuleSpacing` | 28 | 캡슐형 요소 여백 |
+
+### Typography (`AppFont`)
+
+Pretendard 기반. `.appFont()` modifier로 줄간격 포함, `.font(.app())` 으로 줄간격 제외.
+
+| Scale | Size | 용도 |
+|-------|------|------|
+| `.largeTitle` | 34pt | 최상위 제목 |
+| `.title1` | 28pt | 주요 제목 |
+| `.title2` | 22pt | 섹션 제목 |
+| `.title3` | 20pt | 서브 섹션 |
+| `.headline` | 17pt | 강조 본문 |
+| `.callout` | 16pt | 카드 제목 |
+| `.subheadline` | 15pt | 부제목 |
+| `.footnote` | 13pt | 부가정보 |
+| `.caption1` | 12pt | 보조 레이블 |
+| `.caption2` | 11pt | 최소 텍스트 |
+
+`Emphasis` 변형(예: `.calloutEmphasis`)은 자동으로 Bold weight 적용.
+
+### Typography 계층 (용도별)
+
+| 용도 | AppFont | Color |
+|------|---------|-------|
+| 제목 | `.calloutEmphasis` | 기본 |
+| 부제목 | `.subheadline` | `.grey600` |
+| 부가정보 | `.footnote` | `.grey500` |
+
 ### Shape 패턴 (권장)
 
 ```swift
@@ -255,14 +387,33 @@ final class SomeViewModel {
 | `.glassProminent` (ButtonStyle) | Primary 버튼 |
 | `.glass` (ButtonStyle) | Secondary 버튼 |
 
-### Typography 계층
+### 공용 UI 컴포넌트 (`Core/Common/UIComponents/`)
 
-| 용도 | AppFont | Color |
-|------|---------|-------|
-| 제목 | `.calloutEmphasis` | 기본 |
-| 부제목 | `.subheadline` | `.grey600` |
-| 부가정보 | `.footnote` | `.grey500` |
+| 컴포넌트 | 설명 |
+|---------|------|
+| `ArticleTextField` | 제목/본문 겸용 텍스트 입력 (`.title`, `.content` 타입) |
+| `Badge` | 상태 뱃지 |
+| `ChipButton` | 칩 형태 버튼 |
+| `Icon` | 아이콘 래퍼 |
+| `Loading` | 로딩 인디케이터 |
+| `Logo` | 앱 로고 |
+| `MainButton` | 주요 CTA 버튼 |
+| `PlaceSelectView` | 장소 선택 뷰 |
+| `Progress` | 진행률 표시 |
+| `Section` | 섹션 컨테이너 |
+| `SectionErrorCard` | 섹션 에러 표시 카드 |
+| `State` | 빈 상태/에러 상태 뷰 |
 
+```swift
+// ArticleTextField 사용 예시
+ArticleTextField(
+    placeholder: .title,
+    text: $text,
+    focused: $focused,
+    submitLabel: .return,
+    onSubmit: { /* action */ }
+)
+```
 
 ## 성능 최적화
 
@@ -331,6 +482,8 @@ Git Flow + **연속 브랜치 파생** 지원
 
 `[TYPE] 작업 내용`
 
+커밋 메시지는 제목 한 줄 + 빈 줄 + 변경사항 bullet list 형식으로 작성.
+
 | Type | 용도 |
 |------|------|
 | `feat` | 새 기능 |
@@ -358,17 +511,28 @@ AppProduct/AppProduct/
 │   ├── Alert/              # AlertPrompt 등 확인 다이얼로그
 │   ├── Common/
 │   │   ├── DesignSystem/   # 디자인 토큰, 스타일
+│   │   ├── Enum/           # DefaultConstant, DefaultSpacing 등
 │   │   ├── Error/          # Loadable, ErrorHandler, AppError 등
 │   │   └── UIComponents/   # 공용 UI 컴포넌트
 │   ├── DIContainer/        # 의존성 주입 컨테이너
 │   ├── Manager/            # 인증, 위치 등 시스템 매니저
+│   ├── Mock/               # 테스트용 Mock View (개발 전용)
 │   ├── Navigation/         # 네비게이션 라우팅
-│   └── NetworkAdapter/     # Moya 기반 네트워크 클라이언트
+│   ├── NetworkAdapter/     # Moya 기반 네트워크 클라이언트
+│   └── Secret/             # API 키 등 민감 정보
+├── Utilities/
+│   ├── Extensions/         # Swift/SwiftUI 확장
+│   ├── Keychain/           # 키체인 유틸리티
+│   ├── Modifier/           # 커스텀 ViewModifier
+│   ├── RemoteImage/        # 원격 이미지 로딩
+│   ├── Shadow/             # 그림자 유틸리티
+│   └── ToolBar/            # 툴바 헬퍼
 └── Features/
     ├── Activity/           # 출석, 스터디 관리
     ├── Auth/               # 로그인, 회원가입
     ├── Community/          # 커뮤니티, 명예의전당
     ├── Home/               # 홈 대시보드, 일정 관리
+    ├── MyPage/             # 마이페이지, 프로필
     ├── Notice/             # 공지사항
     ├── Splash/             # 스플래시 화면
     └── Tab/                # 탭 네비게이션
