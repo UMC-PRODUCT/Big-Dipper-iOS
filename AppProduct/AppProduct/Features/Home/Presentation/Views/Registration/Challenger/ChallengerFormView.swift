@@ -92,7 +92,7 @@ struct ChallengerFormView: View {
                 .onTapGesture {
                     tap?(participant)
                 }
-                .onAppear {
+                .task {
                     // 마지막 아이템 도달 시 페이지네이션 트리거
                     if participant.selectionKey == challenger.last?.selectionKey {
                         onBottomReached?()

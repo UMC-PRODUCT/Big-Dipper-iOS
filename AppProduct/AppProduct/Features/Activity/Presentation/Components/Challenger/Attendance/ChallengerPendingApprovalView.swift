@@ -44,7 +44,7 @@ struct ChallengerPendingApprovalView: View {
             .font(.system(size: Constant.iconSize))
             .foregroundStyle(.yellow)
             .rotationEffect(.degrees(isRotating ? 360 : 0))
-            .onAppear {
+            .task {
                 withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
                     isRotating = true
                 }

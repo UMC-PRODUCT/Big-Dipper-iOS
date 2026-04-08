@@ -80,7 +80,7 @@ struct PenaltyCard: View, Equatable {
         .clipped()
         .clipShape(.rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true))
         .glassEffect(.regular, in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius))
-        .onAppear {
+        .task {
             clampCurrentIndex()
         }
         .onChange(of: generations.count) { _, _ in

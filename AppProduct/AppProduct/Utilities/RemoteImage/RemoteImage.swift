@@ -99,7 +99,7 @@ struct RemoteImage: View {
                     .resizable()
                     .interpolation(.high)
                     .antialiased(true)
-                    .onAppear {
+                    .task {
                         isLoading = true
                     }
             } else {

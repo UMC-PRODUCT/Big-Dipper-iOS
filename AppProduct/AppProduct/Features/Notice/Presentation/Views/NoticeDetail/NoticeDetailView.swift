@@ -248,6 +248,16 @@ struct NoticeDetailView: View {
                     : Constants.attachmentToVoteSpacing
                 )
                 .padding(.horizontal, Constants.horizontalPadding)
+            } else if viewModel.isVoteLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 80)
+                    .padding(
+                        .top,
+                        data.images.isEmpty
+                        ? Constants.contentToVoteSpacing
+                        : Constants.attachmentToVoteSpacing
+                    )
+                    .padding(.horizontal, Constants.horizontalPadding)
             }
 
             if !data.links.isEmpty {
@@ -310,7 +320,7 @@ struct NoticeDetailView: View {
                 confirmedCount: viewModel.confirmedCount,
                 totalCount: viewModel.totalCount,
                 readRate: viewModel.readRate,
-                isLoading: viewModel.isReadStaticsLoading && viewModel.readStatics == nil
+                isLoading: viewModel.readStatics == nil
             ) {
                 viewModel.openReadStatusSheet()
             }
@@ -376,18 +386,14 @@ struct NoticeDetailView: View {
         }
 
         async let detailTask: Void = viewModel.fetchNoticeDetail()
-        async let staticsTask: Void = viewModel.prefetchReadStaticsIfNeeded()
         async let permissionTask: Void = viewModel.fetchNoticePermission()
         async let markAsReadTask = viewModel.markAsReadIfNeeded()
 
-        let didMarkAsRead = await markAsReadTask
+        await markAsReadTask
         await detailTask
-        await staticsTask
         await permissionTask
-        if didMarkAsRead {
-            viewModel.applyOptimisticReadStatics()
-            Task { await viewModel.prefetchReadStaticsIfNeeded(forceReload: true) }
-        }
+        // statics는 markAsRead 완료 후 순차 조회하여 서버 반영값을 정확히 수신
+        await viewModel.prefetchReadStaticsIfNeeded()
     }
 
     // MARK: - Private Methods
