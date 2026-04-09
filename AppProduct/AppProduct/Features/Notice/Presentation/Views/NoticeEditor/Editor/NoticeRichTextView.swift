@@ -123,6 +123,102 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
 
         // MARK: - UITextViewDelegate
 
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            guard text == "\n", let bqTextView = textView as? BlockquoteTextView else { return true }
+            return handleReturnInBlockquote(textView: bqTextView, range: range)
+        }
+
+        /// 인용구 단락에서 Enter 키 입력을 처리합니다.
+        /// - 빈 인용구 줄: 인용구 속성 제거(탈출)하고 false 반환
+        /// - 내용 있는 인용구 줄: 같은 인용구 속성으로 새 줄 삽입하고 false 반환
+        private func handleReturnInBlockquote(textView: BlockquoteTextView, range: NSRange) -> Bool {
+            let storage = textView.textStorage
+            guard storage.length > 0 else { return true }
+
+            let safeLocation = min(range.location, max(0, storage.length - 1))
+            let nsString = storage.string as NSString
+            let paragraphRange = nsString.paragraphRange(for: NSRange(location: safeLocation, length: 0))
+            let checkLocation = min(paragraphRange.location, storage.length - 1)
+
+            guard (storage.attribute(.editorBlockquote, at: checkLocation, effectiveRange: nil) as? Bool) == true else {
+                return true
+            }
+
+            let paragraphText = nsString.substring(with: paragraphRange)
+            let hasContent = paragraphText.contains { !$0.isNewline }
+
+            if !hasContent {
+                // 빈 인용구 줄 → 인용구 탈출 (새 줄 삽입 없이 속성만 제거)
+                let baseHead = (storage.attribute(.editorBlockquoteBaseHeadIndent, at: checkLocation, effectiveRange: nil) as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
+                let baseLine = (storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: checkLocation, effectiveRange: nil) as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
+
+                let normalStyle = NSMutableParagraphStyle()
+                normalStyle.headIndent = baseHead
+                normalStyle.firstLineHeadIndent = baseLine
+
+                storage.beginEditing()
+                storage.addAttribute(.paragraphStyle, value: normalStyle.copy() as! NSParagraphStyle, range: paragraphRange)
+                storage.removeAttribute(.editorBlockquote, range: paragraphRange)
+                storage.removeAttribute(.editorBlockquoteBorderColor, range: paragraphRange)
+                storage.removeAttribute(.editorBlockquoteBaseHeadIndent, range: paragraphRange)
+                storage.removeAttribute(.editorBlockquoteBaseFirstLineHeadIndent, range: paragraphRange)
+                storage.endEditing()
+
+                textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquote)
+                textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBorderColor)
+                textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBaseHeadIndent)
+                textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBaseFirstLineHeadIndent)
+                let mutableNormal = normalStyle.mutableCopy() as! NSMutableParagraphStyle
+                textView.typingAttributes[.paragraphStyle] = mutableNormal.copy() as! NSParagraphStyle
+
+                textView.refreshBlockquoteBorders()
+                parent.attributedText = textView.attributedText
+                parent.toolbarViewModel.syncFormattingState()
+                return false
+            }
+
+            // 내용 있는 인용구 줄 → 같은 인용구 속성으로 새 줄 이어받기
+            let borderColor = storage.attribute(.editorBlockquoteBorderColor, at: checkLocation, effectiveRange: nil) as? UIColor ?? UIColor.systemGray3
+            let baseHeadNum = storage.attribute(.editorBlockquoteBaseHeadIndent, at: checkLocation, effectiveRange: nil) as? NSNumber
+            let baseLineNum = storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: checkLocation, effectiveRange: nil) as? NSNumber
+            let existingStyle = storage.attribute(.paragraphStyle, at: checkLocation, effectiveRange: nil) as? NSParagraphStyle ?? NSParagraphStyle.default
+            let newStyle = existingStyle.mutableCopy() as! NSMutableParagraphStyle
+
+            let fontLocation = range.location > 0 ? min(range.location - 1, storage.length - 1) : 0
+            let currentFont = storage.attribute(.font, at: fontLocation, effectiveRange: nil) as? UIFont
+                ?? textView.typingAttributes[.font] as? UIFont
+                ?? UIFont.preferredFont(forTextStyle: .body)
+
+            var newAttrs: [NSAttributedString.Key: Any] = [
+                .paragraphStyle: newStyle.copy() as! NSParagraphStyle,
+                .font: currentFont,
+                NSAttributedString.Key.editorBlockquote: true,
+                NSAttributedString.Key.editorBlockquoteBorderColor: borderColor,
+            ]
+            if let b = baseHeadNum { newAttrs[NSAttributedString.Key.editorBlockquoteBaseHeadIndent] = b }
+            if let b = baseLineNum { newAttrs[NSAttributedString.Key.editorBlockquoteBaseFirstLineHeadIndent] = b }
+
+            storage.beginEditing()
+            storage.replaceCharacters(in: range, with: NSAttributedString(string: "\n", attributes: newAttrs))
+            storage.endEditing()
+
+            let newCursor = range.location + 1
+            textView.selectedRange = NSRange(location: newCursor, length: 0)
+
+            textView.typingAttributes[.paragraphStyle] = newStyle.copy() as! NSParagraphStyle
+            textView.typingAttributes[.font] = currentFont
+            textView.typingAttributes[NSAttributedString.Key.editorBlockquote] = true
+            textView.typingAttributes[NSAttributedString.Key.editorBlockquoteBorderColor] = borderColor
+            if let b = baseHeadNum { textView.typingAttributes[NSAttributedString.Key.editorBlockquoteBaseHeadIndent] = b }
+            if let b = baseLineNum { textView.typingAttributes[NSAttributedString.Key.editorBlockquoteBaseFirstLineHeadIndent] = b }
+
+            textView.refreshBlockquoteBorders()
+            parent.attributedText = textView.attributedText
+            parent.toolbarViewModel.selectedRange = NSRange(location: newCursor, length: 0)
+            parent.toolbarViewModel.syncFormattingState()
+            return false
+        }
+
         func textViewDidChange(_ textView: UITextView) {
             parent.attributedText = textView.attributedText
             parent.toolbarViewModel.textStorage = textView.textStorage

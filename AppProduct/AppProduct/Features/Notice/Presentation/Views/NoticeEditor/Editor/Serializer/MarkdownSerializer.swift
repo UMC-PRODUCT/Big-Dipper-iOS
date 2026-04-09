@@ -61,6 +61,45 @@ enum MarkdownSerializer {
         deserialize(markdown, baseFont: UIFont.preferredFont(forTextStyle: .body)).string
     }
 
+    // MARK: - Display Rendering
+
+    /// 서버에서 받은 마크다운 문자열을 화면 표시용 NSAttributedString으로 변환합니다.
+    ///
+    /// `deserialize`와 달리 백슬래시 이스케이프(`\*`, `\-` 등)를 먼저 제거한 뒤
+    /// 마크다운 서식을 적용합니다. 에디터 직접 입력이나 외부 API로 저장된
+    /// `\*\*bold\*\*` 형태의 콘텐츠도 볼드로 렌더링됩니다.
+    static func deserializeForDisplay(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
+        let unescaped = stripBackslashEscaping(markdown)
+        return deserialize(unescaped, baseFont: baseFont)
+    }
+
+    /// 백슬래시 이스케이프 시퀀스를 제거합니다. `\*` → `*`, `\-` → `-` 등.
+    private static func stripBackslashEscaping(_ text: String) -> String {
+        var result = ""
+        var isEscaping = false
+
+        for character in text {
+            if isEscaping {
+                result.append(character)
+                isEscaping = false
+                continue
+            }
+
+            if character == "\\" {
+                isEscaping = true
+                continue
+            }
+
+            result.append(character)
+        }
+
+        if isEscaping {
+            result.append("\\")
+        }
+
+        return result
+    }
+
     // MARK: - Deserialize
 
     static func deserialize(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
@@ -654,6 +693,12 @@ enum MarkdownSerializer {
             }
 
             return monospacedFont
+        }
+
+        // Pretendard 커스텀 폰트는 symbolic traits 방식이 아닌 폰트명 직접 지정으로 처리
+        if baseFont.fontName.hasPrefix("Pretendard") {
+            let fontName = style.isBold ? "Pretendard-SemiBold" : "Pretendard-Regular"
+            return UIFont(name: fontName, size: pointSize) ?? baseFont.withSize(pointSize)
         }
 
         var traits = UIFontDescriptor.SymbolicTraits()

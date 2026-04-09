@@ -7,6 +7,7 @@
 
 import Foundation
 import FoundationModels
+import UIKit
 
 extension NoticeEditorViewModel {
 
@@ -55,7 +56,9 @@ extension NoticeEditorViewModel {
             }
 
             if !fullText.isEmpty {
-                richAttributedContent = NSAttributedString(string: fullText)
+                let baseFont = UIFont(name: "Pretendard-Regular", size: 16)
+                    ?? UIFont.preferredFont(forTextStyle: .body)
+                richAttributedContent = MarkdownSerializer.deserialize(fullText, baseFont: baseFont)
                 content = MarkdownSerializer.serialize(richAttributedContent)
             }
         } catch {

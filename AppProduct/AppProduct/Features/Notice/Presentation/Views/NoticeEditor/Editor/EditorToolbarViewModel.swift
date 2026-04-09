@@ -98,7 +98,33 @@ final class EditorToolbarViewModel {
     /// 현재 단락의 블록 인용문 스타일을 토글합니다.
     @MainActor
     func toggleBlockquote() {
-        guard let storage = textStorage, storage.length > 0 else { return }
+        guard let storage = textStorage else { return }
+
+        // 빈 텍스트: typingAttributes 에만 인용구 스타일 적용 (토글)
+        if storage.length == 0 {
+            guard let tv = textView else { return }
+            let alreadyBlockquote = (tv.typingAttributes[NSAttributedString.Key.editorBlockquote] as? Bool) == true
+            if alreadyBlockquote {
+                tv.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquote)
+                tv.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBorderColor)
+                tv.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBaseHeadIndent)
+                tv.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBaseFirstLineHeadIndent)
+                tv.typingAttributes.removeValue(forKey: .paragraphStyle)
+                isBlockquote = false
+            } else {
+                let style = NSMutableParagraphStyle()
+                style.headIndent = blockquoteIndent
+                style.firstLineHeadIndent = blockquoteIndent
+                tv.typingAttributes[.paragraphStyle] = style.copy() as! NSParagraphStyle
+                tv.typingAttributes[NSAttributedString.Key.editorBlockquote] = true
+                tv.typingAttributes[NSAttributedString.Key.editorBlockquoteBorderColor] = UIColor.systemGray3
+                tv.typingAttributes[NSAttributedString.Key.editorBlockquoteBaseHeadIndent] = NSNumber(value: 0.0)
+                tv.typingAttributes[NSAttributedString.Key.editorBlockquoteBaseFirstLineHeadIndent] = NSNumber(value: 0.0)
+                isBlockquote = true
+            }
+            return
+        }
+
         let paragraphRange = currentParagraphRange(in: storage)
         let baseLocation = safeAttributeLocation(for: paragraphRange, in: storage)
         let isCurrentlyBlockquote = isBlockquoteAttributeEnabled(at: baseLocation, in: storage)

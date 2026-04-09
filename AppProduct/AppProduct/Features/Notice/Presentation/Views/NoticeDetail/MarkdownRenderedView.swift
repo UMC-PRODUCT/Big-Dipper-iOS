@@ -36,8 +36,8 @@ private struct _MarkdownTextViewRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
-        let baseFont = UIFont.preferredFont(forTextStyle: .body)
-        let attributed = MarkdownSerializer.deserialize(markdown, baseFont: baseFont)
+        let baseFont = UIFont(name: "Pretendard-Regular", size: 16) ?? UIFont.preferredFont(forTextStyle: .body)
+        let attributed = MarkdownSerializer.deserializeForDisplay(markdown, baseFont: baseFont)
         let mutable = NSMutableAttributedString(attributedString: attributed)
 
         // 기본 폰트/색상 설정
