@@ -10,21 +10,21 @@ import SwiftUI
 /// 공지 에디터의 기본 액세서리 툴바입니다.
 struct DefaultToolbarView: View {
     @Bindable var viewModel: EditorToolbarViewModel
-    var onInsertTable: () -> Void
     var onTapAI: () -> Void
     var onTapHighlight: () -> Void
-
-    @State private var isListDialogPresented: Bool = false
 
     // MARK: - Body
 
     var body: some View {
         HStack(spacing: .zero) {
             formatButton
-            listButton
-            tableButton
+            boldButton
+            italicButton
+            underlineButton
+            strikethroughButton
             aiButton
             highlightButton
+            listButton
         }
         .frame(maxWidth: .infinity, minHeight: Constants.toolbarHeight, maxHeight: Constants.toolbarHeight)
     }
@@ -40,30 +40,68 @@ struct DefaultToolbarView: View {
     }
 
     private var listButton: some View {
-        toolbarButton(icon: Constants.listIcon, action: presentListDialog)
-            .confirmationDialog(
-                Constants.listDialogTitle,
-                isPresented: $isListDialogPresented,
-                titleVisibility: .visible
-            ) {
-                Button(Constants.bulletTitle) {
-                    viewModel.applyList(.bullet)
-                }
-
-                Button(Constants.dashTitle) {
-                    viewModel.applyList(.dash)
-                }
-
-                Button(Constants.numberTitle) {
-                    viewModel.applyList(.number)
-                }
-
-                Button(Constants.cancelTitle, role: .cancel) { }
+        Menu {
+            Button {
+                viewModel.applyList(.bullet)
+            } label: {
+                Label(Constants.bulletTitle, systemImage: "list.bullet")
             }
+
+            Button {
+                viewModel.applyList(.dash)
+            } label: {
+                Label(Constants.dashTitle, systemImage: "list.dash")
+            }
+
+            Button {
+                viewModel.applyList(.number)
+            } label: {
+                Label(Constants.numberTitle, systemImage: "list.number")
+            }
+        } label: {
+            Image(systemName: Constants.listIcon)
+                .font(.system(size: Constants.iconSize, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: Constants.toolbarHeight, maxHeight: Constants.toolbarHeight)
+                .contentShape(Rectangle())
+                .foregroundStyle(Constants.inactiveColor)
+        }
     }
 
-    private var tableButton: some View {
-        toolbarButton(icon: Constants.tableIcon, action: onInsertTable)
+    private var boldButton: some View {
+        inlineFormatButton(title: "B", weight: .bold, isActive: viewModel.isBold, action: viewModel.toggleBold)
+    }
+
+    private var italicButton: some View {
+        inlineFormatButton(title: "I", weight: .regular, isItalic: true, isActive: viewModel.isItalic, action: viewModel.toggleItalic)
+    }
+
+    private var underlineButton: some View {
+        inlineFormatButton(title: "U", weight: .regular, isUnderline: true, isActive: viewModel.isUnderline, action: viewModel.toggleUnderline)
+    }
+
+    private var strikethroughButton: some View {
+        inlineFormatButton(title: "S", weight: .regular, isStrikethrough: true, isActive: viewModel.isStrikethrough, action: viewModel.toggleStrikethrough)
+    }
+
+    private func inlineFormatButton(
+        title: String,
+        weight: Font.Weight,
+        isItalic: Bool = false,
+        isUnderline: Bool = false,
+        isStrikethrough: Bool = false,
+        isActive: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: Constants.iconSize, weight: weight).italic(isItalic))
+                .underline(isUnderline)
+                .strikethrough(isStrikethrough)
+                .frame(maxWidth: .infinity, minHeight: Constants.toolbarHeight, maxHeight: Constants.toolbarHeight)
+                .contentShape(Rectangle())
+                .foregroundStyle(isActive ? Color.indigo500 : Constants.inactiveColor)
+        }
+        .buttonStyle(.plain)
     }
 
     private var aiButton: some View {
@@ -90,16 +128,11 @@ struct DefaultToolbarView: View {
         .foregroundStyle(tint)
     }
 
-    private func presentListDialog() {
-        isListDialogPresented = true
-    }
-
     // MARK: - Constants
 
     fileprivate enum Constants {
         static let formatIcon: String = "textformat.size"
         static let listIcon: String = "list.bullet"
-        static let tableIcon: String = "tablecells"
         static let aiIcon: String = "sparkles"
         static let highlightIcon: String = "highlighter"
 

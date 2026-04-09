@@ -211,9 +211,7 @@ struct NoticeDetailView: View {
     /// 공지 본문/투표/이미지/링크를 순서대로 구성합니다.
     private func bottomSection(_ data: NoticeDetail) -> some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
-            Text(data.content)
-                .appFont(.body)
-                .multilineTextAlignment(.leading)
+            MarkdownRenderedView(markdown: data.content)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Constants.horizontalPadding)
 

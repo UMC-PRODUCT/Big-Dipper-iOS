@@ -120,7 +120,7 @@ private struct ContentSection: View, Equatable {
                 .appFont(.bodyEmphasis, color: model.mustRead ? Color.indigo900 : .grey900)
                 .lineLimit(1)
 
-            Text(model.content)
+            Text(MarkdownSerializer.plainText(from: model.content))
                 .appFont(.subheadline, color: .grey600)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)

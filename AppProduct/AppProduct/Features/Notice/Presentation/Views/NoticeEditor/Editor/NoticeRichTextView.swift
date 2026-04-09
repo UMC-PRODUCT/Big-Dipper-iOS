@@ -2,7 +2,7 @@
 //  NoticeRichTextView.swift
 //  AppProduct
 //
-//  Created by OpenAI euijjang97 on 4/8/26.
+//  Created by euijjang97 on 4/8/26.
 //
 
 import SwiftUI
@@ -27,7 +27,7 @@ struct NoticeRichTextView: View {
     }
 }
 
-// MARK: - UIViewRepresentable
+// MARK: - UIViewRepresenAItable
 
 private struct _RichTextViewRepresentable: UIViewRepresentable {
 
@@ -39,8 +39,8 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
 
     // MARK: - UIViewRepresentable
 
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+    func makeUIView(context: Context) -> BlockquoteTextView {
+        let textView = BlockquoteTextView()
 
         textView.delegate = context.coordinator
         textView.isScrollEnabled = false
@@ -55,31 +55,48 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         toolbarViewModel.textStorage = textView.textStorage
         toolbarViewModel.textView = textView
 
+        let coordinator = context.coordinator
+        toolbarViewModel.onFormattingApplied = { [weak textView, weak coordinator] in
+            guard let textView, let coordinator else { return }
+            coordinator.parent.attributedText = textView.attributedText
+            coordinator.updatePlaceholder(in: textView)
+            textView.refreshBlockquoteBorders()
+        }
+
         return textView
     }
 
-    func updateUIView(_ uiView: UITextView, context: Context) {
+    func updateUIView(_ uiView: BlockquoteTextView, context: Context) {
         context.coordinator.parent = self
 
         if !uiView.attributedText.isEqual(attributedText) {
             let selectedRange = context.coordinator.clampedSelectedRange(for: uiView.selectedRange, in: attributedText)
             uiView.attributedText = attributedText
             uiView.selectedRange = selectedRange
+            uiView.refreshBlockquoteBorders()
         }
 
         uiView.font = UIFont.preferredFont(forTextStyle: .body)
         toolbarViewModel.textStorage = uiView.textStorage
         toolbarViewModel.textView = uiView
 
-        context.coordinator.installPlaceholderIfNeeded(in: uiView)
-        context.coordinator.updatePlaceholder(in: uiView)
+        let coordinator = context.coordinator
+        toolbarViewModel.onFormattingApplied = { [weak uiView, weak coordinator] in
+            guard let uiView, let coordinator else { return }
+            coordinator.parent.attributedText = uiView.attributedText
+            coordinator.updatePlaceholder(in: uiView)
+            uiView.refreshBlockquoteBorders()
+        }
+
+        coordinator.installPlaceholderIfNeeded(in: uiView)
+        coordinator.updatePlaceholder(in: uiView)
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: BlockquoteTextView, context: Context) -> CGSize? {
         guard let width = proposal.width else {
             return nil
         }
@@ -121,11 +138,13 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             isEditing = true
+            parent.toolbarViewModel.setEditorActive(true)
             updatePlaceholder(in: textView)
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
             isEditing = false
+            parent.toolbarViewModel.setEditorActive(false)
             parent.toolbarViewModel.dismissFormatPanel()
             updatePlaceholder(in: textView)
         }

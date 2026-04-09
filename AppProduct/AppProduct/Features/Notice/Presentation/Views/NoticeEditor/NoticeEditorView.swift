@@ -40,9 +40,6 @@ struct NoticeEditorView: View {
     /// 링크 추가 직후 자동 스크롤/포커스에 사용할 링크 ID
     @State private var newlyAddedLinkID: UUID?
 
-    /// 목록 스타일 선택 다이얼로그 노출 여부
-    @State private var isEditorListDialogPresented = false
-
     /// 사진 첨부 피커 노출 여부
     @State private var isPhotoPickerPresented = false
 
@@ -166,6 +163,21 @@ struct NoticeEditorView: View {
         }
         .fullScreenCover(isPresented: $viewModel.showVoting, content: votingSheet)
         .alertPrompt(item: $viewModel.alertPrompt)
+        .overlay {
+            if viewModel.isAIProcessing {
+                AILoadingOverlay(streamingText: viewModel.aiStreamingText)
+                    .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .center)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isAIProcessing)
+        .onChange(of: viewModel.isAIProcessing) { _, isProcessing in
+            if isProcessing {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+            }
+        }
         .onChange(of: selectedHighlightColor) { _, newValue in
             print("[Highlight] 선택 변경 → \(newValue.name)")
             Task { @MainActor in
@@ -185,8 +197,9 @@ struct NoticeEditorView: View {
             )
         ) {
             FormatPanelView(viewModel: viewModel.editorToolbarViewModel)
-                .presentationDetents([.medium])
+                .presentationDetents([.height(330)])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(.regularMaterial)
         }
     }
 
@@ -260,14 +273,17 @@ struct NoticeEditorView: View {
 
     // MARK: - Bottom Safe Area
 
-    /// 하단 안전 영역: 첨부·서식 도구 툴바
+    /// 하단 안전 영역: 첨부·서식 도구 툴바 (제목 또는 내용에 포커스 시에만 표시)
+    @ViewBuilder
     private func bottomSafeAreaContent() -> some View {
-        HStack {
-            attachmentToolbar
-            Spacer()
+        if isTitleFieldFocused || viewModel.editorToolbarViewModel.isEditorActive {
+            HStack {
+                attachmentToolbar
+                Spacer()
+            }
+            .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+            .padding(.bottom, DefaultSpacing.spacing16)
         }
-        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-        .padding(.bottom, DefaultSpacing.spacing16)
     }
 
     /// 첨부·서식 도구 통합 스크롤 툴바
@@ -281,16 +297,6 @@ struct NoticeEditorView: View {
             .frame(height: Constants.editorToolbarHeight)
         }
         .glassEffect()
-        .confirmationDialog(
-            "목록 스타일",
-            isPresented: $isEditorListDialogPresented,
-            titleVisibility: .visible
-        ) {
-            Button("구분점") { viewModel.editorToolbarViewModel.applyList(.bullet) }
-            Button("대시선") { viewModel.editorToolbarViewModel.applyList(.dash) }
-            Button("숫자") { viewModel.editorToolbarViewModel.applyList(.number) }
-            Button("취소", role: .cancel) {}
-        }
     }
 
     private var scrollableToolbarItems: some View {
@@ -301,17 +307,47 @@ struct NoticeEditorView: View {
                 icon: "textformat.size",
                 tint: toolVM.isFormatPanelVisible ? .indigo500 : .black
             ) {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 toolVM.toggleFormatPanel()
             }
-            toolButton(icon: "list.bullet") { isEditorListDialogPresented = true }
-            toolButton(icon: "tablecells", action: {})
             // 첨부 도구
             attachmentMenuButton
             toolButton(icon: "link", action: addLinkAttachment)
             // 기타 도구
             toolButton(icon: "sparkles", action: handleTapAI)
+            // 인라인 서식
+            textFormatButton("B", weight: .bold, isActive: toolVM.isBold) { toolVM.toggleBold() }
+            textFormatButton("I", isItalic: true, isActive: toolVM.isItalic) { toolVM.toggleItalic() }
+            textFormatButton("U", isUnderline: true, isActive: toolVM.isUnderline) { toolVM.toggleUnderline() }
+            textFormatButton("S", isStrikethrough: true, isActive: toolVM.isStrikethrough) { toolVM.toggleStrikethrough() }
             highlightMenuButton
+            listMenuButton
+        }
+    }
+
+    /// 목록 스타일 선택 메뉴
+    private var listMenuButton: some View {
+        Menu {
+            Button {
+                viewModel.editorToolbarViewModel.applyList(.bullet)
+            } label: {
+                Label("구분점", systemImage: "list.bullet")
+            }
+            Button {
+                viewModel.editorToolbarViewModel.applyList(.dash)
+            } label: {
+                Label("대시선", systemImage: "list.dash")
+            }
+            Button {
+                viewModel.editorToolbarViewModel.applyList(.number)
+            } label: {
+                Label("숫자", systemImage: "list.number")
+            }
+        } label: {
+            Image(systemName: "list.bullet")
+                .font(.system(size: Constants.toolButtonIconSize))
+                .foregroundStyle(.black)
+                .frame(width: Constants.toolButtonFrame.width, height: Constants.toolButtonFrame.height)
+                .padding(DefaultConstant.defaultBtnPadding)
         }
     }
 
@@ -393,11 +429,21 @@ struct NoticeEditorView: View {
         }
     }
 
-    /// 서식 텍스트 버튼 (B/I/U/S)
-    private func textFormatButton(_ title: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+    /// 서식 텍스트 버튼 (B/I/U/S) — 실제 서식 미리보기 적용
+    private func textFormatButton(
+        _ title: String,
+        weight: Font.Weight = .regular,
+        isItalic: Bool = false,
+        isUnderline: Bool = false,
+        isStrikethrough: Bool = false,
+        isActive: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: Constants.toolButtonIconSize, weight: isActive ? .semibold : .regular))
+                .font(.system(size: Constants.toolButtonIconSize, weight: weight).italic(isItalic))
+                .underline(isUnderline)
+                .strikethrough(isStrikethrough)
                 .foregroundStyle(isActive ? Color.indigo500 : .black)
                 .frame(width: Constants.toolButtonFrame.width, height: Constants.toolButtonFrame.height)
                 .padding(DefaultConstant.defaultBtnPadding)
@@ -772,7 +818,9 @@ struct NoticeEditorView: View {
 
     /// AI 도우미 버튼 탭
     private func handleTapAI() {
-        // 추후 AI 기능 시트 연결
+        Task {
+            await viewModel.improveContentWithAI()
+        }
     }
 
     // MARK: - Helper
@@ -837,5 +885,50 @@ private enum HighlightColor: CaseIterable {
             ctx.cgContext.fillEllipse(in: CGRect(origin: .zero, size: size))
         }
         return image.withRenderingMode(.alwaysOriginal)
+    }
+}
+
+// MARK: - AILoadingOverlay
+
+/// AI 글 개선 처리 중 표시되는 전체 화면 로딩 오버레이입니다.
+private struct AILoadingOverlay: View {
+    let streamingText: String
+
+    private enum Constants {
+        static let overlayOpacity: Double = 0.55
+        static let cardCornerRadius: CGFloat = 20
+        static let iconSize: CGFloat = 36
+        static let cardPadding: EdgeInsets = .init(top: 24, leading: 28, bottom: 24, trailing: 28)
+        static let cardMaxWidth: CGFloat = 300
+        static let streamingLineLimit: Int = 3
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(Constants.overlayOpacity)
+                .ignoresSafeArea()
+
+            VStack(spacing: DefaultSpacing.spacing16) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: Constants.iconSize, weight: .medium))
+                    .foregroundStyle(.indigo500)
+                    .symbolEffect(.variableColor.iterative.reversing)
+
+                Text("AI가 글을 개선하고 있어요...")
+                    .appFont(.calloutEmphasis)
+                    .multilineTextAlignment(.center)
+
+                if !streamingText.isEmpty {
+                    Text(streamingText)
+                        .appFont(.footnote, color: .grey500)
+                        .lineLimit(Constants.streamingLineLimit)
+                        .multilineTextAlignment(.center)
+                        .animation(.easeInOut(duration: 0.15), value: streamingText)
+                }
+            }
+            .padding(Constants.cardPadding)
+            .frame(maxWidth: Constants.cardMaxWidth)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Constants.cardCornerRadius))
+        }
     }
 }

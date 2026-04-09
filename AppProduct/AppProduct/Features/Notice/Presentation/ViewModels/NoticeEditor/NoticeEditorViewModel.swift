@@ -151,6 +151,14 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     /// 알림 발송 여부
     var allowAlert: Bool = true
 
+    // MARK: - AI State
+
+    /// AI 글 개선 처리 중 여부
+    var isAIProcessing: Bool = false
+
+    /// AI 스트리밍 진행 중 현재까지 생성된 텍스트 (진행 상황 표시용)
+    var aiStreamingText: String = ""
+
     // MARK: - Edit Snapshot
 
     /// 수정 화면 원본 제목

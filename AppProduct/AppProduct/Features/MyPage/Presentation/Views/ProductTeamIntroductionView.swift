@@ -2,7 +2,7 @@
 //  ProductTeamIntroductionView.swift
 //  AppProduct
 //
-//  Created by Codex on 3/13/26.
+//  Created by euijjang97 on 3/13/26.
 //
 
 import SwiftUI

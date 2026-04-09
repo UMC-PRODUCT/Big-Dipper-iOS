@@ -2,7 +2,7 @@
 //  FormatPanelView.swift
 //  AppProduct
 //
-//  Created by OpenAI euijjang97 on 4/8/26.
+//  Created by euijjang97 on 4/8/26.
 //
 
 import SwiftUI
@@ -13,21 +13,21 @@ fileprivate struct HighlightOption {
 }
 
 fileprivate enum Constants {
-    static let containerSpacing: CGFloat = 16
-    static let containerPadding: CGFloat = 16
+    static let containerSpacing: CGFloat = 20
+    static let containerPadding: CGFloat = 20
     static let containerCornerRadius: CGFloat = 16
-    static let paragraphSpacing: CGFloat = 8
+    static let paragraphSpacing: CGFloat = 10
     static let paragraphRowVerticalPadding: CGFloat = 2
-    static let paragraphHorizontalPadding: CGFloat = 14
-    static let paragraphVerticalPadding: CGFloat = 8
-    static let controlSpacing: CGFloat = 6
-    static let controlButtonSize: CGFloat = 30
+    static let paragraphHorizontalPadding: CGFloat = 16
+    static let paragraphVerticalPadding: CGFloat = 10
+    static let controlSpacing: CGFloat = 8
+    static let controlButtonSize: CGFloat = 38
     static let controlCornerRadius: CGFloat = 10
-    static let closeButtonSize: CGFloat = 28
-    static let indicatorSize: CGFloat = 14
-    static let paletteSpacing: CGFloat = 6
+    static let closeButtonSize: CGFloat = 34
+    static let indicatorSize: CGFloat = 16
+    static let paletteSpacing: CGFloat = 8
     static let paletteTopPadding: CGFloat = 8
-    static let paletteCircleSize: CGFloat = 20
+    static let paletteCircleSize: CGFloat = 24
     static let activeColor: Color = .indigo500
     static let inactiveBackgroundColor: Color = .secondary.opacity(0.14)
     static let inactiveForegroundColor: Color = .secondary
@@ -65,12 +65,7 @@ struct FormatPanelView: View {
             listRow
         }
         .padding(Constants.containerPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: Constants.containerCornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: Constants.containerCornerRadius, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var header: some View {
@@ -102,7 +97,8 @@ struct FormatPanelView: View {
                         viewModel.applyParagraphStyle(style)
                     } label: {
                         Text(paragraphTitle(for: style))
-                            .appFont(.subheadlineEmphasis, color: paragraphForegroundColor(for: style))
+                            .font(paragraphPreviewFont(for: style))
+                            .foregroundStyle(paragraphForegroundColor(for: style))
                             .lineLimit(1)
                             .padding(.horizontal, Constants.paragraphHorizontalPadding)
                             .padding(.vertical, Constants.paragraphVerticalPadding)
@@ -123,6 +119,7 @@ struct FormatPanelView: View {
             HStack(spacing: Constants.controlSpacing) {
                 formatToggleButton(
                     title: "B",
+                    previewStyle: .bold,
                     isActive: viewModel.isBold,
                     accessibilityLabel: "굵게"
                 ) {
@@ -131,6 +128,7 @@ struct FormatPanelView: View {
 
                 formatToggleButton(
                     title: "I",
+                    previewStyle: .italic,
                     isActive: viewModel.isItalic,
                     accessibilityLabel: "기울임"
                 ) {
@@ -139,6 +137,7 @@ struct FormatPanelView: View {
 
                 formatToggleButton(
                     title: "U",
+                    previewStyle: .underline,
                     isActive: viewModel.isUnderline,
                     accessibilityLabel: "밑줄"
                 ) {
@@ -147,6 +146,7 @@ struct FormatPanelView: View {
 
                 formatToggleButton(
                     title: "S",
+                    previewStyle: .strikethrough,
                     isActive: viewModel.isStrikethrough,
                     accessibilityLabel: "취소선"
                 ) {
@@ -235,20 +235,6 @@ struct FormatPanelView: View {
             }
 
             iconButton(
-                systemName: "decrease.indent",
-                accessibilityLabel: "내어쓰기"
-            ) {
-                viewModel.applyOutdent()
-            }
-
-            iconButton(
-                systemName: "increase.indent",
-                accessibilityLabel: "들여쓰기"
-            ) {
-                viewModel.applyIndent()
-            }
-
-            iconButton(
                 systemName: "text.quote",
                 isActive: viewModel.isBlockquote,
                 accessibilityLabel: "인용구"
@@ -259,6 +245,21 @@ struct FormatPanelView: View {
     }
 
     // MARK: - Private
+
+    private func paragraphPreviewFont(for style: EditorParagraphStyle) -> Font {
+        switch style {
+        case .title:
+            return .system(size: 22, weight: .bold)
+        case .heading:
+            return .system(size: 17, weight: .bold)
+        case .subheading:
+            return .system(size: 15, weight: .semibold)
+        case .body:
+            return .system(size: 15, weight: .regular)
+        case .mono:
+            return .system(size: 14, weight: .regular, design: .monospaced)
+        }
+    }
 
     private func paragraphTitle(for style: EditorParagraphStyle) -> String {
         switch style {
@@ -283,21 +284,37 @@ struct FormatPanelView: View {
         viewModel.paragraphStyle == style ? Constants.activeForegroundColor : Constants.inactiveForegroundColor
     }
 
+    private enum InlineFormatStyle {
+        case bold, italic, underline, strikethrough
+    }
+
     private func formatToggleButton(
         title: String,
+        previewStyle: InlineFormatStyle,
         isActive: Bool,
         accessibilityLabel: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: .bold, design: .default))
+                .font(previewFont(for: previewStyle))
+                .underline(previewStyle == .underline)
+                .strikethrough(previewStyle == .strikethrough)
                 .frame(width: Constants.controlButtonSize, height: Constants.controlButtonSize)
                 .foregroundStyle(isActive ? Constants.activeForegroundColor : Constants.inactiveForegroundColor)
                 .background(buttonBackground(isActive: isActive))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func previewFont(for style: InlineFormatStyle) -> Font {
+        switch style {
+        case .bold:       return .system(size: 18, weight: .bold)
+        case .italic:     return .system(size: 18, weight: .regular).italic()
+        case .underline:  return .system(size: 16, weight: .regular)
+        case .strikethrough: return .system(size: 16, weight: .regular)
+        }
     }
 
     private func iconButton(
@@ -308,7 +325,7 @@ struct FormatPanelView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .frame(width: Constants.controlButtonSize, height: Constants.controlButtonSize)
                 .foregroundStyle(isActive ? Constants.activeForegroundColor : Constants.inactiveForegroundColor)
                 .background(buttonBackground(isActive: isActive))

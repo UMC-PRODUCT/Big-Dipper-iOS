@@ -2,7 +2,7 @@
 //  EditorToolbarViewModel+RangeHelpers.swift
 //  AppProduct
 //
-//  Created by Codex on 4/8/26.
+//  Created by euijjang97 on 4/8/26.
 //
 
 import Foundation

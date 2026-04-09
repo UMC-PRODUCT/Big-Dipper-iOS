@@ -2,7 +2,7 @@
 //  MarkdownSerializer.swift
 //  AppProduct
 //
-//  Created by Codex on 4/8/26.
+//  Created by euijjang97 on 4/8/26.
 //
 
 import Foundation
@@ -54,6 +54,13 @@ enum MarkdownSerializer {
         return markdown
     }
 
+    // MARK: - Plain Text
+
+    /// 마크다운 문자열에서 모든 서식을 제거하고 plain text를 반환합니다.
+    static func plainText(from markdown: String) -> String {
+        deserialize(markdown, baseFont: UIFont.preferredFont(forTextStyle: .body)).string
+    }
+
     // MARK: - Deserialize
 
     static func deserialize(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
@@ -93,6 +100,7 @@ enum MarkdownSerializer {
         var isUnderlined = false
         var isStruck = false
         var isMonospaced = false
+        var highlightColor: UIColor?
         var linkURL: URL?
         var fontSize: CGFloat?
         var paragraphStyle: NSParagraphStyle?
@@ -103,6 +111,7 @@ enum MarkdownSerializer {
         case link
         case underline
         case strikethrough
+        case highlight
         case boldItalicMixed
         case boldItalicStars
         case bold
@@ -262,6 +271,7 @@ enum MarkdownSerializer {
         let isMonospaced = traits.contains(.traitMonoSpace) || font?.familyName.lowercased().contains("mono") == true
         let isUnderlined = (attributes[.underlineStyle] as? NSNumber)?.intValue ?? 0 != 0
         let isStruck = (attributes[.strikethroughStyle] as? NSNumber)?.intValue ?? 0 != 0
+        let highlightColor = attributes[.backgroundColor] as? UIColor
         let linkValue = attributes[.link]
 
         var content = escapeMarkdownText(text)
@@ -292,6 +302,14 @@ enum MarkdownSerializer {
         if isStruck && isMonospaced == false {
             // Strikethrough → ~~텍스트~~
             content = "~~\(content)~~"
+        }
+
+        if let highlightColor, isMonospaced == false {
+            // Highlight → <mark color="R,G,B,A">텍스트</mark>
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            highlightColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+            let colorCode = String(format: "%.3f,%.3f,%.3f,%.3f", r, g, b, a)
+            content = "<mark color=\"\(colorCode)\">\(content)</mark>"
         }
 
         if let linkValue {
@@ -464,6 +482,21 @@ enum MarkdownSerializer {
                 let underlineText = (remainingText as NSString).substring(with: token.match.range(at: 1))
                 mutableAttributedString.append(parseInlineMarkdown(underlineText, baseFont: baseFont, style: underlineStyle))
 
+            case .highlight:
+                // <mark color="R,G,B,A">텍스트</mark> → backgroundColor
+                var highlightStyle = style
+                let colorRange = token.match.range(at: 1)
+                let textRange = token.match.range(at: 2)
+                if colorRange.location != NSNotFound,
+                   let colorCode = Range(colorRange, in: remainingText).map({ String(remainingText[$0]) }),
+                   let uiColor = uiColor(fromCode: colorCode) {
+                    highlightStyle.highlightColor = uiColor
+                } else {
+                    highlightStyle.highlightColor = UIColor.yellow.withAlphaComponent(0.4)
+                }
+                let highlightText = (remainingText as NSString).substring(with: textRange)
+                mutableAttributedString.append(parseInlineMarkdown(highlightText, baseFont: baseFont, style: highlightStyle))
+
             case .strikethrough:
                 // ~~텍스트~~ → Strikethrough
                 var strikeStyle = style
@@ -508,6 +541,7 @@ enum MarkdownSerializer {
             (.link, "(?<!\\\\)\\[([^\\n\\]]+?)\\]\\(([^)\\n]+?)\\)"),
             (.underline, "(?<!\\\\)<u>(.+?)</u>"),
             (.strikethrough, "(?<!\\\\)~~(?=\\S)(.+?)(?<=\\S)~~"),
+            (.highlight, "<mark(?:\\s+color=\"([^\"]*)\")?>(.+?)</mark>"),
             (.boldItalicMixed, "(?<!\\\\)\\*\\*_(.+?)_\\*\\*"),
             (.boldItalicStars, "(?<!\\\\)\\*\\*\\*(.+?)\\*\\*\\*"),
             (.bold, "(?<!\\\\)\\*\\*(?=\\S)(.+?)(?<=\\S)\\*\\*"),
@@ -580,6 +614,10 @@ enum MarkdownSerializer {
             attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
         }
 
+        if let highlightColor = style.highlightColor {
+            attributes[.backgroundColor] = highlightColor
+        }
+
         if let paragraphStyle = style.paragraphStyle {
             attributes[.paragraphStyle] = paragraphStyle
         }
@@ -589,6 +627,12 @@ enum MarkdownSerializer {
         }
 
         return attributes
+    }
+
+    private static func uiColor(fromCode code: String) -> UIColor? {
+        let parts = code.split(separator: ",").compactMap { Double($0) }
+        guard parts.count == 4 else { return nil }
+        return UIColor(red: CGFloat(parts[0]), green: CGFloat(parts[1]), blue: CGFloat(parts[2]), alpha: CGFloat(parts[3]))
     }
 
     private static func font(for style: InlineStyle, baseFont: UIFont) -> UIFont {

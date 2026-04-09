@@ -16,7 +16,7 @@ final class EditorToolbarViewModel {
     // MARK: - Property
 
     /// 블록 인용문에 적용할 기본 들여쓰기 값입니다.
-    private let blockquoteIndent: CGFloat = 24
+    private let blockquoteIndent: CGFloat = 14
 
     /// 일반 들여쓰기 증감 단위입니다.
     private let indentStep: CGFloat = 24
@@ -26,6 +26,9 @@ final class EditorToolbarViewModel {
 
     /// 포맷 패널 노출 여부입니다.
     private(set) var isFormatPanelVisible: Bool = false
+
+    /// 에디터(리치 텍스트 뷰)가 포커스 상태인지 여부입니다.
+    private(set) var isEditorActive: Bool = false
 
     /// 선택 영역이 굵게 표시되는지 여부입니다.
     private(set) var isBold: Bool = false
@@ -128,6 +131,7 @@ final class EditorToolbarViewModel {
         }
         storage.endEditing()
 
+        onFormattingApplied?()
         syncFormattingState()
     }
 
@@ -142,6 +146,7 @@ final class EditorToolbarViewModel {
         storage.addAttribute(.font, value: font, range: paragraphRange)
         storage.endEditing()
 
+        onFormattingApplied?()
         syncFormattingState()
     }
 
@@ -160,12 +165,29 @@ final class EditorToolbarViewModel {
             length: existingPrefixRange?.length ?? 0
         )
 
+        // 삽입할 접두사에 적용할 폰트: 기존 단락 본문의 폰트 → typingAttributes 폰트 → body 기본폰트 순으로 사용
+        let contentOffset = replacementRange.location + (existingPrefixRange?.length ?? 0)
+        let prefixFont: UIFont
+        if contentOffset < storage.length {
+            prefixFont = storage.attribute(.font, at: contentOffset, effectiveRange: nil) as? UIFont
+                ?? textView?.typingAttributes[.font] as? UIFont
+                ?? font(for: .body)
+        } else {
+            prefixFont = textView?.typingAttributes[.font] as? UIFont ?? font(for: .body)
+        }
+
         storage.beginEditing()
         storage.replaceCharacters(in: replacementRange, with: prefix)
+        let insertedRange = NSRange(location: replacementRange.location, length: prefix.utf16.count)
+        storage.addAttribute(.font, value: prefixFont, range: insertedRange)
         storage.addAttribute(.editorListStyle, value: listStyleIdentifier(for: style), range: currentParagraphRange(in: storage))
         storage.endEditing()
 
-        adjustSelectedRange(forReplacing: replacementRange, with: prefix.utf16.count)
+        // 접두사 삽입 후 커서를 접두사 바로 뒤로 이동
+        let cursorAfterPrefix = NSRange(location: replacementRange.location + prefix.utf16.count, length: 0)
+        selectedRange = cursorAfterPrefix
+        textView?.selectedRange = cursorAfterPrefix
+        onFormattingApplied?()
         syncFormattingState()
     }
 
@@ -200,6 +222,7 @@ final class EditorToolbarViewModel {
         // 이후 입력 텍스트에도 적용 (typingAttributes)
         textView?.typingAttributes[.backgroundColor] = uiColor
 
+        onFormattingApplied?()
         syncFormattingState()
     }
 
@@ -221,6 +244,7 @@ final class EditorToolbarViewModel {
         // 이후 입력 텍스트 하이라이트 해제
         textView?.typingAttributes.removeValue(forKey: .backgroundColor)
 
+        onFormattingApplied?()
         syncFormattingState()
     }
 
@@ -242,6 +266,14 @@ final class EditorToolbarViewModel {
         isFormatPanelVisible = false
     }
 
+    /// 에디터 포커스 상태를 설정합니다.
+    func setEditorActive(_ active: Bool) {
+        isEditorActive = active
+    }
+
+    /// 서식이 실제로 변경된 후 호출됩니다. (attributedText 바인딩 동기화용)
+    var onFormattingApplied: (() -> Void)?
+
     /// 선택 영역의 실제 속성을 읽어 툴바 상태를 동기화합니다.
     @MainActor
     func syncFormattingState() {
@@ -260,10 +292,18 @@ final class EditorToolbarViewModel {
             toolbarMode = clampedRange.length > 0 ? .textSelected : .default
         }
 
-        isBold = resolvedSyncRange.map { rangeHasUniformFontTrait($0, trait: .traitBold, in: storage) } ?? false
-        isItalic = resolvedSyncRange.map { rangeHasUniformFontTrait($0, trait: .traitItalic, in: storage) } ?? false
-        isUnderline = resolvedSyncRange.map { rangeHasUniformTextDecoration($0, key: .underlineStyle, in: storage) } ?? false
-        isStrikethrough = resolvedSyncRange.map { rangeHasUniformTextDecoration($0, key: .strikethroughStyle, in: storage) } ?? false
+        if clampedRange.length == 0, let tv = textView {
+            let typingFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
+            isBold = typingFont.fontDescriptor.symbolicTraits.contains(.traitBold)
+            isItalic = typingFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            isUnderline = (tv.typingAttributes[.underlineStyle] as? Int ?? 0) > 0
+            isStrikethrough = (tv.typingAttributes[.strikethroughStyle] as? Int ?? 0) > 0
+        } else {
+            isBold = resolvedSyncRange.map { rangeHasUniformFontTrait($0, trait: .traitBold, in: storage) } ?? false
+            isItalic = resolvedSyncRange.map { rangeHasUniformFontTrait($0, trait: .traitItalic, in: storage) } ?? false
+            isUnderline = resolvedSyncRange.map { rangeHasUniformTextDecoration($0, key: .underlineStyle, in: storage) } ?? false
+            isStrikethrough = resolvedSyncRange.map { rangeHasUniformTextDecoration($0, key: .strikethroughStyle, in: storage) } ?? false
+        }
         isBlockquote = isBlockquoteAttributeEnabled(at: paragraphLocation, in: storage)
         paragraphStyle = detectedParagraphStyle(at: paragraphLocation, in: storage)
         activeListStyle = detectedListStyle(in: paragraphRange, storage: storage)
@@ -277,15 +317,20 @@ final class EditorToolbarViewModel {
     private func toggleFontTrait(_ trait: UIFontDescriptor.SymbolicTraits, shouldEnable: Bool) {
         guard let storage = textStorage else { return }
         let clampedRange = clampedSelectedRange(in: storage)
-        guard clampedRange.length > 0 else { return }
 
-        storage.beginEditing()
-        storage.enumerateAttribute(.font, in: clampedRange) { value, range, _ in
-            let currentFont = resolvedFont(from: value, at: range.location, in: storage)
-            let updatedFont = updatedFont(from: currentFont, toggling: trait, enabled: shouldEnable)
-            storage.addAttribute(.font, value: updatedFont, range: range)
+        if clampedRange.length > 0 {
+            storage.beginEditing()
+            storage.enumerateAttribute(.font, in: clampedRange) { value, range, _ in
+                let currentFont = resolvedFont(from: value, at: range.location, in: storage)
+                let updatedFont = updatedFont(from: currentFont, toggling: trait, enabled: shouldEnable)
+                storage.addAttribute(.font, value: updatedFont, range: range)
+            }
+            storage.endEditing()
+            onFormattingApplied?()
+        } else if let tv = textView {
+            let currentFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
+            tv.typingAttributes[.font] = updatedFont(from: currentFont, toggling: trait, enabled: shouldEnable)
         }
-        storage.endEditing()
 
         syncFormattingState()
     }
@@ -295,15 +340,23 @@ final class EditorToolbarViewModel {
     private func toggleTextDecoration(_ key: NSAttributedString.Key, enabled: Bool, style: Int) {
         guard let storage = textStorage else { return }
         let clampedRange = clampedSelectedRange(in: storage)
-        guard clampedRange.length > 0 else { return }
 
-        storage.beginEditing()
-        if enabled {
-            storage.addAttribute(key, value: style, range: clampedRange)
-        } else {
-            storage.removeAttribute(key, range: clampedRange)
+        if clampedRange.length > 0 {
+            storage.beginEditing()
+            if enabled {
+                storage.addAttribute(key, value: style, range: clampedRange)
+            } else {
+                storage.removeAttribute(key, range: clampedRange)
+            }
+            storage.endEditing()
+            onFormattingApplied?()
+        } else if let tv = textView {
+            if enabled {
+                tv.typingAttributes[key] = style
+            } else {
+                tv.typingAttributes.removeValue(forKey: key)
+            }
         }
-        storage.endEditing()
 
         syncFormattingState()
     }
@@ -338,6 +391,7 @@ final class EditorToolbarViewModel {
         }
 
         storage.endEditing()
+        onFormattingApplied?()
         syncFormattingState()
     }
 
