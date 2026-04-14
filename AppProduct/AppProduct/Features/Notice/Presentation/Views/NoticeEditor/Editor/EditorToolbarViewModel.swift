@@ -16,7 +16,7 @@ final class EditorToolbarViewModel {
     // MARK: - Property
 
     /// 블록 인용문에 적용할 기본 들여쓰기 값입니다.
-    private let blockquoteIndent: CGFloat = 14
+    private let blockquoteIndent: CGFloat = EditorConstants.blockquoteIndent
 
     /// 일반 들여쓰기 증감 단위입니다.
     private let indentStep: CGFloat = 24
@@ -171,6 +171,9 @@ final class EditorToolbarViewModel {
         storage.beginEditing()
         storage.addAttribute(.font, value: font, range: paragraphRange)
         storage.endEditing()
+
+        // 커서 이후 입력 텍스트에도 동일한 폰트가 적용되도록 typingAttributes 동기화
+        textView?.typingAttributes[.font] = font
 
         onFormattingApplied?()
         syncFormattingState()
@@ -342,7 +345,12 @@ final class EditorToolbarViewModel {
         if clampedRange.length == 0, let tv = textView {
             let typingFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
             isBold = typingFont.fontDescriptor.symbolicTraits.contains(.traitBold)
-            isItalic = typingFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            // Pretendard italic은 oblique matrix로 표현되므로 matrix.c 값도 함께 확인합니다.
+            if typingFont.fontName.hasPrefix("Pretendard") {
+                isItalic = typingFont.fontDescriptor.matrix.c != 0.0
+            } else {
+                isItalic = typingFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
+            }
             isUnderline = (tv.typingAttributes[.underlineStyle] as? Int ?? 0) > 0
             isStrikethrough = (tv.typingAttributes[.strikethroughStyle] as? Int ?? 0) > 0
         } else {
@@ -354,7 +362,18 @@ final class EditorToolbarViewModel {
         isBlockquote = isBlockquoteAttributeEnabled(at: paragraphLocation, in: storage)
         paragraphStyle = detectedParagraphStyle(at: paragraphLocation, in: storage)
         activeListStyle = detectedListStyle(in: paragraphRange, storage: storage)
-        highlightColor = resolvedSyncRange.flatMap { uniformHighlightColor(in: $0, storage: storage) }
+
+        // 선택 없을 때: typingAttributes 기준으로 하이라이트 상태를 읽어
+        // clearHighlight() 이후에도 커서가 하이라이트된 텍스트 위에 있으면 툴바가 잘못 활성화되는 문제를 방지합니다.
+        if clampedRange.length == 0, let tv = textView {
+            if let uiColor = tv.typingAttributes[.backgroundColor] as? UIColor {
+                highlightColor = Color(uiColor: uiColor)
+            } else {
+                highlightColor = nil
+            }
+        } else {
+            highlightColor = resolvedSyncRange.flatMap { uniformHighlightColor(in: $0, storage: storage) }
+        }
     }
 
     // MARK: - Private

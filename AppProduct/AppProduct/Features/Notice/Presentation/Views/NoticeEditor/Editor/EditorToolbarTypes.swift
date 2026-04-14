@@ -30,6 +30,12 @@ enum EditorListStyle {
     case number
 }
 
+/// 공지 에디터 전역 상수입니다.
+enum EditorConstants {
+    /// 블록 인용문에 적용되는 들여쓰기(pt) 값입니다. 에디터와 역직렬화에서 공통 사용합니다.
+    static let blockquoteIndent: CGFloat = 14
+}
+
 extension NSAttributedString.Key {
 
     /// 블록 인용문 적용 여부를 저장하는 키입니다.

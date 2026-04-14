@@ -45,7 +45,7 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.isScrollEnabled = false
         textView.backgroundColor = .clear
-        textView.font = UIFont.preferredFont(forTextStyle: .body)
+        textView.font = UIFont(name: "Pretendard-Regular", size: 16) ?? UIFont.preferredFont(forTextStyle: .body)
         textView.adjustsFontForContentSizeCategory = true
         textView.attributedText = attributedText
 
@@ -125,7 +125,10 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             guard text == "\n", let bqTextView = textView as? BlockquoteTextView else { return true }
-            return handleReturnInBlockquote(textView: bqTextView, range: range)
+            // blockquote Enter 처리를 먼저 시도합니다. 처리됐으면 list 처리는 건너뜁니다.
+            if !handleReturnInBlockquote(textView: bqTextView, range: range) { return false }
+            // 목록 Enter 처리를 시도합니다.
+            return handleReturnInList(textView: bqTextView, range: range)
         }
 
         /// 인용구 단락에서 Enter 키 입력을 처리합니다.
@@ -217,6 +220,120 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
             parent.toolbarViewModel.selectedRange = NSRange(location: newCursor, length: 0)
             parent.toolbarViewModel.syncFormattingState()
             return false
+        }
+
+        /// 목록 단락에서 Enter 키 입력을 처리합니다.
+        /// - 반환값: true이면 UIKit이 기본 Enter 처리를 수행, false이면 직접 처리 완료
+        private func handleReturnInList(textView: BlockquoteTextView, range: NSRange) -> Bool {
+            let storage = textView.textStorage
+            guard storage.length > 0 else { return true }
+
+            let safeLocation = min(range.location, max(0, storage.length - 1))
+            let nsString = storage.string as NSString
+            let paragraphRange = nsString.paragraphRange(for: NSRange(location: safeLocation, length: 0))
+            let paragraphText = nsString.substring(with: paragraphRange)
+
+            guard let (prefix, listKind) = detectListPrefix(in: paragraphText) else {
+                return true
+            }
+
+            // 접두사 이후 실제 콘텐츠 존재 여부 확인
+            let contentAfterPrefix = String(paragraphText.dropFirst(prefix.count))
+            let hasContent = contentAfterPrefix.contains { !$0.isNewline && !$0.isWhitespace }
+
+            if !hasContent {
+                // 빈 목록 줄 → 접두사만 제거하고 목록 탈출
+                let prefixNSLength = (prefix as NSString).length
+                let removeRange = NSRange(location: paragraphRange.location, length: prefixNSLength)
+                let fontLocation = min(paragraphRange.location, storage.length - 1)
+                let currentFont = storage.attribute(.font, at: fontLocation, effectiveRange: nil) as? UIFont
+                    ?? UIFont.preferredFont(forTextStyle: .body)
+
+                storage.beginEditing()
+                storage.replaceCharacters(in: removeRange, with: "")
+                let updatedParagraphRange = (storage.string as NSString)
+                    .paragraphRange(for: NSRange(location: paragraphRange.location, length: 0))
+                storage.removeAttribute(.editorListStyle, range: updatedParagraphRange)
+                storage.endEditing()
+
+                textView.typingAttributes[.font] = currentFont
+                let newCursor = NSRange(location: removeRange.location, length: 0)
+                textView.selectedRange = newCursor
+                parent.attributedText = textView.attributedText
+                parent.toolbarViewModel.selectedRange = newCursor
+                parent.toolbarViewModel.syncFormattingState()
+                return false
+            }
+
+            // 내용 있는 목록 줄 → 다음 항목 접두사를 자동으로 이어받습니다
+            let nextPrefix = nextListPrefix(for: listKind, currentPrefix: prefix)
+            let fontLocation = range.location > 0 ? min(range.location - 1, storage.length - 1) : 0
+            let currentFont = storage.attribute(.font, at: fontLocation, effectiveRange: nil) as? UIFont
+                ?? textView.typingAttributes[.font] as? UIFont
+                ?? UIFont.preferredFont(forTextStyle: .body)
+            let listStyleID = listStyleID(for: listKind)
+
+            let newLineString = "\n" + nextPrefix
+            let newLineAttributed = NSMutableAttributedString(string: newLineString)
+            newLineAttributed.addAttribute(
+                .font, value: currentFont,
+                range: NSRange(location: 0, length: (newLineString as NSString).length)
+            )
+
+            storage.beginEditing()
+            storage.replaceCharacters(in: range, with: newLineAttributed)
+            let insertedEnd = range.location + (newLineString as NSString).length
+            let newParagraphLocation = min(insertedEnd, max(0, storage.length - 1))
+            let newParagraphRange = (storage.string as NSString)
+                .paragraphRange(for: NSRange(location: newParagraphLocation, length: 0))
+            storage.addAttribute(.editorListStyle, value: listStyleID, range: newParagraphRange)
+            storage.endEditing()
+
+            let newCursor = range.location + (newLineString as NSString).length
+            textView.selectedRange = NSRange(location: newCursor, length: 0)
+            textView.typingAttributes[.font] = currentFont
+
+            parent.attributedText = textView.attributedText
+            parent.toolbarViewModel.selectedRange = NSRange(location: newCursor, length: 0)
+            parent.toolbarViewModel.syncFormattingState()
+            return false
+        }
+
+        /// 단락 텍스트에서 목록 접두사와 종류를 감지합니다.
+        private func detectListPrefix(in paragraphText: String) -> (prefix: String, kind: EditorListStyle)? {
+            if paragraphText.hasPrefix("• ") { return ("• ", .bullet) }
+            if paragraphText.hasPrefix("– ") { return ("– ", .dash) }
+
+            let nsText = paragraphText as NSString
+            let fullRange = NSRange(location: 0, length: nsText.length)
+            guard let regex = try? NSRegularExpression(pattern: "^(\\d+)\\.\\s+"),
+                  let match = regex.firstMatch(in: paragraphText, range: fullRange) else {
+                return nil
+            }
+
+            let prefix = nsText.substring(with: match.range)
+            return (prefix, .number)
+        }
+
+        /// 현재 접두사를 기반으로 다음 목록 항목의 접두사를 계산합니다.
+        private func nextListPrefix(for kind: EditorListStyle, currentPrefix: String) -> String {
+            switch kind {
+            case .bullet: return "• "
+            case .dash: return "– "
+            case .number:
+                let digits = currentPrefix.prefix(while: { $0.isNumber })
+                let currentNumber = Int(digits) ?? 1
+                return "\(currentNumber + 1). "
+            }
+        }
+
+        /// 목록 스타일에 대한 저장 식별자를 반환합니다.
+        private func listStyleID(for style: EditorListStyle) -> String {
+            switch style {
+            case .bullet: return "bullet"
+            case .dash: return "dash"
+            case .number: return "number"
+            }
         }
 
         func textViewDidChange(_ textView: UITextView) {

@@ -296,7 +296,7 @@ extension NoticeEditorViewModel {
         content = notice.content
         richAttributedContent = MarkdownSerializer.deserialize(
             notice.content,
-            baseFont: UIFont.preferredFont(forTextStyle: .body)
+            baseFont: UIFont(name: "Pretendard-Regular", size: 16) ?? UIFont.preferredFont(forTextStyle: .body)
         )
         originalTitle = notice.title
         originalContent = notice.content

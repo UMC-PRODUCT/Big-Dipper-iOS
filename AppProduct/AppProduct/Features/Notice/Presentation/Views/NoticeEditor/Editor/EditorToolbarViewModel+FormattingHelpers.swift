@@ -28,23 +28,52 @@ extension EditorToolbarViewModel {
     }
 
     /// 지정한 단락 스타일에 대응하는 폰트를 반환합니다.
+    ///
+    /// 에디터와 상세 화면이 동일한 Pretendard 폰트를 사용하도록 Pretendard 기반으로 반환합니다.
+    /// Pretendard 폰트를 찾지 못한 경우 시스템 폰트로 폴백합니다.
     func font(for style: EditorParagraphStyle) -> UIFont {
         switch style {
         case .title:
-            return .systemFont(ofSize: 28, weight: .bold)
+            return UIFont(name: "Pretendard-Bold", size: 28) ?? .systemFont(ofSize: 28, weight: .bold)
         case .heading:
-            return .systemFont(ofSize: 22, weight: .bold)
+            return UIFont(name: "Pretendard-Bold", size: 22) ?? .systemFont(ofSize: 22, weight: .bold)
         case .subheading:
-            return .systemFont(ofSize: 17, weight: .semibold)
+            return UIFont(name: "Pretendard-SemiBold", size: 17) ?? .systemFont(ofSize: 17, weight: .semibold)
         case .body:
-            return .systemFont(ofSize: 16, weight: .regular)
+            return UIFont(name: "Pretendard-Regular", size: 16) ?? .systemFont(ofSize: 16, weight: .regular)
         case .mono:
             return .monospacedSystemFont(ofSize: 14, weight: .regular)
         }
     }
 
     /// 폰트의 심볼릭 트레이트 토글 결과를 계산합니다.
+    ///
+    /// Pretendard 폰트는 italic 변형이 없으므로 oblique matrix로 기울임을 표현합니다.
     func updatedFont(from font: UIFont, toggling trait: UIFontDescriptor.SymbolicTraits, enabled: Bool) -> UIFont {
+        // Pretendard 폰트 전용 처리
+        if font.fontName.hasPrefix("Pretendard") {
+            let isBold = font.fontName.contains("Bold") || font.fontName.contains("SemiBold")
+            let isItalic = font.fontDescriptor.matrix.c != 0.0
+
+            let targetBold = (trait == .traitBold) ? enabled : isBold
+            let targetItalic = (trait == .traitItalic) ? enabled : isItalic
+
+            let baseFontName = targetBold ? "Pretendard-SemiBold" : "Pretendard-Regular"
+            var result = UIFont(name: baseFontName, size: font.pointSize) ?? font
+
+            if targetItalic {
+                let oblique = CGAffineTransform(
+                    a: 1, b: 0,
+                    c: CGFloat(tanf(12.0 * Float.pi / 180.0)),
+                    d: 1, tx: 0, ty: 0
+                )
+                let descriptor = result.fontDescriptor.withMatrix(oblique)
+                result = UIFont(descriptor: descriptor, size: font.pointSize)
+            }
+
+            return result
+        }
+
         var traits = font.fontDescriptor.symbolicTraits
         if enabled {
             traits.insert(trait)
@@ -76,6 +105,9 @@ extension EditorToolbarViewModel {
     // MARK: - Uniform Attribute Checks
 
     /// 주어진 범위의 모든 폰트가 동일 트레이트를 가지는지 확인합니다.
+    ///
+    /// Pretendard 폰트는 italic 변형이 없어 oblique matrix로 표현되므로,
+    /// `.traitItalic` 확인 시 matrix.c 값도 함께 감지합니다.
     func rangeHasUniformFontTrait(_ range: NSRange, trait: UIFontDescriptor.SymbolicTraits, in storage: NSTextStorage) -> Bool {
         guard range.length > 0 else { return false }
 
@@ -85,7 +117,15 @@ extension EditorToolbarViewModel {
             guard attributeRange.length > 0 else { return }
             hasContent = true
             let font = resolvedFont(from: value, at: attributeRange.location, in: storage)
-            if !font.fontDescriptor.symbolicTraits.contains(trait) {
+
+            let hasTrait: Bool
+            if font.fontName.hasPrefix("Pretendard") && trait == .traitItalic {
+                hasTrait = font.fontDescriptor.matrix.c != 0.0
+            } else {
+                hasTrait = font.fontDescriptor.symbolicTraits.contains(trait)
+            }
+
+            if !hasTrait {
                 isUniform = false
                 stop.pointee = true
             }

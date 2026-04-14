@@ -81,7 +81,7 @@ enum MarkdownSerializer {
 
             let blockContext = blockContext(for: attributedString, contentRange: contentRange)
             var line = blockContext.markdownPrefix
-            line.append(serializeInline(attributedString, range: blockContext.inlineRange))
+            line.append(serializeInline(attributedString, range: blockContext.inlineRange, blockImpliedBold: blockContext.blockImpliedBold))
 
             if blockContext.markdownPrefix.isEmpty {
                 line = escapeLeadingBlockSyntax(in: line)
@@ -167,6 +167,7 @@ enum MarkdownSerializer {
     private struct BlockContext {
         let markdownPrefix: String
         let inlineRange: NSRange
+        let blockImpliedBold: Bool
     }
 
     private struct DeserializedBlock {
@@ -230,7 +231,8 @@ enum MarkdownSerializer {
             // Bullet prefix • → - 텍스트
             return BlockContext(
                 markdownPrefix: "- ",
-                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length)
+                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length),
+                blockImpliedBold: false
             )
         }
 
@@ -239,7 +241,8 @@ enum MarkdownSerializer {
             // Dash prefix – → – 텍스트
             return BlockContext(
                 markdownPrefix: "– ",
-                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length)
+                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length),
+                blockImpliedBold: false
             )
         }
 
@@ -250,7 +253,8 @@ enum MarkdownSerializer {
             // Number prefix 숫자. → 1. 텍스트
             return BlockContext(
                 markdownPrefix: "\(marker). ",
-                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length)
+                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length),
+                blockImpliedBold: false
             )
         }
 
@@ -264,28 +268,28 @@ enum MarkdownSerializer {
 
         if let paragraphStyle, paragraphStyle.headIndent > 0 {
             // 인용구 (headIndent > 0) → > 텍스트
-            return BlockContext(markdownPrefix: "> ", inlineRange: contentRange)
+            return BlockContext(markdownPrefix: "> ", inlineRange: contentRange, blockImpliedBold: false)
         }
 
         if let font, abs(font.pointSize - 28) < 0.5 {
             // 단락 스타일 title (28pt) → # 텍스트
-            return BlockContext(markdownPrefix: "# ", inlineRange: contentRange)
+            return BlockContext(markdownPrefix: "# ", inlineRange: contentRange, blockImpliedBold: true)
         }
 
         if let font, abs(font.pointSize - 22) < 0.5 {
             // 단락 스타일 heading (22pt) → ## 텍스트
-            return BlockContext(markdownPrefix: "## ", inlineRange: contentRange)
+            return BlockContext(markdownPrefix: "## ", inlineRange: contentRange, blockImpliedBold: true)
         }
 
         if let font,
            abs(font.pointSize - 17) < 0.5,
            font.fontDescriptor.symbolicTraits.contains(.traitBold),
-           isEntireParagraphUniform(in: attributedString, range: contentRange) {
+           isParagraphDominantlySubheading(in: attributedString, range: contentRange) {
             // 단락 스타일 subheading (17pt) → ### 텍스트
-            return BlockContext(markdownPrefix: "### ", inlineRange: contentRange)
+            return BlockContext(markdownPrefix: "### ", inlineRange: contentRange, blockImpliedBold: true)
         }
 
-        return BlockContext(markdownPrefix: "", inlineRange: contentRange)
+        return BlockContext(markdownPrefix: "", inlineRange: contentRange, blockImpliedBold: false)
     }
 
     private static func firstNonWhitespaceOffset(in text: String) -> Int? {
@@ -299,31 +303,32 @@ enum MarkdownSerializer {
         return range.location
     }
 
-    private static func isEntireParagraphUniform(in attributedString: NSAttributedString, range: NSRange) -> Bool {
-        var attributesCount = 0
+    /// 단락 내 비공백 문자 전체가 17pt bold 폰트인지 확인합니다.
+    ///
+    /// 링크, 밑줄, bold-italic 복합 등 인라인 서식이 포함되어도 폰트 크기와 굵기가
+    /// subheading 조건을 만족하면 `###` 접두사를 붙일 수 있도록 합니다.
+    private static func isParagraphDominantlySubheading(in attributedString: NSAttributedString, range: NSRange) -> Bool {
+        var total = 0
+        var subheadingCount = 0
 
-        attributedString.enumerateAttributes(in: range) { attributes, effectiveRange, _ in
-            let substring = attributedString.attributedSubstring(from: effectiveRange).string
+        attributedString.enumerateAttribute(.font, in: range) { value, effectiveRange, _ in
+            let content = attributedString.attributedSubstring(from: effectiveRange).string
+                .filter { !$0.isWhitespace }
+            guard content.isEmpty == false else { return }
 
-            guard substring.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
-                return
-            }
+            total += content.count
 
-            attributesCount += 1
-
-            if attributesCount > 1 {
-                return
-            }
-
-            if attributes[.link] != nil || (attributes[.underlineStyle] as? NSNumber)?.intValue ?? 0 != 0 {
-                attributesCount += 1
+            if let font = value as? UIFont,
+               abs(font.pointSize - 17) < 0.5,
+               font.fontDescriptor.symbolicTraits.contains(.traitBold) {
+                subheadingCount += content.count
             }
         }
 
-        return attributesCount <= 1
+        return total > 0 && subheadingCount == total
     }
 
-    private static func serializeInline(_ attributedString: NSAttributedString, range: NSRange) -> String {
+    private static func serializeInline(_ attributedString: NSAttributedString, range: NSRange, blockImpliedBold: Bool = false) -> String {
         guard range.length > 0 else {
             return ""
         }
@@ -337,16 +342,17 @@ enum MarkdownSerializer {
                 return
             }
 
-            markdown.append(serializeSegment(text: text, attributes: attributes))
+            markdown.append(serializeSegment(text: text, attributes: attributes, blockImpliedBold: blockImpliedBold))
         }
 
         return markdown
     }
 
-    private static func serializeSegment(text: String, attributes: [NSAttributedString.Key: Any]) -> String {
+    private static func serializeSegment(text: String, attributes: [NSAttributedString.Key: Any], blockImpliedBold: Bool = false) -> String {
         let font = attributes[.font] as? UIFont
         let traits = font?.fontDescriptor.symbolicTraits ?? []
-        let isBold = traits.contains(.traitBold)
+        // 헤딩/부머리말 블록은 폰트 자체가 bold이므로, 블록 레벨에서 이미 implied된 bold는 인라인 ** 마커로 이중 래핑하지 않는다.
+        let isBold = traits.contains(.traitBold) && !blockImpliedBold
         let isItalic = traits.contains(.traitItalic)
         let isMonospaced = traits.contains(.traitMonoSpace) || font?.familyName.lowercased().contains("mono") == true
         let isUnderlined = (attributes[.underlineStyle] as? NSNumber)?.intValue ?? 0 != 0
@@ -412,7 +418,8 @@ enum MarkdownSerializer {
         var escaped = ""
 
         for character in text {
-            if "\\*_[]()~`".contains(character) {
+            // '<' 포함: 사용자가 직접 입력한 <u>, <mark> 등이 deserialize 시 마크다운 태그로 오파싱되는 것을 방지
+            if "\\*_[]()~`<".contains(character) {
                 escaped.append("\\")
             }
 
@@ -778,8 +785,8 @@ enum MarkdownSerializer {
 
     private static func quoteParagraphStyle() -> NSParagraphStyle {
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.firstLineHeadIndent = 16
-        paragraphStyle.headIndent = 16
+        paragraphStyle.firstLineHeadIndent = EditorConstants.blockquoteIndent
+        paragraphStyle.headIndent = EditorConstants.blockquoteIndent
         return paragraphStyle
     }
 }
