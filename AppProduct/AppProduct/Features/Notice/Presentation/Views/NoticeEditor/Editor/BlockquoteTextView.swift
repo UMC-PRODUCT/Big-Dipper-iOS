@@ -12,22 +12,17 @@ final class BlockquoteTextView: UITextView {
 
     // MARK: - Property
 
-    private let blockquoteLayer: CAShapeLayer = {
-        let layer = CAShapeLayer()
-        layer.zPosition = -1
-        return layer
-    }()
+    /// 인용구 영역별 개별 경계선 레이어를 관리합니다.
+    private var blockquoteLayers: [CAShapeLayer] = []
 
     // MARK: - Initializer
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
-        layer.addSublayer(blockquoteLayer)
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        layer.addSublayer(blockquoteLayer)
     }
 
     // MARK: - Layout
@@ -46,14 +41,17 @@ final class BlockquoteTextView: UITextView {
         defer { CATransaction.commit() }
 
         let storage = textStorage
-        guard storage.length > 0 else {
-            blockquoteLayer.path = nil
-            return
+
+        // 기존 레이어 모두 제거
+        for borderLayer in blockquoteLayers {
+            borderLayer.removeFromSuperlayer()
         }
+        blockquoteLayers.removeAll()
+
+        guard storage.length > 0 else { return }
 
         let borderWidth: CGFloat = 3
         let cornerRadius: CGFloat = 1.5
-        let path = UIBezierPath()
         let lm = layoutManager
         let tcInset = textContainerInset
         let fragPadding = textContainer.lineFragmentPadding
@@ -92,11 +90,15 @@ final class BlockquoteTextView: UITextView {
             // 경계선 x: 기본 들여쓰기 위치에 배치 (blockquote 이전 들여쓰기 기준)
             let xPos = tcInset.left + fragPadding + baseIndent
             let borderRect = CGRect(x: xPos, y: minY, width: borderWidth, height: maxY - minY)
-            path.append(UIBezierPath(roundedRect: borderRect, cornerRadius: cornerRadius))
+            let path = UIBezierPath(roundedRect: borderRect, cornerRadius: cornerRadius)
 
-            blockquoteLayer.fillColor = borderColor.cgColor
+            let borderLayer = CAShapeLayer()
+            borderLayer.zPosition = -1
+            borderLayer.path = path.cgPath
+            borderLayer.fillColor = borderColor.cgColor
+
+            layer.addSublayer(borderLayer)
+            blockquoteLayers.append(borderLayer)
         }
-
-        blockquoteLayer.path = path.cgPath
     }
 }

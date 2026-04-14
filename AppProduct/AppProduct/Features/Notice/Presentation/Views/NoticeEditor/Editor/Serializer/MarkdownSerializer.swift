@@ -10,6 +10,47 @@ import UIKit
 
 enum MarkdownSerializer {
 
+    // MARK: - Cached Regex
+
+    // blockContext 정규식
+    private static let bulletPrefixRegex = try! NSRegularExpression(pattern: "^•\\s+")
+    private static let dashPrefixRegex = try! NSRegularExpression(pattern: "^–\\s+")
+    private static let numberPrefixRegex = try! NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
+
+    // deserializeBlock 정규식
+    private static let h3Regex = try! NSRegularExpression(pattern: "^###\\s+")
+    private static let h2Regex = try! NSRegularExpression(pattern: "^##\\s+")
+    private static let h1Regex = try! NSRegularExpression(pattern: "^#\\s+")
+    private static let blockquoteRegex = try! NSRegularExpression(pattern: "^>\\s+")
+    private static let bulletListRegex = try! NSRegularExpression(pattern: "^-\\s+")
+    private static let dashListRegex = try! NSRegularExpression(pattern: "^–\\s+")
+    private static let numberListRegex = try! NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
+
+    // escapeLeadingBlockSyntax 정규식
+    private static let leadingNumberRegex = try! NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
+
+    // earliestInlineToken 정규식
+    private static let inlinePatterns: [(InlineTokenKind, NSRegularExpression)] = {
+        let patterns: [(InlineTokenKind, String)] = [
+            (.code, "(?<!\\\\)`([^`\\n]+)`"),
+            (.link, "(?<!\\\\)\\[([^\\n\\]]+?)\\]\\(([^)\\n]+?)\\)"),
+            (.underline, "(?<!\\\\)<u>(.+?)</u>"),
+            (.strikethrough, "(?<!\\\\)~~(?=\\S)(.+?)(?<=\\S)~~"),
+            (.highlight, "<mark(?:\\s+color=\"([^\"]*)\")?>(.+?)</mark>"),
+            (.boldItalicMixed, "(?<!\\\\)\\*\\*_(.+?)_\\*\\*"),
+            (.boldItalicStars, "(?<!\\\\)\\*\\*\\*(.+?)\\*\\*\\*"),
+            (.bold, "(?<!\\\\)\\*\\*(?=\\S)(.+?)(?<=\\S)\\*\\*"),
+            (.italicAsterisk, "(?<!\\\\)(?<!\\*)\\*(?=\\S)(.+?)(?<=\\S)\\*(?!\\*)"),
+            (.italicUnderscore, "(?<!\\\\)(?<!_)_(?=\\S)(.+?)(?<=\\S)_(?!_)"),
+        ]
+        return patterns.compactMap { kind, pattern in
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
+                return nil
+            }
+            return (kind, regex)
+        }
+    }()
+
     // MARK: - Serialize
 
     static func serialize(_ attributedString: NSAttributedString) -> String {
@@ -184,7 +225,7 @@ enum MarkdownSerializer {
         let paragraphString = attributedString.attributedSubstring(from: contentRange).string as NSString
         let fullLength = paragraphString.length
 
-        if let match = try? NSRegularExpression(pattern: "^•\\s+")
+        if let match = bulletPrefixRegex
             .firstMatch(in: paragraphString as String, range: NSRange(location: 0, length: fullLength)) {
             // Bullet prefix • → - 텍스트
             return BlockContext(
@@ -193,7 +234,7 @@ enum MarkdownSerializer {
             )
         }
 
-        if let match = try? NSRegularExpression(pattern: "^–\\s+")
+        if let match = dashPrefixRegex
             .firstMatch(in: paragraphString as String, range: NSRange(location: 0, length: fullLength)) {
             // Dash prefix – → – 텍스트
             return BlockContext(
@@ -202,7 +243,7 @@ enum MarkdownSerializer {
             )
         }
 
-        if let match = try? NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
+        if let match = numberPrefixRegex
             .firstMatch(in: paragraphString as String, range: NSRange(location: 0, length: fullLength)) {
             let marker = paragraphString.substring(with: match.range(at: 1))
 
@@ -404,7 +445,7 @@ enum MarkdownSerializer {
             return "\\\(line)"
         }
 
-        guard let match = try? NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
+        guard let match = leadingNumberRegex
             .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) else {
             return line
         }
@@ -420,44 +461,40 @@ enum MarkdownSerializer {
         var markdownBody = line
         var literalPrefix = ""
 
-        if let match = try? NSRegularExpression(pattern: "^###\\s+")
-            .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) {
+        let lineNSString = line as NSString
+        let lineRange = NSRange(location: 0, length: lineNSString.length)
+
+        if let match = h3Regex.firstMatch(in: line, range: lineRange) {
             // ### 텍스트 → 단락 스타일 subheading (17pt)
-            markdownBody = (line as NSString).substring(from: match.range.length)
+            markdownBody = lineNSString.substring(from: match.range.length)
             style.fontSize = 17
             style.isBold = true
-        } else if let match = try? NSRegularExpression(pattern: "^##\\s+")
-            .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) {
+        } else if let match = h2Regex.firstMatch(in: line, range: lineRange) {
             // ## 텍스트 → 단락 스타일 heading (22pt)
-            markdownBody = (line as NSString).substring(from: match.range.length)
+            markdownBody = lineNSString.substring(from: match.range.length)
             style.fontSize = 22
             style.isBold = true
-        } else if let match = try? NSRegularExpression(pattern: "^#\\s+")
-            .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) {
+        } else if let match = h1Regex.firstMatch(in: line, range: lineRange) {
             // # 텍스트 → 단락 스타일 title (28pt)
-            markdownBody = (line as NSString).substring(from: match.range.length)
+            markdownBody = lineNSString.substring(from: match.range.length)
             style.fontSize = 28
             style.isBold = true
-        } else if let match = try? NSRegularExpression(pattern: "^>\\s+")
-            .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) {
+        } else if let match = blockquoteRegex.firstMatch(in: line, range: lineRange) {
             // > 텍스트 → 인용구 (headIndent > 0)
-            markdownBody = (line as NSString).substring(from: match.range.length)
+            markdownBody = lineNSString.substring(from: match.range.length)
             style.paragraphStyle = quoteParagraphStyle()
-        } else if let match = try? NSRegularExpression(pattern: "^-\\s+")
-            .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) {
+        } else if let match = bulletListRegex.firstMatch(in: line, range: lineRange) {
             // - 텍스트 → bullet prefix •
-            markdownBody = (line as NSString).substring(from: match.range.length)
+            markdownBody = lineNSString.substring(from: match.range.length)
             literalPrefix = "• "
-        } else if let match = try? NSRegularExpression(pattern: "^–\\s+")
-            .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) {
+        } else if let match = dashListRegex.firstMatch(in: line, range: lineRange) {
             // – 텍스트 → dash prefix –
-            markdownBody = (line as NSString).substring(from: match.range.length)
+            markdownBody = lineNSString.substring(from: match.range.length)
             literalPrefix = "– "
-        } else if let match = try? NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
-            .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) {
+        } else if let match = numberListRegex.firstMatch(in: line, range: lineRange) {
             // 1. 텍스트 → number prefix 숫자.
-            let marker = (line as NSString).substring(with: match.range(at: 1))
-            markdownBody = (line as NSString).substring(from: match.range.length)
+            let marker = lineNSString.substring(with: match.range(at: 1))
+            markdownBody = lineNSString.substring(from: match.range.length)
             literalPrefix = "\(marker). "
         }
 
@@ -575,24 +612,11 @@ enum MarkdownSerializer {
     private static func earliestInlineToken(in text: String) -> InlineToken? {
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
-        let patterns: [(InlineTokenKind, String)] = [
-            (.code, "(?<!\\\\)`([^`\\n]+)`"),
-            (.link, "(?<!\\\\)\\[([^\\n\\]]+?)\\]\\(([^)\\n]+?)\\)"),
-            (.underline, "(?<!\\\\)<u>(.+?)</u>"),
-            (.strikethrough, "(?<!\\\\)~~(?=\\S)(.+?)(?<=\\S)~~"),
-            (.highlight, "<mark(?:\\s+color=\"([^\"]*)\")?>(.+?)</mark>"),
-            (.boldItalicMixed, "(?<!\\\\)\\*\\*_(.+?)_\\*\\*"),
-            (.boldItalicStars, "(?<!\\\\)\\*\\*\\*(.+?)\\*\\*\\*"),
-            (.bold, "(?<!\\\\)\\*\\*(?=\\S)(.+?)(?<=\\S)\\*\\*"),
-            (.italicAsterisk, "(?<!\\\\)(?<!\\*)\\*(?=\\S)(.+?)(?<=\\S)\\*(?!\\*)"),
-            (.italicUnderscore, "(?<!\\\\)(?<!_)_(?=\\S)(.+?)(?<=\\S)_(?!_)"),
-        ]
 
         var earliestToken: InlineToken?
 
-        for (kind, pattern) in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]),
-                  let match = regex.firstMatch(in: text, range: fullRange) else {
+        for (kind, regex) in inlinePatterns {
+            guard let match = regex.firstMatch(in: text, range: fullRange) else {
                 continue
             }
 
@@ -696,9 +720,18 @@ enum MarkdownSerializer {
         }
 
         // Pretendard 커스텀 폰트는 symbolic traits 방식이 아닌 폰트명 직접 지정으로 처리
+        // Pretendard에 italic 변형이 없으므로 oblique matrix로 기울임 표현
         if baseFont.fontName.hasPrefix("Pretendard") {
             let fontName = style.isBold ? "Pretendard-SemiBold" : "Pretendard-Regular"
-            return UIFont(name: fontName, size: pointSize) ?? baseFont.withSize(pointSize)
+            var font = UIFont(name: fontName, size: pointSize) ?? baseFont.withSize(pointSize)
+
+            if style.isItalic {
+                let oblique = CGAffineTransform(a: 1, b: 0, c: CGFloat(tanf(12.0 * Float.pi / 180.0)), d: 1, tx: 0, ty: 0)
+                let descriptor = font.fontDescriptor.withMatrix(oblique)
+                font = UIFont(descriptor: descriptor, size: pointSize)
+            }
+
+            return font
         }
 
         var traits = UIFontDescriptor.SymbolicTraits()

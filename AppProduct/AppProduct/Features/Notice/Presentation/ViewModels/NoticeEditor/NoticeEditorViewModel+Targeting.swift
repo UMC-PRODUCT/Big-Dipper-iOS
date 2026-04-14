@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 extension NoticeEditorViewModel {
 
@@ -293,6 +294,10 @@ extension NoticeEditorViewModel {
     func loadNoticeForEdit(_ notice: NoticeDetail) {
         title = notice.title
         content = notice.content
+        richAttributedContent = MarkdownSerializer.deserialize(
+            notice.content,
+            baseFont: UIFont.preferredFont(forTextStyle: .body)
+        )
         originalTitle = notice.title
         originalContent = notice.content
 

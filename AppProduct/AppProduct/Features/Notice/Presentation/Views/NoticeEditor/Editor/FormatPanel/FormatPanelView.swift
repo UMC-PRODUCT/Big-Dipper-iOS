@@ -34,11 +34,11 @@ fileprivate enum Constants {
     static let activeForegroundColor: Color = .white
     static let paragraphStyles: [EditorParagraphStyle] = [.title, .heading, .subheading, .body, .mono]
     static let highlightPalette: [HighlightOption] = [
-        .init(name: "노랑", color: .yellow.opacity(0.4)),
-        .init(name: "녹색", color: .green.opacity(0.35)),
-        .init(name: "파랑", color: .blue.opacity(0.35)),
+        .init(name: "보라", color: .purple.opacity(0.35)),
         .init(name: "분홍", color: .pink.opacity(0.35)),
-        .init(name: "주황", color: .orange.opacity(0.35))
+        .init(name: "주황", color: .orange.opacity(0.35)),
+        .init(name: "민트", color: .mint.opacity(0.35)),
+        .init(name: "파랑", color: .blue.opacity(0.35))
     ]
 }
 

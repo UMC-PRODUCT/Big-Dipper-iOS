@@ -176,7 +176,7 @@ final class EditorToolbarViewModel {
         syncFormattingState()
     }
 
-    /// 현재 단락 시작 부분에 목록 접두사를 적용합니다.
+    /// 현재 단락 시작 부분에 목록 접두사를 적용하거나, 이미 같은 스타일이면 제거합니다.
     @MainActor
     func applyList(_ style: EditorListStyle) {
         guard let storage = textStorage else { return }
@@ -186,6 +186,27 @@ final class EditorToolbarViewModel {
         let paragraphText = paragraphNSString.substring(with: paragraphRange)
         let prefix = listPrefix(for: style)
         let existingPrefixRange = existingListPrefixRange(in: paragraphText)
+
+        // 이미 같은 리스트 스타일이 적용되어 있으면 접두사를 제거 (토글 해제)
+        let currentListStyle = detectedListStyle(in: paragraphRange, storage: storage)
+        if currentListStyle == style, let existingRange = existingPrefixRange {
+            let removeRange = NSRange(
+                location: paragraphRange.location,
+                length: existingRange.length
+            )
+            storage.beginEditing()
+            storage.replaceCharacters(in: removeRange, with: "")
+            storage.removeAttribute(.editorListStyle, range: currentParagraphRange(in: storage))
+            storage.endEditing()
+
+            let cursorPosition = NSRange(location: removeRange.location, length: 0)
+            selectedRange = cursorPosition
+            textView?.selectedRange = cursorPosition
+            onFormattingApplied?()
+            syncFormattingState()
+            return
+        }
+
         let replacementRange = NSRange(
             location: paragraphRange.location,
             length: existingPrefixRange?.length ?? 0
