@@ -115,7 +115,7 @@ final class EditorToolbarViewModel {
                 let style = NSMutableParagraphStyle()
                 style.headIndent = blockquoteIndent
                 style.firstLineHeadIndent = blockquoteIndent
-                tv.typingAttributes[.paragraphStyle] = style.copy() as! NSParagraphStyle
+                tv.typingAttributes[.paragraphStyle] = (style.copy() as? NSParagraphStyle) ?? style
                 tv.typingAttributes[NSAttributedString.Key.editorBlockquote] = true
                 tv.typingAttributes[NSAttributedString.Key.editorBlockquoteBorderColor] = UIColor.systemGray3
                 tv.typingAttributes[NSAttributedString.Key.editorBlockquoteBaseHeadIndent] = NSNumber(value: 0.0)
@@ -131,29 +131,29 @@ final class EditorToolbarViewModel {
         let currentStyle = nsParagraphStyle(at: baseLocation, in: storage)
         let updatedStyle = currentStyle.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
 
+        // 모든 attribute 변경을 단일 editing 트랜잭션으로 묶어
+        // 레이아웃 패스와 delegate 알림이 1회만 발생하도록 합니다.
+        storage.beginEditing()
         if isCurrentlyBlockquote {
             let baseHeadIndent = (storage.attribute(.editorBlockquoteBaseHeadIndent, at: baseLocation, effectiveRange: nil) as? NSNumber)?.doubleValue
             let baseFirstLineIndent = (storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: baseLocation, effectiveRange: nil) as? NSNumber)?.doubleValue
             updatedStyle.headIndent = CGFloat(baseHeadIndent ?? max(0, Double(updatedStyle.headIndent - blockquoteIndent)))
             updatedStyle.firstLineHeadIndent = CGFloat(baseFirstLineIndent ?? max(0, Double(updatedStyle.firstLineHeadIndent - blockquoteIndent)))
+            storage.addAttribute(.paragraphStyle, value: (updatedStyle.copy() as? NSParagraphStyle) ?? updatedStyle, range: paragraphRange)
+            storage.removeAttribute(.editorBlockquote, range: paragraphRange)
+            storage.removeAttribute(.editorBlockquoteBorderColor, range: paragraphRange)
+            storage.removeAttribute(.editorBlockquoteBaseHeadIndent, range: paragraphRange)
+            storage.removeAttribute(.editorBlockquoteBaseFirstLineHeadIndent, range: paragraphRange)
         } else {
             let headIndent = updatedStyle.headIndent
             let firstLineHeadIndent = updatedStyle.firstLineHeadIndent
             updatedStyle.headIndent += blockquoteIndent
             updatedStyle.firstLineHeadIndent += blockquoteIndent
+            storage.addAttribute(.paragraphStyle, value: (updatedStyle.copy() as? NSParagraphStyle) ?? updatedStyle, range: paragraphRange)
             storage.addAttribute(.editorBlockquoteBaseHeadIndent, value: NSNumber(value: Double(headIndent)), range: paragraphRange)
             storage.addAttribute(.editorBlockquoteBaseFirstLineHeadIndent, value: NSNumber(value: Double(firstLineHeadIndent)), range: paragraphRange)
             storage.addAttribute(.editorBlockquoteBorderColor, value: UIColor.systemGray3, range: paragraphRange)
             storage.addAttribute(.editorBlockquote, value: true, range: paragraphRange)
-        }
-
-        storage.beginEditing()
-        storage.addAttribute(.paragraphStyle, value: updatedStyle.copy() as? NSParagraphStyle ?? updatedStyle, range: paragraphRange)
-        if isCurrentlyBlockquote {
-            storage.removeAttribute(.editorBlockquote, range: paragraphRange)
-            storage.removeAttribute(.editorBlockquoteBorderColor, range: paragraphRange)
-            storage.removeAttribute(.editorBlockquoteBaseHeadIndent, range: paragraphRange)
-            storage.removeAttribute(.editorBlockquoteBaseFirstLineHeadIndent, range: paragraphRange)
         }
         storage.endEditing()
 
@@ -298,12 +298,22 @@ final class EditorToolbarViewModel {
         syncFormattingState()
     }
 
-    /// 활성 하이라이트 색상이 있으면 typingAttributes에 재적용합니다.
-    /// UIKit이 커서 이동 시 typingAttributes를 덮어쓰는 문제를 방지합니다.
+    /// 활성 하이라이트 색상이 있으면 커서 위치의 기존 배경색과 비교하여
+    /// 일치하는 경우에만 typingAttributes에 재적용합니다.
+    /// 하이라이트 영역을 벗어나면 다음 입력에 색이 번지지 않도록 합니다.
     @MainActor
     func reapplyActiveHighlightIfNeeded() {
-        guard let uiColor = activeHighlightColor else { return }
-        textView?.typingAttributes[.backgroundColor] = uiColor
+        guard let uiColor = activeHighlightColor,
+              let storage = textStorage,
+              storage.length > 0
+        else { return }
+        let location = min(max(selectedRange.location - 1, 0), storage.length - 1)
+        let existingColor = storage.attribute(.backgroundColor, at: location, effectiveRange: nil) as? UIColor
+        if existingColor == uiColor {
+            textView?.typingAttributes[.backgroundColor] = uiColor
+        } else {
+            textView?.typingAttributes.removeValue(forKey: .backgroundColor)
+        }
     }
 
     /// 포맷 패널 노출 상태를 토글합니다.
@@ -329,6 +339,12 @@ final class EditorToolbarViewModel {
     func syncFormattingState() {
         guard let storage = textStorage else {
             resetFormattingState()
+            return
+        }
+
+        // 빈 에디터 또는 EOF 빈 단락: typingAttributes만으로 상태를 결정합니다.
+        if storage.length == 0 || isAtEOFEmptyParagraph(in: storage), let tv = textView {
+            syncFormattingStateFromTypingAttributes(tv)
             return
         }
 
@@ -462,6 +478,44 @@ final class EditorToolbarViewModel {
     }
 
     /// 포맷 상태를 기본값으로 되돌립니다.
+    /// 빈 에디터 또는 EOF 빈 단락에서 typingAttributes만으로 툴바 상태를 동기화합니다.
+    private func syncFormattingStateFromTypingAttributes(_ tv: UITextView) {
+        let attrs = tv.typingAttributes
+        let typingFont = attrs[.font] as? UIFont ?? font(for: .body)
+
+        if case .tableCell = toolbarMode {
+        } else {
+            toolbarMode = .default
+        }
+
+        isBold = typingFont.fontDescriptor.symbolicTraits.contains(.traitBold)
+        if typingFont.fontName.hasPrefix("Pretendard") {
+            isItalic = typingFont.fontDescriptor.matrix.c != 0.0
+        } else {
+            isItalic = typingFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
+        }
+        isUnderline = (attrs[.underlineStyle] as? Int ?? 0) > 0
+        isStrikethrough = (attrs[.strikethroughStyle] as? Int ?? 0) > 0
+        isBlockquote = (attrs[NSAttributedString.Key.editorBlockquote] as? Bool) == true
+        paragraphStyle = detectedParagraphStyleFromFont(typingFont)
+        activeListStyle = nil
+
+        if let uiColor = attrs[.backgroundColor] as? UIColor {
+            highlightColor = Color(uiColor: uiColor)
+        } else {
+            highlightColor = nil
+        }
+    }
+
+    /// 폰트 크기로부터 문단 스타일을 추론합니다.
+    private func detectedParagraphStyleFromFont(_ font: UIFont) -> EditorParagraphStyle {
+        let size = font.pointSize
+        if abs(size - 28) < 0.5 { return .title }
+        if abs(size - 22) < 0.5 { return .heading }
+        if abs(size - 17) < 0.5 { return .subheading }
+        return .body
+    }
+
     private func resetFormattingState() {
         if case .tableCell = toolbarMode {
         } else {

@@ -32,11 +32,11 @@ enum MarkdownSerializer {
     // earliestInlineToken 정규식
     private static let inlinePatterns: [(InlineTokenKind, NSRegularExpression)] = {
         let patterns: [(InlineTokenKind, String)] = [
-            (.code, "(?<!\\\\)`([^`\\n]+)`"),
-            (.link, "(?<!\\\\)\\[([^\\n\\]]+?)\\]\\(([^)\\n]+?)\\)"),
+            (.code, "(?<!\\\\)`((?:\\\\.|[^`\\n])+?)`"),
+            (.link, "(?<!\\\\)\\[((?:\\\\.|[^\\]\\n])+?)\\]\\(((?:\\\\.|[^)\\n])+?)\\)"),
             (.underline, "(?<!\\\\)<u>(.+?)</u>"),
             (.strikethrough, "(?<!\\\\)~~(?=\\S)(.+?)(?<=\\S)~~"),
-            (.highlight, "<mark(?:\\s+color=\"([^\"]*)\")?>(.+?)</mark>"),
+            (.highlight, "(?<!\\\\)<mark(?:\\s+color=\"([^\"]*)\")?>(.+?)</mark>"),
             (.boldItalicMixed, "(?<!\\\\)\\*\\*_(.+?)_\\*\\*"),
             (.boldItalicStars, "(?<!\\\\)\\*\\*\\*(.+?)\\*\\*\\*"),
             (.bold, "(?<!\\\\)\\*\\*(?=\\S)(.+?)(?<=\\S)\\*\\*"),
@@ -106,39 +106,12 @@ enum MarkdownSerializer {
 
     /// 서버에서 받은 마크다운 문자열을 화면 표시용 NSAttributedString으로 변환합니다.
     ///
-    /// `deserialize`와 달리 백슬래시 이스케이프(`\*`, `\-` 등)를 먼저 제거한 뒤
-    /// 마크다운 서식을 적용합니다. 에디터 직접 입력이나 외부 API로 저장된
-    /// `\*\*bold\*\*` 형태의 콘텐츠도 볼드로 렌더링됩니다.
+    /// `deserialize`와 동일하게 동작합니다. 백슬래시 이스케이프는 파서 내부의
+    /// `unescapeMarkdownText`가 plain text 구간에서만 제거하므로
+    /// `\*\*not bold\*\*`는 서식 없이 `**not bold**`로 표시되고,
+    /// `**bold**`는 볼드로 올바르게 렌더링됩니다.
     static func deserializeForDisplay(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
-        let unescaped = stripBackslashEscaping(markdown)
-        return deserialize(unescaped, baseFont: baseFont)
-    }
-
-    /// 백슬래시 이스케이프 시퀀스를 제거합니다. `\*` → `*`, `\-` → `-` 등.
-    private static func stripBackslashEscaping(_ text: String) -> String {
-        var result = ""
-        var isEscaping = false
-
-        for character in text {
-            if isEscaping {
-                result.append(character)
-                isEscaping = false
-                continue
-            }
-
-            if character == "\\" {
-                isEscaping = true
-                continue
-            }
-
-            result.append(character)
-        }
-
-        if isEscaping {
-            result.append("\\")
-        }
-
-        return result
+        return deserialize(markdown, baseFont: baseFont)
     }
 
     // MARK: - Deserialize
@@ -181,6 +154,7 @@ enum MarkdownSerializer {
         var isUnderlined = false
         var isStruck = false
         var isMonospaced = false
+        var isBlockquote = false
         var highlightColor: UIColor?
         var linkURL: URL?
         var fontSize: CGFloat?
@@ -226,6 +200,39 @@ enum MarkdownSerializer {
         let paragraphString = attributedString.attributedSubstring(from: contentRange).string as NSString
         let fullLength = paragraphString.length
 
+        guard let firstContentOffset = firstNonWhitespaceOffset(in: paragraphString as String) else {
+            return BlockContext(markdownPrefix: "", inlineRange: contentRange, blockImpliedBold: false)
+        }
+
+        let firstContentLocation = contentRange.location + firstContentOffset
+        let font = attributedString.attribute(.font, at: firstContentLocation, effectiveRange: nil) as? UIFont
+
+        // 속성 기반 판별을 텍스트 prefix보다 먼저 수행 (제목/인용구가 목록처럼 보이는 텍스트로 시작해도 안전)
+        let isBlockquote = (attributedString.attribute(.editorBlockquote, at: firstContentLocation, effectiveRange: nil) as? Bool) == true
+        if isBlockquote {
+            // 인용구 (.editorBlockquote attribute) → > 텍스트
+            return BlockContext(markdownPrefix: "> ", inlineRange: contentRange, blockImpliedBold: false)
+        }
+
+        if let font, abs(font.pointSize - 28) < 0.5 {
+            // 단락 스타일 title (28pt) → # 텍스트
+            return BlockContext(markdownPrefix: "# ", inlineRange: contentRange, blockImpliedBold: true)
+        }
+
+        if let font, abs(font.pointSize - 22) < 0.5 {
+            // 단락 스타일 heading (22pt) → ## 텍스트
+            return BlockContext(markdownPrefix: "## ", inlineRange: contentRange, blockImpliedBold: true)
+        }
+
+        if let font,
+           abs(font.pointSize - 17) < 0.5,
+           font.fontDescriptor.symbolicTraits.contains(.traitBold),
+           isParagraphDominantlySubheading(in: attributedString, range: contentRange) {
+            // 단락 스타일 subheading (17pt) → ### 텍스트
+            return BlockContext(markdownPrefix: "### ", inlineRange: contentRange, blockImpliedBold: true)
+        }
+
+        // 텍스트 prefix 기반 목록 판별 (속성 판별 이후)
         if let match = bulletPrefixRegex
             .firstMatch(in: paragraphString as String, range: NSRange(location: 0, length: fullLength)) {
             // Bullet prefix • → - 텍스트
@@ -258,37 +265,6 @@ enum MarkdownSerializer {
             )
         }
 
-        guard let firstContentOffset = firstNonWhitespaceOffset(in: paragraphString as String) else {
-            return BlockContext(markdownPrefix: "", inlineRange: contentRange)
-        }
-
-        let firstContentLocation = contentRange.location + firstContentOffset
-        let paragraphStyle = attributedString.attribute(.paragraphStyle, at: firstContentLocation, effectiveRange: nil) as? NSParagraphStyle
-        let font = attributedString.attribute(.font, at: firstContentLocation, effectiveRange: nil) as? UIFont
-
-        if let paragraphStyle, paragraphStyle.headIndent > 0 {
-            // 인용구 (headIndent > 0) → > 텍스트
-            return BlockContext(markdownPrefix: "> ", inlineRange: contentRange, blockImpliedBold: false)
-        }
-
-        if let font, abs(font.pointSize - 28) < 0.5 {
-            // 단락 스타일 title (28pt) → # 텍스트
-            return BlockContext(markdownPrefix: "# ", inlineRange: contentRange, blockImpliedBold: true)
-        }
-
-        if let font, abs(font.pointSize - 22) < 0.5 {
-            // 단락 스타일 heading (22pt) → ## 텍스트
-            return BlockContext(markdownPrefix: "## ", inlineRange: contentRange, blockImpliedBold: true)
-        }
-
-        if let font,
-           abs(font.pointSize - 17) < 0.5,
-           font.fontDescriptor.symbolicTraits.contains(.traitBold),
-           isParagraphDominantlySubheading(in: attributedString, range: contentRange) {
-            // 단락 스타일 subheading (17pt) → ### 텍스트
-            return BlockContext(markdownPrefix: "### ", inlineRange: contentRange, blockImpliedBold: true)
-        }
-
         return BlockContext(markdownPrefix: "", inlineRange: contentRange, blockImpliedBold: false)
     }
 
@@ -308,24 +284,25 @@ enum MarkdownSerializer {
     /// 링크, 밑줄, bold-italic 복합 등 인라인 서식이 포함되어도 폰트 크기와 굵기가
     /// subheading 조건을 만족하면 `###` 접두사를 붙일 수 있도록 합니다.
     private static func isParagraphDominantlySubheading(in attributedString: NSAttributedString, range: NSRange) -> Bool {
-        var total = 0
-        var subheadingCount = 0
+        var hasNonWhitespace = false
+        var allSubheading = true
 
-        attributedString.enumerateAttribute(.font, in: range) { value, effectiveRange, _ in
+        attributedString.enumerateAttribute(.font, in: range) { value, effectiveRange, stop in
             let content = attributedString.attributedSubstring(from: effectiveRange).string
-                .filter { !$0.isWhitespace }
-            guard content.isEmpty == false else { return }
-
-            total += content.count
+            guard content.contains(where: { !$0.isWhitespace }) else { return }
+            hasNonWhitespace = true
 
             if let font = value as? UIFont,
                abs(font.pointSize - 17) < 0.5,
                font.fontDescriptor.symbolicTraits.contains(.traitBold) {
-                subheadingCount += content.count
+                // This run qualifies as subheading
+            } else {
+                allSubheading = false
+                stop.pointee = true
             }
         }
 
-        return total > 0 && subheadingCount == total
+        return hasNonWhitespace && allSubheading
     }
 
     private static func serializeInline(_ attributedString: NSAttributedString, range: NSRange, blockImpliedBold: Bool = false) -> String {
@@ -352,8 +329,20 @@ enum MarkdownSerializer {
         let font = attributes[.font] as? UIFont
         let traits = font?.fontDescriptor.symbolicTraits ?? []
         // 헤딩/부머리말 블록은 폰트 자체가 bold이므로, 블록 레벨에서 이미 implied된 bold는 인라인 ** 마커로 이중 래핑하지 않는다.
-        let isBold = traits.contains(.traitBold) && !blockImpliedBold
-        let isItalic = traits.contains(.traitItalic)
+        // Pretendard는 커스텀 폰트라 symbolic trait보다 폰트명으로 bold를 판별하는 편이 더 신뢰할 수 있습니다.
+        let isBold: Bool
+        if let font, font.fontName.hasPrefix("Pretendard") {
+            isBold = (font.fontName.contains("Bold") || font.fontName.contains("SemiBold")) && !blockImpliedBold
+        } else {
+            isBold = traits.contains(.traitBold) && !blockImpliedBold
+        }
+        // Pretendard는 italic 변형이 없어 oblique matrix로 기울임을 표현하므로 matrix.c 값도 함께 확인합니다.
+        let isItalic: Bool
+        if let font, font.fontName.hasPrefix("Pretendard") {
+            isItalic = font.fontDescriptor.matrix.c != 0.0
+        } else {
+            isItalic = traits.contains(.traitItalic)
+        }
         let isMonospaced = traits.contains(.traitMonoSpace) || font?.familyName.lowercased().contains("mono") == true
         let isUnderlined = (attributes[.underlineStyle] as? NSNumber)?.intValue ?? 0 != 0
         let isStruck = (attributes[.strikethroughStyle] as? NSNumber)?.intValue ?? 0 != 0
@@ -392,23 +381,33 @@ enum MarkdownSerializer {
 
         if let highlightColor, isMonospaced == false {
             // Highlight → <mark color="R,G,B,A">텍스트</mark>
+            // Dynamic/grayscale color는 sRGB 변환 실패 가능 → resolvedColor fallback 후 재시도, 둘 다 실패하면 skip
             var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-            highlightColor.getRed(&r, green: &g, blue: &b, alpha: &a)
-            let colorCode = String(format: "%.3f,%.3f,%.3f,%.3f", r, g, b, a)
-            content = "<mark color=\"\(colorCode)\">\(content)</mark>"
+            let didConvert: Bool
+            if highlightColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
+                didConvert = true
+            } else {
+                let resolved = highlightColor.resolvedColor(with: UITraitCollection.current)
+                didConvert = resolved.getRed(&r, green: &g, blue: &b, alpha: &a)
+            }
+            if didConvert {
+                let colorCode = String(format: "%.3f,%.3f,%.3f,%.3f", r, g, b, a)
+                content = "<mark color=\"\(colorCode)\">\(content)</mark>"
+            }
         }
 
         if let linkValue {
-            let urlString: String
+            let rawURLString: String
 
             if let url = linkValue as? URL {
-                urlString = url.absoluteString
+                rawURLString = url.absoluteString
             } else {
-                urlString = String(describing: linkValue)
+                rawURLString = String(describing: linkValue)
             }
 
-            // NSLinkAttributeName → [텍스트](url)
-            content = "[\(content)](\(urlString))"
+            // NSLinkAttributeName → [텍스트](url) (`)`, `\` escape)
+            let escapedURL = escapeMarkdownLinkDestination(rawURLString)
+            content = "[\(content)](\(escapedURL))"
         }
 
         return content
@@ -418,14 +417,26 @@ enum MarkdownSerializer {
         var escaped = ""
 
         for character in text {
-            // '<' 포함: 사용자가 직접 입력한 <u>, <mark> 등이 deserialize 시 마크다운 태그로 오파싱되는 것을 방지
-            if "\\*_[]()~`<".contains(character) {
+            // '<', '>' 포함: 사용자가 입력한 </u>, </mark> 등이 deserialize 시 닫는 태그로 오파싱되는 것을 방지
+            if "\\*_[]()~`<>".contains(character) {
                 escaped.append("\\")
             }
 
             escaped.append(character)
         }
 
+        return escaped
+    }
+
+    /// 링크 URL destination에서 `)`, `\`를 escape합니다.
+    private static func escapeMarkdownLinkDestination(_ url: String) -> String {
+        var escaped = ""
+        for character in url {
+            if character == ")" || character == "\\" {
+                escaped.append("\\")
+            }
+            escaped.append(character)
+        }
         return escaped
     }
 
@@ -487,9 +498,10 @@ enum MarkdownSerializer {
             style.fontSize = 28
             style.isBold = true
         } else if let match = blockquoteRegex.firstMatch(in: line, range: lineRange) {
-            // > 텍스트 → 인용구 (headIndent > 0)
+            // > 텍스트 → 인용구 (headIndent > 0 + .editorBlockquote attribute)
             markdownBody = lineNSString.substring(from: match.range.length)
             style.paragraphStyle = quoteParagraphStyle()
+            style.isBlockquote = true
         } else if let match = bulletListRegex.firstMatch(in: line, range: lineRange) {
             // - 텍스트 → bullet prefix •
             markdownBody = lineNSString.substring(from: match.range.length)
@@ -544,18 +556,23 @@ enum MarkdownSerializer {
 
             switch token.kind {
             case .code:
-                // `텍스트` → mono font
+                // `텍스트` → mono font (백슬래시 이스케이프 제거 후 적용)
                 var codeStyle = style
                 codeStyle.isMonospaced = true
-                let codeText = (remainingText as NSString).substring(with: token.match.range(at: 1))
+                let rawCodeText = (remainingText as NSString).substring(with: token.match.range(at: 1))
+                let codeText = unescapeCodeText(rawCodeText)
                 mutableAttributedString.append(attributedPlainText(codeText, baseFont: baseFont, style: codeStyle))
 
             case .link:
-                // [텍스트](url) → NSLinkAttributeName
+                // [텍스트](url) → NSLinkAttributeName (허용 scheme: https, http, mailto, tel)
                 let label = (remainingText as NSString).substring(with: token.match.range(at: 1))
                 let rawURL = (remainingText as NSString).substring(with: token.match.range(at: 2))
                 var linkStyle = style
-                linkStyle.linkURL = URL(string: rawURL)
+                if let url = URL(string: unescapeMarkdownText(rawURL)),
+                   let scheme = url.scheme?.lowercased(),
+                   ["https", "http", "mailto", "tel"].contains(scheme) {
+                    linkStyle.linkURL = url
+                }
                 mutableAttributedString.append(parseInlineMarkdown(label, baseFont: baseFont, style: linkStyle))
 
             case .underline:
@@ -645,12 +662,52 @@ enum MarkdownSerializer {
         NSAttributedString(string: unescapeMarkdownText(text), attributes: attributes(for: style, baseFont: baseFont))
     }
 
+    /// 코드 스팬 내부의 백슬래시 이스케이프를 제거합니다. `\`` → `` ` ``, `\\` → `\`.
+    private static func unescapeCodeText(_ text: String) -> String {
+        var unescaped = ""
+        var isEscaping = false
+
+        for character in text {
+            if isEscaping {
+                unescaped.append(character)
+                isEscaping = false
+                continue
+            }
+
+            if character == "\\" {
+                isEscaping = true
+                continue
+            }
+
+            unescaped.append(character)
+        }
+
+        if isEscaping {
+            unescaped.append("\\")
+        }
+
+        return unescaped
+    }
+
+    /// 이 파서가 escape하는 문자 집합입니다. `unescapeMarkdownText`는 이 집합 앞에 붙은 `\`만 제거합니다.
+    ///
+    /// `.`: `escapeLeadingBlockSyntax`가 `1\. text` 형태로 escape하므로 역직렬화 시 `.`를 unescape해야 합니다.
+    /// `–`: `escapeLeadingBlockSyntax`가 `\– text` 형태로 escape하므로 역직렬화 시 `–`를 unescape해야 합니다.
+    private static let escapedMarkdownCharacters: Set<Character> = [
+        "\\", "*", "_", "[", "]", "(", ")", "~", "`", "<", ">", "#", "-", ".", "–"
+    ]
+
     private static func unescapeMarkdownText(_ text: String) -> String {
         var unescaped = ""
         var isEscaping = false
 
         for character in text {
             if isEscaping {
+                // escape 대상 문자: backslash 제거 후 문자만 추가
+                // 비대상 문자: backslash도 유지 (e.g. C:\Users → C:\Users)
+                if !escapedMarkdownCharacters.contains(character) {
+                    unescaped.append("\\")
+                }
                 unescaped.append(character)
                 isEscaping = false
                 continue
@@ -692,6 +749,13 @@ enum MarkdownSerializer {
             attributes[.paragraphStyle] = paragraphStyle
         }
 
+        if style.isBlockquote {
+            attributes[.editorBlockquote] = true
+            attributes[.editorBlockquoteBorderColor] = UIColor.systemGray3
+            attributes[.editorBlockquoteBaseHeadIndent] = NSNumber(value: 0.0)
+            attributes[.editorBlockquoteBaseFirstLineHeadIndent] = NSNumber(value: 0.0)
+        }
+
         if let linkURL = style.linkURL {
             attributes[.link] = linkURL
         }
@@ -701,8 +765,9 @@ enum MarkdownSerializer {
 
     private static func uiColor(fromCode code: String) -> UIColor? {
         let parts = code.split(separator: ",").compactMap { Double($0) }
-        guard parts.count == 4 else { return nil }
-        return UIColor(red: CGFloat(parts[0]), green: CGFloat(parts[1]), blue: CGFloat(parts[2]), alpha: CGFloat(parts[3]))
+        guard parts.count == 4, parts.allSatisfy(\.isFinite) else { return nil }
+        let clamped = parts.map { max(0.0, min(1.0, $0)) }
+        return UIColor(red: CGFloat(clamped[0]), green: CGFloat(clamped[1]), blue: CGFloat(clamped[2]), alpha: CGFloat(clamped[3]))
     }
 
     private static func font(for style: InlineStyle, baseFont: UIFont) -> UIFont {

@@ -246,10 +246,11 @@ extension EditorToolbarViewModel {
     func existingListPrefixRange(in paragraphText: String) -> NSRange? {
         let nsString = paragraphText as NSString
         let fullRange = NSRange(location: 0, length: nsString.length)
-        guard let regularExpression = try? NSRegularExpression(pattern: "^(?:•|–|\\d+\\.)\\s+") else { return nil }
-        let match = regularExpression.firstMatch(in: paragraphText, options: [], range: fullRange)
+        let match = Self.listPrefixRegex.firstMatch(in: paragraphText, options: [], range: fullRange)
         return match?.range
     }
+
+    private static let listPrefixRegex = try! NSRegularExpression(pattern: "^(?:•|–|\\d+\\.)\\s+")
 
     /// 현재 단락에 적용된 목록 스타일을 판별합니다.
     func detectedListStyle(in paragraphRange: NSRange, storage: NSTextStorage) -> EditorListStyle? {

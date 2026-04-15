@@ -30,15 +30,27 @@ extension EditorToolbarViewModel {
     }
 
     /// 현재 단락 범위를 계산합니다.
+    /// EOF 빈 줄(커서가 storage.length에 있고 마지막 문자가 \n인 경우)도 올바르게 처리합니다.
     func currentParagraphRange(in storage: NSTextStorage) -> NSRange {
         guard storage.length > 0 else {
             return NSRange(location: 0, length: 0)
         }
 
         let clampedRange = clampedSelectedRange(in: storage)
-        let anchorLocation = min(clampedRange.location, max(0, storage.length - 1))
+        // NSString.paragraphRange는 location == length를 허용하므로
+        // storage.length - 1로 clamp하지 않습니다.
+        let anchorLocation = min(clampedRange.location, storage.length)
         let nsString = storage.string as NSString
         return nsString.paragraphRange(for: NSRange(location: anchorLocation, length: 0))
+    }
+
+    /// 커서가 EOF 빈 단락에 있는지 확인합니다.
+    /// EOF 빈 단락에서는 storage attribute 대신 typingAttributes를 기준으로 처리해야 합니다.
+    func isAtEOFEmptyParagraph(in storage: NSTextStorage) -> Bool {
+        let clampedRange = clampedSelectedRange(in: storage)
+        return storage.length > 0
+            && clampedRange.location >= storage.length
+            && (storage.string as NSString).character(at: storage.length - 1) == 0x0A // \n
     }
 
     /// 선택 범위가 걸친 전체 단락 범위를 계산합니다.
@@ -53,7 +65,7 @@ extension EditorToolbarViewModel {
             return nsString.paragraphRange(for: clampedRange)
         }
 
-        let anchorLocation = min(clampedRange.location, max(0, storage.length - 1))
+        let anchorLocation = min(clampedRange.location, storage.length)
         return nsString.paragraphRange(for: NSRange(location: anchorLocation, length: 0))
     }
 
@@ -69,13 +81,16 @@ extension EditorToolbarViewModel {
         while currentLocation < upperBound {
             let paragraphRange = nsString.paragraphRange(for: NSRange(location: currentLocation, length: 0))
             ranges.append(paragraphRange)
-            currentLocation = NSMaxRange(paragraphRange)
+            let next = NSMaxRange(paragraphRange)
+            guard next > currentLocation else { break }
+            currentLocation = next
         }
 
         return ranges
     }
 
     /// 동기화 시 사용할 실제 속성 조회 범위를 계산합니다.
+    /// EOF 빈 단락에서는 nil을 반환하여 typingAttributes 기반 처리를 유도합니다.
     func syncRange(in storage: NSTextStorage) -> NSRange? {
         let clampedRange = clampedSelectedRange(in: storage)
         if clampedRange.length > 0 {
@@ -83,8 +98,11 @@ extension EditorToolbarViewModel {
         }
 
         guard storage.length > 0 else { return nil }
-        let location = min(clampedRange.location, max(0, storage.length - 1))
-        return NSRange(location: location, length: 1)
+        // EOF 빈 단락(커서가 storage.length에 있는 경우)은 nil 반환
+        if clampedRange.location >= storage.length {
+            return nil
+        }
+        return NSRange(location: clampedRange.location, length: 1)
     }
 
     /// 선택 치환 후 커서 위치와 길이를 보정합니다.

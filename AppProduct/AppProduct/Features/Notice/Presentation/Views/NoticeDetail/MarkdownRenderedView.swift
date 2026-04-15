@@ -24,9 +24,10 @@ private struct _MarkdownTextViewRepresentable: UIViewRepresentable {
 
     let markdown: String
 
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+    func makeUIView(context: Context) -> BlockquoteTextView {
+        let textView = BlockquoteTextView()
         textView.isEditable = false
+        textView.isSelectable = true   // 링크 탭 인터랙션을 위해 selectable 유지
         textView.isScrollEnabled = false
         textView.backgroundColor = .clear
         textView.textContainerInset = .zero
@@ -35,12 +36,14 @@ private struct _MarkdownTextViewRepresentable: UIViewRepresentable {
         return textView
     }
 
-    func updateUIView(_ uiView: UITextView, context: Context) {
+    func updateUIView(_ uiView: BlockquoteTextView, context: Context) {
+        guard context.coordinator.lastMarkdown != markdown else { return }
+        context.coordinator.lastMarkdown = markdown
+
         let baseFont = UIFont(name: "Pretendard-Regular", size: 16) ?? UIFont.preferredFont(forTextStyle: .body)
         let attributed = MarkdownSerializer.deserializeForDisplay(markdown, baseFont: baseFont)
         let mutable = NSMutableAttributedString(attributedString: attributed)
 
-        // 기본 폰트/색상 설정
         let fullRange = NSRange(location: 0, length: mutable.length)
         mutable.enumerateAttribute(.font, in: fullRange) { value, range, _ in
             if value == nil {
@@ -54,11 +57,28 @@ private struct _MarkdownTextViewRepresentable: UIViewRepresentable {
         }
 
         uiView.attributedText = mutable
+        uiView.setNeedsBlockquoteRefresh()
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: BlockquoteTextView, context: Context) -> CGSize? {
         guard let width = proposal.width else { return nil }
-        let targetSize = CGSize(width: width, height: .greatestFiniteMagnitude)
-        return uiView.sizeThatFits(targetSize)
+        let inset = uiView.textContainerInset
+        let padding = uiView.textContainer.lineFragmentPadding
+        let containerWidth = max(0, width - inset.left - inset.right - padding * 2)
+        if abs(uiView.textContainer.size.width - containerWidth) > 0.5 {
+            uiView.textContainer.size = CGSize(width: containerWidth, height: .greatestFiniteMagnitude)
+        }
+        uiView.layoutManager.ensureLayout(for: uiView.textContainer)
+        let usedRect = uiView.layoutManager.usedRect(for: uiView.textContainer)
+        let height = ceil(usedRect.height + inset.top + inset.bottom)
+        return CGSize(width: width, height: max(height, 1))
+    }
+
+    final class Coordinator {
+        var lastMarkdown: String?
     }
 }
