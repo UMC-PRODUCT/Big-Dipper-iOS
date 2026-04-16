@@ -935,7 +935,7 @@ private struct AILoadingOverlay: View {
             }
             .padding(Constants.cardPadding)
             .frame(maxWidth: Constants.cardMaxWidth)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Constants.cardCornerRadius))
+            .glassEffect(.regular, in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius)))
         }
     }
 }
