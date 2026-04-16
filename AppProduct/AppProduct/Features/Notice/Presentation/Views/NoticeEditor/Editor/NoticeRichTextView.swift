@@ -61,9 +61,17 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         let coordinator = context.coordinator
         toolbarViewModel.onFormattingApplied = { [weak textView, weak coordinator] in
             guard let textView, let coordinator else { return }
-            coordinator.parent.attributedText = textView.attributedText
+            // IME 조합 중에는 바인딩 갱신을 보류하여 조합 문자열이 깨지는 것을 방지합니다.
+            if textView.markedTextRange == nil {
+                coordinator.parent.attributedText = textView.attributedText
+            }
             coordinator.updatePlaceholder(in: textView)
             textView.setNeedsBlockquoteRefresh()
+        }
+
+        toolbarViewModel.onPlaceholderNeedsUpdate = { [weak textView, weak coordinator] in
+            guard let textView, let coordinator else { return }
+            coordinator.updatePlaceholder(in: textView)
         }
 
         return textView
@@ -92,9 +100,15 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
             let coordinator = context.coordinator
             toolbarViewModel.onFormattingApplied = { [weak uiView, weak coordinator] in
                 guard let uiView, let coordinator else { return }
-                coordinator.parent.attributedText = uiView.attributedText
+                if uiView.markedTextRange == nil {
+                    coordinator.parent.attributedText = uiView.attributedText
+                }
                 coordinator.updatePlaceholder(in: uiView)
                 uiView.setNeedsBlockquoteRefresh()
+            }
+            toolbarViewModel.onPlaceholderNeedsUpdate = { [weak uiView, weak coordinator] in
+                guard let uiView, let coordinator else { return }
+                coordinator.updatePlaceholder(in: uiView)
             }
         }
 
@@ -147,14 +161,19 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             // 한글 등 IME 조합 중에는 Enter 커스텀 처리를 건너뜁니다.
             // markedTextRange != nil이면 조합이 진행 중이므로 UIKit 기본 동작을 유지합니다.
-            guard text == "\n",
-                  textView.markedTextRange == nil,
-                  let bqTextView = textView as? BlockquoteTextView
-            else { return true }
-            // blockquote Enter 처리를 먼저 시도합니다. 처리됐으면 list 처리는 건너뜁니다.
-            if !handleReturnInBlockquote(textView: bqTextView, range: range) { return false }
-            // 목록 Enter 처리를 시도합니다.
-            return handleReturnInList(textView: bqTextView, range: range)
+            if let bqTextView = textView as? BlockquoteTextView {
+                // 인용구가 아닌 단락에 인용구 들여쓰기가 남아있으면
+                // UIKit이 문자를 삽입하기 전에 미리 정리하여 들여쓰기 상속을 방지합니다.
+                cleanupOrphanedBlockquoteIndent(in: bqTextView, at: range.location)
+
+                if text == "\n", textView.markedTextRange == nil {
+                    // blockquote Enter 처리를 먼저 시도합니다. 처리됐으면 list 처리는 건너뜁니다.
+                    if !handleReturnInBlockquote(textView: bqTextView, range: range) { return false }
+                    // 목록 Enter 처리를 시도합니다.
+                    return handleReturnInList(textView: bqTextView, range: range)
+                }
+            }
+            return true
         }
 
         /// 인용구 단락에서 Enter 키 입력을 처리합니다.
@@ -182,7 +201,8 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
             // attribute 읽기용 위치: EOF 빈 단락이면 trailing \n(storage.length - 1)에서 blockquote 속성을 읽습니다.
             let checkLocation = min(paragraphRange.location, max(0, storage.length - 1))
             let paragraphText = nsString.substring(with: paragraphRange)
-            let hasContent = paragraphText.contains { !$0.isNewline && !$0.isWhitespace }
+            // zero-width space(\u{200B})는 빈 인용구 플레이스홀더이므로 내용으로 취급하지 않습니다.
+            let hasContent = paragraphText.contains { !$0.isNewline && !$0.isWhitespace && $0 != "\u{200B}" }
 
             if !hasContent {
                 // 빈 인용구 줄 → 인용구 탈출 (새 줄 삽입 없이 속성만 제거)
@@ -194,11 +214,32 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
                 normalStyle.firstLineHeadIndent = baseLine
 
                 storage.beginEditing()
-                storage.addAttribute(.paragraphStyle, value: (normalStyle.copy() as? NSParagraphStyle) ?? normalStyle, range: paragraphRange)
-                storage.removeAttribute(.editorBlockquote, range: paragraphRange)
-                storage.removeAttribute(.editorBlockquoteBorderColor, range: paragraphRange)
-                storage.removeAttribute(.editorBlockquoteBaseHeadIndent, range: paragraphRange)
-                storage.removeAttribute(.editorBlockquoteBaseFirstLineHeadIndent, range: paragraphRange)
+                // ZWS 플레이스홀더가 포함되어 있으면 함께 제거합니다.
+                let cleanedText = paragraphText.replacingOccurrences(of: "\u{200B}", with: "")
+                if cleanedText.count != paragraphText.count {
+                    storage.replaceCharacters(in: paragraphRange, with: cleanedText)
+                    let safeLocation = min(paragraphRange.location, max(0, storage.length - 1))
+                    let updatedRange: NSRange
+                    if storage.length == 0 {
+                        updatedRange = NSRange(location: 0, length: 0)
+                    } else {
+                        updatedRange = (storage.string as NSString)
+                            .paragraphRange(for: NSRange(location: safeLocation, length: 0))
+                    }
+                    if updatedRange.length > 0 {
+                        storage.addAttribute(.paragraphStyle, value: (normalStyle.copy() as? NSParagraphStyle) ?? normalStyle, range: updatedRange)
+                        storage.removeAttribute(.editorBlockquote, range: updatedRange)
+                        storage.removeAttribute(.editorBlockquoteBorderColor, range: updatedRange)
+                        storage.removeAttribute(.editorBlockquoteBaseHeadIndent, range: updatedRange)
+                        storage.removeAttribute(.editorBlockquoteBaseFirstLineHeadIndent, range: updatedRange)
+                    }
+                } else {
+                    storage.addAttribute(.paragraphStyle, value: (normalStyle.copy() as? NSParagraphStyle) ?? normalStyle, range: paragraphRange)
+                    storage.removeAttribute(.editorBlockquote, range: paragraphRange)
+                    storage.removeAttribute(.editorBlockquoteBorderColor, range: paragraphRange)
+                    storage.removeAttribute(.editorBlockquoteBaseHeadIndent, range: paragraphRange)
+                    storage.removeAttribute(.editorBlockquoteBaseFirstLineHeadIndent, range: paragraphRange)
+                }
                 storage.endEditing()
 
                 textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquote)
@@ -208,7 +249,10 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
                 let mutableNormal = (normalStyle.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
                 textView.typingAttributes[.paragraphStyle] = (mutableNormal.copy() as? NSParagraphStyle) ?? mutableNormal
 
-                textView.setNeedsBlockquoteRefresh()
+                // 인용구 탈출 시 경계선을 즉시 제거합니다.
+                // setNeedsBlockquoteRefresh()는 다음 layoutSubviews까지 지연되어
+                // 이전 경계선이 한 프레임 남을 수 있습니다.
+                textView.refreshBlockquoteBorders()
                 parent.attributedText = textView.attributedText
                 parent.toolbarViewModel.selectedRange = textView.selectedRange
                 parent.toolbarViewModel.syncFormattingState()
@@ -452,13 +496,25 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         }
 
         func textViewDidChange(_ textView: UITextView) {
+            // 빈 인용구 활성화 시 삽입한 ZWS 플레이스홀더를 실제 콘텐츠 입력 후 정리합니다.
+            // IME 조합 중에는 건드리지 않습니다.
+            if textView.markedTextRange == nil {
+                stripZeroWidthSpacesIfNeeded(in: textView)
+            }
+
+            // 백스페이스 등으로 텍스트가 모두 삭제되어 인용구가 해제된 경우
+            // typingAttributes에 남아 있는 인용구 들여쓰기를 리셋합니다.
+            cleanupBlockquoteTypingAttributesIfNeeded(in: textView)
+
             // IME 조합 중(markedTextRange != nil)에는 바인딩 갱신을 보류합니다.
             // SwiftUI .onChange가 발화되면 상위에서 MarkdownSerializer.serialize가
             // 실행되어 조합 입력이 깨지거나 커서가 튀는 원인이 됩니다.
             if textView.markedTextRange == nil {
                 parent.attributedText = textView.attributedText
             }
-            parent.toolbarViewModel.textStorage = textView.textStorage
+            if parent.toolbarViewModel.textStorage !== textView.textStorage {
+                parent.toolbarViewModel.textStorage = textView.textStorage
+            }
             updatePlaceholder(in: textView)
 
             // 인용구 경계선: 일반 입력으로 줄바꿈/삭제 시에도 갱신
@@ -548,14 +604,47 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
                 return
             }
 
-            placeholderLabel.text = parent.placeholder
-            placeholderLabel.font = textView.font
+            let placeholderText = parent.placeholder
             // 포커스 여부와 관계없이 내용이 비어있으면 placeholder를 표시합니다.
             // 빈 에디터에 포커스가 들어가도 어떤 필드인지 알 수 있습니다.
             let showPlaceholder = textView.attributedText.length == 0
             placeholderLabel.isHidden = !showPlaceholder
             // VoiceOver: accessibilityHint로 placeholder를 제공합니다.
-            textView.accessibilityHint = showPlaceholder ? parent.placeholder : nil
+            textView.accessibilityHint = showPlaceholder ? placeholderText : nil
+
+            guard showPlaceholder else { return }
+
+            // typingAttributes에서 현재 서식을 읽어 placeholder에 미리보기로 반영합니다.
+            let typingAttrs = textView.typingAttributes
+            let font = typingAttrs[.font] as? UIFont
+                ?? textView.font
+                ?? UIFont.preferredFont(forTextStyle: .body)
+
+            var attrs: [NSAttributedString.Key: Any] = [
+                .foregroundColor: UIColor.placeholderText,
+                .font: font
+            ]
+
+            if let underline = typingAttrs[.underlineStyle] as? Int, underline > 0 {
+                attrs[.underlineStyle] = underline
+            }
+
+            if let strikethrough = typingAttrs[.strikethroughStyle] as? Int, strikethrough > 0 {
+                attrs[.strikethroughStyle] = strikethrough
+            }
+
+            if let bgColor = typingAttrs[.backgroundColor] as? UIColor {
+                attrs[.backgroundColor] = bgColor
+            }
+
+            if let paragraphStyle = typingAttrs[.paragraphStyle] as? NSParagraphStyle {
+                attrs[.paragraphStyle] = paragraphStyle
+            }
+
+            placeholderLabel.attributedText = NSAttributedString(
+                string: placeholderText,
+                attributes: attrs
+            )
         }
 
         func clampedSelectedRange(for selectedRange: NSRange, in attributedText: NSAttributedString) -> NSRange {
@@ -611,6 +700,221 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
                 }
                 ancestor = view.superview
             }
+        }
+
+        /// 백스페이스 등으로 텍스트가 모두 삭제되었거나
+        /// 현재 단락에 인용구 속성이 없는데 typingAttributes에 인용구 들여쓰기가
+        /// 남아 있는 경우, typingAttributes와 storage 단락 속성을 모두 리셋합니다.
+        private func cleanupBlockquoteTypingAttributesIfNeeded(
+            in textView: UITextView
+        ) {
+            let storage = textView.textStorage
+            let blockquoteIndent = EditorConstants.blockquoteIndent
+
+            // 현재 단락의 storage 속성도 확인: 인용구가 아닌데 들여쓰기가 남아있는지
+            let cursorLoc = textView.selectedRange.location
+            let hasStorageBlockquoteIndent: Bool = {
+                guard storage.length > 0 else { return false }
+                let loc = min(cursorLoc, storage.length - 1)
+                let isBlockquote = (storage.attribute(
+                    .editorBlockquote, at: loc,
+                    effectiveRange: nil
+                ) as? Bool) == true
+                guard !isBlockquote else { return false }
+                let ps = storage.attribute(
+                    .paragraphStyle, at: loc,
+                    effectiveRange: nil
+                ) as? NSParagraphStyle
+                return (ps?.headIndent ?? 0) >= blockquoteIndent
+            }()
+
+            // typingAttributes에 인용구 관련 속성이 없으면 정리 불필요
+            let hasBlockquoteTyping = (textView.typingAttributes[
+                NSAttributedString.Key.editorBlockquote
+            ] as? Bool) == true
+            let typingStyle = textView.typingAttributes[.paragraphStyle]
+                as? NSParagraphStyle
+            let hasBlockquoteIndent = (typingStyle?.headIndent ?? 0)
+                >= blockquoteIndent
+
+            guard hasBlockquoteTyping || hasBlockquoteIndent
+                || hasStorageBlockquoteIndent else { return }
+
+            // 저장소가 비어있거나 현재 단락에 인용구 속성이 없으면 정리
+            let isStorageEmpty = storage.length == 0
+            let isCurrentParagraphBlockquote: Bool = {
+                guard storage.length > 0 else { return false }
+                let loc = min(cursorLoc, storage.length - 1)
+                return (storage.attribute(
+                    .editorBlockquote, at: loc,
+                    effectiveRange: nil
+                ) as? Bool) == true
+            }()
+
+            guard isStorageEmpty || !isCurrentParagraphBlockquote else {
+                return
+            }
+
+            textView.typingAttributes.removeValue(
+                forKey: NSAttributedString.Key.editorBlockquote
+            )
+            textView.typingAttributes.removeValue(
+                forKey: NSAttributedString.Key.editorBlockquoteBorderColor
+            )
+            textView.typingAttributes.removeValue(
+                forKey: NSAttributedString.Key.editorBlockquoteBaseHeadIndent
+            )
+            textView.typingAttributes.removeValue(
+                forKey: NSAttributedString.Key
+                    .editorBlockquoteBaseFirstLineHeadIndent
+            )
+
+            let cleanStyle = NSMutableParagraphStyle()
+            cleanStyle.headIndent = 0
+            cleanStyle.firstLineHeadIndent = 0
+            textView.typingAttributes[.paragraphStyle] = cleanStyle.copy()
+
+            // storage의 현재 단락에 남은 인용구 들여쓰기도 정리
+            if hasStorageBlockquoteIndent, storage.length > 0 {
+                let loc = min(cursorLoc, storage.length - 1)
+                let nsString = storage.string as NSString
+                let paragraphRange = nsString.paragraphRange(
+                    for: NSRange(location: loc, length: 0)
+                )
+                if paragraphRange.length > 0 {
+                    storage.beginEditing()
+                    storage.addAttribute(
+                        .paragraphStyle,
+                        value: cleanStyle.copy() as Any,
+                        range: paragraphRange
+                    )
+                    storage.removeAttribute(
+                        .editorBlockquote, range: paragraphRange
+                    )
+                    storage.removeAttribute(
+                        .editorBlockquoteBorderColor, range: paragraphRange
+                    )
+                    storage.removeAttribute(
+                        .editorBlockquoteBaseHeadIndent, range: paragraphRange
+                    )
+                    storage.removeAttribute(
+                        .editorBlockquoteBaseFirstLineHeadIndent,
+                        range: paragraphRange
+                    )
+                    storage.endEditing()
+                }
+            }
+
+            parent.toolbarViewModel.syncFormattingState()
+        }
+
+        /// 인용구가 아닌 단락에 인용구 들여쓰기(paragraphStyle)가 남아있으면
+        /// UIKit이 문자를 삽입하기 전에 미리 제거합니다.
+        /// `shouldChangeTextIn` 시점에 호출하여 새 문자에 들여쓰기가 상속되는 것을 방지합니다.
+        private func cleanupOrphanedBlockquoteIndent(
+            in textView: BlockquoteTextView, at location: Int
+        ) {
+            let storage = textView.textStorage
+            let blockquoteIndent = EditorConstants.blockquoteIndent
+            guard storage.length > 0 else { return }
+
+            let loc = min(location, storage.length - 1)
+            let isBlockquote = (storage.attribute(
+                .editorBlockquote, at: loc, effectiveRange: nil
+            ) as? Bool) == true
+            guard !isBlockquote else { return }
+
+            let ps = storage.attribute(
+                .paragraphStyle, at: loc, effectiveRange: nil
+            ) as? NSParagraphStyle
+            guard (ps?.headIndent ?? 0) >= blockquoteIndent else { return }
+
+            let nsString = storage.string as NSString
+            let paragraphRange = nsString.paragraphRange(
+                for: NSRange(location: loc, length: 0)
+            )
+            guard paragraphRange.length > 0 else { return }
+
+            let cleanStyle = NSMutableParagraphStyle()
+            cleanStyle.headIndent = 0
+            cleanStyle.firstLineHeadIndent = 0
+
+            storage.beginEditing()
+            storage.addAttribute(
+                .paragraphStyle,
+                value: cleanStyle.copy() as Any,
+                range: paragraphRange
+            )
+            storage.removeAttribute(.editorBlockquote, range: paragraphRange)
+            storage.removeAttribute(
+                .editorBlockquoteBorderColor, range: paragraphRange
+            )
+            storage.removeAttribute(
+                .editorBlockquoteBaseHeadIndent, range: paragraphRange
+            )
+            storage.removeAttribute(
+                .editorBlockquoteBaseFirstLineHeadIndent,
+                range: paragraphRange
+            )
+            storage.endEditing()
+
+            // typingAttributes도 동기화
+            textView.typingAttributes.removeValue(
+                forKey: .editorBlockquote
+            )
+            textView.typingAttributes.removeValue(
+                forKey: .editorBlockquoteBorderColor
+            )
+            textView.typingAttributes.removeValue(
+                forKey: .editorBlockquoteBaseHeadIndent
+            )
+            textView.typingAttributes.removeValue(
+                forKey: .editorBlockquoteBaseFirstLineHeadIndent
+            )
+            textView.typingAttributes[.paragraphStyle] = cleanStyle.copy()
+        }
+
+        /// 빈 인용구 활성화 시 삽입한 ZWS 플레이스홀더를 정리합니다.
+        /// 실제 콘텐츠가 입력된 후에만 ZWS를 제거합니다.
+        private func stripZeroWidthSpacesIfNeeded(in textView: UITextView) {
+            let storage = textView.textStorage
+            guard storage.length > 0 else { return }
+
+            let fullString = storage.string
+            guard fullString.contains("\u{200B}") else { return }
+
+            // ZWS 외에 실제 콘텐츠가 없으면(빈 인용구 상태) 제거하지 않습니다.
+            let hasRealContent = fullString.contains { $0 != "\u{200B}" && !$0.isNewline }
+            guard hasRealContent else { return }
+
+            // ZWS 위치를 수집한 뒤 뒤에서부터 삭제하여 인덱스 밀림을 방지합니다.
+            let nsString = fullString as NSString
+            var zwsLocations: [Int] = []
+            var searchStart = 0
+            while searchStart < nsString.length {
+                let range = nsString.range(
+                    of: "\u{200B}",
+                    range: NSRange(location: searchStart, length: nsString.length - searchStart)
+                )
+                guard range.location != NSNotFound else { break }
+                zwsLocations.append(range.location)
+                searchStart = range.location + range.length
+            }
+
+            guard !zwsLocations.isEmpty else { return }
+
+            // 커서 앞에 있는 ZWS 개수를 세어 정확한 커서 보정을 합니다.
+            let cursorLocation = textView.selectedRange.location
+            let zwsBeforeCursor = zwsLocations.filter { $0 < cursorLocation }.count
+
+            storage.beginEditing()
+            for location in zwsLocations.reversed() {
+                storage.replaceCharacters(in: NSRange(location: location, length: 1), with: "")
+            }
+            storage.endEditing()
+
+            let newCursor = max(0, cursorLocation - zwsBeforeCursor)
+            textView.selectedRange = NSRange(location: min(newCursor, storage.length), length: 0)
         }
 
         private enum Constants {

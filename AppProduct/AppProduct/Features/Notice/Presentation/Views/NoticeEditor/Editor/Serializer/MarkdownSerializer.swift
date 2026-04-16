@@ -349,7 +349,11 @@ enum MarkdownSerializer {
         let highlightColor = attributes[.backgroundColor] as? UIColor
         let linkValue = attributes[.link]
 
-        var content = escapeMarkdownText(text)
+        // 빈 인용구 삽입 시 사용하는 zero-width space를 직렬화 결과에서 제거합니다.
+        let cleanedText = text.replacingOccurrences(of: "\u{200B}", with: "")
+        guard !cleanedText.isEmpty else { return "" }
+
+        var content = escapeMarkdownText(cleanedText)
 
         if isMonospaced {
             // mono font → `텍스트`

@@ -100,28 +100,34 @@ final class EditorToolbarViewModel {
     func toggleBlockquote() {
         guard let storage = textStorage else { return }
 
-        // 빈 텍스트: typingAttributes 에만 인용구 스타일 적용 (토글)
+        // 빈 텍스트: 인용구 속성이 적용된 zero-width space를 삽입하여
+        // 경계선이 즉시 표시되고 placeholder가 숨겨지도록 합니다.
         if storage.length == 0 {
             guard let tv = textView else { return }
-            let alreadyBlockquote = (tv.typingAttributes[NSAttributedString.Key.editorBlockquote] as? Bool) == true
-            if alreadyBlockquote {
-                tv.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquote)
-                tv.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBorderColor)
-                tv.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBaseHeadIndent)
-                tv.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBaseFirstLineHeadIndent)
-                tv.typingAttributes.removeValue(forKey: .paragraphStyle)
-                isBlockquote = false
-            } else {
-                let style = NSMutableParagraphStyle()
-                style.headIndent = blockquoteIndent
-                style.firstLineHeadIndent = blockquoteIndent
-                tv.typingAttributes[.paragraphStyle] = (style.copy() as? NSParagraphStyle) ?? style
-                tv.typingAttributes[NSAttributedString.Key.editorBlockquote] = true
-                tv.typingAttributes[NSAttributedString.Key.editorBlockquoteBorderColor] = UIColor.systemGray3
-                tv.typingAttributes[NSAttributedString.Key.editorBlockquoteBaseHeadIndent] = NSNumber(value: 0.0)
-                tv.typingAttributes[NSAttributedString.Key.editorBlockquoteBaseFirstLineHeadIndent] = NSNumber(value: 0.0)
-                isBlockquote = true
-            }
+            let style = NSMutableParagraphStyle()
+            style.headIndent = blockquoteIndent
+            style.firstLineHeadIndent = blockquoteIndent
+
+            let currentFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
+            let attrs: [NSAttributedString.Key: Any] = [
+                .paragraphStyle: (style.copy() as? NSParagraphStyle) ?? style,
+                .font: currentFont,
+                .editorBlockquote: true,
+                .editorBlockquoteBorderColor: UIColor.systemGray3,
+                .editorBlockquoteBaseHeadIndent: NSNumber(value: 0.0),
+                .editorBlockquoteBaseFirstLineHeadIndent: NSNumber(value: 0.0),
+            ]
+
+            storage.beginEditing()
+            storage.replaceCharacters(in: NSRange(location: 0, length: 0),
+                                      with: NSAttributedString(string: "\u{200B}", attributes: attrs))
+            storage.endEditing()
+
+            tv.selectedRange = NSRange(location: 1, length: 0)
+            tv.typingAttributes = attrs
+            isBlockquote = true
+
+            onFormattingApplied?()
             return
         }
 
@@ -135,6 +141,28 @@ final class EditorToolbarViewModel {
         // 레이아웃 패스와 delegate 알림이 1회만 발생하도록 합니다.
         storage.beginEditing()
         if isCurrentlyBlockquote {
+            // zero-width space만 있는 빈 인용구 해제: 해당 단락의 ZWS를 제거하고 typingAttributes 정리
+            let paragraphText = (storage.string as NSString).substring(with: paragraphRange)
+            let isZWSOnly = paragraphText == "\u{200B}" || paragraphText == "\u{200B}\n"
+            if isZWSOnly {
+                let cursorAfterRemoval = paragraphRange.location
+                storage.replaceCharacters(in: paragraphRange, with: "")
+                storage.endEditing()
+
+                if let tv = textView {
+                    tv.typingAttributes.removeValue(forKey: .editorBlockquote)
+                    tv.typingAttributes.removeValue(forKey: .editorBlockquoteBorderColor)
+                    tv.typingAttributes.removeValue(forKey: .editorBlockquoteBaseHeadIndent)
+                    tv.typingAttributes.removeValue(forKey: .editorBlockquoteBaseFirstLineHeadIndent)
+                    tv.typingAttributes.removeValue(forKey: .paragraphStyle)
+                    tv.selectedRange = NSRange(location: min(cursorAfterRemoval, storage.length), length: 0)
+                }
+                isBlockquote = false
+                onFormattingApplied?()
+                syncFormattingState()
+                return
+            }
+
             let baseHeadIndent = (storage.attribute(.editorBlockquoteBaseHeadIndent, at: baseLocation, effectiveRange: nil) as? NSNumber)?.doubleValue
             let baseFirstLineIndent = (storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: baseLocation, effectiveRange: nil) as? NSNumber)?.doubleValue
             updatedStyle.headIndent = CGFloat(baseHeadIndent ?? max(0, Double(updatedStyle.headIndent - blockquoteIndent)))
@@ -156,6 +184,16 @@ final class EditorToolbarViewModel {
             storage.addAttribute(.editorBlockquote, value: true, range: paragraphRange)
         }
         storage.endEditing()
+
+        // 인용구 해제 시 typingAttributes에 남은 들여쓰기와 인용구 속성을 정리하여
+        // 이후 입력되는 텍스트가 들여쓰기 없이 작성되도록 합니다.
+        if isCurrentlyBlockquote, let tv = textView {
+            tv.typingAttributes.removeValue(forKey: .editorBlockquote)
+            tv.typingAttributes.removeValue(forKey: .editorBlockquoteBorderColor)
+            tv.typingAttributes.removeValue(forKey: .editorBlockquoteBaseHeadIndent)
+            tv.typingAttributes.removeValue(forKey: .editorBlockquoteBaseFirstLineHeadIndent)
+            tv.typingAttributes[.paragraphStyle] = (updatedStyle.copy() as? NSParagraphStyle) ?? updatedStyle
+        }
 
         onFormattingApplied?()
         syncFormattingState()
@@ -334,6 +372,15 @@ final class EditorToolbarViewModel {
     /// 서식이 실제로 변경된 후 호출됩니다. (attributedText 바인딩 동기화용)
     var onFormattingApplied: (() -> Void)?
 
+    /// typingAttributes만 변경된 경우 placeholder 갱신만 수행합니다.
+    /// attributedText 바인딩 재할당을 건너뛰어 불필요한 SwiftUI 갱신을 방지합니다.
+    var onPlaceholderNeedsUpdate: (() -> Void)?
+
+    /// typingAttributes 변경 후 placeholder 갱신을 요청합니다.
+    private func notifyPlaceholderUpdate() {
+        onPlaceholderNeedsUpdate?()
+    }
+
     /// 선택 영역의 실제 속성을 읽어 툴바 상태를 동기화합니다.
     @MainActor
     func syncFormattingState() {
@@ -360,7 +407,7 @@ final class EditorToolbarViewModel {
 
         if clampedRange.length == 0, let tv = textView {
             let typingFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
-            isBold = typingFont.fontDescriptor.symbolicTraits.contains(.traitBold)
+            isBold = isFontBold(typingFont)
             // Pretendard italic은 oblique matrix로 표현되므로 matrix.c 값도 함께 확인합니다.
             if typingFont.fontName.hasPrefix("Pretendard") {
                 isItalic = typingFont.fontDescriptor.matrix.c != 0.0
@@ -370,7 +417,9 @@ final class EditorToolbarViewModel {
             isUnderline = (tv.typingAttributes[.underlineStyle] as? Int ?? 0) > 0
             isStrikethrough = (tv.typingAttributes[.strikethroughStyle] as? Int ?? 0) > 0
         } else {
-            isBold = resolvedSyncRange.map { rangeHasUniformFontTrait($0, trait: .traitBold, in: storage) } ?? false
+            isBold = resolvedSyncRange.map {
+                rangeHasUniformFontTrait($0, trait: .traitBold, in: storage)
+            } ?? false
             isItalic = resolvedSyncRange.map { rangeHasUniformFontTrait($0, trait: .traitItalic, in: storage) } ?? false
             isUnderline = resolvedSyncRange.map { rangeHasUniformTextDecoration($0, key: .underlineStyle, in: storage) } ?? false
             isStrikethrough = resolvedSyncRange.map { rangeHasUniformTextDecoration($0, key: .strikethroughStyle, in: storage) } ?? false
@@ -412,6 +461,7 @@ final class EditorToolbarViewModel {
         } else if let tv = textView {
             let currentFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
             tv.typingAttributes[.font] = updatedFont(from: currentFont, toggling: trait, enabled: shouldEnable)
+            notifyPlaceholderUpdate()
         }
 
         syncFormattingState()
@@ -438,6 +488,7 @@ final class EditorToolbarViewModel {
             } else {
                 tv.typingAttributes.removeValue(forKey: key)
             }
+            notifyPlaceholderUpdate()
         }
 
         syncFormattingState()
@@ -488,7 +539,7 @@ final class EditorToolbarViewModel {
             toolbarMode = .default
         }
 
-        isBold = typingFont.fontDescriptor.symbolicTraits.contains(.traitBold)
+        isBold = isFontBold(typingFont)
         if typingFont.fontName.hasPrefix("Pretendard") {
             isItalic = typingFont.fontDescriptor.matrix.c != 0.0
         } else {

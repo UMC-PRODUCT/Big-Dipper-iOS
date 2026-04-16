@@ -102,6 +102,17 @@ extension EditorToolbarViewModel {
         return traits?[.weight] as? CGFloat ?? UIFont.Weight.regular.rawValue
     }
 
+    /// Pretendard 커스텀 폰트를 포함하여 bold 여부를 정확히 판별합니다.
+    ///
+    /// Pretendard-SemiBold는 `UIFontDescriptor.symbolicTraits`에 `.traitBold`가
+    /// 포함되지 않으므로 폰트 이름 기반으로 판별합니다.
+    func isFontBold(_ font: UIFont) -> Bool {
+        if font.fontName.hasPrefix("Pretendard") {
+            return font.fontName.contains("Bold") || font.fontName.contains("SemiBold")
+        }
+        return font.fontDescriptor.symbolicTraits.contains(.traitBold)
+    }
+
     // MARK: - Uniform Attribute Checks
 
     /// 주어진 범위의 모든 폰트가 동일 트레이트를 가지는지 확인합니다.
@@ -119,7 +130,9 @@ extension EditorToolbarViewModel {
             let font = resolvedFont(from: value, at: attributeRange.location, in: storage)
 
             let hasTrait: Bool
-            if font.fontName.hasPrefix("Pretendard") && trait == .traitItalic {
+            if trait == .traitBold {
+                hasTrait = isFontBold(font)
+            } else if font.fontName.hasPrefix("Pretendard") && trait == .traitItalic {
                 hasTrait = font.fontDescriptor.matrix.c != 0.0
             } else {
                 hasTrait = font.fontDescriptor.symbolicTraits.contains(trait)
@@ -198,10 +211,10 @@ extension EditorToolbarViewModel {
         if traits.contains(.traitMonoSpace) || detectedFont.fontName.localizedCaseInsensitiveContains("mono") {
             return .mono
         }
-        if abs(detectedFont.pointSize - 28) < 0.5 && traits.contains(.traitBold) {
+        if abs(detectedFont.pointSize - 28) < 0.5 && isFontBold(detectedFont) {
             return .title
         }
-        if abs(detectedFont.pointSize - 22) < 0.5 && traits.contains(.traitBold) {
+        if abs(detectedFont.pointSize - 22) < 0.5 && isFontBold(detectedFont) {
             return .heading
         }
         if abs(detectedFont.pointSize - 17) < 0.5 && fontWeight >= UIFont.Weight.semibold.rawValue {

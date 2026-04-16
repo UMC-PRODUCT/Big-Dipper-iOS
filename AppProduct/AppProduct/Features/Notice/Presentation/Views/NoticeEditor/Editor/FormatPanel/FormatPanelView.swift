@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 fileprivate struct HighlightOption {
     let name: String
@@ -49,10 +50,15 @@ struct FormatPanelView: View {
 
     @Bindable var viewModel: EditorToolbarViewModel
     @State private var isHighlightPalettePresented = false
-    @State private var selectedHighlightIndex = 0
 
-    private var selectedHighlightColor: Color {
-        Constants.highlightPalette[selectedHighlightIndex].color
+    /// ViewModel의 highlightColor와 팔레트 색상을 비교하여 현재 선택된 인덱스를 반환합니다.
+    private var selectedHighlightIndex: Int? {
+        guard let vmColor = viewModel.highlightColor else { return nil }
+        return Constants.highlightPalette.firstIndex { colorsApproximatelyEqual($0.color, vmColor) }
+    }
+
+    private var selectedHighlightColor: Color? {
+        viewModel.highlightColor
     }
 
     // MARK: - Body
@@ -169,9 +175,14 @@ struct FormatPanelView: View {
                     }
 
                     Circle()
-                        .fill(selectedHighlightColor)
+                        .fill(selectedHighlightColor ?? Color.clear)
                         .frame(width: Constants.indicatorSize, height: Constants.indicatorSize)
                         .overlay {
+                            if selectedHighlightColor == nil {
+                                Image(systemName: "line.diagonal")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(Constants.inactiveForegroundColor)
+                            }
                             Circle()
                                 .stroke(Constants.inactiveForegroundColor.opacity(0.18), lineWidth: 1)
                         }
@@ -180,9 +191,31 @@ struct FormatPanelView: View {
 
                 if isHighlightPalettePresented {
                     HStack(spacing: Constants.paletteSpacing) {
+                        Button {
+                            viewModel.clearHighlight()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isHighlightPalettePresented = false
+                            }
+                        } label: {
+                            Circle()
+                                .fill(Color.clear)
+                                .frame(width: Constants.paletteCircleSize, height: Constants.paletteCircleSize)
+                                .overlay {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(Constants.inactiveForegroundColor)
+                                    Circle()
+                                        .stroke(
+                                            selectedHighlightIndex == nil ? Constants.activeColor : Constants.inactiveForegroundColor.opacity(0.3),
+                                            lineWidth: 2
+                                        )
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("형광펜 제거")
+
                         ForEach(Array(Constants.highlightPalette.enumerated()), id: \.offset) { index, option in
                             Button {
-                                selectedHighlightIndex = index
                                 viewModel.applyHighlight(color: option.color)
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     isHighlightPalettePresented = false
@@ -338,5 +371,20 @@ struct FormatPanelView: View {
     private func buttonBackground(isActive: Bool) -> some View {
         RoundedRectangle(cornerRadius: Constants.controlCornerRadius, style: .continuous)
             .fill(isActive ? Constants.activeColor : Constants.inactiveBackgroundColor)
+    }
+
+    /// SwiftUI Color 간 근사 비교 (opacity 포함 RGBA 비교)
+    private func colorsApproximatelyEqual(_ lhs: Color, _ rhs: Color) -> Bool {
+        let lhsResolved = UIColor(lhs).resolvedColor(with: UITraitCollection.current)
+        let rhsResolved = UIColor(rhs).resolvedColor(with: UITraitCollection.current)
+        var lr: CGFloat = 0, lg: CGFloat = 0, lb: CGFloat = 0, la: CGFloat = 0
+        var rr: CGFloat = 0, rg: CGFloat = 0, rb: CGFloat = 0, ra: CGFloat = 0
+        guard lhsResolved.getRed(&lr, green: &lg, blue: &lb, alpha: &la),
+              rhsResolved.getRed(&rr, green: &rg, blue: &rb, alpha: &ra) else {
+            return false
+        }
+        let tolerance: CGFloat = 0.02
+        return abs(lr - rr) < tolerance && abs(lg - rg) < tolerance
+            && abs(lb - rb) < tolerance && abs(la - ra) < tolerance
     }
 }

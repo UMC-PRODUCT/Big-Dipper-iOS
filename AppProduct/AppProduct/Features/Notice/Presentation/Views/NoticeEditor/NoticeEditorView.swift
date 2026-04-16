@@ -321,6 +321,13 @@ struct NoticeEditorView: View {
             textFormatButton("S", isStrikethrough: true, isActive: toolVM.isStrikethrough) { toolVM.toggleStrikethrough() }
             highlightMenuButton
             listMenuButton
+            // 인용구
+            toolButton(
+                icon: "text.quote",
+                tint: toolVM.isBlockquote ? .indigo500 : .black
+            ) {
+                toolVM.toggleBlockquote()
+            }
         }
     }
 
