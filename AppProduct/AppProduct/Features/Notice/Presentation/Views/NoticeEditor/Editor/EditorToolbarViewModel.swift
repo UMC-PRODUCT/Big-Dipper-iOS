@@ -230,6 +230,7 @@ final class EditorToolbarViewModel {
     func applyList(_ style: EditorListStyle) {
         guard let storage = textStorage else { return }
 
+        let originalCursor = selectedRange.location
         let paragraphRange = currentParagraphRange(in: storage)
         let paragraphNSString = storage.string as NSString
         let paragraphText = paragraphNSString.substring(with: paragraphRange)
@@ -248,7 +249,15 @@ final class EditorToolbarViewModel {
             storage.removeAttribute(.editorListStyle, range: currentParagraphRange(in: storage))
             storage.endEditing()
 
-            let cursorPosition = NSRange(location: removeRange.location, length: 0)
+            // 커서가 접두사 내부에 있었으면 단락 시작으로, 아니면 삭제된 길이만큼 뒤로 이동
+            let prefixEnd = removeRange.location + removeRange.length
+            let newCursor: Int
+            if originalCursor <= prefixEnd {
+                newCursor = removeRange.location
+            } else {
+                newCursor = originalCursor - removeRange.length
+            }
+            let cursorPosition = NSRange(location: newCursor, length: 0)
             selectedRange = cursorPosition
             textView?.selectedRange = cursorPosition
             onFormattingApplied?()
@@ -256,13 +265,14 @@ final class EditorToolbarViewModel {
             return
         }
 
+        let oldPrefixLength = existingPrefixRange?.length ?? 0
         let replacementRange = NSRange(
             location: paragraphRange.location,
-            length: existingPrefixRange?.length ?? 0
+            length: oldPrefixLength
         )
 
         // 삽입할 접두사에 적용할 폰트: 기존 단락 본문의 폰트 → typingAttributes 폰트 → body 기본폰트 순으로 사용
-        let contentOffset = replacementRange.location + (existingPrefixRange?.length ?? 0)
+        let contentOffset = replacementRange.location + oldPrefixLength
         let prefixFont: UIFont
         if contentOffset < storage.length {
             prefixFont = storage.attribute(.font, at: contentOffset, effectiveRange: nil) as? UIFont
@@ -279,8 +289,16 @@ final class EditorToolbarViewModel {
         storage.addAttribute(.editorListStyle, value: listStyleIdentifier(for: style), range: currentParagraphRange(in: storage))
         storage.endEditing()
 
-        // 접두사 삽입 후 커서를 접두사 바로 뒤로 이동
-        let cursorAfterPrefix = NSRange(location: replacementRange.location + prefix.utf16.count, length: 0)
+        // 커서가 기존 접두사 내부에 있었으면 새 접두사 뒤로, 아니면 delta만큼 보정
+        let oldPrefixEnd = paragraphRange.location + oldPrefixLength
+        let delta = prefix.utf16.count - oldPrefixLength
+        let newCursor: Int
+        if originalCursor <= oldPrefixEnd {
+            newCursor = replacementRange.location + prefix.utf16.count
+        } else {
+            newCursor = originalCursor + delta
+        }
+        let cursorAfterPrefix = NSRange(location: newCursor, length: 0)
         selectedRange = cursorAfterPrefix
         textView?.selectedRange = cursorAfterPrefix
         onFormattingApplied?()

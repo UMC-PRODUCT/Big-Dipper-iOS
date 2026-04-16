@@ -95,11 +95,40 @@ enum MarkdownSerializer {
         return markdown
     }
 
+    // MARK: - HTML Detection
+
+    /// 문자열이 마크다운이 아닌 HTML 형식인지 휴리스틱으로 판별합니다.
+    /// `<u>`, `<mark>`는 iOS 에디터의 마크다운 인라인 토큰이므로 제외합니다.
+    static func looksLikeHTML(_ content: String) -> Bool {
+        let pattern = "<(p|div|br|span|b|i|strong|em|ul|ol|li|h[1-6]|blockquote|a|table|tr|td)[\\s>/]"
+        return content.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
     // MARK: - Plain Text
 
-    /// 마크다운 문자열에서 모든 서식을 제거하고 plain text를 반환합니다.
+    /// 마크다운 또는 HTML 문자열에서 모든 서식을 제거하고 plain text를 반환합니다.
     static func plainText(from markdown: String) -> String {
-        deserialize(markdown, baseFont: UIFont.preferredFont(forTextStyle: .body)).string
+        if looksLikeHTML(markdown) {
+            return plainTextFromHTML(markdown)
+        }
+        return deserialize(markdown, baseFont: UIFont.preferredFont(forTextStyle: .body)).string
+    }
+
+    /// HTML 문자열에서 태그를 제거하고 순수 텍스트를 추출합니다.
+    private static func plainTextFromHTML(_ html: String) -> String {
+        guard let data = html.data(using: .utf8) else { return html }
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.html,
+            .characterEncoding: String.Encoding.utf8.rawValue
+        ]
+        guard let attributed = try? NSAttributedString(
+            data: data,
+            options: options,
+            documentAttributes: nil
+        ) else {
+            return html
+        }
+        return attributed.string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Display Rendering
@@ -112,6 +141,12 @@ enum MarkdownSerializer {
     /// `**bold**`는 볼드로 올바르게 렌더링됩니다.
     static func deserializeForDisplay(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
         return deserialize(markdown, baseFont: baseFont)
+    }
+
+    /// 서버에서 수신한 마크다운의 백슬래시 이스케이프를 제거합니다.
+    /// 디스플레이 전처리 전용 — 에디터 로드 경로에는 사용하지 마십시오.
+    static func unescapeForDisplay(_ markdown: String) -> String {
+        return unescapeMarkdownText(markdown)
     }
 
     // MARK: - Deserialize
