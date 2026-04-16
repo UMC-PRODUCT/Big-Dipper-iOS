@@ -52,4 +52,9 @@ extension NSAttributedString.Key {
 
     /// 현재 목록 스타일 식별자를 저장하는 키입니다.
     static let editorListStyle = NSAttributedString.Key("EditorToolbarListStyle")
+
+    /// Pretendard oblique italic 상태를 저장하는 키입니다.
+    /// UIKit이 커서 이동 시 typingAttributes의 oblique matrix를 버리므로
+    /// 이 키로 italic 활성 상태를 별도 추적합니다.
+    static let editorItalic = NSAttributedString.Key("EditorToolbarItalic")
 }

@@ -502,6 +502,10 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
         }
 
         func textViewDidChange(_ textView: UITextView) {
+            // italic 토글 후 첫 타이핑: _pendingItalicEnabled 플래그를 초기화합니다.
+            // 이후부터는 storage 속성과 .editorItalic 커스텀 키로 상태를 추적합니다.
+            parent.toolbarViewModel.clearPendingItalic()
+
             // 빈 인용구 활성화 시 삽입한 ZWS 플레이스홀더를 실제 콘텐츠 입력 후 정리합니다.
             // IME 조합 중에는 건드리지 않습니다.
             if textView.markedTextRange == nil {
@@ -1029,6 +1033,23 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
                 textView.typingAttributes.removeValue(forKey: .editorBlockquoteBorderColor)
                 textView.typingAttributes.removeValue(forKey: .editorBlockquoteBaseHeadIndent)
                 textView.typingAttributes.removeValue(forKey: .editorBlockquoteBaseFirstLineHeadIndent)
+            }
+
+            // Pretendard italic: storage의 .editorItalic 속성을 typingAttributes에 재주입합니다.
+            // UIKit은 커서 이동 시 typingAttributes를 재계산하면서 oblique matrix를 소실시킵니다.
+            let isItalicInStorage = (storage.attribute(
+                .editorItalic, at: checkLoc, effectiveRange: nil
+            ) as? Bool) == true
+
+            if isItalicInStorage {
+                textView.typingAttributes[.editorItalic] = true
+                if let storedFont = storage.attribute(
+                    .font, at: checkLoc, effectiveRange: nil
+                ) as? UIFont, storedFont.fontDescriptor.matrix.c != 0.0 {
+                    textView.typingAttributes[.font] = storedFont
+                }
+            } else {
+                textView.typingAttributes.removeValue(forKey: .editorItalic)
             }
         }
 

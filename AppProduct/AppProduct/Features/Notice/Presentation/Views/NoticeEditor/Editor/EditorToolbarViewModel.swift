@@ -36,6 +36,9 @@ final class EditorToolbarViewModel {
     /// 선택 영역이 기울임꼴인지 여부입니다.
     private(set) var isItalic: Bool = false
 
+    /// italic 토글 직후 UIKit 리셋을 거슬러 상태를 일시 보존합니다.
+    private var _pendingItalicEnabled: Bool?
+
     /// 선택 영역에 밑줄이 적용되었는지 여부입니다.
     private(set) var isUnderline: Bool = false
 
@@ -81,6 +84,11 @@ final class EditorToolbarViewModel {
     @MainActor
     func toggleItalic() {
         toggleFontTrait(.traitItalic, shouldEnable: !isItalic)
+    }
+
+    /// 첫 타이핑 후 italic 임시 추적 플래그를 초기화합니다.
+    func clearPendingItalic() {
+        _pendingItalicEnabled = nil
     }
 
     /// 선택 영역의 텍스트에 밑줄 서식을 토글합니다.
@@ -408,8 +416,14 @@ final class EditorToolbarViewModel {
         if clampedRange.length == 0, let tv = textView {
             let typingFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
             isBold = isFontBold(typingFont)
-            // Pretendard italic은 oblique matrix로 표현되므로 matrix.c 값도 함께 확인합니다.
-            if typingFont.fontName.hasPrefix("Pretendard") {
+            // .editorItalic 커스텀 키를 우선 확인합니다.
+            // UIKit이 typingAttributes를 재계산할 때 oblique matrix는 소실되지만
+            // 커스텀 키는 reinject 패턴으로 재주입됩니다.
+            if let pending = _pendingItalicEnabled {
+                isItalic = pending
+            } else if let editorItalicFlag = tv.typingAttributes[.editorItalic] as? Bool {
+                isItalic = editorItalicFlag
+            } else if typingFont.fontName.hasPrefix("Pretendard") {
                 isItalic = typingFont.fontDescriptor.matrix.c != 0.0
             } else {
                 isItalic = typingFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
@@ -456,11 +470,26 @@ final class EditorToolbarViewModel {
                 let updatedFont = updatedFont(from: currentFont, toggling: trait, enabled: shouldEnable)
                 storage.addAttribute(.font, value: updatedFont, range: range)
             }
+            if trait == .traitItalic {
+                if shouldEnable {
+                    storage.addAttribute(.editorItalic, value: true, range: clampedRange)
+                } else {
+                    storage.removeAttribute(.editorItalic, range: clampedRange)
+                }
+            }
             storage.endEditing()
             onFormattingApplied?()
         } else if let tv = textView {
             let currentFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
             tv.typingAttributes[.font] = updatedFont(from: currentFont, toggling: trait, enabled: shouldEnable)
+            if trait == .traitItalic {
+                _pendingItalicEnabled = shouldEnable
+                if shouldEnable {
+                    tv.typingAttributes[.editorItalic] = true
+                } else {
+                    tv.typingAttributes.removeValue(forKey: .editorItalic)
+                }
+            }
             notifyPlaceholderUpdate()
         }
 
@@ -540,7 +569,11 @@ final class EditorToolbarViewModel {
         }
 
         isBold = isFontBold(typingFont)
-        if typingFont.fontName.hasPrefix("Pretendard") {
+        if let pending = _pendingItalicEnabled {
+            isItalic = pending
+        } else if let editorItalicFlag = attrs[.editorItalic] as? Bool {
+            isItalic = editorItalicFlag
+        } else if typingFont.fontName.hasPrefix("Pretendard") {
             isItalic = typingFont.fontDescriptor.matrix.c != 0.0
         } else {
             isItalic = typingFont.fontDescriptor.symbolicTraits.contains(.traitItalic)
