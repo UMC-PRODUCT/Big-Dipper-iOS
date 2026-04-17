@@ -7,13 +7,22 @@
 
 import SwiftUI
 
-/// AI 글 개선 처리 중 표시되는 전체 화면 로딩 오버레이입니다.
+/// AI 글 개선 처리 중/완료 시 표시되는 전체 화면 오버레이입니다.
 struct AILoadingOverlay: View {
 
     // MARK: - Property
 
+    let phase: Phase
     let streamingText: String
     let tokenUsage: NoticeEditorViewModel.AITokenUsage?
+    var onConfirm: (() -> Void)? = nil
+
+    // MARK: - Types
+
+    enum Phase {
+        case processing
+        case completed
+    }
 
     // MARK: - Constants
 
@@ -37,16 +46,13 @@ struct AILoadingOverlay: View {
                 .ignoresSafeArea()
 
             VStack(spacing: DefaultSpacing.spacing16) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: Constants.iconSize, weight: .medium))
-                    .foregroundStyle(.indigo500)
-                    .symbolEffect(.variableColor.iterative.reversing)
+                headerIcon
 
-                Text("AI가 글을 개선하고 있어요...")
+                Text(titleText)
                     .appFont(.calloutEmphasis)
                     .multilineTextAlignment(.center)
 
-                if !streamingText.isEmpty {
+                if phase == .processing, !streamingText.isEmpty {
                     Text(streamingText)
                         .font(.app(.footnote))
                         .foregroundStyle(.grey500)
@@ -59,6 +65,13 @@ struct AILoadingOverlay: View {
                 if let tokenUsage {
                     tokenUsageRow(tokenUsage)
                 }
+
+                if phase == .completed {
+                    MainButton("확인") {
+                        onConfirm?()
+                    }
+                    .buttonStyle(.glassProminent)
+                }
             }
             .padding(Constants.cardPadding)
             .frame(maxWidth: Constants.cardMaxWidth)
@@ -66,7 +79,29 @@ struct AILoadingOverlay: View {
         }
     }
 
-    // MARK: - Function
+    // MARK: - View Builders
+
+    @ViewBuilder
+    private var headerIcon: some View {
+        switch phase {
+        case .processing:
+            Image(systemName: "sparkles")
+                .font(.system(size: Constants.iconSize, weight: .medium))
+                .foregroundStyle(.indigo500)
+                .symbolEffect(.variableColor.iterative.reversing)
+        case .completed:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: Constants.iconSize, weight: .medium))
+                .foregroundStyle(.indigo500)
+        }
+    }
+
+    private var titleText: String {
+        switch phase {
+        case .processing: "AI가 글을 개선하고 있어요..."
+        case .completed:  "AI 개선이 완료됐어요"
+        }
+    }
 
     @ViewBuilder
     private func tokenUsageRow(_ usage: NoticeEditorViewModel.AITokenUsage) -> some View {
@@ -77,7 +112,12 @@ struct AILoadingOverlay: View {
                 .frame(height: Constants.tokenProgressHeight)
 
             HStack {
-                Text("사용 \(usage.used.formatted()) 토큰")
+                switch phase {
+                case .processing:
+                    Text("사용 \(usage.cumulativeUsed.formatted()) 토큰")
+                case .completed:
+                    Text("이번 \(usage.lastRunTokens.formatted()) 토큰")
+                }
                 Spacer(minLength: 8)
                 Text("남음 \(usage.remaining.formatted()) / \(usage.total.formatted())")
             }

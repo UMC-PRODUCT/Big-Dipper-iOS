@@ -162,6 +162,12 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     /// AI 토큰 사용량 (iOS 26.4+ 에서만 채워짐)
     var aiTokenUsage: AITokenUsage?
 
+    /// 에디터가 열려 있는 동안 성공적으로 확정된 AI 토큰 누적 사용량
+    var aiCumulativeUsedTokens: Int = 0
+
+    /// AI 개선 완료 후 확인 버튼 대기 중 상태 (오버레이 유지용)
+    var showAICompletionSummary: Bool = false
+
     // MARK: - Edit Snapshot
 
     /// 수정 화면 원본 제목

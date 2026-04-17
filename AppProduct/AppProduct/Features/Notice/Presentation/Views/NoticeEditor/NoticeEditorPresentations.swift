@@ -32,15 +32,18 @@ struct NoticeEditorPresentations: ViewModifier {
             .fullScreenCover(isPresented: $viewModel.showVoting, content: votingSheet)
             .alertPrompt(item: $viewModel.alertPrompt)
             .overlay {
-                if viewModel.isAIProcessing {
+                if viewModel.isAIProcessing || viewModel.showAICompletionSummary {
                     AILoadingOverlay(
+                        phase: viewModel.isAIProcessing ? .processing : .completed,
                         streamingText: viewModel.aiStreamingText,
-                        tokenUsage: viewModel.aiTokenUsage
+                        tokenUsage: viewModel.aiTokenUsage,
+                        onConfirm: { viewModel.dismissAICompletionSummary() }
                     )
                     .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .center)))
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: viewModel.isAIProcessing)
+            .animation(.easeInOut(duration: 0.25), value: viewModel.showAICompletionSummary)
             .sheet(
                 isPresented: Binding(
                     get: { viewModel.editorToolbarViewModel.isFormatPanelVisible },
