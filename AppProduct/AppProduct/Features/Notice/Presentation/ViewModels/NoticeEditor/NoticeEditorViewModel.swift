@@ -159,6 +159,9 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     /// AI 스트리밍 진행 중 현재까지 생성된 텍스트 (진행 상황 표시용)
     var aiStreamingText: String = ""
 
+    /// AI 토큰 사용량 (iOS 26.4+ 에서만 채워짐)
+    var aiTokenUsage: AITokenUsage?
+
     // MARK: - Edit Snapshot
 
     /// 수정 화면 원본 제목

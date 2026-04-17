@@ -13,6 +13,7 @@ struct AILoadingOverlay: View {
     // MARK: - Property
 
     let streamingText: String
+    let tokenUsage: NoticeEditorViewModel.AITokenUsage?
 
     // MARK: - Constants
 
@@ -23,6 +24,9 @@ struct AILoadingOverlay: View {
         static let cardPadding: EdgeInsets = .init(top: 24, leading: 28, bottom: 24, trailing: 28)
         static let cardMaxWidth: CGFloat = 300
         static let streamingLineLimit: Int = 3
+        static let streamingLineSpacing: CGFloat = 1
+        static let tokenProgressHeight: CGFloat = 3
+        static let tokenRowSpacing: CGFloat = 6
     }
 
     // MARK: - Body
@@ -44,15 +48,42 @@ struct AILoadingOverlay: View {
 
                 if !streamingText.isEmpty {
                     Text(streamingText)
-                        .appFont(.footnote, color: .grey500)
+                        .font(.app(.footnote))
+                        .foregroundStyle(.grey500)
+                        .lineSpacing(Constants.streamingLineSpacing)
                         .lineLimit(Constants.streamingLineLimit)
                         .multilineTextAlignment(.center)
                         .animation(.easeInOut(duration: 0.15), value: streamingText)
+                }
+
+                if let tokenUsage {
+                    tokenUsageRow(tokenUsage)
                 }
             }
             .padding(Constants.cardPadding)
             .frame(maxWidth: Constants.cardMaxWidth)
             .glassEffect(.regular, in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius)))
         }
+    }
+
+    // MARK: - Function
+
+    @ViewBuilder
+    private func tokenUsageRow(_ usage: NoticeEditorViewModel.AITokenUsage) -> some View {
+        VStack(spacing: Constants.tokenRowSpacing) {
+            ProgressView(value: usage.progress)
+                .progressViewStyle(.linear)
+                .tint(.indigo500)
+                .frame(height: Constants.tokenProgressHeight)
+
+            HStack {
+                Text("사용 \(usage.used.formatted()) 토큰")
+                Spacer(minLength: 8)
+                Text("남음 \(usage.remaining.formatted()) / \(usage.total.formatted())")
+            }
+            .font(.app(.caption2))
+            .foregroundStyle(.grey500)
+        }
+        .animation(.easeInOut(duration: 0.2), value: usage)
     }
 }

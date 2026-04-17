@@ -33,8 +33,11 @@ struct NoticeEditorPresentations: ViewModifier {
             .alertPrompt(item: $viewModel.alertPrompt)
             .overlay {
                 if viewModel.isAIProcessing {
-                    AILoadingOverlay(streamingText: viewModel.aiStreamingText)
-                        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .center)))
+                    AILoadingOverlay(
+                        streamingText: viewModel.aiStreamingText,
+                        tokenUsage: viewModel.aiTokenUsage
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .center)))
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: viewModel.isAIProcessing)

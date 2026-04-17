@@ -1002,6 +1002,16 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
                 ? paragraphRange.location
                 : max(0, storage.length - 1)
 
+            // italic은 인라인 속성이므로 단락 시작이 아닌 커서 앞 문자를 기준으로 조회합니다.
+            let italicCheckLoc: Int = {
+                let selRange = textView.selectedRange
+                if selRange.length > 0 {
+                    return max(0, min(selRange.location, storage.length - 1))
+                }
+                let beforeCursor = cursorLoc > 0 ? cursorLoc - 1 : 0
+                return min(beforeCursor, storage.length - 1)
+            }()
+
             let isBlockquote = (storage.attribute(
                 .editorBlockquote, at: checkLoc, effectiveRange: nil
             ) as? Bool) == true
@@ -1038,13 +1048,13 @@ private struct _RichTextViewRepresentable: UIViewRepresentable {
             // Pretendard italic: storage의 .editorItalic 속성을 typingAttributes에 재주입합니다.
             // UIKit은 커서 이동 시 typingAttributes를 재계산하면서 oblique matrix를 소실시킵니다.
             let isItalicInStorage = (storage.attribute(
-                .editorItalic, at: checkLoc, effectiveRange: nil
+                .editorItalic, at: italicCheckLoc, effectiveRange: nil
             ) as? Bool) == true
 
             if isItalicInStorage {
                 textView.typingAttributes[.editorItalic] = true
                 if let storedFont = storage.attribute(
-                    .font, at: checkLoc, effectiveRange: nil
+                    .font, at: italicCheckLoc, effectiveRange: nil
                 ) as? UIFont, storedFont.fontDescriptor.matrix.c != 0.0 {
                     textView.typingAttributes[.font] = storedFont
                 }
