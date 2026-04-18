@@ -251,7 +251,8 @@ extension AppProductApp {
         let schema = Schema([
             NoticeHistoryData.self,
             GenerationMappingRecord.self,
-            NoticeReadRecord.self
+            NoticeReadRecord.self,
+            AITokenDailyUsageRecord.self
         ])
         
         do {

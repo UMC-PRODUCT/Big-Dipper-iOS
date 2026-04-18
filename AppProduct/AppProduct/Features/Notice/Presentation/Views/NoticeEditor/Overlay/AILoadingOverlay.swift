@@ -14,7 +14,6 @@ struct AILoadingOverlay: View {
 
     let phase: Phase
     let streamingText: String
-    let tokenUsage: NoticeEditorViewModel.AITokenUsage?
     var onConfirm: (() -> Void)? = nil
 
     // MARK: - Types
@@ -27,22 +26,18 @@ struct AILoadingOverlay: View {
     // MARK: - Constants
 
     private enum Constants {
-        static let overlayOpacity: Double = 0.55
-        static let cardCornerRadius: CGFloat = 20
-        static let iconSize: CGFloat = 36
         static let cardPadding: EdgeInsets = .init(top: 24, leading: 28, bottom: 24, trailing: 28)
         static let cardMaxWidth: CGFloat = 300
         static let streamingLineLimit: Int = 3
         static let streamingLineSpacing: CGFloat = 1
-        static let tokenProgressHeight: CGFloat = 3
-        static let tokenRowSpacing: CGFloat = 6
     }
 
     // MARK: - Body
 
     var body: some View {
         ZStack {
-            Color.black.opacity(Constants.overlayOpacity)
+            Color.clear
+                .contentShape(Rectangle())
                 .ignoresSafeArea()
 
             VStack(spacing: DefaultSpacing.spacing16) {
@@ -60,10 +55,6 @@ struct AILoadingOverlay: View {
                         .lineLimit(Constants.streamingLineLimit)
                         .multilineTextAlignment(.center)
                         .animation(.easeInOut(duration: 0.15), value: streamingText)
-                }
-
-                if let tokenUsage {
-                    tokenUsageRow(tokenUsage)
                 }
 
                 if phase == .completed {
@@ -86,44 +77,20 @@ struct AILoadingOverlay: View {
         switch phase {
         case .processing:
             Image(systemName: "sparkles")
-                .font(.system(size: Constants.iconSize, weight: .medium))
+                .font(.system(size: DefaultConstant.iconSize, weight: .medium))
                 .foregroundStyle(.indigo500)
                 .symbolEffect(.variableColor.iterative.reversing)
         case .completed:
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: Constants.iconSize, weight: .medium))
+                .font(.system(size: DefaultConstant.iconSize, weight: .medium))
                 .foregroundStyle(.indigo500)
         }
     }
 
     private var titleText: String {
         switch phase {
-        case .processing: "AI가 글을 개선하고 있어요..."
-        case .completed:  "AI 개선이 완료됐어요"
+        case .processing: "본문을 다듬고 있어요..."
+        case .completed:  "다듬기가 끝났어요"
         }
-    }
-
-    @ViewBuilder
-    private func tokenUsageRow(_ usage: NoticeEditorViewModel.AITokenUsage) -> some View {
-        VStack(spacing: Constants.tokenRowSpacing) {
-            ProgressView(value: usage.progress)
-                .progressViewStyle(.linear)
-                .tint(.indigo500)
-                .frame(height: Constants.tokenProgressHeight)
-
-            HStack {
-                switch phase {
-                case .processing:
-                    Text("사용 \(usage.cumulativeUsed.formatted()) 토큰")
-                case .completed:
-                    Text("이번 \(usage.lastRunTokens.formatted()) 토큰")
-                }
-                Spacer(minLength: 8)
-                Text("남음 \(usage.remaining.formatted()) / \(usage.total.formatted())")
-            }
-            .font(.app(.caption2))
-            .foregroundStyle(.grey500)
-        }
-        .animation(.easeInOut(duration: 0.2), value: usage)
     }
 }

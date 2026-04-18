@@ -15,6 +15,7 @@ struct NoticeEditorAttachmentToolbar: View {
 
     @Bindable var editorToolbarViewModel: EditorToolbarViewModel
     let isEditMode: Bool
+    let isAIButtonDisabled: Bool
     @Binding var isPhotoPickerPresented: Bool
     @Binding var selectedPhotoItems: [PhotosPickerItem]
     @Binding var selectedHighlightColor: HighlightColor
@@ -63,6 +64,8 @@ struct NoticeEditorAttachmentToolbar: View {
 
             ToolbarIconButton(icon: "link", action: onAddLink)
             ToolbarIconButton(icon: "sparkles", action: onTapAI)
+                .disabled(isAIButtonDisabled)
+                .opacity(isAIButtonDisabled ? 0.4 : 1)
 
             ToolbarTextFormatButton(
                 title: "B",

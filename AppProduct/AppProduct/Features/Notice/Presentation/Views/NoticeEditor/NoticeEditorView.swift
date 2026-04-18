@@ -7,6 +7,7 @@
 
 import SwiftUI
 import PhotosUI
+import SwiftData
 
 /// 공지사항 작성/수정 에디터 화면
 ///
@@ -16,6 +17,7 @@ struct NoticeEditorView: View {
     // MARK: - Property
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Environment(ErrorHandler.self) private var errorHandler
 
     /// 사용자 조직 타입 (중앙/지부/학교)
@@ -106,6 +108,10 @@ struct NoticeEditorView: View {
         } action: { newValue in
             scrollViewHeight = newValue
         }
+        .onAppear {
+            viewModel.modelContext = modelContext
+            viewModel.restoreDailyTokenUsage()
+        }
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(navigationTitle)
         .navigationSubtitle(navigationSubtitle)
@@ -182,6 +188,8 @@ struct NoticeEditorView: View {
                 NoticeEditorAttachmentToolbar(
                     editorToolbarViewModel: viewModel.editorToolbarViewModel,
                     isEditMode: viewModel.isEditMode,
+                    isAIButtonDisabled: viewModel.isAIProcessing
+                        || viewModel.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                     isPhotoPickerPresented: $isPhotoPickerPresented,
                     selectedPhotoItems: $viewModel.selectedPhotoItems,
                     selectedHighlightColor: $selectedHighlightColor,
@@ -315,9 +323,7 @@ struct NoticeEditorView: View {
 
     /// AI 도우미 버튼 탭
     private func handleTapAI() {
-        Task {
-            await viewModel.improveContentWithAI()
-        }
+        viewModel.requestAIImprovement()
     }
 
     // MARK: - Helper

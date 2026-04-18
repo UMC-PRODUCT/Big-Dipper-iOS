@@ -7,6 +7,7 @@
 
 import Foundation
 import FoundationModels
+import SwiftData
 import UIKit
 
 extension NoticeEditorViewModel {
@@ -30,6 +31,40 @@ extension NoticeEditorViewModel {
     }
 
     // MARK: - AI Content Improvement
+
+    /// AI 개선 요청 진입점. availability 체크 후 확인 다이얼로그를 띄운다.
+    /// 실제 실행은 다이얼로그의 "작성하기" 버튼 탭 시 startAIImprovement()로 이어짐.
+    @MainActor
+    func requestAIImprovement() {
+        let plainText = richAttributedContent.string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !plainText.isEmpty else { return }
+        guard !isAIProcessing else { return }
+
+        guard case .available = SystemLanguageModel.default.availability else {
+            alertPrompt = AlertPrompt(
+                title: "AI 기능 사용 불가",
+                message: "이 기기에서는 Apple Intelligence를 사용할 수 없습니다. 설정에서 Apple Intelligence를 활성화해주세요.",
+                positiveBtnTitle: "확인"
+            )
+            return
+        }
+
+        if let contextSize = resolveContextSize() {
+            aiTokenUsage = AITokenUsage(
+                lastRunTokens: 0,
+                cumulativeUsed: min(aiCumulativeUsedTokens, contextSize),
+                total: contextSize
+            )
+        }
+        showAIConfirmation = true
+    }
+
+    /// 확인 다이얼로그에서 "작성하기" 버튼 탭 시 호출된다.
+    @MainActor
+    func startAIImprovement() async {
+        showAIConfirmation = false
+        await improveContentWithAI()
+    }
 
     /// Foundation Model을 사용해 공지 본문을 개선합니다.
     ///
@@ -105,6 +140,8 @@ extension NoticeEditorViewModel {
                 )
             }
 
+            persistDailyTokenUsage(lastRunTokens: lastRunTokens)
+
             isAIProcessing = false
             showAICompletionSummary = true
         } catch {
@@ -152,6 +189,59 @@ extension NoticeEditorViewModel {
             return used
         } catch {
             return 0
+        }
+    }
+
+    // MARK: - SwiftData Persistence
+
+    /// 에디터 진입 시 당일 토큰 사용량을 복원합니다.
+    ///
+    /// 당일 레코드가 존재하면 `aiCumulativeUsedTokens`를 복원하고, 없으면 0을 유지합니다.
+    @MainActor
+    func restoreDailyTokenUsage() {
+        guard let modelContext else { return }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let currentMemberId = memberId
+
+        do {
+            let descriptor = FetchDescriptor<AITokenDailyUsageRecord>()
+            let records = try modelContext.fetch(descriptor)
+            if let record = records.first(where: { $0.memberId == currentMemberId && $0.date == today }) {
+                aiCumulativeUsedTokens = record.usedTokens
+            }
+        } catch {
+            // 복원 실패해도 에디터 동작에 영향 없이 0으로 유지
+        }
+    }
+
+    /// AI 개선 성공 완료 시 당일 누적 토큰 사용량을 SwiftData에 저장합니다.
+    ///
+    /// 저장 실패 시 AI 결과(본문 교체)에는 영향을 주지 않습니다.
+    @MainActor
+    private func persistDailyTokenUsage(lastRunTokens: Int) {
+        guard let modelContext, lastRunTokens > 0 else { return }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let currentMemberId = memberId
+
+        do {
+            let descriptor = FetchDescriptor<AITokenDailyUsageRecord>()
+            let records = try modelContext.fetch(descriptor)
+
+            if let record = records.first(where: { $0.memberId == currentMemberId && $0.date == today }) {
+                record.usedTokens += lastRunTokens
+            } else {
+                modelContext.insert(AITokenDailyUsageRecord(
+                    memberId: currentMemberId,
+                    date: today,
+                    usedTokens: lastRunTokens
+                ))
+            }
+
+            try modelContext.save()
+        } catch {
+            // 저장 실패해도 AI 실행 결과에 영향 없음
         }
     }
 }

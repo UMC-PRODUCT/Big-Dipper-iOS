@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import PhotosUI
+import SwiftData
 import UIKit
 
 /// 공지사항 에디터 ViewModel
@@ -19,6 +20,7 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     // MARK: - Dependency
 
     let container: DIContainer
+    var modelContext: ModelContext?
 
     var noticeUseCase: NoticeUseCaseProtocol {
         container.resolve(NoticeUseCaseProtocol.self)
@@ -40,6 +42,10 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     let mode: NoticeEditorMode
 
     // MARK: - User Context
+
+    var memberId: Int {
+        UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
+    }
 
     var gisuId: Int {
         UserDefaults.standard.integer(forKey: AppStorageKey.gisuId)
@@ -152,6 +158,9 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     var allowAlert: Bool = true
 
     // MARK: - AI State
+
+    /// AI 개선 시작 전 확인 다이얼로그 표시 여부
+    var showAIConfirmation: Bool = false
 
     /// AI 글 개선 처리 중 여부
     var isAIProcessing: Bool = false
