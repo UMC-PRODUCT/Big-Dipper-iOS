@@ -2,6 +2,8 @@
 //  RichTextCoordinator.swift
 //  AppProduct
 //
+//  Created by euijjang97 on 4/18/26.
+//
 
 import UIKit
 

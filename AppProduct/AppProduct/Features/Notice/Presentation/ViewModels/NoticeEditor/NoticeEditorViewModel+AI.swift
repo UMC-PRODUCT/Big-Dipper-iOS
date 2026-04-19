@@ -2,7 +2,7 @@
 //  NoticeEditorViewModel+AI.swift
 //  AppProduct
 //
-//  Created by euijjang97 on 4/8/26.
+//  Created by euijjang97 on 4/18/26.
 //
 
 import Foundation

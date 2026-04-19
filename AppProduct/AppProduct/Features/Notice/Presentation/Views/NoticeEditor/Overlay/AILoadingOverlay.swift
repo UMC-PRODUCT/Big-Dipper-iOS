@@ -2,7 +2,7 @@
 //  AILoadingOverlay.swift
 //  AppProduct
 //
-//  Created by 이예지 on 1/24/26.
+//  Created by euijjang97 on 4/18/26.
 //
 
 import SwiftUI
@@ -27,7 +27,7 @@ struct AILoadingOverlay: View {
 
     private enum Constants {
         static let cardPadding: EdgeInsets = .init(top: 24, leading: 28, bottom: 24, trailing: 28)
-        static let cardMaxWidth: CGFloat = 300
+        static let cardMaxWidth: CGFloat = 360
         static let streamingLineLimit: Int = 3
         static let streamingLineSpacing: CGFloat = 1
     }

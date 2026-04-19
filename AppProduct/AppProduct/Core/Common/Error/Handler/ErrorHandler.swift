@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import FoundationModels
 import os.log
 
 /// 앱 전역에서 발생하는 에러를 중앙 집중식으로 처리하는 핸들러.
@@ -109,6 +110,12 @@ final class ErrorHandler {
     ///
     /// - Precondition: Main Thread에서 호출해야 합니다.
     func handle(_ error: Error, context: ErrorContext) {
+        // 사용자가 의도적으로 취소한 경우 — Alert 없이 종료
+        if error is CancellationError {
+            logger.info("[\(context.feature)/\(context.action)] Task cancelled")
+            return
+        }
+
         let appError = convert(error)
 
         log(appError, context: context)
@@ -185,7 +192,12 @@ final class ErrorHandler {
             return .repository(.decodingError(detail: describeDecodingError(decodingError)))
         }
 
-        // 9. 알 수 없는 에러
+        // 9. LanguageModelSession.GenerationError → DomainError 변환
+        if let generationError = error as? LanguageModelSession.GenerationError {
+            return .domain(.custom(message: describeGenerationError(generationError)))
+        }
+
+        // 10. 알 수 없는 에러
         return .unknown(message: error.localizedDescription)
     }
 
@@ -216,6 +228,31 @@ final class ErrorHandler {
             return "Data corrupted: \(context.debugDescription)"
         @unknown default:
             return "Unknown decoding error"
+        }
+    }
+
+    private func describeGenerationError(_ error: LanguageModelSession.GenerationError) -> String {
+        switch error {
+        case .exceededContextWindowSize:
+            return "입력이 너무 깁니다. 내용을 줄여서 다시 시도해주세요."
+        case .assetsUnavailable:
+            return "AI 모델이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요."
+        case .guardrailViolation:
+            return "안전 정책에 의해 처리할 수 없는 내용입니다."
+        case .unsupportedGuide:
+            return "지원하지 않는 형식입니다."
+        case .unsupportedLanguageOrLocale:
+            return "지원하지 않는 언어입니다."
+        case .decodingFailure:
+            return "AI 응답을 처리하는 중 문제가 발생했습니다."
+        case .rateLimited:
+            return "AI 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요."
+        case .concurrentRequests:
+            return "이미 AI 요청이 진행 중입니다."
+        case .refusal(_, _):
+            return "AI가 요청을 거부했습니다. 다른 표현으로 다시 시도해주세요."
+        @unknown default:
+            return "AI 처리 중 문제가 발생했습니다."
         }
     }
 

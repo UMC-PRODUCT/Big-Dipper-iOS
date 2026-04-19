@@ -19,7 +19,7 @@ struct AIConfirmationOverlay: View {
 
     private enum Constants {
         static let cardPadding: EdgeInsets = .init(top: 24, leading: 28, bottom: 24, trailing: 28)
-        static let cardMaxWidth: CGFloat = 300
+        static let cardMaxWidth: CGFloat = 360
     }
 
     // MARK: - Body
