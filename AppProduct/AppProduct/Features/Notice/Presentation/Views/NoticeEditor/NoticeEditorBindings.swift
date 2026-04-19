@@ -11,7 +11,6 @@ import PhotosUI
 
 // MARK: - ViewModifier
 
-/// 공지 에디터 화면의 onChange / task 등 상태 동기화 계열 modifier를 묶은 ViewModifier입니다.
 struct NoticeEditorBindings: ViewModifier {
 
     // MARK: - Property
@@ -32,10 +31,8 @@ struct NoticeEditorBindings: ViewModifier {
     // MARK: - Constants
 
     private enum Constants {
-        /// 이미지/투표 섹션 스크롤 앵커 ID
         static let imageSectionScrollID: String = "notice_editor_image_section"
         static let voteSectionScrollID: String = "notice_editor_vote_section"
-        /// 링크 추가 후 스크롤/포커스 안정화 대기 시간
         static let linkScrollDelayNanos: UInt64 = 120_000_000
     }
 
@@ -72,7 +69,6 @@ struct NoticeEditorBindings: ViewModifier {
 
     // MARK: - Handlers
 
-    /// 링크 아이템이 추가되면 신규 카드로 스크롤하고 포커스 안정화를 대기합니다.
     fileprivate func handleNoticeLinksCountChanged(oldValue: Int, newValue: Int) {
         guard newValue > oldValue, let targetID = newlyAddedLinkID else { return }
 
@@ -86,7 +82,6 @@ struct NoticeEditorBindings: ViewModifier {
         }
     }
 
-    /// 이미지 아이템이 추가되면 이미지 섹션으로 자동 스크롤합니다.
     fileprivate func handleNoticeImagesCountChanged(oldValue: Int, newValue: Int) {
         guard newValue > oldValue else { return }
         withAnimation(.easeOut(duration: 0.2)) {
@@ -94,7 +89,6 @@ struct NoticeEditorBindings: ViewModifier {
         }
     }
 
-    /// 투표가 생성되면 투표 섹션으로 자동 스크롤합니다.
     fileprivate func handleVoteConfirmStateChanged(oldValue: Bool, newValue: Bool) {
         guard !oldValue, newValue else { return }
         withAnimation(.easeOut(duration: 0.2)) {
@@ -102,7 +96,6 @@ struct NoticeEditorBindings: ViewModifier {
         }
     }
 
-    /// 저장 상태 변화에 따라 화면 동작을 제어합니다.
     fileprivate func handleCreateStateChanged(_ state: Loadable<NoticeDetail>) {
         switch state {
         case .loaded:
@@ -112,7 +105,6 @@ struct NoticeEditorBindings: ViewModifier {
         }
     }
 
-    /// 선택된 사진 아이템 변경 시 이미지를 로드합니다.
     fileprivate func handleSelectedPhotoItemsChanged(_ newItems: [PhotosPickerItem]) {
         guard !newItems.isEmpty else { return }
         Task {
@@ -120,13 +112,11 @@ struct NoticeEditorBindings: ViewModifier {
         }
     }
 
-    /// AppStorage 사용자 컨텍스트 변경을 ViewModel에 반영합니다.
     fileprivate func handleUserContextChanged(gisuId: Int, chapterId: Int) {
         let editorGisuId = selectedGisuId ?? gisuId
         viewModel.updateUserContext(gisuId: editorGisuId, chapterId: chapterId)
     }
 
-    /// 형광펜 색상 선택 변경을 에디터 툴바에 반영합니다.
     fileprivate func handleHighlightColorChanged(_ newValue: HighlightColor) {
         Task { @MainActor in
             if let color = newValue.swiftUIColor {
@@ -137,7 +127,6 @@ struct NoticeEditorBindings: ViewModifier {
         }
     }
 
-    /// AI 처리 상태 변경 시 키보드 리사인을 처리합니다.
     fileprivate func handleAIProcessingChanged(_ isProcessing: Bool) {
         if isProcessing {
             UIApplication.shared.sendAction(
@@ -148,9 +137,8 @@ struct NoticeEditorBindings: ViewModifier {
     }
 }
 
-// MARK: - Sub-Modifiers (body 타입체크 부담 분산)
+// MARK: - Sub-Modifiers
 
-/// 스크롤 앵커 관련 변경 (링크 추가, 이미지 추가, 투표 확정) onChange 묶음
 private struct ScrollAnchorChanges: ViewModifier {
     let owner: NoticeEditorBindings
 
@@ -168,7 +156,6 @@ private struct ScrollAnchorChanges: ViewModifier {
     }
 }
 
-/// 저장 상태 및 미디어(사진 피커) 변경 onChange 묶음
 private struct SaveAndMediaChanges: ViewModifier {
     let owner: NoticeEditorBindings
 
@@ -183,7 +170,6 @@ private struct SaveAndMediaChanges: ViewModifier {
     }
 }
 
-/// AppStorage 기반 사용자 컨텍스트 변경 onChange 묶음
 private struct AppStorageChanges: ViewModifier {
     let owner: NoticeEditorBindings
 
@@ -204,7 +190,6 @@ private struct AppStorageChanges: ViewModifier {
     }
 }
 
-/// 툴바(형광펜, AI 처리) 관련 변경 onChange 묶음
 private struct ToolbarChanges: ViewModifier {
     let owner: NoticeEditorBindings
 
@@ -222,7 +207,6 @@ private struct ToolbarChanges: ViewModifier {
 // MARK: - View Extension
 
 extension View {
-    /// 공지 에디터의 상태 동기화 계열 modifier를 일괄 적용합니다.
     func noticeEditorBindings(
         viewModel: NoticeEditorViewModel,
         selectedHighlightColor: Binding<HighlightColor>,

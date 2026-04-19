@@ -8,7 +8,6 @@
 import SwiftUI
 import UIKit
 
-/// 마크다운 문자열을 서식이 적용된 상태로 표시하는 read-only 뷰입니다.
 struct MarkdownRenderedView: View {
 
     let markdown: String
@@ -67,7 +66,6 @@ private struct _MarkdownTextViewRepresentable: UIViewRepresentable {
         uiView.setNeedsBlockquoteRefresh()
     }
 
-    /// HTML 문자열을 서식이 적용된 NSAttributedString으로 변환합니다.
     private static func attributedStringFromHTML(
         _ html: String,
         baseFont: UIFont

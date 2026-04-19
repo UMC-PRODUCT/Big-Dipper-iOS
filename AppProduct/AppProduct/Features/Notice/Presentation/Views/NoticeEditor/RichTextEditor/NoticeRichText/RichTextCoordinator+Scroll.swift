@@ -9,8 +9,6 @@ extension RichTextCoordinator {
 
     // MARK: - Scroll
 
-    /// 다음 run loop에서 커서 스크롤을 1회만 실행하도록 예약합니다.
-    /// 빠른 입력/붙여넣기에서 예약이 누적되는 것을 방지합니다.
     func scheduleScrollCursorToVisible(in textView: UITextView) {
         pendingScrollWork?.cancel()
         let work = DispatchWorkItem { [weak self, weak textView] in
@@ -21,8 +19,6 @@ extension RichTextCoordinator {
         DispatchQueue.main.async(execute: work)
     }
 
-    /// 프로그래매틱 텍스트 삽입 이후 커서가 화면에 보이도록 가장 가까운 UIScrollView를 스크롤합니다.
-    ///
     /// isScrollEnabled = false인 UITextView는 자체 커서 추적을 하지 않으므로
     /// 부모 ScrollView를 직접 찾아 scrollRectToVisible을 호출합니다.
     func scrollCursorToVisible(in textView: UITextView) {
@@ -42,7 +38,6 @@ extension RichTextCoordinator {
                 let visibleMinY = scrollView.contentOffset.y + topInset
                 let visibleMaxY = scrollView.contentOffset.y + scrollView.bounds.height - bottomInset
 
-                // 커서가 이미 visible rect 안에 있으면 스크롤 불필요
                 if rectInScrollView.minY >= visibleMinY && rectInScrollView.maxY <= visibleMaxY {
                     return
                 }

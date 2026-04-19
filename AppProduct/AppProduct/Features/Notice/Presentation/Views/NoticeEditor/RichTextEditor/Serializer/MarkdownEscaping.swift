@@ -45,7 +45,6 @@ enum MarkdownEscaping {
         var escaped = ""
 
         for character in text {
-            // '<', '>' 포함: 사용자가 입력한 </u>, </mark> 등이 deserialize 시 닫는 태그로 오파싱되는 것을 방지
             if "\\*_[]()~`<>".contains(character) {
                 escaped.append("\\")
             }
@@ -138,8 +137,6 @@ enum MarkdownEscaping {
 
         for character in text {
             if isEscaping {
-                // escape 대상 문자: backslash 제거 후 문자만 추가
-                // 비대상 문자: backslash도 유지 (e.g. C:\Users → C:\Users)
                 if !escapedMarkdownCharacters.contains(character) {
                     unescaped.append("\\")
                 }

@@ -10,11 +10,9 @@ extension RichTextCoordinator {
     // MARK: - Placeholder
 
     func installPlaceholderIfNeeded(in textView: UITextView) {
-        guard textView.viewWithTag(Constants.placeholderTag) == nil else {
-            if let label = textView.viewWithTag(Constants.placeholderTag) as? UILabel {
-                label.text = parent.placeholder
-                label.font = textView.font
-            }
+        if let label = textView.viewWithTag(Constants.placeholderTag) as? UILabel {
+            label.text = parent.placeholder
+            label.font = textView.font
             return
         }
 
@@ -54,15 +52,12 @@ extension RichTextCoordinator {
 
         let placeholderText = parent.placeholder
         // 포커스 여부와 관계없이 내용이 비어있으면 placeholder를 표시합니다.
-        // 빈 에디터에 포커스가 들어가도 어떤 필드인지 알 수 있습니다.
         let showPlaceholder = textView.attributedText.length == 0
         placeholderLabel.isHidden = !showPlaceholder
-        // VoiceOver: accessibilityHint로 placeholder를 제공합니다.
         textView.accessibilityHint = showPlaceholder ? placeholderText : nil
 
         guard showPlaceholder else { return }
 
-        // typingAttributes에서 현재 서식을 읽어 placeholder에 미리보기로 반영합니다.
         let typingAttrs = textView.typingAttributes
         let font = typingAttrs[.font] as? UIFont
             ?? textView.font

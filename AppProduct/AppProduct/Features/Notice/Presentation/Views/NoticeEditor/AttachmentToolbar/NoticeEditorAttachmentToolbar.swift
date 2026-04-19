@@ -8,7 +8,6 @@
 import SwiftUI
 import PhotosUI
 
-/// 공지 에디터 하단에 노출되는 첨부/서식 통합 스크롤 툴바입니다.
 struct NoticeEditorAttachmentToolbar: View {
 
     // MARK: - Property

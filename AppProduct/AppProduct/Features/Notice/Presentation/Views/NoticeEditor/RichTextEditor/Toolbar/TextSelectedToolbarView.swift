@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 텍스트 선택 상태에서 노출되는 인라인 서식 툴바입니다.
 struct TextSelectedToolbarView: View {
 
     @Bindable var viewModel: EditorToolbarViewModel

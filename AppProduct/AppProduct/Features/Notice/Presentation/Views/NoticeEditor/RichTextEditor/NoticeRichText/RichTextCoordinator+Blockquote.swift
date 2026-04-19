@@ -9,9 +9,6 @@ extension RichTextCoordinator {
 
     // MARK: - Blockquote Enter
 
-    /// 인용구 단락에서 Enter 키 입력을 처리합니다.
-    /// - 빈 인용구 줄: 인용구 속성 제거(탈출)하고 false 반환
-    /// - 내용 있는 인용구 줄: 같은 인용구 속성으로 새 줄 삽입하고 false 반환
     func handleReturnInBlockquote(textView: BlockquoteTextView, range: NSRange) -> Bool {
         let storage = textView.textStorage
         guard storage.length > 0 else { return true }
@@ -31,7 +28,7 @@ extension RichTextCoordinator {
         }
         guard isInBlockquote else { return true }
 
-        // attribute 읽기용 위치: EOF 빈 단락이면 trailing \n(storage.length - 1)에서 blockquote 속성을 읽습니다.
+        // EOF 빈 단락이면 trailing \n(storage.length - 1)에서 blockquote 속성을 읽습니다.
         let checkLocation = min(paragraphRange.location, max(0, storage.length - 1))
         let paragraphText = nsString.substring(with: paragraphRange)
         // zero-width space(\u{200B})는 빈 인용구 플레이스홀더이므로 내용으로 취급하지 않습니다.
@@ -48,12 +45,9 @@ extension RichTextCoordinator {
             normalStyle.firstLineHeadIndent = baseLine
 
             storage.beginEditing()
-            // ZWS 플레이스홀더가 포함되어 있으면 함께 제거합니다.
             let cleanedText = paragraphText.replacingOccurrences(of: "\u{200B}", with: "")
             if cleanedText.count != paragraphText.count {
                 storage.replaceCharacters(in: paragraphRange, with: cleanedText)
-                // ZWS 제거 후 해당 단락이 완전히 사라졌거나(EOF) 스토리지가 비었으면
-                // 스토리지 속성 수정을 건너뛰고 typingAttributes만 정리합니다.
                 if storage.length > 0, paragraphRange.location < storage.length {
                     let safeLocation = min(paragraphRange.location, storage.length - 1)
                     let updatedRange = (storage.string as NSString)
@@ -82,9 +76,8 @@ extension RichTextCoordinator {
             let mutableNormal = (normalStyle.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
             textView.typingAttributes[.paragraphStyle] = (mutableNormal.copy() as? NSParagraphStyle) ?? mutableNormal
 
-            // 인용구 탈출 시 경계선을 즉시 제거합니다.
             // setNeedsBlockquoteRefresh()는 다음 layoutSubviews까지 지연되어
-            // 이전 경계선이 한 프레임 남을 수 있습니다.
+            // 이전 경계선이 한 프레임 남을 수 있으므로 즉시 갱신합니다.
             textView.refreshBlockquoteBorders()
             parent.attributedText = textView.attributedText
             parent.toolbarViewModel.selectedRange = textView.selectedRange
@@ -92,7 +85,7 @@ extension RichTextCoordinator {
             return false
         }
 
-        // 내용 있는 인용구 줄 → 같은 인용구 속성으로 새 줄 이어받기
+        // 내용 있는 인용구 줄: 같은 인용구 속성으로 새 줄 이어받기
         let borderColor = storage.attribute(.editorBlockquoteBorderColor, at: checkLocation, effectiveRange: nil) as? UIColor ?? UIColor.systemGray3
         let baseHeadNum = storage.attribute(.editorBlockquoteBaseHeadIndent, at: checkLocation, effectiveRange: nil) as? NSNumber
         let baseLineNum = storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: checkLocation, effectiveRange: nil) as? NSNumber
@@ -133,9 +126,6 @@ extension RichTextCoordinator {
 
     // MARK: - Blockquote TypingAttributes Cleanup
 
-    /// 백스페이스 등으로 텍스트가 모두 삭제되었거나
-    /// 현재 단락에 인용구 속성이 없는데 typingAttributes에 인용구 들여쓰기가
-    /// 남아 있는 경우, typingAttributes와 storage 단락 속성을 모두 리셋합니다.
     func cleanupBlockquoteTypingAttributesIfNeeded(
         in textView: UITextView
     ) {
@@ -145,147 +135,78 @@ extension RichTextCoordinator {
         // 현재 단락의 storage 속성도 확인: 인용구가 아닌데 들여쓰기가 남아있는지
         // 단락 시작 위치에서 확인하여 커스텀 키가 없는 중간 문자에 의한 오탐을 방지합니다.
         let cursorLoc = textView.selectedRange.location
+
         let hasStorageBlockquoteIndent: Bool = {
             guard storage.length > 0 else { return false }
-            let clampedForRange = min(cursorLoc, storage.length)
             let pRange = (storage.string as NSString).paragraphRange(
-                for: NSRange(location: clampedForRange, length: 0)
+                for: NSRange(location: min(cursorLoc, storage.length), length: 0)
             )
-            let loc = pRange.location < storage.length
-                ? pRange.location : max(0, storage.length - 1)
-            let isBlockquote = (storage.attribute(
-                .editorBlockquote, at: loc,
-                effectiveRange: nil
-            ) as? Bool) == true
-            guard !isBlockquote else { return false }
+            let loc = pRange.location < storage.length ? pRange.location : max(0, storage.length - 1)
+            guard (storage.attribute(.editorBlockquote, at: loc, effectiveRange: nil) as? Bool) != true else { return false }
             // indent 크기와 base indent 존재 여부를 함께 확인하여 오탐을 방지합니다.
-            let ps = storage.attribute(
-                .paragraphStyle, at: loc,
-                effectiveRange: nil
-            ) as? NSParagraphStyle
-            let hasIndent = (ps?.headIndent ?? 0) >= blockquoteIndent
-            let hasBaseAttr = storage.attribute(
-                .editorBlockquoteBaseHeadIndent, at: loc,
-                effectiveRange: nil
-            ) != nil
-            return hasIndent || hasBaseAttr
+            let ps = storage.attribute(.paragraphStyle, at: loc, effectiveRange: nil) as? NSParagraphStyle
+            let hasBaseAttr = storage.attribute(.editorBlockquoteBaseHeadIndent, at: loc, effectiveRange: nil) != nil
+            return (ps?.headIndent ?? 0) >= blockquoteIndent || hasBaseAttr
         }()
 
-        // typingAttributes에 인용구 관련 속성이 없으면 정리 불필요
-        let hasBlockquoteTyping = (textView.typingAttributes[
-            NSAttributedString.Key.editorBlockquote
-        ] as? Bool) == true
-        let typingStyle = textView.typingAttributes[.paragraphStyle]
-            as? NSParagraphStyle
-        let hasBlockquoteIndent = (typingStyle?.headIndent ?? 0)
-            >= blockquoteIndent
+        let hasBlockquoteTyping = (textView.typingAttributes[NSAttributedString.Key.editorBlockquote] as? Bool) == true
+        let typingStyle = textView.typingAttributes[.paragraphStyle] as? NSParagraphStyle
+        let hasBlockquoteIndent = (typingStyle?.headIndent ?? 0) >= blockquoteIndent
 
-        guard hasBlockquoteTyping || hasBlockquoteIndent
-            || hasStorageBlockquoteIndent else { return }
+        guard hasBlockquoteTyping || hasBlockquoteIndent || hasStorageBlockquoteIndent else { return }
 
-        // 저장소가 비어있거나 현재 단락에 인용구 속성이 없으면 정리
-        let isStorageEmpty = storage.length == 0
         let isCurrentParagraphBlockquote: Bool = {
             guard storage.length > 0 else { return false }
-            let clampedForRange = min(cursorLoc, storage.length)
             let pRange = (storage.string as NSString).paragraphRange(
-                for: NSRange(location: clampedForRange, length: 0)
+                for: NSRange(location: min(cursorLoc, storage.length), length: 0)
             )
-            let loc = pRange.location < storage.length
-                ? pRange.location : max(0, storage.length - 1)
-            return (storage.attribute(
-                .editorBlockquote, at: loc,
-                effectiveRange: nil
-            ) as? Bool) == true
+            let loc = pRange.location < storage.length ? pRange.location : max(0, storage.length - 1)
+            return (storage.attribute(.editorBlockquote, at: loc, effectiveRange: nil) as? Bool) == true
         }()
 
         // typingAttributes에 인용구가 명시적으로 활성화되어 있으면
-        // 인용구 입력 중이므로 정리하지 않습니다.
-        // (storage가 비어도 사용자가 인용구 모드를 유지하고 있을 수 있음)
-        if hasBlockquoteTyping {
-            return
-        }
+        // storage가 비어도 사용자가 인용구 모드를 유지하고 있을 수 있으므로 정리하지 않습니다.
+        if hasBlockquoteTyping { return }
 
-        guard isStorageEmpty || !isCurrentParagraphBlockquote else {
-            return
-        }
+        guard storage.length == 0 || !isCurrentParagraphBlockquote else { return }
 
-        // base indent 값을 먼저 읽어 둔 뒤 키를 삭제합니다.
-        let typingBaseHead = (textView.typingAttributes[
-            .editorBlockquoteBaseHeadIndent
-        ] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
-        let typingBaseLine = (textView.typingAttributes[
-            .editorBlockquoteBaseFirstLineHeadIndent
-        ] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
+        let typingBaseHead = (textView.typingAttributes[.editorBlockquoteBaseHeadIndent] as? NSNumber)
+            .map { CGFloat($0.doubleValue) } ?? 0
+        let typingBaseLine = (textView.typingAttributes[.editorBlockquoteBaseFirstLineHeadIndent] as? NSNumber)
+            .map { CGFloat($0.doubleValue) } ?? 0
 
-        textView.typingAttributes.removeValue(
-            forKey: NSAttributedString.Key.editorBlockquote
-        )
-        textView.typingAttributes.removeValue(
-            forKey: NSAttributedString.Key.editorBlockquoteBorderColor
-        )
-        textView.typingAttributes.removeValue(
-            forKey: NSAttributedString.Key.editorBlockquoteBaseHeadIndent
-        )
-        textView.typingAttributes.removeValue(
-            forKey: NSAttributedString.Key
-                .editorBlockquoteBaseFirstLineHeadIndent
-        )
+        textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquote)
+        textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBorderColor)
+        textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBaseHeadIndent)
+        textView.typingAttributes.removeValue(forKey: NSAttributedString.Key.editorBlockquoteBaseFirstLineHeadIndent)
 
-        // 기존 paragraphStyle을 보존하고 indent를 base 값으로 복원합니다.
-        let existingTypingStyle = textView.typingAttributes[.paragraphStyle]
-            as? NSParagraphStyle ?? .default
-        let cleanTypingStyle = (existingTypingStyle.mutableCopy()
-            as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+        let existingTypingStyle = textView.typingAttributes[.paragraphStyle] as? NSParagraphStyle ?? .default
+        let cleanTypingStyle = (existingTypingStyle.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
         cleanTypingStyle.headIndent = typingBaseHead
         cleanTypingStyle.firstLineHeadIndent = typingBaseLine
         textView.typingAttributes[.paragraphStyle] = cleanTypingStyle.copy()
 
-        // storage의 현재 단락에 남은 인용구 들여쓰기도 정리
         if hasStorageBlockquoteIndent, storage.length > 0 {
             let loc = min(cursorLoc, storage.length - 1)
             let nsString = storage.string as NSString
-            let paragraphRange = nsString.paragraphRange(
-                for: NSRange(location: loc, length: 0)
-            )
+            let paragraphRange = nsString.paragraphRange(for: NSRange(location: loc, length: 0))
             if paragraphRange.length > 0 {
                 let safeLoc = min(paragraphRange.location, storage.length - 1)
-                let existingPS = storage.attribute(
-                    .paragraphStyle, at: safeLoc,
-                    effectiveRange: nil
-                ) as? NSParagraphStyle ?? .default
-                let baseHead = (storage.attribute(
-                    .editorBlockquoteBaseHeadIndent, at: safeLoc,
-                    effectiveRange: nil
-                ) as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
-                let baseLine = (storage.attribute(
-                    .editorBlockquoteBaseFirstLineHeadIndent, at: safeLoc,
-                    effectiveRange: nil
-                ) as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
-                let cleanPS = (existingPS.mutableCopy()
-                    as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+                let existingPS = storage.attribute(.paragraphStyle, at: safeLoc, effectiveRange: nil) as? NSParagraphStyle ?? .default
+                let baseHead = (storage.attribute(.editorBlockquoteBaseHeadIndent, at: safeLoc, effectiveRange: nil) as? NSNumber)
+                    .map { CGFloat($0.doubleValue) } ?? 0
+                let baseLine = (storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: safeLoc, effectiveRange: nil) as? NSNumber)
+                    .map { CGFloat($0.doubleValue) } ?? 0
+                let cleanPS = (existingPS.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
                 cleanPS.headIndent = baseHead
                 cleanPS.firstLineHeadIndent = baseLine
 
                 storage.beginEditing()
-                storage.addAttribute(
-                    .paragraphStyle,
-                    value: cleanPS.copy() as Any,
-                    range: paragraphRange
-                )
-                storage.removeAttribute(
-                    .editorBlockquote, range: paragraphRange
-                )
-                storage.removeAttribute(
-                    .editorBlockquoteBorderColor, range: paragraphRange
-                )
-                storage.removeAttribute(
-                    .editorBlockquoteBaseHeadIndent, range: paragraphRange
-                )
-                storage.removeAttribute(
-                    .editorBlockquoteBaseFirstLineHeadIndent,
-                    range: paragraphRange
-                )
+                storage.addAttribute(.paragraphStyle, value: cleanPS.copy() as Any, range: paragraphRange)
+                storage.removeAttribute(.editorBlockquote, range: paragraphRange)
+                storage.removeAttribute(.editorBlockquoteBorderColor, range: paragraphRange)
+                storage.removeAttribute(.editorBlockquoteBaseHeadIndent, range: paragraphRange)
+                storage.removeAttribute(.editorBlockquoteBaseFirstLineHeadIndent, range: paragraphRange)
                 storage.endEditing()
             }
         }
@@ -296,125 +217,69 @@ extension RichTextCoordinator {
     /// 인용구가 아닌 단락에 인용구 들여쓰기(paragraphStyle)가 남아있으면
     /// UIKit이 문자를 삽입하기 전에 미리 제거합니다.
     /// `shouldChangeTextIn` 시점에 호출하여 새 문자에 들여쓰기가 상속되는 것을 방지합니다.
-    func cleanupOrphanedBlockquoteIndent(
-        in textView: BlockquoteTextView, at location: Int
-    ) {
+    func cleanupOrphanedBlockquoteIndent(in textView: BlockquoteTextView, at location: Int) {
         let storage = textView.textStorage
         let blockquoteIndent = EditorConstants.blockquoteIndent
         guard storage.length > 0 else { return }
 
-        // typingAttributes에 인용구가 활성화되어 있으면 인용구 입력 중이므로 정리하지 않습니다.
-        let typingIsBlockquote = (textView.typingAttributes[
-            .editorBlockquote
-        ] as? Bool) == true
-        guard !typingIsBlockquote else { return }
+        guard (textView.typingAttributes[.editorBlockquote] as? Bool) != true else { return }
 
         // 단락 시작 위치에서 확인하여 커스텀 키가 없는 중간 문자에 의한 오탐을 방지합니다.
-        let safeLoc = min(location, storage.length)
-        let nsStringForPara = storage.string as NSString
-        let paraRangeForLoc = nsStringForPara.paragraphRange(
-            for: NSRange(location: safeLoc, length: 0)
-        )
-        let loc = paraRangeForLoc.location < storage.length
-            ? paraRangeForLoc.location : max(0, storage.length - 1)
-        let isBlockquote = (storage.attribute(
-            .editorBlockquote, at: loc, effectiveRange: nil
-        ) as? Bool) == true
-        guard !isBlockquote else { return }
+        let nsString = storage.string as NSString
+        let paraRange = nsString.paragraphRange(for: NSRange(location: min(location, storage.length), length: 0))
+        let loc = paraRange.location < storage.length ? paraRange.location : max(0, storage.length - 1)
 
-        let ps = storage.attribute(
-            .paragraphStyle, at: loc, effectiveRange: nil
-        ) as? NSParagraphStyle
-        let hasBaseAttr = storage.attribute(
-            .editorBlockquoteBaseHeadIndent, at: loc, effectiveRange: nil
-        ) != nil
+        guard (storage.attribute(.editorBlockquote, at: loc, effectiveRange: nil) as? Bool) != true else { return }
+
+        let ps = storage.attribute(.paragraphStyle, at: loc, effectiveRange: nil) as? NSParagraphStyle
+        let hasBaseAttr = storage.attribute(.editorBlockquoteBaseHeadIndent, at: loc, effectiveRange: nil) != nil
         guard (ps?.headIndent ?? 0) >= blockquoteIndent || hasBaseAttr else { return }
 
-        let nsString = storage.string as NSString
-        let paragraphRange = nsString.paragraphRange(
-            for: NSRange(location: loc, length: 0)
-        )
+        let paragraphRange = nsString.paragraphRange(for: NSRange(location: loc, length: 0))
         guard paragraphRange.length > 0 else { return }
 
-        // 기존 paragraphStyle을 보존하고 indent를 base 값으로 복원합니다.
-        let baseHead = (storage.attribute(
-            .editorBlockquoteBaseHeadIndent, at: loc, effectiveRange: nil
-        ) as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
-        let baseLine = (storage.attribute(
-            .editorBlockquoteBaseFirstLineHeadIndent, at: loc, effectiveRange: nil
-        ) as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
-        let cleanStyle = (ps?.mutableCopy()
-            as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+        let baseHead = (storage.attribute(.editorBlockquoteBaseHeadIndent, at: loc, effectiveRange: nil) as? NSNumber)
+            .map { CGFloat($0.doubleValue) } ?? 0
+        let baseLine = (storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: loc, effectiveRange: nil) as? NSNumber)
+            .map { CGFloat($0.doubleValue) } ?? 0
+        let cleanStyle = (ps?.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
         cleanStyle.headIndent = baseHead
         cleanStyle.firstLineHeadIndent = baseLine
 
         storage.beginEditing()
-        storage.addAttribute(
-            .paragraphStyle,
-            value: cleanStyle.copy() as Any,
-            range: paragraphRange
-        )
+        storage.addAttribute(.paragraphStyle, value: cleanStyle.copy() as Any, range: paragraphRange)
         storage.removeAttribute(.editorBlockquote, range: paragraphRange)
-        storage.removeAttribute(
-            .editorBlockquoteBorderColor, range: paragraphRange
-        )
-        storage.removeAttribute(
-            .editorBlockquoteBaseHeadIndent, range: paragraphRange
-        )
-        storage.removeAttribute(
-            .editorBlockquoteBaseFirstLineHeadIndent,
-            range: paragraphRange
-        )
+        storage.removeAttribute(.editorBlockquoteBorderColor, range: paragraphRange)
+        storage.removeAttribute(.editorBlockquoteBaseHeadIndent, range: paragraphRange)
+        storage.removeAttribute(.editorBlockquoteBaseFirstLineHeadIndent, range: paragraphRange)
         storage.endEditing()
 
         // typingAttributes도 동기화: base indent로 복원
-        let typingBaseHead2 = (textView.typingAttributes[
-            .editorBlockquoteBaseHeadIndent
-        ] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
-        let typingBaseLine2 = (textView.typingAttributes[
-            .editorBlockquoteBaseFirstLineHeadIndent
-        ] as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
-        let existingTypingPS = textView.typingAttributes[.paragraphStyle]
-            as? NSParagraphStyle ?? .default
-        let cleanTypingPS = (existingTypingPS.mutableCopy()
-            as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
-        cleanTypingPS.headIndent = typingBaseHead2
-        cleanTypingPS.firstLineHeadIndent = typingBaseLine2
-        textView.typingAttributes.removeValue(
-            forKey: .editorBlockquote
-        )
-        textView.typingAttributes.removeValue(
-            forKey: .editorBlockquoteBorderColor
-        )
-        textView.typingAttributes.removeValue(
-            forKey: .editorBlockquoteBaseHeadIndent
-        )
-        textView.typingAttributes.removeValue(
-            forKey: .editorBlockquoteBaseFirstLineHeadIndent
-        )
+        let typingBaseHead = (textView.typingAttributes[.editorBlockquoteBaseHeadIndent] as? NSNumber)
+            .map { CGFloat($0.doubleValue) } ?? 0
+        let typingBaseLine = (textView.typingAttributes[.editorBlockquoteBaseFirstLineHeadIndent] as? NSNumber)
+            .map { CGFloat($0.doubleValue) } ?? 0
+        let existingTypingPS = textView.typingAttributes[.paragraphStyle] as? NSParagraphStyle ?? .default
+        let cleanTypingPS = (existingTypingPS.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+        cleanTypingPS.headIndent = typingBaseHead
+        cleanTypingPS.firstLineHeadIndent = typingBaseLine
+        textView.typingAttributes.removeValue(forKey: .editorBlockquote)
+        textView.typingAttributes.removeValue(forKey: .editorBlockquoteBorderColor)
+        textView.typingAttributes.removeValue(forKey: .editorBlockquoteBaseHeadIndent)
+        textView.typingAttributes.removeValue(forKey: .editorBlockquoteBaseFirstLineHeadIndent)
         textView.typingAttributes[.paragraphStyle] = cleanTypingPS.copy()
     }
 
-    /// UIKit이 커서 이동 시 typingAttributes에서 버린 인용구 커스텀 키를 재주입합니다.
-    ///
-    /// UIKit은 `.font`, `.paragraphStyle` 등 표준 키만 typingAttributes에 유지하고,
-    /// `.editorBlockquote` 등 커스텀 키는 소실됩니다.
-    /// storage의 현재 단락 시작 위치에서 인용구 속성을 읽어 typingAttributes에 반영합니다.
-    func reinjectBlockquoteTypingAttributesIfNeeded(
-        in textView: UITextView
-    ) {
+    /// UIKit은 커서 이동 시 커스텀 NSAttributedString.Key를 버립니다.
+    /// storage의 현재 단락 시작 위치에서 인용구 속성을 읽어 typingAttributes에 재주입합니다.
+    func reinjectBlockquoteTypingAttributesIfNeeded(in textView: UITextView) {
         let storage = textView.textStorage
         guard storage.length > 0 else { return }
 
         let cursorLoc = textView.selectedRange.location
         let nsString = storage.string as NSString
-        let safeLoc = min(cursorLoc, storage.length)
-        let paragraphRange = nsString.paragraphRange(
-            for: NSRange(location: safeLoc, length: 0)
-        )
-        let checkLoc = paragraphRange.location < storage.length
-            ? paragraphRange.location
-            : max(0, storage.length - 1)
+        let paragraphRange = nsString.paragraphRange(for: NSRange(location: min(cursorLoc, storage.length), length: 0))
+        let checkLoc = paragraphRange.location < storage.length ? paragraphRange.location : max(0, storage.length - 1)
 
         // italic은 인라인 속성이므로 단락 시작이 아닌 커서 앞 문자를 기준으로 조회합니다.
         let italicCheckLoc: Int = {
@@ -422,34 +287,23 @@ extension RichTextCoordinator {
             if selRange.length > 0 {
                 return max(0, min(selRange.location, storage.length - 1))
             }
-            let beforeCursor = cursorLoc > 0 ? cursorLoc - 1 : 0
-            return min(beforeCursor, storage.length - 1)
+            return min(cursorLoc > 0 ? cursorLoc - 1 : 0, storage.length - 1)
         }()
 
-        let isBlockquote = (storage.attribute(
-            .editorBlockquote, at: checkLoc, effectiveRange: nil
-        ) as? Bool) == true
+        let isBlockquote = (storage.attribute(.editorBlockquote, at: checkLoc, effectiveRange: nil) as? Bool) == true
 
         if isBlockquote {
             textView.typingAttributes[.editorBlockquote] = true
-            if let color = storage.attribute(
-                .editorBlockquoteBorderColor, at: checkLoc, effectiveRange: nil
-            ) {
+            if let color = storage.attribute(.editorBlockquoteBorderColor, at: checkLoc, effectiveRange: nil) {
                 textView.typingAttributes[.editorBlockquoteBorderColor] = color
             }
-            if let ps = storage.attribute(
-                .paragraphStyle, at: checkLoc, effectiveRange: nil
-            ) {
+            if let ps = storage.attribute(.paragraphStyle, at: checkLoc, effectiveRange: nil) {
                 textView.typingAttributes[.paragraphStyle] = ps
             }
-            if let baseHead = storage.attribute(
-                .editorBlockquoteBaseHeadIndent, at: checkLoc, effectiveRange: nil
-            ) {
+            if let baseHead = storage.attribute(.editorBlockquoteBaseHeadIndent, at: checkLoc, effectiveRange: nil) {
                 textView.typingAttributes[.editorBlockquoteBaseHeadIndent] = baseHead
             }
-            if let baseLine = storage.attribute(
-                .editorBlockquoteBaseFirstLineHeadIndent, at: checkLoc, effectiveRange: nil
-            ) {
+            if let baseLine = storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: checkLoc, effectiveRange: nil) {
                 textView.typingAttributes[.editorBlockquoteBaseFirstLineHeadIndent] = baseLine
             }
         } else {
@@ -459,17 +313,13 @@ extension RichTextCoordinator {
             textView.typingAttributes.removeValue(forKey: .editorBlockquoteBaseFirstLineHeadIndent)
         }
 
-        // Pretendard italic: storage의 .editorItalic 속성을 typingAttributes에 재주입합니다.
-        // UIKit은 커서 이동 시 typingAttributes를 재계산하면서 oblique matrix를 소실시킵니다.
-        let isItalicInStorage = (storage.attribute(
-            .editorItalic, at: italicCheckLoc, effectiveRange: nil
-        ) as? Bool) == true
+        // Pretendard italic: UIKit은 커서 이동 시 oblique matrix를 소실시킵니다.
+        let isItalicInStorage = (storage.attribute(.editorItalic, at: italicCheckLoc, effectiveRange: nil) as? Bool) == true
 
         if isItalicInStorage {
             textView.typingAttributes[.editorItalic] = true
-            if let storedFont = storage.attribute(
-                .font, at: italicCheckLoc, effectiveRange: nil
-            ) as? UIFont, storedFont.fontDescriptor.matrix.c != 0.0 {
+            if let storedFont = storage.attribute(.font, at: italicCheckLoc, effectiveRange: nil) as? UIFont,
+               storedFont.fontDescriptor.matrix.c != 0.0 {
                 textView.typingAttributes[.font] = storedFont
             }
         } else {
@@ -480,48 +330,28 @@ extension RichTextCoordinator {
     // MARK: - ZWS Cleanup
 
     /// 빈 인용구 활성화 시 삽입한 ZWS 플레이스홀더를 정리합니다.
-    /// 실제 콘텐츠가 입력된 후에만 ZWS를 제거합니다.
-    /// 커서가 위치한 단락만 스캔하여 O(1) 비용으로 처리합니다.
+    /// 실제 콘텐츠가 입력된 후에만 ZWS를 제거하며, 커서 단락만 스캔합니다.
     func stripZeroWidthSpacesIfNeeded(in textView: UITextView) {
         let storage = textView.textStorage
         guard storage.length > 0 else { return }
 
-        // 커서 주변 단락으로 범위를 제한하여 성능을 보장합니다.
         let cursorLocation = textView.selectedRange.location
         let nsString = storage.string as NSString
-        let safeLoc = min(cursorLocation, max(0, storage.length - 1))
         let paragraphRange = nsString.paragraphRange(
-            for: NSRange(location: safeLoc, length: 0)
+            for: NSRange(location: min(cursorLocation, max(0, storage.length - 1)), length: 0)
         )
         let paragraphText = nsString.substring(with: paragraphRange)
 
         guard paragraphText.contains("\u{200B}") else { return }
+        guard paragraphText.contains(where: { !$0.isNewline && !$0.isWhitespace && $0 != "\u{200B}" }) else { return }
 
-        // ZWS 외에 실제 콘텐츠가 없으면(빈 인용구 상태) 제거하지 않습니다.
-        let hasRealContent = paragraphText.contains {
-            !$0.isNewline && !$0.isWhitespace && $0 != "\u{200B}"
-        }
-        guard hasRealContent else { return }
-
-        // ZWS 제거 전: 해당 단락의 인용구 속성을 기록합니다.
         let checkLoc = min(paragraphRange.location, storage.length - 1)
-        let wasBlockquote = (storage.attribute(
-            .editorBlockquote, at: checkLoc, effectiveRange: nil
-        ) as? Bool) == true
-        let savedBorderColor = storage.attribute(
-            .editorBlockquoteBorderColor, at: checkLoc, effectiveRange: nil
-        ) as? UIColor
-        let savedBaseHead = storage.attribute(
-            .editorBlockquoteBaseHeadIndent, at: checkLoc, effectiveRange: nil
-        ) as? NSNumber
-        let savedBaseLine = storage.attribute(
-            .editorBlockquoteBaseFirstLineHeadIndent, at: checkLoc, effectiveRange: nil
-        ) as? NSNumber
-        let savedParagraphStyle = storage.attribute(
-            .paragraphStyle, at: checkLoc, effectiveRange: nil
-        ) as? NSParagraphStyle
+        let wasBlockquote = (storage.attribute(.editorBlockquote, at: checkLoc, effectiveRange: nil) as? Bool) == true
+        let savedBorderColor = storage.attribute(.editorBlockquoteBorderColor, at: checkLoc, effectiveRange: nil) as? UIColor
+        let savedBaseHead = storage.attribute(.editorBlockquoteBaseHeadIndent, at: checkLoc, effectiveRange: nil) as? NSNumber
+        let savedBaseLine = storage.attribute(.editorBlockquoteBaseFirstLineHeadIndent, at: checkLoc, effectiveRange: nil) as? NSNumber
+        let savedParagraphStyle = storage.attribute(.paragraphStyle, at: checkLoc, effectiveRange: nil) as? NSParagraphStyle
 
-        // 단락 내 ZWS 위치를 수집한 뒤 뒤에서부터 삭제합니다.
         let paragraphNSString = paragraphText as NSString
         var zwsOffsets: [Int] = []
         var searchStart = 0
@@ -534,42 +364,33 @@ extension RichTextCoordinator {
             zwsOffsets.append(range.location)
             searchStart = range.location + range.length
         }
-
         guard !zwsOffsets.isEmpty else { return }
 
-        let zwsBeforeCursor = zwsOffsets.filter {
-            paragraphRange.location + $0 < cursorLocation
-        }.count
+        let zwsBeforeCursor = zwsOffsets.filter { paragraphRange.location + $0 < cursorLocation }.count
 
         storage.beginEditing()
         for offset in zwsOffsets.reversed() {
-            let absoluteLocation = paragraphRange.location + offset
-            storage.replaceCharacters(
-                in: NSRange(location: absoluteLocation, length: 1), with: ""
-            )
+            storage.replaceCharacters(in: NSRange(location: paragraphRange.location + offset, length: 1), with: "")
         }
 
-        // ZWS 제거 후: 인용구 속성 세트 전체를 무조건 재적용합니다.
         // replaceCharacters로 ZWS를 제거하면 attribute run이 병합되면서
         // 일부 속성만 소실될 수 있으므로, 전체 세트를 일관되게 재적용합니다.
         if wasBlockquote, storage.length > 0 {
             let updatedLoc = min(paragraphRange.location, max(0, storage.length - 1))
-            let updatedParagraphRange = (storage.string as NSString)
-                .paragraphRange(for: NSRange(location: updatedLoc, length: 0))
-
-            if updatedParagraphRange.length > 0 {
-                storage.addAttribute(.editorBlockquote, value: true, range: updatedParagraphRange)
+            let updatedRange = (storage.string as NSString).paragraphRange(for: NSRange(location: updatedLoc, length: 0))
+            if updatedRange.length > 0 {
+                storage.addAttribute(.editorBlockquote, value: true, range: updatedRange)
                 if let color = savedBorderColor {
-                    storage.addAttribute(.editorBlockquoteBorderColor, value: color, range: updatedParagraphRange)
+                    storage.addAttribute(.editorBlockquoteBorderColor, value: color, range: updatedRange)
                 }
                 if let ps = savedParagraphStyle {
-                    storage.addAttribute(.paragraphStyle, value: ps, range: updatedParagraphRange)
+                    storage.addAttribute(.paragraphStyle, value: ps, range: updatedRange)
                 }
                 if let baseHead = savedBaseHead {
-                    storage.addAttribute(.editorBlockquoteBaseHeadIndent, value: baseHead, range: updatedParagraphRange)
+                    storage.addAttribute(.editorBlockquoteBaseHeadIndent, value: baseHead, range: updatedRange)
                 }
                 if let baseLine = savedBaseLine {
-                    storage.addAttribute(.editorBlockquoteBaseFirstLineHeadIndent, value: baseLine, range: updatedParagraphRange)
+                    storage.addAttribute(.editorBlockquoteBaseFirstLineHeadIndent, value: baseLine, range: updatedRange)
                 }
             }
         }
@@ -580,23 +401,13 @@ extension RichTextCoordinator {
         textView.selectedRange = NSRange(location: min(newCursor, storage.length), length: 0)
         isSuppressingSelectionSync = false
 
-        // typingAttributes 복원은 selectedRange 변경 이후에 수행합니다.
-        // UIKit은 selectedRange 변경 시 typingAttributes를 재계산하면서
-        // 커스텀 키를 버리므로, 재계산 후에 덮어써야 유지됩니다.
+        // UIKit은 selectedRange 변경 시 커스텀 키를 버리므로, 재계산 후에 덮어써야 유지됩니다.
         if wasBlockquote {
             textView.typingAttributes[.editorBlockquote] = true
-            if let color = savedBorderColor {
-                textView.typingAttributes[.editorBlockquoteBorderColor] = color
-            }
-            if let ps = savedParagraphStyle {
-                textView.typingAttributes[.paragraphStyle] = ps
-            }
-            if let baseHead = savedBaseHead {
-                textView.typingAttributes[.editorBlockquoteBaseHeadIndent] = baseHead
-            }
-            if let baseLine = savedBaseLine {
-                textView.typingAttributes[.editorBlockquoteBaseFirstLineHeadIndent] = baseLine
-            }
+            if let color = savedBorderColor { textView.typingAttributes[.editorBlockquoteBorderColor] = color }
+            if let ps = savedParagraphStyle { textView.typingAttributes[.paragraphStyle] = ps }
+            if let baseHead = savedBaseHead { textView.typingAttributes[.editorBlockquoteBaseHeadIndent] = baseHead }
+            if let baseLine = savedBaseLine { textView.typingAttributes[.editorBlockquoteBaseFirstLineHeadIndent] = baseLine }
         }
 
         parent.toolbarViewModel.selectedRange = textView.selectedRange

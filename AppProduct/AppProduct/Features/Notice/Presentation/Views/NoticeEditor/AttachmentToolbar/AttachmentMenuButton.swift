@@ -8,7 +8,6 @@
 import SwiftUI
 import PhotosUI
 
-/// 공지 에디터 첨부 툴바의 클립 메뉴 버튼(사진/투표)입니다.
 struct AttachmentMenuButton: View {
 
     // MARK: - Property

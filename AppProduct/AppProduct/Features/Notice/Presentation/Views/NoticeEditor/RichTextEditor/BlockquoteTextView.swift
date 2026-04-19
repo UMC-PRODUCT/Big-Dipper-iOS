@@ -7,26 +7,12 @@
 
 import UIKit
 
-/// 인용구 속성이 적용된 단락에 왼쪽 세로 경계선을 렌더링하는 UITextView 서브클래스입니다.
 final class BlockquoteTextView: UITextView {
 
     // MARK: - Property
 
-    /// 인용구 영역별 개별 경계선 레이어를 관리합니다.
     private var blockquoteLayers: [CAShapeLayer] = []
-
-    /// `refreshBlockquoteBorders` 호출이 필요한 상태임을 나타냅니다.
     private var needsBlockquoteRefresh = false
-
-    // MARK: - Initializer
-
-    override init(frame: CGRect, textContainer: NSTextContainer?) {
-        super.init(frame: frame, textContainer: textContainer)
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-    }
 
     // MARK: - Layout
 
@@ -40,15 +26,11 @@ final class BlockquoteTextView: UITextView {
 
     // MARK: - Blockquote Rendering
 
-    /// 다음 레이아웃 패스에서 인용구 경계선을 갱신하도록 예약합니다.
     func setNeedsBlockquoteRefresh() {
         needsBlockquoteRefresh = true
         setNeedsLayout()
     }
 
-    /// 텍스트 스토리지에서 인용구 속성을 읽어 왼쪽 경계선 레이어를 즉시 업데이트합니다.
-    ///
-    /// 연속된 인용구 단락을 하나의 그룹으로 병합하여 단일 경계선을 그립니다.
     func refreshBlockquoteBorders() {
         needsBlockquoteRefresh = false
         CATransaction.begin()
@@ -56,11 +38,7 @@ final class BlockquoteTextView: UITextView {
         defer { CATransaction.commit() }
 
         let storage = textStorage
-
-        // 기존 레이어 모두 제거
-        for borderLayer in blockquoteLayers {
-            borderLayer.removeFromSuperlayer()
-        }
+        blockquoteLayers.forEach { $0.removeFromSuperlayer() }
         blockquoteLayers.removeAll()
 
         guard storage.length > 0 else { return }
@@ -75,7 +53,6 @@ final class BlockquoteTextView: UITextView {
         let fragPadding = textContainer.lineFragmentPadding
         let nsString = storage.string as NSString
 
-        // 연속된 인용구 단락을 하나의 그룹으로 병합하여 단일 경계선을 생성합니다.
         var location = 0
         var groupMinY: CGFloat = .greatestFiniteMagnitude
         var groupMaxY: CGFloat = -.greatestFiniteMagnitude
@@ -83,33 +60,29 @@ final class BlockquoteTextView: UITextView {
         var groupBaseIndent: CGFloat = 0
         var hasActiveGroup = false
 
+        func flushGroup() {
+            addBorderLayer(
+                minY: groupMinY, maxY: groupMaxY,
+                xPos: tcInset.left + fragPadding + groupBaseIndent,
+                borderWidth: borderWidth, cornerRadius: cornerRadius,
+                borderColor: groupBorderColor
+            )
+            hasActiveGroup = false
+        }
+
         while location < storage.length {
             let paragraphRange = nsString.paragraphRange(for: NSRange(location: location, length: 0))
             let checkLocation = min(paragraphRange.location, storage.length - 1)
             let isBlockquote = (storage.attribute(.editorBlockquote, at: checkLocation, effectiveRange: nil) as? Bool) == true
 
             if isBlockquote {
-                let currentBorderColor = storage.attribute(
-                    .editorBlockquoteBorderColor,
-                    at: checkLocation,
-                    effectiveRange: nil
-                ) as? UIColor ?? .systemGray3
-                let currentBaseIndent = (storage.attribute(
-                    .editorBlockquoteBaseHeadIndent,
-                    at: checkLocation,
-                    effectiveRange: nil
-                ) as? NSNumber).map { CGFloat($0.doubleValue) } ?? 0
+                let currentBorderColor = storage.attribute(.editorBlockquoteBorderColor, at: checkLocation, effectiveRange: nil) as? UIColor ?? .systemGray3
+                let currentBaseIndent = (storage.attribute(.editorBlockquoteBaseHeadIndent, at: checkLocation, effectiveRange: nil) as? NSNumber)
+                    .map { CGFloat($0.doubleValue) } ?? 0
 
                 // 시각 속성이 변경되면 이전 그룹을 flush하고 새 그룹 시작
-                if hasActiveGroup && (currentBorderColor != groupBorderColor
-                    || abs(currentBaseIndent - groupBaseIndent) > 0.5) {
-                    addBorderLayer(
-                        minY: groupMinY, maxY: groupMaxY,
-                        xPos: tcInset.left + fragPadding + groupBaseIndent,
-                        borderWidth: borderWidth, cornerRadius: cornerRadius,
-                        borderColor: groupBorderColor
-                    )
-                    hasActiveGroup = false
+                if hasActiveGroup && (currentBorderColor != groupBorderColor || abs(currentBaseIndent - groupBaseIndent) > 0.5) {
+                    flushGroup()
                 }
 
                 if !hasActiveGroup {
@@ -135,16 +108,8 @@ final class BlockquoteTextView: UITextView {
                         groupMaxY = max(groupMaxY, cursorRect.maxY + tcInset.top)
                     }
                 }
-            } else {
-                if hasActiveGroup {
-                    addBorderLayer(
-                        minY: groupMinY, maxY: groupMaxY,
-                        xPos: tcInset.left + fragPadding + groupBaseIndent,
-                        borderWidth: borderWidth, cornerRadius: cornerRadius,
-                        borderColor: groupBorderColor
-                    )
-                    hasActiveGroup = false
-                }
+            } else if hasActiveGroup {
+                flushGroup()
             }
 
             let next = NSMaxRange(paragraphRange)
@@ -152,29 +117,19 @@ final class BlockquoteTextView: UITextView {
             location = next
         }
 
-        // 마지막 그룹이 문서 끝까지 이어지는 경우 플러시
         if hasActiveGroup {
             // EOF 빈 단락(커서만 있는 상태): extraLineFragmentRect로 높이 보정
             // 마지막 저장 문자와 커서의 typingAttributes 모두 인용구여야 확장합니다.
             // 인용구 탈출 직후에는 typingAttributes에서 인용구가 제거되므로
             // 이전 단락의 trailing \n 속성만으로 경계선이 연장되지 않습니다.
             let extraRect = lm.extraLineFragmentRect
-            let lastCharIsBlockquote: Bool = {
-                guard storage.length > 0 else { return false }
-                return (storage.attribute(.editorBlockquote, at: storage.length - 1, effectiveRange: nil) as? Bool) == true
-            }()
+            let lastCharIsBlockquote = (storage.attribute(.editorBlockquote, at: storage.length - 1, effectiveRange: nil) as? Bool) == true
             let cursorIsInBlockquote = (typingAttributes[.editorBlockquote] as? Bool) == true
             if extraRect.height > 0, lastCharIsBlockquote, cursorIsInBlockquote {
                 groupMinY = min(groupMinY, extraRect.minY + tcInset.top)
                 groupMaxY = max(groupMaxY, extraRect.maxY + tcInset.top)
             }
-
-            addBorderLayer(
-                minY: groupMinY, maxY: groupMaxY,
-                xPos: tcInset.left + fragPadding + groupBaseIndent,
-                borderWidth: borderWidth, cornerRadius: cornerRadius,
-                borderColor: groupBorderColor
-            )
+            flushGroup()
         }
     }
 
@@ -188,12 +143,9 @@ final class BlockquoteTextView: UITextView {
     ) {
         guard minY < maxY else { return }
         let borderRect = CGRect(x: xPos, y: minY, width: borderWidth, height: maxY - minY)
-        let path = UIBezierPath(roundedRect: borderRect, cornerRadius: cornerRadius)
-
         let borderLayer = CAShapeLayer()
-        borderLayer.path = path.cgPath
+        borderLayer.path = UIBezierPath(roundedRect: borderRect, cornerRadius: cornerRadius).cgPath
         borderLayer.fillColor = borderColor.cgColor
-
         layer.insertSublayer(borderLayer, at: 0)
         blockquoteLayers.append(borderLayer)
     }

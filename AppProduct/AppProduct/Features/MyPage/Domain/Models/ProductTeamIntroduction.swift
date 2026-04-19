@@ -7,7 +7,6 @@
 
 import Foundation
 
-/// 프로덕트 팀 소개 화면에 표시할 정적 콘텐츠 모델입니다.
 struct ProductTeamIntroduction: Sendable {
     let paragraphs: [String]
     let teamPageURLString: String

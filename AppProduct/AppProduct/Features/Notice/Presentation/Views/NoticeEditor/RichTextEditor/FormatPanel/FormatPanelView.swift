@@ -43,7 +43,6 @@ fileprivate enum Constants {
     ]
 }
 
-/// 공지 에디터에서 단락/인라인/목록 서식을 제어하는 패널
 struct FormatPanelView: View {
 
     // MARK: - Property
@@ -51,7 +50,6 @@ struct FormatPanelView: View {
     @Bindable var viewModel: EditorToolbarViewModel
     @State private var isHighlightPalettePresented = false
 
-    /// ViewModel의 highlightColor와 팔레트 색상을 비교하여 현재 선택된 인덱스를 반환합니다.
     private var selectedHighlightIndex: Int? {
         guard let vmColor = viewModel.highlightColor else { return nil }
         return Constants.highlightPalette.firstIndex { colorsApproximatelyEqual($0.color, vmColor) }
@@ -93,7 +91,7 @@ struct FormatPanelView: View {
         }
     }
 
-    // MARK: - Row1 Paragraph
+    // MARK: - Row1
 
     private var paragraphRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -118,7 +116,7 @@ struct FormatPanelView: View {
         }
     }
 
-    // MARK: - Row2 Inline
+    // MARK: - Row2
 
     private var inlineRow: some View {
         HStack(alignment: .top, spacing: Constants.containerSpacing) {
@@ -242,7 +240,7 @@ struct FormatPanelView: View {
         }
     }
 
-    // MARK: - Row3 List
+    // MARK: - Row3
 
     private var listRow: some View {
         HStack(spacing: Constants.controlSpacing) {

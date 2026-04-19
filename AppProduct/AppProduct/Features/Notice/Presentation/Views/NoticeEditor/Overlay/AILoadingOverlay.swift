@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// AI 글 개선 처리 중/완료 시 표시되는 전체 화면 오버레이입니다.
 struct AILoadingOverlay: View {
 
     // MARK: - Property

@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 공지 에디터의 기본 액세서리 툴바입니다.
 struct DefaultToolbarView: View {
     @Bindable var viewModel: EditorToolbarViewModel
     var onTapAI: () -> Void
@@ -136,11 +135,9 @@ struct DefaultToolbarView: View {
         static let aiIcon: String = "sparkles"
         static let highlightIcon: String = "highlighter"
 
-        static let listDialogTitle: String = "목록 스타일"
         static let bulletTitle: String = "구분점"
         static let dashTitle: String = "대시선"
         static let numberTitle: String = "숫자"
-        static let cancelTitle: String = "취소"
 
         static let toolbarHeight: CGFloat = 44
         static let iconSize: CGFloat = 18

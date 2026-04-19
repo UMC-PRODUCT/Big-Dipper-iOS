@@ -16,7 +16,6 @@ fileprivate enum ToolbarButtonConstants {
 
 // MARK: - ToolbarIconButton
 
-/// 에디터 첨부 툴바에서 사용하는 공용 아이콘 버튼입니다.
 struct ToolbarIconButton: View {
 
     // MARK: - Property
@@ -43,7 +42,6 @@ struct ToolbarIconButton: View {
 
 // MARK: - ToolbarTextFormatButton
 
-/// 인라인 서식 텍스트 버튼 (B/I/U/S)입니다. 활성 여부에 따라 실제 서식 미리보기를 적용합니다.
 struct ToolbarTextFormatButton: View {
 
     // MARK: - Property

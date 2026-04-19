@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 공지 에디터의 첨부 링크 목록 섹션입니다.
 struct NoticeEditorLinkSection: View {
 
     // MARK: - Property
@@ -15,12 +14,6 @@ struct NoticeEditorLinkSection: View {
     @Binding var links: [NoticeLinkItem]
     let newlyAddedLinkID: UUID?
     let onRemove: (NoticeLinkItem) -> Void
-
-    // MARK: - Constants
-
-    private enum Constants {
-        static let bottomPadding: CGFloat = DefaultSpacing.spacing8
-    }
 
     // MARK: - Body
 
@@ -38,6 +31,6 @@ struct NoticeEditorLinkSection: View {
             }
         }
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-        .padding(.bottom, Constants.bottomPadding)
+        .padding(.bottom, DefaultSpacing.spacing8)
     }
 }
