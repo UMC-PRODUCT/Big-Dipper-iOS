@@ -31,6 +31,10 @@ jobs:
           sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
           xcodebuild -version
 
+      - name: Create Secrets.xcconfig placeholder
+        run: |
+          cp AppProduct/Core/Secret/Secrets.xcconfig.template AppProduct/Core/Secret/Secrets.xcconfig
+
       - name: Create GoogleService-Info.plist placeholder
         run: |
           cat > GoogleService-Info.plist << 'PLIST'
