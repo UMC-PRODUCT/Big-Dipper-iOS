@@ -10,6 +10,7 @@ import UIKit
 
 // MARK: - HighlightColor
 
+/// 리치 텍스트 에디터의 형광펜 색상 옵션입니다.
 enum HighlightColor: CaseIterable {
     case none, purple, pink, orange, mint, blue
 
@@ -27,6 +28,7 @@ enum HighlightColor: CaseIterable {
         }
     }
 
+    /// 텍스트에 적용되는 반투명 배경 색상 (none이면 nil)
     var swiftUIColor: Color? {
         switch self {
         case .none:   return nil
@@ -38,6 +40,7 @@ enum HighlightColor: CaseIterable {
         }
     }
 
+    /// 메뉴 아이콘에 표시되는 진한 색상
     var displayColor: Color {
         switch self {
         case .none:   return .black
@@ -49,6 +52,7 @@ enum HighlightColor: CaseIterable {
         }
     }
 
+    /// Menu 아이콘용 컬러 원형 UIImage (template 렌더링 무시)
     var circleImage: UIImage {
         let size = CGSize(width: 18, height: 18)
         let renderer = UIGraphicsImageRenderer(size: size)
@@ -62,6 +66,7 @@ enum HighlightColor: CaseIterable {
 
 // MARK: - HighlightMenuButton
 
+/// 공지 에디터 첨부 툴바의 형광펜 색상 선택 메뉴입니다.
 struct HighlightMenuButton: View {
 
     // MARK: - Property

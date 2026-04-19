@@ -7,6 +7,9 @@
 
 import SwiftUI
 
+/// 표 셀 편집 전용 툴바입니다.
+///
+/// 들여쓰기, 내어쓰기, 인용구 토글과 목록 스타일 선택 액션을 제공합니다.
 struct TableCellToolbarView: View {
 
     // MARK: - Property

@@ -9,6 +9,9 @@ extension RichTextCoordinator {
 
     // MARK: - Blockquote Enter
 
+    /// 인용구 단락에서 Enter 키 입력을 처리합니다.
+    /// - 빈 인용구 줄: 인용구 속성 제거(탈출)하고 false 반환
+    /// - 내용 있는 인용구 줄: 같은 인용구 속성으로 새 줄 삽입하고 false 반환
     func handleReturnInBlockquote(textView: BlockquoteTextView, range: NSRange) -> Bool {
         let storage = textView.textStorage
         guard storage.length > 0 else { return true }
@@ -28,7 +31,7 @@ extension RichTextCoordinator {
         }
         guard isInBlockquote else { return true }
 
-        // EOF 빈 단락이면 trailing \n(storage.length - 1)에서 blockquote 속성을 읽습니다.
+        // attribute 읽기용 위치: EOF 빈 단락이면 trailing \n(storage.length - 1)에서 blockquote 속성을 읽습니다.
         let checkLocation = min(paragraphRange.location, max(0, storage.length - 1))
         let paragraphText = nsString.substring(with: paragraphRange)
         // zero-width space(\u{200B})는 빈 인용구 플레이스홀더이므로 내용으로 취급하지 않습니다.

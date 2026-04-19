@@ -6,6 +6,8 @@
 import SwiftUI
 import UIKit
 
+// NoticeRichTextView.swift 내부에서만 사용되는 UIViewRepresentable 래퍼입니다.
+// underscore prefix는 모듈 내부 구현 세부사항임을 나타냅니다.
 struct RichTextViewRepresentable: UIViewRepresentable {
 
     // MARK: - Property
@@ -23,7 +25,7 @@ struct RichTextViewRepresentable: UIViewRepresentable {
         textView.isScrollEnabled = false
         textView.backgroundColor = .clear
         textView.font = UIFont(name: "Pretendard-Regular", size: 16) ?? UIFont.preferredFont(forTextStyle: .body)
-        // Pretendard는 Dynamic Type 미지원 커스텀 폰트이므로 false로 설정합니다.
+        // Pretendard는 Dynamic Type 스케일 미지원 커스텀 폰트이므로 false로 설정합니다.
         // true이면 접근성 글자 크기 변경 시 UIKit이 시스템 폰트로 폴백할 수 있습니다.
         textView.adjustsFontForContentSizeCategory = false
         textView.accessibilityLabel = "내용"
@@ -58,9 +60,10 @@ struct RichTextViewRepresentable: UIViewRepresentable {
 
         if !uiView.attributedText.isEqual(attributedText) {
             // IME 조합 중(한글 등) attributedText 강제 재주입은 조합 문자를 깨뜨립니다.
+            // 텍스트 재주입만 건너뛰고, 아래 툴바/placeholder 갱신은 계속 실행합니다.
             if uiView.markedTextRange == nil {
                 // UITextView.attributedText setter는 typingAttributes를 리셋하므로
-                // 커스텀 속성 보존을 위해 재주입 전후로 저장/복원합니다.
+                // 인용구 등 커스텀 속성을 보존하기 위해 재주입 전후로 저장/복원합니다.
                 let savedTypingAttributes = uiView.typingAttributes
                 let selectedRange = context.coordinator.clampedSelectedRange(for: uiView.selectedRange, in: attributedText)
                 uiView.attributedText = attributedText

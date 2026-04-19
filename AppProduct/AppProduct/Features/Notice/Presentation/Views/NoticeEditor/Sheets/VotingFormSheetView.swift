@@ -7,18 +7,28 @@
 
 import SwiftUI
 
+/// 투표 생성/수정 폼 시트
+///
+/// 제목, 항목(2~5개), 익명/복수선택 토글, 시작/마감일 설정을 제공합니다.
 struct VotingFormSheetView: View, Equatable {
 
     // MARK: - Property
-
+    /// 투표 폼 데이터 바인딩
     @Binding var formData: VoteFormData
+    /// 취소 액션
     var onCancel: () -> Void
+    /// 확인 액션
     var onConfirm: () -> Void
+    /// 시트 모드(생성/수정)
     var mode: VoteEditorMode = .create
 
+    /// 확인 버튼 로컬 로딩 상태
     @State private var isSubmitting: Bool = false
+
+    /// DEBUG 런치 인자로 강제 로딩 상태를 표시합니다.
     @State private var isDebugLoading: Bool = false
 
+    /// 투표 에디터 모드
     enum VoteEditorMode {
         case create
         case edit
@@ -73,6 +83,7 @@ struct VotingFormSheetView: View, Equatable {
 
     // MARK: - Content
 
+    /// 스크롤 본문 콘텐츠
     private var contentView: some View {
         VStack(spacing: DefaultSpacing.spacing12) {
             titleSection
@@ -92,6 +103,7 @@ struct VotingFormSheetView: View, Equatable {
 
     // MARK: - Toolbar
 
+    /// 상단 툴바 액션(취소/확인)
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolBarCollection.CancelBtn(action: onCancel)
@@ -113,12 +125,13 @@ struct VotingFormSheetView: View, Equatable {
         }
     }
 
+    /// 모드에 따른 네비게이션 타이틀
     private var navigationTitle: NavigationModifier.Navititle {
         mode == .create ? .voteCreate : .voteEdit
     }
     
     // MARK: - Title Section
-
+    /// 투표 제목 입력 섹션
     private var titleSection: some View {
         VStack {
             TextField(
@@ -135,7 +148,7 @@ struct VotingFormSheetView: View, Equatable {
     }
     
     // MARK: - Options
-
+    /// 투표 항목 입력 섹션
     private var optionsSection: some View {
         VStack(spacing: DefaultSpacing.spacing8) {
             ForEach($formData.options) { $option in
@@ -145,6 +158,7 @@ struct VotingFormSheetView: View, Equatable {
         }
     }
 
+    /// 단일 투표 항목 행
     private func optionRow(option: Binding<VoteOptionItem>) -> some View {
         let index = optionIndex(for: option.wrappedValue)
 
@@ -176,7 +190,7 @@ struct VotingFormSheetView: View, Equatable {
     }
 
     // MARK: - Add Option Button
-
+    /// 항목 추가 버튼
     private var addOptionButton: some View {
         Button {
             addOption()
@@ -195,7 +209,7 @@ struct VotingFormSheetView: View, Equatable {
     }
 
     // MARK: - Toggle Section
-
+    /// 익명/복수선택 토글 섹션
     private var toggleSection: some View {
         VStack(spacing: DefaultSpacing.spacing16) {
             toggleItem(title: Constants.anonymousVoteTitle, isOn: $formData.isAnonymous)
@@ -204,6 +218,7 @@ struct VotingFormSheetView: View, Equatable {
         .padding(.top, Constants.toggleTopMargin)
     }
 
+    /// 토글 공통 행
     private func toggleItem(title: String, isOn: Binding<Bool>) -> some View {
         HStack(spacing: DefaultSpacing.spacing8) {
             Text(title)
@@ -218,7 +233,7 @@ struct VotingFormSheetView: View, Equatable {
     }
     
     // MARK: - Date Section
-
+    /// 투표 시작일/마감일 섹션
     private var dateSection: some View {
         VStack(spacing: DefaultSpacing.spacing16) {
             dateRow(
@@ -235,6 +250,7 @@ struct VotingFormSheetView: View, Equatable {
         .padding(.top, Constants.dateTopMargin)
     }
 
+    /// 날짜 선택 공통 행
     private func dateRow(
         title: String,
         selection: Binding<Date>,
@@ -257,20 +273,23 @@ struct VotingFormSheetView: View, Equatable {
     }
 
     // MARK: - Function
-
+    /// 현재 옵션의 인덱스를 반환합니다.
     private func optionIndex(for option: VoteOptionItem) -> Int {
         formData.options.firstIndex(where: { $0.id == option.id }) ?? 0
     }
 
+    /// 최소 옵션 개수(2개) 이후부터 삭제 버튼 노출
     private func canDeleteOption(at index: Int) -> Bool {
         index >= VoteFormData.minOptionCount
     }
 
+    /// 새 옵션을 추가합니다.
     private func addOption() {
         guard formData.canAddOption else { return }
         formData.options.append(VoteOptionItem())
     }
 
+    /// 선택한 옵션을 제거합니다.
     private func removeOption(_ option: VoteOptionItem) {
         guard formData.canRemoveOption else { return }
         formData.options.removeAll { $0.id == option.id }
@@ -278,6 +297,7 @@ struct VotingFormSheetView: View, Equatable {
 
     // MARK: - Date Binding
 
+    /// 시작일 바인딩(선택일 00:00:00 고정)
     private var startDateBinding: Binding<Date> {
         Binding(
             get: { formData.startDate },
@@ -287,6 +307,7 @@ struct VotingFormSheetView: View, Equatable {
         )
     }
 
+    /// 마감일 바인딩(선택일 23:59:59 고정)
     private var endDateBinding: Binding<Date> {
         Binding(
             get: { formData.endDate },
@@ -303,26 +324,30 @@ struct VotingFormSheetView: View, Equatable {
         )
     }
 
+    /// 마감일 최소 허용값(시작일 + 1일)
     private var endDateLowerBound: Date {
         Calendar.current.date(byAdding: .day, value: 1, to: formData.startDate) ?? formData.startDate
     }
     
+    /// 확인 버튼 로딩 상태(실제 제출 + DEBUG 강제 상태)
     private var isConfirmButtonLoading: Bool {
         isSubmitting || isDebugLoading
     }
 
+    /// 확인 버튼 탭 처리
     private func handleConfirmTap() {
         guard !isConfirmButtonLoading else { return }
         isSubmitting = true
         onConfirm()
 
         Task { @MainActor in
-            // 시트가 즉시 닫히지 않을 경우를 대비해 다음 프레임에 로딩 상태를 복구합니다.
+            // 시트가 즉시 닫히지 않는 경우를 대비해 다음 프레임에 로딩 상태 복구
             await Task.yield()
             isSubmitting = false
         }
     }
 
+    /// DEBUG 런치 인자로 투표 시트 툴바 로딩 상태를 강제 표시합니다.
     private func applyDebugLoadingStateIfNeeded() {
         #if DEBUG
         isDebugLoading = ProcessInfo.processInfo.arguments.contains(Constants.debugLoadingArgument)

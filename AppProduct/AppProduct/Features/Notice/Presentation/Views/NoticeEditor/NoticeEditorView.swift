@@ -9,6 +9,9 @@ import SwiftUI
 import PhotosUI
 import SwiftData
 
+/// 공지사항 작성/수정 에디터 화면
+///
+/// 카테고리 선택, 제목/본문 입력, 이미지/링크/투표 첨부를 지원합니다.
 struct NoticeEditorView: View {
 
     // MARK: - Property
@@ -17,25 +20,44 @@ struct NoticeEditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ErrorHandler.self) private var errorHandler
 
+    /// 사용자 조직 타입 (중앙/지부/학교)
     @AppStorage(AppStorageKey.organizationType) private var organizationType: String = ""
+
+    /// 사용자 지부명
     @AppStorage(AppStorageKey.chapterName) private var chapterName: String = ""
+
+    /// 사용자 학교명
     @AppStorage(AppStorageKey.schoolName) private var schoolName: String = ""
+
+    /// 사용자 기수 ID
     @AppStorage(AppStorageKey.gisuId) private var gisuId: Int = 0
+
+    /// 사용자 지부 ID
     @AppStorage(AppStorageKey.chapterId) private var chapterId: Int = 0
+
+    /// 사용자 역할
     @AppStorage(AppStorageKey.memberRole) private var memberRoleRaw: String = ""
 
     @State private var viewModel: NoticeEditorViewModel
     private let selectedGisuId: Int?
 
+    /// 링크 추가 직후 자동 스크롤/포커스에 사용할 링크 ID
     @State private var newlyAddedLinkID: UUID?
+
+    /// 사진 첨부 피커 노출 여부
     @State private var isPhotoPickerPresented = false
+
+    /// 현재 선택된 형광펜 색상 (.none = 비활성)
     @State private var selectedHighlightColor: HighlightColor = .none
 
+    /// 제목/내용 입력 포커스 제어
     @FocusState private var isTitleFieldFocused: Bool
     @FocusState private var isContentFieldFocused: Bool
 
+    /// ScrollView 높이 (본문 영역이 남은 공간을 채우기 위해 사용)
     @State private var scrollViewHeight: CGFloat = 0
 
+    /// 본문이 화면을 꽉 채우도록 최소 높이 계산
     private var editorMinHeight: CGFloat {
         max(scrollViewHeight, 400)
     }
@@ -102,6 +124,7 @@ struct NoticeEditorView: View {
 
     // MARK: - Content
 
+    /// 본문 콘텐츠 영역
     private var editorMainContent: some View {
         VStack(spacing: DefaultSpacing.spacing16) {
             NoticeEditorTextFieldSection(
@@ -140,6 +163,7 @@ struct NoticeEditorView: View {
 
     // MARK: - Top Safe Area
 
+    /// 상단 안전 영역: 공지 대상 선택 칩
     @ViewBuilder
     private func topSafeAreaContent() -> some View {
         if viewModel.selectedCategory.hasSubCategories
@@ -156,6 +180,7 @@ struct NoticeEditorView: View {
 
     // MARK: - Bottom Safe Area
 
+    /// 하단 안전 영역: 첨부·서식 도구 툴바 (제목 또는 내용에 포커스 시에만 표시)
     @ViewBuilder
     private func bottomSafeAreaContent() -> some View {
         if isTitleFieldFocused || viewModel.editorToolbarViewModel.isEditorActive {
@@ -181,6 +206,7 @@ struct NoticeEditorView: View {
 
     // MARK: - Toolbar
 
+    /// 공지 생성/수정 화면 상단 툴바
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if !viewModel.isEditMode {
@@ -216,6 +242,7 @@ struct NoticeEditorView: View {
 
     // MARK: - Navigation
 
+    /// 화면 타이틀
     private var navigationTitle: String {
         if viewModel.isEditMode {
             return "공지 수정"
@@ -224,6 +251,7 @@ struct NoticeEditorView: View {
         return menuItemLabel(viewModel.selectedCategory)
     }
 
+    /// 메인 카테고리 서브타이틀
     private var navigationSubtitle: String {
         if viewModel.isEditMode {
             switch viewModel.selectedCategory {
@@ -242,6 +270,7 @@ struct NoticeEditorView: View {
         }
     }
 
+    /// 메인 카테고리 선택 바인딩
     private var categoryBinding: Binding<EditorMainCategory> {
         Binding(
             get: { viewModel.selectedCategory },
@@ -249,6 +278,7 @@ struct NoticeEditorView: View {
         )
     }
 
+    /// 상단 메뉴 항목 라벨 (권한/선택 기수 반영)
     private func menuItemLabel(_ category: EditorMainCategory) -> String {
         switch category {
         case .central:
@@ -260,23 +290,27 @@ struct NoticeEditorView: View {
 
     // MARK: - Function
 
+    /// 제목 필드 제출 시 내용 필드로 포커스를 이동합니다.
     private func moveFocusToContentField() {
         isTitleFieldFocused = false
         isContentFieldFocused = true
     }
 
+    /// 링크 첨부를 추가하고 자동 포커스 대상을 갱신합니다.
     private func addLinkAttachment() {
         let newItem = NoticeLinkItem()
         viewModel.noticeLinks.append(newItem)
         newlyAddedLinkID = newItem.id
     }
 
+    /// 공지 저장을 실행합니다.
     private func saveNotice() {
         Task {
             await viewModel.saveNotice()
         }
     }
 
+    /// 서브카테고리 칩 탭 이벤트를 처리합니다.
     private func handleSubCategoryTap(_ subCategory: EditorSubCategory) {
         if subCategory.hasFilter {
             viewModel.selectSubCategoryIfNeeded(subCategory)
@@ -287,10 +321,14 @@ struct NoticeEditorView: View {
         viewModel.toggleSubCategory(subCategory)
     }
 
+    /// AI 도우미 버튼 탭
     private func handleTapAI() {
         viewModel.requestAIImprovement()
     }
 
+    // MARK: - Helper
+
+    /// 앞뒤 공백/개행 제거 후 비어있으면 fallback을 반환합니다.
     private func normalizedName(from rawValue: String, fallback: String) -> String {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? fallback : trimmed
@@ -301,6 +339,7 @@ struct NoticeEditorView: View {
 
 private extension NoticeEditorView {
     enum Constants {
+        /// 이미지/투표 섹션 스크롤 앵커 ID (NoticeEditorBindings 와 동기화)
         static let imageSectionScrollID: String = "notice_editor_image_section"
         static let voteSectionScrollID: String = "notice_editor_vote_section"
     }

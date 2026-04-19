@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 공지 에디터의 제목 + 리치 텍스트 입력 섹션입니다.
 struct NoticeEditorTextFieldSection: View {
 
     // MARK: - Property

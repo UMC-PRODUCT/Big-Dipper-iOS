@@ -28,6 +28,8 @@ private enum Constant {
 
 // MARK: - NoticeItem
 
+/// 공지 탭 - 리스트
+
 struct NoticeItem: View {
     // MARK: - Properties
 
@@ -77,6 +79,7 @@ private struct NoticeItemPresenter: View, Equatable {
     }
 }
 
+/// 태그 + 필독 + 알림 + 날짜
 private struct TopSection: View, Equatable {
     let model: NoticeItemModel
 
@@ -107,6 +110,7 @@ private struct TopSection: View, Equatable {
     }
 }
 
+/// 제목 + 내용
 private struct ContentSection: View, Equatable {
     let model: NoticeItemModel
 
@@ -124,6 +128,7 @@ private struct ContentSection: View, Equatable {
     }
 }
 
+/// 작성자 + 링크/투표 여부 + 조회수
 private struct BottomSection: View, Equatable {
     let model: NoticeItemModel
 

@@ -12,6 +12,7 @@ extension NoticeEditorViewModel {
 
     // MARK: - Public State
 
+    /// 현재 권한 기준으로 노출 가능한 서브카테고리 목록입니다.
     var visibleSubCategories: [EditorSubCategory] {
         Self.allowedSubCategories(
             for: selectedCategory,
@@ -25,15 +26,19 @@ extension NoticeEditorViewModel {
 
     // MARK: - Public Action
 
+    /// 조직 타입 기준으로 메인 카테고리 목록을 갱신합니다.
     func applyOrganizationType(_ organizationTypeRawValue: String) {
         organizationType = OrganizationType(rawValue: organizationTypeRawValue)
+        // 메뉴/권한 정책은 memberRole 기준으로만 관리합니다.
     }
 
+    /// 멤버 역할 기준으로 메인 카테고리/서브카테고리 정책을 갱신합니다.
     func applyMemberRole(_ memberRoleRawValue: String) {
         memberRole = ManagementTeam(rawValue: memberRoleRawValue)
         applyEditorPolicyAndReloadTargets()
     }
 
+    /// 뷰에서 사용자 컨텍스트(AppStorage)를 전달받아 반영합니다.
     func updateUserContext(gisuId: Int, chapterId: Int) {
         userGisuId = gisuId
         userChapterId = chapterId
@@ -45,10 +50,12 @@ extension NoticeEditorViewModel {
         }
     }
 
+    /// View 계층의 ErrorHandler를 바인딩합니다.
     func updateErrorHandler(_ handler: ErrorHandler) {
         errorHandler = handler
     }
 
+    /// 현재 메인 카테고리에 맞는 타겟 목록을 조회합니다.
     @MainActor
     func loadTargetOptions() async {
         targetOptionsState = .loading
@@ -141,6 +148,7 @@ extension NoticeEditorViewModel {
         normalizeSelectionForCurrentCategory()
     }
 
+    /// 메인 카테고리를 선택하고 해당 타겟 옵션을 로드합니다.
     func selectCategory(_ category: EditorMainCategory) {
         guard availableCategories.contains(category) else { return }
         selectedCategory = category
@@ -150,6 +158,7 @@ extension NoticeEditorViewModel {
         }
     }
 
+    /// 서브카테고리 토글
     func toggleSubCategory(_ subCategory: EditorSubCategory) {
         guard visibleSubCategories.contains(subCategory) else { return }
 
@@ -163,6 +172,7 @@ extension NoticeEditorViewModel {
         normalizeSelectionForCurrentCategory()
     }
 
+    /// 지부 선택 토글
     func toggleBranch(_ branch: NoticeTargetOption) {
         guard visibleSubCategories.contains(.branch) else { return }
 
@@ -179,6 +189,7 @@ extension NoticeEditorViewModel {
         normalizeSelectionForCurrentCategory()
     }
 
+    /// 학교 선택 토글
     func toggleSchool(_ school: NoticeTargetOption) {
         guard visibleSubCategories.contains(.school) else { return }
 
@@ -195,6 +206,7 @@ extension NoticeEditorViewModel {
         normalizeSelectionForCurrentCategory()
     }
 
+    /// 파트 선택 토글
     func togglePart(_ part: UMCPartType) {
         guard visibleSubCategories.contains(.part) else { return }
 
@@ -217,6 +229,7 @@ extension NoticeEditorViewModel {
         subCategorySelection.selectedSubCategories.contains(subCategory)
     }
 
+    /// 게시판 분류 칩의 시각적 선택 상태를 반환합니다.
     func isSubCategoryHighlighted(_ subCategory: EditorSubCategory) -> Bool {
         switch subCategory {
         case .all:
@@ -242,6 +255,7 @@ extension NoticeEditorViewModel {
         subCategorySelection.selectedParts.contains(part)
     }
 
+    /// 필터형 서브카테고리(지부/학교/파트)를 탭했을 때 선택 상태를 보장합니다.
     func selectSubCategoryIfNeeded(_ subCategory: EditorSubCategory) {
         guard subCategory.hasFilter else { return }
         guard visibleSubCategories.contains(subCategory) else { return }
@@ -253,6 +267,7 @@ extension NoticeEditorViewModel {
         normalizeSelectionForCurrentCategory()
     }
 
+    /// 서브카테고리에 맞는 타겟 선택 시트를 엽니다.
     func openSheet(for subCategory: EditorSubCategory) {
         guard subCategory.hasFilter else { return }
         guard visibleSubCategories.contains(subCategory) else { return }
@@ -275,6 +290,7 @@ extension NoticeEditorViewModel {
 
     // MARK: - Edit Bootstrap
 
+    /// 수정할 공지 데이터를 에디터 상태로 로드합니다.
     func loadNoticeForEdit(_ notice: NoticeDetail) {
         title = notice.title
         content = notice.content
@@ -332,6 +348,7 @@ extension NoticeEditorViewModel {
 
     // MARK: - Helper
 
+    /// 조직 타입/역할에 따라 사용 가능한 메인 카테고리 목록을 반환합니다.
     static func availableCategories(
         for _: OrganizationType?,
         memberRole: ManagementTeam?
@@ -340,10 +357,12 @@ extension NoticeEditorViewModel {
         return [.all, .central]
     }
 
+    /// 레거시 시그니처 유지용 래퍼입니다.
     static func availableCategories(for organizationType: OrganizationType?) -> [EditorMainCategory] {
         availableCategories(for: organizationType, memberRole: nil)
     }
 
+    /// 해당 서브카테고리의 필터 선택 상태를 초기화합니다.
     func clearFilterForSubCategory(_ subCategory: EditorSubCategory) {
         switch subCategory {
         case .branch:
@@ -381,6 +400,7 @@ private extension NoticeEditorViewModel {
         }
     }
 
+    /// 역할 변경 시 에디터 정책(카테고리/서브카테고리)을 재적용하고 타겟 옵션을 다시 로드합니다.
     func applyEditorPolicyAndReloadTargets() {
         let categories = Self.availableCategories(
             for: organizationType,
@@ -402,6 +422,7 @@ private extension NoticeEditorViewModel {
         }
     }
 
+    /// 현재 카테고리에 맞지 않는 서브카테고리 선택을 정리하고 일관된 상태로 보정합니다.
     func normalizeSelectionForCurrentCategory() {
         let allowed = Set(visibleSubCategories)
         subCategorySelection.selectedSubCategories = subCategorySelection
@@ -418,11 +439,13 @@ private extension NoticeEditorViewModel {
             subCategorySelection.selectedParts = []
         }
 
+        // 지부/학교 동시 지정 방지
         if subCategorySelection.selectedBranch != nil && subCategorySelection.selectedSchool != nil {
             subCategorySelection.selectedSchool = nil
             subCategorySelection.selectedSubCategories.remove(.school)
         }
 
+        // 더 이상 숨겨진 "전체" 기본값을 사용하지 않습니다.
         if allowed.isEmpty {
             subCategorySelection.selectedSubCategories = []
             subCategorySelection.selectedBranch = nil
@@ -432,11 +455,13 @@ private extension NoticeEditorViewModel {
             subCategorySelection.selectedSubCategories.remove(.all)
         }
 
+        // 기수 미선택 시 금지 조합 방지
         if resolvedGisuId <= 0 && !subCategorySelection.selectedParts.isEmpty {
             subCategorySelection.selectedParts = []
             subCategorySelection.selectedSubCategories.remove(.part)
         }
 
+        // 옵션 목록에서 제거된 항목 정리
         if let selectedBranch = subCategorySelection.selectedBranch,
            !branchOptions.contains(selectedBranch) {
             subCategorySelection.selectedBranch = nil

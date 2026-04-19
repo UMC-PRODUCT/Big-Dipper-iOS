@@ -68,28 +68,35 @@ enum MarkdownBlockParser {
         let lineRange = NSRange(location: 0, length: lineNSString.length)
 
         if let match = MarkdownRegex.h3.firstMatch(in: line, range: lineRange) {
+            // ### 텍스트 → 단락 스타일 subheading (17pt)
             markdownBody = lineNSString.substring(from: match.range.length)
             style.fontSize = 17
             style.isBold = true
         } else if let match = MarkdownRegex.h2.firstMatch(in: line, range: lineRange) {
+            // ## 텍스트 → 단락 스타일 heading (22pt)
             markdownBody = lineNSString.substring(from: match.range.length)
             style.fontSize = 22
             style.isBold = true
         } else if let match = MarkdownRegex.h1.firstMatch(in: line, range: lineRange) {
+            // # 텍스트 → 단락 스타일 title (28pt)
             markdownBody = lineNSString.substring(from: match.range.length)
             style.fontSize = 28
             style.isBold = true
         } else if let match = MarkdownRegex.blockquote.firstMatch(in: line, range: lineRange) {
+            // > 텍스트 → 인용구 (headIndent > 0 + .editorBlockquote attribute)
             markdownBody = lineNSString.substring(from: match.range.length)
             style.paragraphStyle = MarkdownAttributeBuilder.quoteParagraphStyle()
             style.isBlockquote = true
         } else if let match = MarkdownRegex.bulletList.firstMatch(in: line, range: lineRange) {
+            // - 텍스트 → bullet prefix •
             markdownBody = lineNSString.substring(from: match.range.length)
             literalPrefix = "• "
         } else if let match = MarkdownRegex.dashList.firstMatch(in: line, range: lineRange) {
+            // – 텍스트 → dash prefix –
             markdownBody = lineNSString.substring(from: match.range.length)
             literalPrefix = "– "
         } else if let match = MarkdownRegex.numberList.firstMatch(in: line, range: lineRange) {
+            // 1. 텍스트 → number prefix 숫자.
             let marker = lineNSString.substring(with: match.range(at: 1))
             markdownBody = lineNSString.substring(from: match.range.length)
             literalPrefix = "\(marker). "

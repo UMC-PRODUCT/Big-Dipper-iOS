@@ -14,9 +14,13 @@ extension NoticeEditorViewModel {
 
     // MARK: - Types
 
+    /// AI 토큰 사용량 스냅샷
     struct AITokenUsage: Equatable {
+        /// 직전 1회 실행에서 소비한 토큰 수
         let lastRunTokens: Int
+        /// 에디터가 열린 뒤 누적 사용량 (직전 실행 포함)
         let cumulativeUsed: Int
+        /// 모델 컨텍스트 윈도우 크기
         let total: Int
 
         var remaining: Int { max(0, total - cumulativeUsed) }
@@ -28,6 +32,8 @@ extension NoticeEditorViewModel {
 
     // MARK: - AI Content Improvement
 
+    /// AI 개선 요청 진입점. availability 체크 후 확인 다이얼로그를 띄운다.
+    /// 실제 실행은 다이얼로그의 "작성하기" 버튼 탭 시 startAIImprovement()로 이어짐.
     @MainActor
     func requestAIImprovement() {
         let plainText = richAttributedContent.string.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,12 +59,19 @@ extension NoticeEditorViewModel {
         showAIConfirmation = true
     }
 
+    /// 확인 다이얼로그에서 "작성하기" 버튼 탭 시 호출된다.
     @MainActor
     func startAIImprovement() async {
         showAIConfirmation = false
         await improveContentWithAI()
     }
 
+    /// Foundation Model을 사용해 공지 본문을 개선합니다.
+    ///
+    /// 현재 본문 텍스트를 온디바이스 언어 모델로 개선하여 재작성합니다.
+    /// 처리 중에는 `isAIProcessing`이 true가 되며, 스트리밍 진행 상황은 `aiStreamingText`에 반영됩니다.
+    /// iOS 26.4 이상에서는 `aiTokenUsage`에 에디터 세션 누적 기준 토큰 사용량이 반영되며,
+    /// 정상 완료 후에는 `showAICompletionSummary`가 true가 되어 사용자가 확인 버튼을 누를 때까지 오버레이가 유지됩니다.
     @MainActor
     func improveContentWithAI() async {
         let plainText = richAttributedContent.string.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -145,6 +158,7 @@ extension NoticeEditorViewModel {
         }
     }
 
+    /// 완료 요약 오버레이를 닫습니다. 확인 버튼 핸들러에서 호출됩니다.
     @MainActor
     func dismissAICompletionSummary() {
         showAICompletionSummary = false
@@ -153,11 +167,14 @@ extension NoticeEditorViewModel {
 
     // MARK: - Token Usage
 
+    /// 모델의 컨텍스트 윈도우 크기를 조회합니다. (iOS 26.4+)
     private func resolveContextSize() -> Int? {
         guard #available(iOS 26.4, *) else { return nil }
         return SystemLanguageModel.default.contextSize
     }
 
+    /// 현재 세션 트랜스크립트 기준 이번 실행 토큰 사용량을 갱신하고, 누적값을 반영한 스냅샷을 `aiTokenUsage`에 세팅합니다.
+    /// - Returns: 이번 실행에서 소비된 토큰 수 (실패 시 0)
     @MainActor
     private func updateTokenUsage(session: LanguageModelSession, contextSize: Int) async -> Int {
         guard #available(iOS 26.4, *) else { return 0 }
@@ -177,6 +194,9 @@ extension NoticeEditorViewModel {
 
     // MARK: - SwiftData Persistence
 
+    /// 에디터 진입 시 당일 토큰 사용량을 복원합니다.
+    ///
+    /// 당일 레코드가 존재하면 `aiCumulativeUsedTokens`를 복원하고, 없으면 0을 유지합니다.
     @MainActor
     func restoreDailyTokenUsage() {
         guard let modelContext else { return }
@@ -190,9 +210,14 @@ extension NoticeEditorViewModel {
             if let record = records.first(where: { $0.memberId == currentMemberId && $0.date == today }) {
                 aiCumulativeUsedTokens = record.usedTokens
             }
-        } catch {}
+        } catch {
+            // 복원 실패해도 에디터 동작에 영향 없이 0으로 유지
+        }
     }
 
+    /// AI 개선 성공 완료 시 당일 누적 토큰 사용량을 SwiftData에 저장합니다.
+    ///
+    /// 저장 실패 시 AI 결과(본문 교체)에는 영향을 주지 않습니다.
     @MainActor
     private func persistDailyTokenUsage(lastRunTokens: Int) {
         guard let modelContext, lastRunTokens > 0 else { return }
@@ -215,6 +240,8 @@ extension NoticeEditorViewModel {
             }
 
             try modelContext.save()
-        } catch {}
+        } catch {
+            // 저장 실패해도 AI 실행 결과에 영향 없음
+        }
     }
 }

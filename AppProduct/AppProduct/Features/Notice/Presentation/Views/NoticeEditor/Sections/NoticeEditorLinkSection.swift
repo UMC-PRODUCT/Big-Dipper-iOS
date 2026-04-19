@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 공지 에디터의 첨부 링크 목록 섹션입니다.
 struct NoticeEditorLinkSection: View {
 
     // MARK: - Property

@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 공지 수신 대상 선택 시트 (지부/학교/파트)
 struct TargetSheetView: View {
 
     // MARK: - Property
@@ -18,6 +19,7 @@ struct TargetSheetView: View {
 
     // MARK: - Constants
 
+    /// 타겟 선택 시트의 레이아웃/문구 상수 모음
     private enum Constants {
         static let sectionSpacing: CGFloat = DefaultSpacing.spacing12
         static let chipSpacing: CGFloat = DefaultSpacing.spacing12
@@ -64,6 +66,7 @@ struct TargetSheetView: View {
     
     // MARK: - Content
 
+    /// 선택된 시트 타입에 맞는 필터 섹션을 반환합니다.
     @ViewBuilder
     private var statefulSheetContent: some View {
         switch viewModel.targetOptionsState {
@@ -105,6 +108,7 @@ struct TargetSheetView: View {
 
     // MARK: - Retry
 
+    /// 타겟 옵션 로드 실패 시 재시도합니다. 중복 호출을 방지합니다.
     @MainActor
     private func retryTargetOptions() async {
         guard !isRetryingTargetOptions else { return }
@@ -115,6 +119,7 @@ struct TargetSheetView: View {
     
     // MARK: - Section Builders
 
+    /// 지부 대상 선택 섹션
     private var branchFilterSection: some View {
         selectionSection {
             FlowLayout(spacing: Constants.chipSpacing) {
@@ -128,6 +133,7 @@ struct TargetSheetView: View {
         }
     }
     
+    /// 학교 대상 선택 섹션
     private var schoolFilterSection: some View {
         selectionSection {
             ScrollView(.vertical) {
@@ -145,6 +151,7 @@ struct TargetSheetView: View {
         }
     }
     
+    /// 파트 대상 선택 섹션
     private var partFilterSection: some View {
         selectionSection {
             FlowLayout(spacing: Constants.chipSpacing) {
@@ -163,6 +170,7 @@ struct TargetSheetView: View {
     
     // MARK: - Shared Section
 
+    /// 타겟 선택 칩 레이아웃을 공통화합니다.
     @ViewBuilder
     private func selectionSection<Content: View>(
         @ViewBuilder content: () -> Content

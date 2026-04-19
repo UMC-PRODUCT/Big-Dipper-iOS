@@ -35,6 +35,7 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
 
     // MARK: - Mode
 
+    /// 편집 모드 (생성 or 수정)
     let mode: NoticeEditorMode
 
     // MARK: - User Context
@@ -55,8 +56,13 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
         UserDefaults.standard.integer(forKey: AppStorageKey.schoolId)
     }
 
+    /// 사용자 조직 타입 (AppStorage 반영)
     var organizationType: OrganizationType?
+
+    /// 사용자 권한/역할 (AppStorage 반영)
     var memberRole: ManagementTeam?
+
+    /// 뷰에서 전달받는 사용자 컨텍스트(우선 적용)
     var userGisuId: Int?
     var userChapterId: Int?
     var selectedGenerationValue: Int?
@@ -76,8 +82,13 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
 
     // MARK: - View State
 
+    /// 공지 생성/수정 상태
+    ///
+    /// ViewModel 기능을 extension 파일로 분리해 관리하므로,
+    /// 동일 타입 extension에서도 상태 전환이 가능하도록 setter를 내부 공개합니다.
     var createState: Loadable<NoticeDetail> = .idle
 
+    /// 선택된 메인 카테고리
     var selectedCategory: EditorMainCategory {
         didSet {
             if oldValue != selectedCategory {
@@ -86,52 +97,117 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
         }
     }
 
+    /// 서브카테고리 선택 상태
     var subCategorySelection = EditorSubCategorySelection()
+
+    /// 공지 타겟(지부, 학교, 파트) 시트 표시 여부
     var activeSheetType: TargetSheetType?
+
+    /// 사용자 조직 타입에 따라 노출 가능한 메인 카테고리 목록
     var availableCategories: [EditorMainCategory]
+
+    /// 지부 선택 시트 목록 (중앙 선택 시)
     var branchOptions: [NoticeTargetOption] = []
+
+    /// 학교 선택 시트 목록
     var schoolOptions: [NoticeTargetOption] = []
+
+    /// 타겟(지부/학교/파트) 시트 데이터 로딩 상태
     var targetOptionsState: Loadable<Bool> = .idle
+
+    /// 공지사항 제목
     var title: String = ""
+
+    /// 공지사항 본문 (일반 텍스트 — 서버 전송용)
     var content: String = ""
+
+    /// 리치 텍스트 에디터 툴바 ViewModel
     var editorToolbarViewModel: EditorToolbarViewModel = EditorToolbarViewModel()
+
+    /// 리치 텍스트 에디터 본문 (NSAttributedString — 로컬 편집용)
     var richAttributedContent: NSAttributedString = NSAttributedString(string: "")
+
+    /// 투표 폼 시트 표시 여부
     var showVoting: Bool = false
+
+    /// 투표 폼 데이터
     var voteFormData: VoteFormData = VoteFormData()
+
+    /// 투표 확정 여부
     var isVoteConfirmed: Bool = false
+
+    /// 화면 AlertPrompt
     var alertPrompt: AlertPrompt?
+
+    /// PhotosPicker 선택 아이템
     var selectedPhotoItems: [PhotosPickerItem] = []
+
+    /// 로드된 UIImage 목록
     var selectedImages: [UIImage] = []
+
+    /// 첨부 이미지 카드 목록
     var noticeImages: [NoticeImageItem] = []
+
+    /// 첨부 링크 카드 목록
     var noticeLinks: [NoticeLinkItem] = []
+
+    /// 알림 발송 여부
     var allowAlert: Bool = true
 
     // MARK: - AI State
 
+    /// AI 개선 시작 전 확인 다이얼로그 표시 여부
     var showAIConfirmation: Bool = false
+
+    /// AI 글 개선 처리 중 여부
     var isAIProcessing: Bool = false
+
+    /// AI 스트리밍 진행 중 현재까지 생성된 텍스트 (진행 상황 표시용)
     var aiStreamingText: String = ""
+
+    /// AI 토큰 사용량 (iOS 26.4+ 에서만 채워짐)
     var aiTokenUsage: AITokenUsage?
+
+    /// 에디터가 열려 있는 동안 성공적으로 확정된 AI 토큰 누적 사용량
     var aiCumulativeUsedTokens: Int = 0
+
+    /// AI 개선 완료 후 확인 버튼 대기 중 상태 (오버레이 유지용)
     var showAICompletionSummary: Bool = false
 
     // MARK: - Edit Snapshot
 
+    /// 수정 화면 원본 제목
     var originalTitle: String = ""
+
+    /// 수정 화면 원본 본문
     var originalContent: String = ""
+
+    /// 수정 화면 원본 링크 목록
     var originalLinks: [String] = []
+
+    /// 수정 화면 원본 이미지 ID 목록 (순서 유지)
     var originalImageIds: [String] = []
+    /// 수정 화면 원본 이미지 URL 목록 (ID 미포함 응답 대비)
     var originalImageURLs: [String] = []
+
+    /// 수정 화면 원본 투표 폼
     var originalVoteFormData: VoteFormData?
+
+    /// 수정 진입 시점의 원본 투표 스냅샷
     var initialVoteSnapshot: VoteSnapshot?
 
     // MARK: - Derived State
 
+    /// 수정 모드 여부
     var isEditMode: Bool {
         if case .edit = mode { return true }
         return false
     }
 
+    /// 저장 가능 여부
+    ///
+    /// 생성: 제목/내용 필수
+    /// 수정: 제목/내용 필수 + 실제 변경사항 존재
     var canSubmit: Bool {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -170,6 +246,7 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
 
     // MARK: - Helper
 
+    /// 선택된 gisuId를 사용자 표시용 기수 값으로 역매핑합니다.
     func refreshSelectedGenerationValue() {
         let currentGisuId = resolvedGisuId
         guard currentGisuId > 0 else {
