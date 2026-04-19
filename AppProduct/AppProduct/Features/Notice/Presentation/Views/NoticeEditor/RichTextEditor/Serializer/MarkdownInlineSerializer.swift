@@ -10,10 +10,22 @@ import UIKit
 
 // MARK: - MarkdownInlineSerializer
 
+/// attributed string 의 한 구간을 **인라인 마크다운 문자열** 로 역변환하는 직렬화기.
+///
+/// `NSAttributedString.enumerateAttributes(in:)` 로 같은 속성을 공유하는 run 단위로
+/// 순회하며 각 run 을 `serializeSegment` 로 변환하고 이어 붙입니다.
 enum MarkdownInlineSerializer {
 
     // MARK: - Function
 
+    /// 주어진 범위의 인라인 텍스트를 마크다운 문자열로 직렬화합니다.
+    ///
+    /// - Parameters:
+    ///   - attributedString: 전체 에디터 문자열.
+    ///   - range: 직렬화 대상 범위(블록 prefix 제거 후 남은 본문).
+    ///   - blockImpliedBold: 블록 prefix(헤딩 등) 자체가 bold 를 암시하는 경우 `true`.
+    ///     이 때 인라인 레벨에서는 `**` 래핑을 하지 않아 이중 표시를 방지합니다.
+    /// - Returns: 인라인 마크다운 문자열.
     static func serializeInline(_ attributedString: NSAttributedString, range: NSRange, blockImpliedBold: Bool = false) -> String {
         guard range.length > 0 else {
             return ""
@@ -34,6 +46,22 @@ enum MarkdownInlineSerializer {
         return markdown
     }
 
+    /// 단일 run(같은 속성 집합을 공유하는 연속 텍스트)을 마크다운 조각으로 변환합니다.
+    ///
+    /// ### 래핑 순서
+    /// 1. `isMonospaced` → `` `...` `` 로 래핑 (다른 인라인 서식 무시).
+    /// 2. Bold + Italic 동시 → `**_..._**`.
+    /// 3. 그 외 Bold / Italic 은 각각 `**...**`, `*...*` 로 중첩 가능.
+    /// 4. Underline → `<u>...</u>` (monospaced 가 아닐 때만).
+    /// 5. Strikethrough → `~~...~~` (monospaced 가 아닐 때만).
+    /// 6. Highlight → `<mark color="R,G,B,A">...</mark>` (sRGB 변환 실패 시 skip).
+    /// 7. Link → `[...](url)` (`)`, `\` escape 적용).
+    ///
+    /// - Parameters:
+    ///   - text: run 의 raw 텍스트.
+    ///   - attributes: run 의 속성 dictionary.
+    ///   - blockImpliedBold: 블록 레벨에서 이미 bold 가 함축되어 있는지 여부.
+    /// - Returns: 해당 run 을 나타내는 마크다운 조각.
     static func serializeSegment(text: String, attributes: [NSAttributedString.Key: Any], blockImpliedBold: Bool = false) -> String {
         let font = attributes[.font] as? UIFont
         let traits = font?.fontDescriptor.symbolicTraits ?? []
