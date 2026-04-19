@@ -39,9 +39,22 @@
 		1FEF7EC72F2C9D3200AB3DBB /* Documentation.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = Documentation.docc; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		1F1ED9CB2F93959300D494D0 /* Exceptions for "AppProduct" folder in "AppProduct" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Core/Secret/Secrets.xcconfig,
+			);
+			target = 0E6380A82F02F1020060E4D9 /* AppProduct */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0E6380AB2F02F1020060E4D9 /* AppProduct */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				1F1ED9CB2F93959300D494D0 /* Exceptions for "AppProduct" folder in "AppProduct" target */,
+			);
 			path = AppProduct;
 			sourceTree = "<group>";
 		};
@@ -166,7 +179,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2620;
-				LastUpgradeCheck = 2630;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					0E6380A82F02F1020060E4D9 = {
 						CreatedOnToolsVersion = 26.2;
@@ -182,7 +195,6 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
-				Base,
 				ko,
 			);
 			mainGroup = 0E6380A02F02F1020060E4D9;

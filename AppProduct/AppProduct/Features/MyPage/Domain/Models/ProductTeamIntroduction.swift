@@ -2,12 +2,11 @@
 //  ProductTeamIntroduction.swift
 //  AppProduct
 //
-//  Created by Codex on 3/13/26.
+//  Created by euijjang97 on 3/13/26.
 //
 
 import Foundation
 
-/// 프로덕트 팀 소개 화면에 표시할 정적 콘텐츠 모델입니다.
 struct ProductTeamIntroduction: Sendable {
     let paragraphs: [String]
     let teamPageURLString: String

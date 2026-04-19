@@ -2,12 +2,11 @@
 //  ProductTeamIntroductionView.swift
 //  AppProduct
 //
-//  Created by Codex on 3/13/26.
+//  Created by euijjang97 on 3/13/26.
 //
 
 import SwiftUI
 
-/// 마이페이지에서 프로덕트 팀 소개 글을 표시하는 화면입니다.
 struct ProductTeamIntroductionView: View {
     // MARK: - Property
 

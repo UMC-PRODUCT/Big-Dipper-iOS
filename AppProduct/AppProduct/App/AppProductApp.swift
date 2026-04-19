@@ -12,40 +12,30 @@ import SwiftData
 import SwiftUI
 import TipKit
 
-/// UMC 동아리 운영 관리 앱의 진입점
-///
-/// 앱 상태(splash/login/signUp/main)에 따라 루트 화면을 전환하고,
-/// DIContainer, ErrorHandler, ModelContainer를 하위 뷰에 주입합니다.
 @main
 struct AppProductApp: App {
-    
+
     // MARK: - Property
-    
+
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var container: DIContainer
     @State private var didConfigureAppDelegate: Bool = false
     @State private var errorHandler: ErrorHandler = .init()
     @State private var appState: AppState = .splash
     private let sharedModelContainer: ModelContainer
-    
+
     // MARK: - AppState
-    
-    /// 앱 전체 화면 상태
+
     private enum AppState: Equatable {
-        /// 스플래시 화면 (토큰 검사 중)
         case splash
-        /// 로그인 화면
         case login
-        /// 회원가입 화면
         case signUp(
             verificationToken: String,
             email: String?,
             fullName: String?,
             postRegisterLoginContext: PostRegisterLoginContext?
         )
-        /// 승인 대기 화면
         case pendingApproval
-        /// 메인 화면 (탭)
         case main
     }
     
@@ -147,12 +137,10 @@ extension AppProductApp {
         .animation(.easeInOut(duration: 0.28), value: appState)
     }
     
-    /// Auth Feature의 UseCase Provider
     private var authProvider: AuthUseCaseProviding {
         container.resolve(AuthUseCaseProviding.self)
     }
-    
-    /// 앱 상태를 애니메이션과 함께 전환합니다.
+
     private func transition(to state: AppState) {
         guard state != appState else { return }
         withAnimation {
@@ -160,7 +148,6 @@ extension AppProductApp {
         }
     }
 
-    /// ErrorHandler의 currentError를 AlertPrompt 바인딩으로 변환합니다.
     private var errorAlertBinding: Binding<AlertPrompt?> {
         Binding(
             get: {
@@ -185,7 +172,6 @@ extension AppProductApp {
         )
     }
 
-    /// 루트 화면 전환에 사용하는 공통 트랜지션
     private var rootTransition: AnyTransition {
         .asymmetric(
             insertion: .opacity.combined(with: .move(edge: .trailing)),
@@ -199,7 +185,6 @@ extension AppProductApp {
         _ = AuthController.handleOpenUrl(url: url)
     }
     
-    /// AppDelegate 초기 설정을 1회만 수행합니다.
     private func configureAppDelegateIfNeeded() {
         guard !didConfigureAppDelegate else { return }
         didConfigureAppDelegate = true
@@ -209,7 +194,6 @@ extension AppProductApp {
         )
     }
     
-    /// 세션 만료 시 캐시 초기화 후 로그인 화면으로 전환합니다.
     private func handleAuthSessionExpired() {
         UserDefaults.standard.set(false, forKey: AppStorageKey.canAutoLogin)
         Task {
@@ -219,7 +203,6 @@ extension AppProductApp {
         transition(to: .login)
     }
 
-    /// 하위 뷰에서 앱 상태를 전환할 수 있도록 제공하는 AppFlow Environment 값
     private var appFlow: AppFlow {
         AppFlow(
             showLogin: { transition(to: .login) },
@@ -243,15 +226,12 @@ extension AppProductApp {
         )
     }
     
-    /// SwiftData ModelContainer를 생성합니다.
-    ///
-    /// CloudKit 동기화를 시도하고, 실패 시 로컬 저장소로 폴백합니다.
-    /// - Returns: 생성된 ModelContainer (CloudKit 또는 로컬)
     private static func makeModelContainer() -> ModelContainer {
         let schema = Schema([
             NoticeHistoryData.self,
             GenerationMappingRecord.self,
-            NoticeReadRecord.self
+            NoticeReadRecord.self,
+            AITokenDailyUsageRecord.self
         ])
         
         do {
@@ -264,7 +244,6 @@ extension AppProductApp {
                 configurations: [cloudConfiguration]
             )
         } catch {
-            // CloudKit 설정/권한/모델 제약 이슈가 있으면 로컬 저장소로 폴백합니다.
             print("SwiftData CloudKit init failed. Fallback to local store: \(error)")
             
             do {
