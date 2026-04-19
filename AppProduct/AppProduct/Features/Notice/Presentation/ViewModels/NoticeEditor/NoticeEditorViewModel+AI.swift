@@ -154,17 +154,12 @@ extension NoticeEditorViewModel {
     // MARK: - Token Usage
 
     private func resolveContextSize() -> Int? {
-        #if compiler(>=6.3)
         guard #available(iOS 26.4, *) else { return nil }
         return SystemLanguageModel.default.contextSize
-        #else
-        return nil
-        #endif
     }
 
     @MainActor
     private func updateTokenUsage(session: LanguageModelSession, contextSize: Int) async -> Int {
-        #if compiler(>=6.3)
         guard #available(iOS 26.4, *) else { return 0 }
         do {
             let used = try await SystemLanguageModel.default.tokenCount(for: session.transcript)
@@ -178,9 +173,6 @@ extension NoticeEditorViewModel {
         } catch {
             return 0
         }
-        #else
-        return 0
-        #endif
     }
 
     // MARK: - SwiftData Persistence
