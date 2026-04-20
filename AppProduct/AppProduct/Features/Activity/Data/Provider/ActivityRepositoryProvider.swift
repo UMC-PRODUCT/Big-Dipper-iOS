@@ -56,7 +56,6 @@ final class ActivityRepositoryProvider: ActivityRepositoryProviding {
 
 extension ActivityRepositoryProvider {
     /// Mock Repository들로 구성된 Provider 생성
-    #if DEBUG
     static func mock() -> ActivityRepositoryProvider {
         ActivityRepositoryProvider(
             challengerAttendanceRepository: MockAttendanceRepository(),
@@ -66,7 +65,6 @@ extension ActivityRepositoryProvider {
             memberRepository: MockMemberRepository()
         )
     }
-    #endif
 
     /// 실제 API 연결 Provider 생성
     ///

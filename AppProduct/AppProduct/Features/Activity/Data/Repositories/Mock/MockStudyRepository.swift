@@ -7,7 +7,6 @@
 
 import Foundation
 
-#if DEBUG
 // MARK: - MockStudyRepository
 
 /// Study Repository Mock 구현체
@@ -314,4 +313,3 @@ final class MockStudyRepository: StudyRepositoryProtocol {
         try await Task.sleep(for: .milliseconds(300))
     }
 }
-#endif

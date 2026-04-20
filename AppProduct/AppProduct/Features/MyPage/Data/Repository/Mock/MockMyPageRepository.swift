@@ -7,7 +7,6 @@
 
 import Foundation
 
-#if DEBUG
 final class MockMyPageRepository: MyPageRepositoryProtocol {
     func fetchMyProfile() async throws -> ProfileData {
         MyPageMockData.profile
@@ -84,4 +83,3 @@ final class MockMyPageRepository: MyPageRepositoryProtocol {
         MyPageMockData.terms(for: termsType)
     }
 }
-#endif
