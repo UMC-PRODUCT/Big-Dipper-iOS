@@ -16,6 +16,8 @@ enum AppSessionMode: Equatable {
     case authenticated
     /// 게스트 세션 (네트워크 미사용, Mock 데이터)
     case guest
+
+    var isGuest: Bool { self == .guest }
 }
 
 // MARK: - EnvironmentKey
