@@ -398,7 +398,8 @@ extension DIContainer {
         container.register(ActivityUseCaseProviding.self) {
             ActivityUseCaseProvider(
                 repositoryProvider: container.resolve(ActivityRepositoryProviding.self),
-                classifierRepository: ScheduleClassifierRepositoryImpl()
+                classifierRepository: ScheduleClassifierRepositoryImpl(),
+                challengerAttendanceUseCaseOverride: GuestChallengerAttendanceUseCase()
             )
         }
 
@@ -450,6 +451,14 @@ extension DIContainer {
                 storageRepository: container.resolve(StorageRepositoryProtocol.self)
             )
         }
+        container.register(NoticeEditorTargetRepositoryProtocol.self) {
+            MockNoticeEditorTargetRepository()
+        }
+        container.register(NoticeEditorTargetUseCaseProtocol.self) {
+            NoticeEditorTargetUseCase(
+                repository: container.resolve(NoticeEditorTargetRepositoryProtocol.self)
+            )
+        }
 
         // MARK: - MyPage Feature
         container.register(MyPageRepositoryProtocol.self) {
@@ -462,6 +471,9 @@ extension DIContainer {
         }
 
         // MARK: - Community Feature
+        container.register(TMapGeocodingRepositoryProtocol.self) {
+            MockTMapGeocodingRepository()
+        }
         container.register(CommunityRepositoryProtocol.self) {
             MockCommunityRepository()
         }

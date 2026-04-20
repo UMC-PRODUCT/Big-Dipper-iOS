@@ -38,21 +38,13 @@ final class MockCommunityRepository: CommunityRepositoryProtocol {
 /// 게스트 세션 및 프리뷰용 Community Post Repository Mock 구현체
 final class MockCommunityPostRepository: CommunityPostRepositoryProtocol {
 
-    func postPosts(request: PostRequestDTO) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func postPosts(request: PostRequestDTO) async throws {}
 
-    func postLightning(request: CreateLightningPostRequestDTO) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func postLightning(request: CreateLightningPostRequestDTO) async throws {}
 
-    func patchPosts(postId: Int, request: PostRequestDTO) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func patchPosts(postId: Int, request: PostRequestDTO) async throws {}
 
-    func patchLightning(postId: Int, request: CreateLightningPostRequestDTO) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func patchLightning(postId: Int, request: CreateLightningPostRequestDTO) async throws {}
 }
 
 // MARK: - MockCommunityDetailRepository
@@ -60,39 +52,42 @@ final class MockCommunityPostRepository: CommunityPostRepositoryProtocol {
 /// 게스트 세션 및 프리뷰용 Community Detail Repository Mock 구현체
 final class MockCommunityDetailRepository: CommunityDetailRepositoryProtocol {
 
-    func deletePost(postId: Int) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func deletePost(postId: Int) async throws {}
 
-    func deleteComment(postId: Int, commentId: Int) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func deleteComment(postId: Int, commentId: Int) async throws {}
 
     func getComments(postId: Int) async throws -> [CommunityCommentModel] {
         []
     }
 
     func getPostDetail(postId: Int) async throws -> CommunityItemModel {
-        throw DomainError.postNotFound
+        CommunityItemModel(
+            postId: postId,
+            userId: 1001,
+            category: .free,
+            title: "게스트 모드 게시글",
+            content: "게스트 모드에서 표시되는 Mock 게시글입니다.",
+            profileImage: nil,
+            userName: "홍길동",
+            userNickname: "길동이",
+            part: .front(type: .ios),
+            createdAt: Date(),
+            likeCount: 0,
+            commentCount: 0,
+            scrapCount: 0,
+            isLiked: false,
+            isAuthor: false,
+            lightningInfo: nil
+        )
     }
 
-    func postScrap(postId: Int) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func postScrap(postId: Int) async throws {}
 
-    func postLike(postId: Int) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func postLike(postId: Int) async throws {}
 
-    func postComment(postId: Int, request: PostCommentRequest) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func postComment(postId: Int, request: PostCommentRequest) async throws {}
 
-    func postPostReport(postId: Int) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func postPostReport(postId: Int) async throws {}
 
-    func postCommentReport(commentId: Int) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func postCommentReport(commentId: Int) async throws {}
 }

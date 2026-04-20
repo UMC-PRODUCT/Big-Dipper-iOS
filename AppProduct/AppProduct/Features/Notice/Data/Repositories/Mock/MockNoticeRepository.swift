@@ -17,41 +17,45 @@ final class MockNoticeRepository: NoticeRepositoryProtocol {
         links: [String],
         imageIds: [String]
     ) async throws -> NoticeDetail {
-        throw DomainError.insufficientPermission(required: "인증")
+        try await mockDetail(noticeId: 0)
     }
 
     func postNotice(body: PostNoticeRequestDTO) async throws -> NoticeItemModel {
-        throw DomainError.insufficientPermission(required: "인증")
+        guard let item = NoticeMockData.items.first else {
+            throw DomainError.noticeNotFound
+        }
+        return item
     }
 
     func addVote(
         noticeId: Int,
         body: AddVoteRequestDTO
     ) async throws -> AddVoteResponseDTO {
-        throw DomainError.insufficientPermission(required: "인증")
+        let json = #"{"noticeVoteId":"0","voteId":"0"}"#
+        return try JSONDecoder().decode(AddVoteResponseDTO.self, from: Data(json.utf8))
     }
 
     func addLink(noticeId: Int, links: [String]) async throws -> NoticeItemModel {
-        throw DomainError.insufficientPermission(required: "인증")
+        guard let item = NoticeMockData.items.first else {
+            throw DomainError.noticeNotFound
+        }
+        return item
     }
 
     func addImage(noticeId: Int, imageIds: [String]) async throws -> NoticeItemModel {
-        throw DomainError.insufficientPermission(required: "인증")
+        guard let item = NoticeMockData.items.first else {
+            throw DomainError.noticeNotFound
+        }
+        return item
     }
 
-    func sendReminder(noticeId: Int, targetIds: [Int]) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func sendReminder(noticeId: Int, targetIds: [Int]) async throws {}
 
     func readNotice(noticeId: Int) async throws {}
 
-    func submitVoteResponse(voteId: Int, optionIds: [Int]) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func submitVoteResponse(voteId: Int, optionIds: [Int]) async throws {}
 
-    func updateVoteResponse(voteId: Int, optionIds: [Int]) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func updateVoteResponse(voteId: Int, optionIds: [Int]) async throws {}
 
     // MARK: - 공지 수정
 
@@ -59,21 +63,21 @@ final class MockNoticeRepository: NoticeRepositoryProtocol {
         noticeId: Int,
         body: UpdateNoticeRequestDTO
     ) async throws -> NoticeDetail {
-        throw DomainError.insufficientPermission(required: "인증")
+        try await mockDetail(noticeId: noticeId)
     }
 
     func updateLinks(
         noticeId: Int,
         links: [String]
     ) async throws -> NoticeDetail {
-        throw DomainError.insufficientPermission(required: "인증")
+        try await mockDetail(noticeId: noticeId)
     }
 
     func updateImages(
         noticeId: Int,
         imageIds: [String]
     ) async throws -> NoticeDetail {
-        throw DomainError.insufficientPermission(required: "인증")
+        try await mockDetail(noticeId: noticeId)
     }
 
     // MARK: - 공지 조회
@@ -158,11 +162,35 @@ final class MockNoticeRepository: NoticeRepositoryProtocol {
 
     // MARK: - 공지 삭제
 
-    func deleteNotice(noticeId: Int) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
-    }
+    func deleteNotice(noticeId: Int) async throws {}
 
-    func deleteVote(noticeId: Int) async throws {
-        throw DomainError.insufficientPermission(required: "인증")
+    func deleteVote(noticeId: Int) async throws {}
+
+    // MARK: - Private
+
+    private func mockDetail(noticeId: Int) async throws -> NoticeDetail {
+        guard let item = NoticeMockData.items.first else {
+            throw DomainError.noticeNotFound
+        }
+        return NoticeDetail(
+            id: "\(noticeId)",
+            generation: item.generation,
+            scope: item.scope,
+            category: item.category,
+            isMustRead: item.mustRead,
+            title: item.title,
+            content: item.content,
+            authorID: "0",
+            authorNickname: nil,
+            authorName: item.writer,
+            authorImageURL: nil,
+            createdAt: item.date,
+            updatedAt: nil,
+            targetAudience: TargetAudience.all(generation: item.generation, scope: item.scope),
+            hasPermission: false,
+            images: item.images,
+            links: item.links,
+            vote: item.vote
+        )
     }
 }
