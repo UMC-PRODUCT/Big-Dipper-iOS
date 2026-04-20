@@ -70,7 +70,6 @@ struct StudyGroupInfo: Identifiable, Equatable {
 
 // MARK: - Preview Data
 
-#if DEBUG
 extension StudyGroupInfo {
     static let preview = StudyGroupInfo(
         serverID: "group_001",
@@ -110,4 +109,3 @@ extension StudyGroupInfo {
         ]
     )
 }
-#endif

@@ -41,7 +41,6 @@ struct StudyGroupItem: Identifiable, Equatable, Hashable {
         part: nil
     )
 
-    #if DEBUG
     static let preview: [StudyGroupItem] = [
         .all,
         StudyGroupItem(
@@ -87,5 +86,4 @@ struct StudyGroupItem: Identifiable, Equatable, Hashable {
             part: .pm
         )
     ]
-    #endif
 }

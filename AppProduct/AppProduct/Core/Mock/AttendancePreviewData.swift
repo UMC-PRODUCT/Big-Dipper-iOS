@@ -9,10 +9,10 @@ import Foundation
 import SwiftUI
 import SwiftData
 
-#if DEBUG
 /// 출석 관련 프리뷰에서 사용하는 더미 데이터 모음
 struct AttendancePreviewData {
 
+    #if DEBUG
     static let errorHandler = ErrorHandler()
     static let container: DIContainer = {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
@@ -32,6 +32,7 @@ struct AttendancePreviewData {
         errorHandler: errorHandler,
         challengeAttendanceUseCase: mockUseCase  // 시뮬레이터 테스트용 Mock 사용
     )
+    #endif
 
     static let sessionId: SessionID = SessionID(value: "iOS_8")
     static let userId: UserID = UserID(value: "River_")
@@ -466,6 +467,7 @@ struct AttendancePreviewData {
 
 // MARK: - Attendance Status Preview
 
+#if DEBUG
 /// 출석 상태별 배지 디자인을 확인하는 프리뷰 뷰
 struct AttendanceStatusPreview: View {
     var body: some View {

@@ -7,7 +7,6 @@
 
 import Foundation
 
-#if DEBUG
 enum MyPageMockData {
     static let profile = ProfileData(
         challengeId: 269,
@@ -141,4 +140,3 @@ enum MyPageMockData {
         }
     }
 }
-#endif
