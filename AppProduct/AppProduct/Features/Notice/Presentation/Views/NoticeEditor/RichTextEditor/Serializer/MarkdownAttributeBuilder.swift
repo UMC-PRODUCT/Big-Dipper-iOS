@@ -96,6 +96,8 @@ enum MarkdownAttributeBuilder {
             return monospacedFont
         }
 
+        // Pretendard 커스텀 폰트는 symbolic traits 방식이 아닌 폰트명 직접 지정으로 처리
+        // Pretendard에 italic 변형이 없으므로 oblique matrix로 기울임 표현
         if baseFont.fontName.hasPrefix("Pretendard") {
             let fontName = style.isBold ? "Pretendard-SemiBold" : "Pretendard-Regular"
             var font = UIFont(name: fontName, size: pointSize) ?? baseFont.withSize(pointSize)

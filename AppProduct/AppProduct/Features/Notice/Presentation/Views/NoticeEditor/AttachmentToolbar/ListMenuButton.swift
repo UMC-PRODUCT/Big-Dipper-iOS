@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 공지 에디터 첨부 툴바의 목록 스타일 선택 메뉴입니다.
 struct ListMenuButton: View {
 
     // MARK: - Property

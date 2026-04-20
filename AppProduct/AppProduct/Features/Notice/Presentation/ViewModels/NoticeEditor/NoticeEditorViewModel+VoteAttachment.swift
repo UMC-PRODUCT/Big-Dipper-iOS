@@ -15,6 +15,7 @@ extension NoticeEditorViewModel {
 
     // MARK: - Vote Action
 
+    /// 투표 폼 시트를 표시합니다. 이미 확정된 투표가 있으면 안내 Alert을 보여줍니다.
     func showVotingFormSheet() {
         if isVoteConfirmed {
             alertPrompt = AlertPrompt(
@@ -30,6 +31,7 @@ extension NoticeEditorViewModel {
         }
     }
 
+    /// 투표 편집을 취소하고 원본 상태로 복원합니다.
     func cancelVotingEdit() {
         if isVoteConfirmed, let original = originalVoteFormData {
             voteFormData = original
@@ -41,12 +43,14 @@ extension NoticeEditorViewModel {
         showVoting = false
     }
 
+    /// 투표 폼 입력을 확정합니다.
     func confirmVote() {
         isVoteConfirmed = true
         originalVoteFormData = nil
         showVoting = false
     }
 
+    /// 확정된 투표를 수정 모드로 전환합니다. 원본 데이터를 스냅샷에 저장합니다.
     func editVote() {
         originalVoteFormData = VoteFormData(
             title: voteFormData.title,
@@ -59,17 +63,20 @@ extension NoticeEditorViewModel {
         showVoting = true
     }
 
+    /// 투표를 삭제하고 폼을 초기화합니다.
     func deleteVote() {
         voteFormData = VoteFormData()
         isVoteConfirmed = false
         originalVoteFormData = nil
     }
 
+    /// 투표 옵션을 추가합니다. 최대 개수 제한을 초과하면 무시됩니다.
     func addVoteOption() {
         guard voteFormData.canAddOption else { return }
         voteFormData.options.append(VoteOptionItem())
     }
 
+    /// 투표 옵션을 삭제합니다. 최소 개수 미만이면 무시됩니다.
     func removeVoteOption(_ option: VoteOptionItem) {
         guard voteFormData.canRemoveOption else { return }
         voteFormData.options.removeAll { $0.id == option.id }
@@ -77,6 +84,10 @@ extension NoticeEditorViewModel {
 
     // MARK: - Image Action
 
+    /// 선택한 PhotosPickerItem을 JPEG로 변환해 첨부 이미지 목록에 반영합니다.
+    ///
+    /// - 원본 파일명이 존재하면 이름을 유지하고 확장자만 `.jpg`로 정규화합니다.
+    /// - HEIC/HEIF 등은 `UIImage` 디코딩 후 JPEG로 변환하여 업로드 포맷을 통일합니다.
     @MainActor
     func loadSelectedPhotoItemsForNoticeUpload() async {
         guard !selectedPhotoItems.isEmpty else { return }
@@ -109,6 +120,9 @@ extension NoticeEditorViewModel {
         selectedPhotoItems.removeAll()
     }
 
+    /// 선택한 이미지를 로컬 카드 목록으로 반영합니다.
+    ///
+    /// 실제 서버 업로드는 저장 시점(`saveNotice`)에서만 수행됩니다.
     @MainActor
     func didLoadImages(images: [UIImage]) async {
         for image in images {
@@ -125,18 +139,21 @@ extension NoticeEditorViewModel {
         selectedPhotoItems.removeAll()
     }
 
+    /// 첨부 이미지 목록에서 지정 항목을 제거합니다.
     func removeImage(_ item: NoticeImageItem) {
         noticeImages.removeAll { $0.id == item.id }
     }
 
     // MARK: - Link Action
 
+    /// 첨부 링크 목록에서 지정 항목을 제거합니다.
     func removeLink(_ link: NoticeLinkItem) {
         noticeLinks.removeAll { $0.id == link.id }
     }
 
     // MARK: - Private
 
+    /// PhotosPickerItem에서 원본 파일명을 추출합니다.
     private func originalFileName(from item: PhotosPickerItem) -> String? {
         guard let identifier = item.itemIdentifier else { return nil }
         let fetchedAssets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
@@ -144,6 +161,7 @@ extension NoticeEditorViewModel {
         return PHAssetResource.assetResources(for: asset).first?.originalFilename
     }
 
+    /// 원본 파일명을 JPEG 확장자로 정규화합니다.
     private func normalizedJPEGFileName(_ sourceName: String?, fallbackIndex: Int) -> String {
         let fallback = "notice_image_\(Int(Date().timeIntervalSince1970))_\(fallbackIndex).jpg"
         guard let sourceName,

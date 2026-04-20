@@ -7,12 +7,26 @@
 
 import UIKit
 
+/// 인용구 속성이 적용된 단락에 왼쪽 세로 경계선을 렌더링하는 UITextView 서브클래스입니다.
 final class BlockquoteTextView: UITextView {
 
     // MARK: - Property
 
+    /// 인용구 영역별 개별 경계선 레이어를 관리합니다.
     private var blockquoteLayers: [CAShapeLayer] = []
+
+    /// `refreshBlockquoteBorders` 호출이 필요한 상태임을 나타냅니다.
     private var needsBlockquoteRefresh = false
+
+    // MARK: - Initializer
+
+    override init(frame: CGRect, textContainer: NSTextContainer?) {
+        super.init(frame: frame, textContainer: textContainer)
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
 
     // MARK: - Layout
 
@@ -26,11 +40,15 @@ final class BlockquoteTextView: UITextView {
 
     // MARK: - Blockquote Rendering
 
+    /// 다음 레이아웃 패스에서 인용구 경계선을 갱신하도록 예약합니다.
     func setNeedsBlockquoteRefresh() {
         needsBlockquoteRefresh = true
         setNeedsLayout()
     }
 
+    /// 텍스트 스토리지에서 인용구 속성을 읽어 왼쪽 경계선 레이어를 즉시 업데이트합니다.
+    ///
+    /// 연속된 인용구 단락을 하나의 그룹으로 병합하여 단일 경계선을 그립니다.
     func refreshBlockquoteBorders() {
         needsBlockquoteRefresh = false
         CATransaction.begin()
@@ -38,6 +56,8 @@ final class BlockquoteTextView: UITextView {
         defer { CATransaction.commit() }
 
         let storage = textStorage
+
+        // 기존 레이어 모두 제거
         blockquoteLayers.forEach { $0.removeFromSuperlayer() }
         blockquoteLayers.removeAll()
 
@@ -53,6 +73,7 @@ final class BlockquoteTextView: UITextView {
         let fragPadding = textContainer.lineFragmentPadding
         let nsString = storage.string as NSString
 
+        // 연속된 인용구 단락을 하나의 그룹으로 병합하여 단일 경계선을 생성합니다.
         var location = 0
         var groupMinY: CGFloat = .greatestFiniteMagnitude
         var groupMaxY: CGFloat = -.greatestFiniteMagnitude
@@ -117,6 +138,7 @@ final class BlockquoteTextView: UITextView {
             location = next
         }
 
+        // 마지막 그룹이 문서 끝까지 이어지는 경우 플러시
         if hasActiveGroup {
             // EOF 빈 단락(커서만 있는 상태): extraLineFragmentRect로 높이 보정
             // 마지막 저장 문자와 커서의 typingAttributes 모두 인용구여야 확장합니다.

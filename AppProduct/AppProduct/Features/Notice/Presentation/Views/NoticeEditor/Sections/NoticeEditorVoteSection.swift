@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 공지 에디터의 투표 첨부 섹션입니다.
 struct NoticeEditorVoteSection: View {
 
     // MARK: - Property
@@ -28,7 +29,7 @@ struct NoticeEditorVoteSection: View {
         }
     }
 
-    // MARK: - View Builders
+    // MARK: - Components
 
     private var voteAttachmentCard: some View {
         Group {

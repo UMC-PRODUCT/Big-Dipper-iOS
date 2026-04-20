@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 공지 에디터 상단의 공지 대상(서브카테고리) 칩 섹션입니다.
 struct NoticeEditorSubCategorySection: View {
 
     // MARK: - Property

@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 공지 에디터의 첨부 이미지 목록 섹션입니다.
 struct NoticeEditorImageSection: View {
 
     // MARK: - Property

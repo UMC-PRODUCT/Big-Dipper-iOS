@@ -7,6 +7,9 @@
 
 import SwiftUI
 
+/// 공지사항 상세 화면
+///
+/// 공지 본문, 투표, 이미지, 링크를 표시하며 열람 통계 및 수정/삭제 기능을 제공합니다.
 struct NoticeDetailView: View {
 
     // MARK: - Property
@@ -82,6 +85,7 @@ struct NoticeDetailView: View {
         }
     }
 
+    /// 공지 상세 로드 실패 상태 UI
     private func failedSection(error: AppError) -> some View {
         RetryContentUnavailableView(
             title: Constants.failedTitleText,
@@ -102,6 +106,7 @@ struct NoticeDetailView: View {
         await viewModel.fetchNoticeDetail()
     }
 
+    /// 공지 상세 데이터가 로드된 상태의 스크롤 본문
     private func detailContent(_ data: NoticeDetail) -> some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: Constants.topSectionSpacing) {
@@ -123,6 +128,7 @@ struct NoticeDetailView: View {
 
     // MARK: - Top Section
 
+    /// 공지 제목, 작성자, 작성일, 수신 대상을 표시합니다.
     private func topSection(_ data: NoticeDetail) -> some View {
         VStack(alignment: .leading, spacing: Constants.topSectionSpacing) {
             mainInfo(data)
@@ -131,6 +137,7 @@ struct NoticeDetailView: View {
         .padding(.horizontal, Constants.horizontalPadding)
     }
 
+    /// 필독 칩 + 공지 제목 영역
     private func mainInfo(_ data: NoticeDetail) -> some View {
         VStack(alignment: .leading, spacing: Constants.topSectionSpacing) {
             Text(data.title)
@@ -138,6 +145,7 @@ struct NoticeDetailView: View {
         }
     }
 
+    /// 작성자 프로필, 작성일, 수신 대상 영역
     private func subInfo(_ data: NoticeDetail) -> some View {
         VStack(alignment: .leading, spacing: Constants.subInfoSpacing) {
             HStack {
@@ -200,6 +208,7 @@ struct NoticeDetailView: View {
 
     // MARK: - Bottom Section
 
+    /// 공지 본문/투표/이미지/링크를 순서대로 구성합니다.
     private func bottomSection(_ data: NoticeDetail) -> some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
             MarkdownRenderedView(markdown: data.content)
@@ -263,6 +272,7 @@ struct NoticeDetailView: View {
 
     // MARK: - Toolbar
 
+    /// 수정/삭제 메뉴를 포함하는 네비게이션 툴바
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if currentNotice != nil, !toolbarActions.isEmpty {
@@ -270,6 +280,7 @@ struct NoticeDetailView: View {
         }
     }
 
+    /// 권한에 따라 동적으로 구성되는 툴바 액션 목록
     private var toolbarActions: [ToolBarCollection.ToolbarTrailingMenu.ActionItem] {
         var actions: [ToolBarCollection.ToolbarTrailingMenu.ActionItem] = []
 
@@ -299,6 +310,7 @@ struct NoticeDetailView: View {
 
     // MARK: - Bottom Bar
 
+    /// 펼침 상태 수신 확인 카드 inset
     @ViewBuilder
     private func expandedReadStatusInset() -> some View {
         if shouldShowReadStatusInset && !isReadStatusBarCollapsed {
@@ -317,6 +329,7 @@ struct NoticeDetailView: View {
         }
     }
 
+    /// 압축 상태 원형 버튼 inset
     @ViewBuilder
     private func collapsedReadStatusInset() -> some View {
         if shouldShowReadStatusInset && isReadStatusBarCollapsed {
@@ -344,12 +357,14 @@ struct NoticeDetailView: View {
         }
     }
 
+    /// 축소된 하단 바를 다시 펼칩니다.
     private func expandReadStatusBar() {
         withAnimation(Constants.collapseAnimation) {
             isReadStatusBarCollapsed = false
         }
     }
 
+    /// 수신 확인 현황 시트를 구성합니다.
     private func readStatusSheet() -> some View {
         NoticeReadStatusSheet(viewModel: viewModel)
             .presentationDetents(Constants.detailSheetDetents)
@@ -358,6 +373,7 @@ struct NoticeDetailView: View {
 
     // MARK: - Task
 
+    /// 화면 진입 시 읽음 처리, 열람 현황, 권한, 상세 데이터를 로드합니다.
     @MainActor
     private func onTask() async {
         viewModel.updateErrorHandler(errorHandler)
@@ -380,6 +396,7 @@ struct NoticeDetailView: View {
 
     // MARK: - Private Methods
 
+    /// 공지 수정 처리
     private func handleEditNotice() {
         guard viewModel.isDetailPreparedForEdit else {
             viewModel.alertPrompt = AlertPrompt(
@@ -400,10 +417,13 @@ struct NoticeDetailView: View {
         }
     }
 
+    /// 현재 상세 모델을 우선 사용하고, 이미지 메타데이터가 비어있을 때만 1회 보강 조회 후 수정 화면으로 진입합니다.
     @MainActor
     private func openEditorUsingCurrentOrHydratedDetail() async {
         guard var notice = currentNotice else { return }
 
+        // 디버그/요약 모델 경로에서 이미지 메타데이터(id)가 비어있으면
+        // 에디터에서 기존 이미지를 복원할 수 없으므로 보강 조회를 수행합니다.
         let needsImageHydration = !notice.images.isEmpty &&
             (notice.imageItems.isEmpty || notice.imageItems.contains(where: { $0.id.isEmpty }))
 
@@ -412,7 +432,9 @@ struct NoticeDetailView: View {
                 let hydrated = try await viewModel.noticeUseCase.getDetailNotice(noticeId: viewModel.noticeID)
                 notice = hydrated
                 viewModel.noticeState = .loaded(hydrated)
-            } catch {}
+            } catch {
+                // 보강 조회 실패 시 현재 모델로 계속 진행
+            }
         }
 
         let noticeID = Int(notice.id) ?? 0
@@ -422,6 +444,7 @@ struct NoticeDetailView: View {
         pathStore.noticePath.append(.notice(.editor(mode: editMode, selectedGisuId: nil)))
     }
 
+    /// 공지 삭제 처리
     private func handleDeleteNotice() {
         guard currentNotice != nil else { return }
         guard viewModel.canDeleteNotice else {
@@ -432,11 +455,13 @@ struct NoticeDetailView: View {
         viewModel.showDeleteConfirmation(onDeleteRequested: closeDetailScreenImmediately)
     }
 
+    /// 삭제 확인 시 상세 화면을 즉시 닫습니다.
     private func closeDetailScreenImmediately() {
         guard !pathStore.noticePath.isEmpty else { return }
         pathStore.noticePath.removeLast()
     }
 
+    /// 수정/삭제 권한 없음 안내
     private func showNoPermissionAlert() {
         viewModel.alertPrompt = AlertPrompt(
             id: .init(),
@@ -446,18 +471,22 @@ struct NoticeDetailView: View {
         )
     }
 
+    /// PathStore 접근
     private var pathStore: PathStore {
         di.resolve(PathStore.self)
     }
 
+    /// 공지 상세의 타입(중앙/지부/교내/파트)을 내비게이션 서브타이틀로 노출합니다.
     private var noticeTypeSubtitle: String {
         currentNotice?.noticeType.rawValue ?? ""
     }
 
+    /// 현재 로드된 공지 상세 데이터 (loaded 상태일 때만 존재)
     private var currentNotice: NoticeDetail? {
         viewModel.noticeState.value
     }
 
+    /// 상세 로드 실패/로딩 상태에서는 하단 수신 확인 inset을 숨깁니다.
     private var shouldShowReadStatusInset: Bool {
         guard viewModel.canViewReadStatus else { return false }
         if case .loaded = viewModel.noticeState {

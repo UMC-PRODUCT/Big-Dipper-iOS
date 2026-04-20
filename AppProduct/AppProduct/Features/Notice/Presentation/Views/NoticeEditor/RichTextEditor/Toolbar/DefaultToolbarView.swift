@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 공지 에디터의 기본 액세서리 툴바입니다.
 struct DefaultToolbarView: View {
     @Bindable var viewModel: EditorToolbarViewModel
     var onTapAI: () -> Void

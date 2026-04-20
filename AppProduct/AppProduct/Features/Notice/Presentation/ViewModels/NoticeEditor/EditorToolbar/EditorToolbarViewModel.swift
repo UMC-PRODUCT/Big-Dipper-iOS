@@ -9,62 +9,101 @@ import Foundation
 import SwiftUI
 import UIKit
 
+/// 공지 에디터 툴바의 서식 상태와 편집 액션을 관리합니다.
 @Observable
 final class EditorToolbarViewModel {
 
     // MARK: - Property
 
+    /// 블록 인용문에 적용할 기본 들여쓰기 값입니다.
     private let blockquoteIndent: CGFloat = EditorConstants.blockquoteIndent
+
+    /// 일반 들여쓰기 증감 단위입니다.
     private let indentStep: CGFloat = 24
 
+    /// 현재 툴바의 표시 모드입니다.
     var toolbarMode: EditorToolbarMode = .default
+
+    /// 포맷 패널 노출 여부입니다.
     private(set) var isFormatPanelVisible: Bool = false
+
+    /// 에디터(리치 텍스트 뷰)가 포커스 상태인지 여부입니다.
     private(set) var isEditorActive: Bool = false
+
+    /// 선택 영역이 굵게 표시되는지 여부입니다.
     private(set) var isBold: Bool = false
+
+    /// 선택 영역이 기울임꼴인지 여부입니다.
     private(set) var isItalic: Bool = false
+
     /// italic 토글 직후 UIKit 리셋을 거슬러 상태를 일시 보존합니다.
     private var _pendingItalicEnabled: Bool?
+
+    /// 선택 영역에 밑줄이 적용되었는지 여부입니다.
     private(set) var isUnderline: Bool = false
+
+    /// 선택 영역에 취소선이 적용되었는지 여부입니다.
     private(set) var isStrikethrough: Bool = false
+
+    /// 현재 단락에 블록 인용문 스타일이 적용되었는지 여부입니다.
     private(set) var isBlockquote: Bool = false
+
+    /// 현재 단락의 대표 단락 스타일입니다.
     private(set) var paragraphStyle: EditorParagraphStyle = .body
+
+    /// 현재 단락에 적용된 목록 스타일입니다.
     private(set) var activeListStyle: EditorListStyle?
+
+    /// 선택 영역에 적용된 배경 강조 색상입니다.
     private(set) var highlightColor: Color?
 
+    /// UITextView 연결 후 주입받는 편집 대상 텍스트 스토리지입니다.
     weak var textStorage: NSTextStorage?
+
+    /// 타이핑 속성 제어를 위한 UITextView 참조입니다.
     weak var textView: UITextView?
 
+    /// 사용자가 명시적으로 활성화한 형광펜 색상입니다. nil이면 비활성 상태입니다.
     private(set) var activeHighlightColor: UIColor?
+
+    /// 현재 UITextView의 선택 범위입니다.
     var selectedRange: NSRange = NSRange(location: 0, length: 0)
 
     // MARK: - Function
 
+    /// 기본 상태로 초기화합니다.
     init() { }
 
+    /// 선택 영역의 폰트에 굵게 서식을 토글합니다.
     @MainActor
     func toggleBold() {
         toggleFontTrait(.traitBold, shouldEnable: !isBold)
     }
 
+    /// 선택 영역의 폰트에 기울임꼴 서식을 토글합니다.
     @MainActor
     func toggleItalic() {
         toggleFontTrait(.traitItalic, shouldEnable: !isItalic)
     }
 
+    /// 첫 타이핑 후 italic 임시 추적 플래그를 초기화합니다.
     func clearPendingItalic() {
         _pendingItalicEnabled = nil
     }
 
+    /// 선택 영역의 텍스트에 밑줄 서식을 토글합니다.
     @MainActor
     func toggleUnderline() {
         toggleTextDecoration(.underlineStyle, enabled: !isUnderline, style: NSUnderlineStyle.single.rawValue)
     }
 
+    /// 선택 영역의 텍스트에 취소선 서식을 토글합니다.
     @MainActor
     func toggleStrikethrough() {
         toggleTextDecoration(.strikethroughStyle, enabled: !isStrikethrough, style: NSUnderlineStyle.single.rawValue)
     }
 
+    /// 현재 단락의 블록 인용문 스타일을 토글합니다.
     @MainActor
     func toggleBlockquote() {
         guard let storage = textStorage else { return }
@@ -168,6 +207,7 @@ final class EditorToolbarViewModel {
         syncFormattingState()
     }
 
+    /// 선택된 단락 범위에 지정한 단락 스타일 폰트를 적용합니다.
     @MainActor
     func applyParagraphStyle(_ style: EditorParagraphStyle) {
         guard let storage = textStorage else { return }
@@ -178,12 +218,14 @@ final class EditorToolbarViewModel {
         storage.addAttribute(.font, value: font, range: paragraphRange)
         storage.endEditing()
 
+        // 커서 이후 입력 텍스트에도 동일한 폰트가 적용되도록 typingAttributes 동기화
         textView?.typingAttributes[.font] = font
 
         onFormattingApplied?()
         syncFormattingState()
     }
 
+    /// 현재 단락 시작 부분에 목록 접두사를 적용하거나, 이미 같은 스타일이면 제거합니다.
     @MainActor
     func applyList(_ style: EditorListStyle) {
         guard let storage = textStorage else { return }
@@ -229,6 +271,7 @@ final class EditorToolbarViewModel {
             length: oldPrefixLength
         )
 
+        // 삽입할 접두사에 적용할 폰트: 기존 단락 본문의 폰트 → typingAttributes 폰트 → body 기본폰트 순으로 사용
         let contentOffset = replacementRange.location + oldPrefixLength
         let prefixFont: UIFont
         if contentOffset < storage.length {
@@ -246,6 +289,7 @@ final class EditorToolbarViewModel {
         storage.addAttribute(.editorListStyle, value: listStyleIdentifier(for: style), range: currentParagraphRange(in: storage))
         storage.endEditing()
 
+        // 커서가 기존 접두사 내부에 있었으면 새 접두사 뒤로, 아니면 delta만큼 보정
         let oldPrefixEnd = paragraphRange.location + oldPrefixLength
         let delta = prefix.utf16.count - oldPrefixLength
         let newCursor: Int
@@ -261,21 +305,25 @@ final class EditorToolbarViewModel {
         syncFormattingState()
     }
 
+    /// 선택된 단락 범위의 들여쓰기를 한 단계 증가시킵니다.
     @MainActor
     func applyIndent() {
         adjustParagraphIndent(by: indentStep)
     }
 
+    /// 선택된 단락 범위의 들여쓰기를 한 단계 감소시킵니다.
     @MainActor
     func applyOutdent() {
         adjustParagraphIndent(by: -indentStep)
     }
 
+    /// 선택 영역의 배경 강조 색상을 적용하고, 이후 입력되는 텍스트에도 해당 색을 유지합니다.
     @MainActor
     func applyHighlight(color: Color) {
         let uiColor = UIColor(color)
         activeHighlightColor = uiColor
 
+        // 선택 영역이 있으면 기존 텍스트에도 적용
         if let storage = textStorage {
             let clampedRange = clampedSelectedRange(in: storage)
             if clampedRange.length > 0 {
@@ -285,16 +333,19 @@ final class EditorToolbarViewModel {
             }
         }
 
+        // 이후 입력 텍스트에도 적용 (typingAttributes)
         textView?.typingAttributes[.backgroundColor] = uiColor
 
         onFormattingApplied?()
         syncFormattingState()
     }
 
+    /// 선택 영역의 배경 강조 색상을 제거하고, 이후 입력되는 텍스트의 하이라이트도 해제합니다.
     @MainActor
     func clearHighlight() {
         activeHighlightColor = nil
 
+        // 선택 영역이 있으면 기존 텍스트에서도 제거
         if let storage = textStorage {
             let clampedRange = clampedSelectedRange(in: storage)
             if clampedRange.length > 0 {
@@ -304,13 +355,16 @@ final class EditorToolbarViewModel {
             }
         }
 
+        // 이후 입력 텍스트 하이라이트 해제
         textView?.typingAttributes.removeValue(forKey: .backgroundColor)
 
         onFormattingApplied?()
         syncFormattingState()
     }
 
-    /// 하이라이트 영역을 벗어나면 다음 입력에 색이 번지지 않도록 typingAttributes를 정리합니다.
+    /// 활성 하이라이트 색상이 있으면 커서 위치의 기존 배경색과 비교하여
+    /// 일치하는 경우에만 typingAttributes에 재적용합니다.
+    /// 하이라이트 영역을 벗어나면 다음 입력에 색이 번지지 않도록 합니다.
     @MainActor
     func reapplyActiveHighlightIfNeeded() {
         guard let uiColor = activeHighlightColor,
@@ -326,10 +380,12 @@ final class EditorToolbarViewModel {
         }
     }
 
+    /// 포맷 패널 노출 상태를 토글합니다.
     func toggleFormatPanel() {
         isFormatPanelVisible.toggle()
     }
 
+    /// 포맷 패널을 닫습니다.
     func dismissFormatPanel() {
         isFormatPanelVisible = false
     }
@@ -339,15 +395,19 @@ final class EditorToolbarViewModel {
         isEditorActive = active
     }
 
+    /// 서식이 실제로 변경된 후 호출됩니다. (attributedText 바인딩 동기화용)
     var onFormattingApplied: (() -> Void)?
 
-    /// typingAttributes 변경 시 attributedText 재할당을 건너뛰고 placeholder만 갱신합니다.
+    /// typingAttributes만 변경된 경우 placeholder 갱신만 수행합니다.
+    /// attributedText 바인딩 재할당을 건너뛰어 불필요한 SwiftUI 갱신을 방지합니다.
     var onPlaceholderNeedsUpdate: (() -> Void)?
 
+    /// typingAttributes 변경 후 placeholder 갱신을 요청합니다.
     private func notifyPlaceholderUpdate() {
         onPlaceholderNeedsUpdate?()
     }
 
+    /// 선택 영역의 실제 속성을 읽어 툴바 상태를 동기화합니다.
     @MainActor
     func syncFormattingState() {
         guard let storage = textStorage else {
@@ -355,6 +415,7 @@ final class EditorToolbarViewModel {
             return
         }
 
+        // 빈 에디터 또는 EOF 빈 단락: typingAttributes만으로 상태를 결정합니다.
         if storage.length == 0 || isAtEOFEmptyParagraph(in: storage), let tv = textView {
             syncFormattingStateFromTypingAttributes(tv)
             return
@@ -373,7 +434,9 @@ final class EditorToolbarViewModel {
         if clampedRange.length == 0, let tv = textView {
             let typingFont = tv.typingAttributes[.font] as? UIFont ?? font(for: .body)
             isBold = isFontBold(typingFont)
-            // UIKit이 커서 이동 시 oblique matrix를 리셋하므로 .editorItalic 커스텀 키로 상태를 추적합니다.
+            // .editorItalic 커스텀 키를 우선 확인합니다.
+            // UIKit이 typingAttributes를 재계산할 때 oblique matrix는 소실되지만
+            // 커스텀 키는 reinject 패턴으로 재주입됩니다.
             if let pending = _pendingItalicEnabled {
                 isItalic = pending
             } else if let editorItalicFlag = tv.typingAttributes[.editorItalic] as? Bool {
@@ -397,8 +460,8 @@ final class EditorToolbarViewModel {
         paragraphStyle = detectedParagraphStyle(at: paragraphLocation, in: storage)
         activeListStyle = detectedListStyle(in: paragraphRange, storage: storage)
 
-        // clearHighlight() 이후 커서가 하이라이트 텍스트 위에 있어도 툴바가 잘못 활성화되지 않도록
-        // typingAttributes 기준으로 읽습니다.
+        // 선택 없을 때: typingAttributes 기준으로 하이라이트 상태를 읽어
+        // clearHighlight() 이후에도 커서가 하이라이트된 텍스트 위에 있으면 툴바가 잘못 활성화되는 문제를 방지합니다.
         if clampedRange.length == 0, let tv = textView {
             if let uiColor = tv.typingAttributes[.backgroundColor] as? UIColor {
                 highlightColor = Color(uiColor: uiColor)
@@ -412,6 +475,7 @@ final class EditorToolbarViewModel {
 
     // MARK: - Private
 
+    /// 선택 영역의 폰트 심볼릭 트레이트를 토글합니다.
     @MainActor
     private func toggleFontTrait(_ trait: UIFontDescriptor.SymbolicTraits, shouldEnable: Bool) {
         guard let storage = textStorage else { return }
@@ -450,6 +514,7 @@ final class EditorToolbarViewModel {
         syncFormattingState()
     }
 
+    /// 선택 영역의 선형 텍스트 장식을 토글합니다.
     @MainActor
     private func toggleTextDecoration(_ key: NSAttributedString.Key, enabled: Bool, style: Int) {
         guard let storage = textStorage else { return }
@@ -476,6 +541,7 @@ final class EditorToolbarViewModel {
         syncFormattingState()
     }
 
+    /// 선택된 단락 범위의 들여쓰기 값을 안전하게 조정합니다.
     @MainActor
     private func adjustParagraphIndent(by delta: CGFloat) {
         guard let storage = textStorage else { return }
@@ -509,6 +575,8 @@ final class EditorToolbarViewModel {
         syncFormattingState()
     }
 
+    /// 포맷 상태를 기본값으로 되돌립니다.
+    /// 빈 에디터 또는 EOF 빈 단락에서 typingAttributes만으로 툴바 상태를 동기화합니다.
     private func syncFormattingStateFromTypingAttributes(_ tv: UITextView) {
         let attrs = tv.typingAttributes
         let typingFont = attrs[.font] as? UIFont ?? font(for: .body)
@@ -541,6 +609,7 @@ final class EditorToolbarViewModel {
         }
     }
 
+    /// 폰트 크기로부터 문단 스타일을 추론합니다.
     private func detectedParagraphStyleFromFont(_ font: UIFont) -> EditorParagraphStyle {
         let size = font.pointSize
         if abs(size - 28) < 0.5 { return .title }
