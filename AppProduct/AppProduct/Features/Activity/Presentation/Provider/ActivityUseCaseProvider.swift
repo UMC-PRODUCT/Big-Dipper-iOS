@@ -61,7 +61,8 @@ final class ActivityUseCaseProvider: ActivityUseCaseProviding {
 
     init(
         repositoryProvider: ActivityRepositoryProviding,
-        classifierRepository: ScheduleClassifierRepository
+        classifierRepository: ScheduleClassifierRepository,
+        challengerAttendanceUseCaseOverride: ChallengerAttendanceUseCaseProtocol? = nil
     ) {
         self.fetchSessionsUseCase = FetchSessionsUseCase(
             repository: repositoryProvider.activityRepository
@@ -69,9 +70,10 @@ final class ActivityUseCaseProvider: ActivityUseCaseProviding {
         self.fetchUserIdUseCase = FetchUserIdUseCase(
             repository: repositoryProvider.activityRepository
         )
-        self.challengerAttendanceUseCase = ChallengerAttendanceUseCase(
-            repository: repositoryProvider.challengerAttendanceRepository
-        )
+        self.challengerAttendanceUseCase = challengerAttendanceUseCaseOverride
+            ?? ChallengerAttendanceUseCase(
+                repository: repositoryProvider.challengerAttendanceRepository
+            )
         self.operatorAttendanceUseCase = OperatorAttendanceUseCase(
             repository: repositoryProvider.operatorAttendanceRepository
         )

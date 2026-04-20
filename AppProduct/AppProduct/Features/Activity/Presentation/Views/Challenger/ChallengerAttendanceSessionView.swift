@@ -25,6 +25,9 @@ private final class MapViewModelCache {
 struct ChallengerAttendanceSessionView: View {
     @State private var expandedSessionId: Session.ID?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.appFlow) private var appFlow
+    @Environment(\.appSessionMode) private var sessionMode
+    @State private var showGuestToast: Bool = false
     @State private var attendanceViewModel: ChallengerAttendanceViewModel
     @State private var mapViewModelCache = MapViewModelCache()
 
@@ -130,6 +133,17 @@ struct ChallengerAttendanceSessionView: View {
             Task {
                 await attendanceViewModel.geofenceCleanup()
             }
+        }
+        .onChange(of: attendanceViewModel.didCompleteAttendance) { _, completed in
+            if completed, sessionMode.isGuest {
+                showGuestToast = true
+            }
+            if completed {
+                attendanceViewModel.didCompleteAttendance = false
+            }
+        }
+        .guestActionToast(isPresented: $showGuestToast) {
+            appFlow.showLogin()
         }
     }
     

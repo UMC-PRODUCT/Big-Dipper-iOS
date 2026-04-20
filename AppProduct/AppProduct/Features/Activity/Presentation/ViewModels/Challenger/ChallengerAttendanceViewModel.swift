@@ -23,6 +23,9 @@ final class ChallengerAttendanceViewModel {
     /// 재시도 중 여부 (RetryContentUnavailableView용)
     private(set) var isRetrying: Bool = false
 
+    /// 출석 완료 신호 (View에서 `.onChange(of:)` 로 감지해 게스트 토스트를 표시)
+    var didCompleteAttendance: Bool = false
+
     private var statusObserver: (any NSObjectProtocol)?
 
     /// 폴링 대상 세션 (View에서 주입)
@@ -228,6 +231,7 @@ final class ChallengerAttendanceViewModel {
                 sessionId: info.sessionId, userId: userId, sheetId: sheetId)
             session.updateState(.loaded(result))
             session.markSubmitted()
+            didCompleteAttendance = true
 
         } catch let error as DomainError {
             session.updateState(.failed(.domain(error)))
