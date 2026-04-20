@@ -56,6 +56,7 @@ struct LoginView: View {
                     viewModel.enterGuestMode(appFlow: appFlow)
                 }
             )
+            .equatable()
         }
         .onChange(of: viewModel.destination) { _, newDestination in
             guard let newDestination else { return }
@@ -111,14 +112,7 @@ fileprivate struct TopLogo: View, Equatable {
 // MARK: - BottomSocialBtns
 
 /// 하단 소셜 로그인 버튼 영역
-fileprivate struct BottomSocialBtns: View {
-
-    // MARK: - Constant
-
-    private enum Constants {
-        static let btnSpacing: CGFloat = 16
-        static let guestBtnTopSpacing: CGFloat = DefaultSpacing.spacing12
-    }
+fileprivate struct BottomSocialBtns: View, Equatable {
 
     // MARK: - Property
 
@@ -127,35 +121,57 @@ fileprivate struct BottomSocialBtns: View {
     var onAppleTapped: () -> Void
     var onGuestTapped: () -> Void
 
+    // MARK: - Equatable
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.isLoading == rhs.isLoading
+    }
+
+    // MARK: - Function
+
+    private func accessibilityLabel(for type: SocialType) -> String {
+        switch type {
+        case .kakao: return "카카오로 로그인"
+        case .apple: return "Apple로 로그인"
+        case .google: return "Google로 로그인"
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: Constants.btnSpacing) {
-                ForEach(SocialType.appConnectableCases, id: \.self) { btn in
-                    Button(action: {
-                        switch btn {
-                        case .kakao:
-                            onKakaoTapped()
-                        case .apple:
-                            onAppleTapped()
-                        case .google:
-                            break
-                        }
-                    }, label: {
-                        btn.image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                    })
-                    .glassEffect(.regular.interactive())
-                    .disabled(isLoading)
+        GlassEffectContainer {
+            VStack(spacing: 0) {
+                VStack(spacing: DefaultSpacing.spacing16) {
+                    ForEach(SocialType.appConnectableCases, id: \.self) { btn in
+                        Button(action: {
+                            switch btn {
+                            case .kakao:
+                                onKakaoTapped()
+                            case .apple:
+                                onAppleTapped()
+                            case .google:
+                                break
+                            }
+                        }, label: {
+                            btn.image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                        })
+                        .glassEffect(.regular.interactive())
+                        .disabled(isLoading)
+                        .accessibilityLabel(Text(accessibilityLabel(for: btn)))
+                        .accessibilityHint(Text("소셜 계정으로 로그인합니다"))
+                    }
                 }
-            }
 
-            MainButton("먼저 살펴보기", action: onGuestTapped)
-                .buttonStyle(.glass)
-                .padding(.top, Constants.guestBtnTopSpacing)
-                .disabled(isLoading)
+                MainButton("먼저 살펴보기", action: onGuestTapped)
+                    .buttonStyle(.glass)
+                    .padding(.top, DefaultSpacing.spacing12)
+                    .disabled(isLoading)
+                    .accessibilityLabel(Text("먼저 살펴보기"))
+                    .accessibilityHint(Text("로그인 없이 앱을 둘러봅니다"))
+            }
         }
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
         .padding(.bottom, DefaultConstant.defaultSafeBottom)
