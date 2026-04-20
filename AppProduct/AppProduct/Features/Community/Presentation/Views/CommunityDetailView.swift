@@ -17,9 +17,12 @@ struct CommunityDetailView: View {
     @State private var vm: CommunityDetailViewModel
     @State private var isCommentInputExpanded: Bool = false
     @State private var isCommentInputHidden: Bool = true
+    @State private var showGuestToast: Bool = false
     @FocusState private var isCommentFieldFocused: Bool
     @Environment(\.di) private var di
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appFlow) private var appFlow
+    @Environment(\.appSessionMode) private var sessionMode
     @Environment(ErrorHandler.self) var errorHandler
 
     /// 커뮤니티 상세에서 사용하는 내비게이션 경로 저장소입니다.
@@ -117,6 +120,17 @@ struct CommunityDetailView: View {
             }
         }
         .alertPrompt(item: $vm.alertPrompt)
+        .onChange(of: vm.didCompleteComment) { _, completed in
+            if completed, sessionMode.isGuest {
+                showGuestToast = true
+            }
+            if completed {
+                vm.didCompleteComment = false
+            }
+        }
+        .guestActionToast(isPresented: $showGuestToast) {
+            appFlow.showLogin()
+        }
         .umcDefaultBackground()
     }
 

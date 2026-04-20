@@ -37,6 +37,9 @@ class CommunityDetailViewModel {
     var commentText: String = ""
     var alertPrompt: AlertPrompt?
 
+    /// 댓글 작성 완료 트리거 (게스트 토스트 표시용)
+    var didCompleteComment: Bool = false
+
     // MARK: - Init
 
     init(
@@ -278,6 +281,7 @@ class CommunityDetailViewModel {
                 request: request
             )
             isPostingComment = false
+            didCompleteComment = true
             // 댓글 작성 후 목록 새로고침
             await fetchComments()
         } catch {
