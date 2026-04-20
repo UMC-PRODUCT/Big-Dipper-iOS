@@ -11,25 +11,38 @@ import Foundation
 final class MockCommunityRepository: CommunityRepositoryProtocol {
 
     func getSchools() async throws -> [String] {
-        []
+        ["UMC 대학교", "성균관대학교", "한양대학교", "서울대학교", "연세대학교"]
     }
 
     func getTrophies(query: TrophyListQuery) async throws -> [CommunityFameItemModel] {
-        []
+        try await Task.sleep(for: .milliseconds(200))
+        return CommunityMockData.trophies
     }
 
     func getPosts(query: PostListQuery) async throws -> (
         items: [CommunityItemModel],
         hasNext: Bool
     ) {
-        (items: [], hasNext: false)
+        try await Task.sleep(for: .milliseconds(200))
+        let all = CommunityMockData.posts
+        guard let category = query.category else {
+            return (items: all, hasNext: false)
+        }
+        let filtered = all.filter { $0.category.rawValue == category }
+        return (items: filtered, hasNext: false)
     }
 
     func getSearch(query: PostSearchQuery) async throws -> (
         items: [CommunityItemModel],
         hasNext: Bool
     ) {
-        (items: [], hasNext: false)
+        try await Task.sleep(for: .milliseconds(200))
+        let keyword = query.keyword.lowercased()
+        let filtered = CommunityMockData.posts.filter {
+            $0.title.lowercased().contains(keyword) ||
+            $0.content.lowercased().contains(keyword)
+        }
+        return (items: filtered, hasNext: false)
     }
 }
 
@@ -57,28 +70,14 @@ final class MockCommunityDetailRepository: CommunityDetailRepositoryProtocol {
     func deleteComment(postId: Int, commentId: Int) async throws {}
 
     func getComments(postId: Int) async throws -> [CommunityCommentModel] {
-        []
+        CommunityMockData.comments
     }
 
     func getPostDetail(postId: Int) async throws -> CommunityItemModel {
-        CommunityItemModel(
-            postId: postId,
-            userId: 1001,
-            category: .free,
-            title: "게스트 모드 게시글",
-            content: "게스트 모드에서 표시되는 Mock 게시글입니다.",
-            profileImage: nil,
-            userName: "홍길동",
-            userNickname: "길동이",
-            part: .front(type: .ios),
-            createdAt: Date(),
-            likeCount: 0,
-            commentCount: 0,
-            scrapCount: 0,
-            isLiked: false,
-            isAuthor: false,
-            lightningInfo: nil
-        )
+        if let match = CommunityMockData.posts.first(where: { $0.postId == postId }) {
+            return match
+        }
+        return CommunityMockData.posts.first ?? CommunityMockData.fallbackPost(postId: postId)
     }
 
     func postScrap(postId: Int) async throws {}

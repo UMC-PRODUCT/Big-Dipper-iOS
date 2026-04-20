@@ -85,12 +85,14 @@ final class MockNoticeRepository: NoticeRepositoryProtocol {
     func getAllNotices(
         request: NoticeListRequestDTO
     ) async throws -> NoticePageDTO<NoticeDTO> {
-        NoticePageDTO(
-            content: [],
+        try await Task.sleep(for: .milliseconds(200))
+        let content = try MockNoticeDTOFactory.makeAll()
+        return NoticePageDTO(
+            content: content,
             page: "0",
-            size: "20",
-            totalElements: "0",
-            totalPages: "0",
+            size: "\(content.count)",
+            totalElements: "\(content.count)",
+            totalPages: "1",
             hasNext: false,
             hasPrevious: false
         )
@@ -149,12 +151,18 @@ final class MockNoticeRepository: NoticeRepositoryProtocol {
         keyword: String,
         request: NoticeListRequestDTO
     ) async throws -> NoticePageDTO<NoticeDTO> {
-        NoticePageDTO(
-            content: [],
+        try await Task.sleep(for: .milliseconds(200))
+        let keyword = keyword.lowercased()
+        let content = try MockNoticeDTOFactory.makeAll().filter {
+            $0.title.lowercased().contains(keyword) ||
+            $0.content.lowercased().contains(keyword)
+        }
+        return NoticePageDTO(
+            content: content,
             page: "0",
-            size: "20",
-            totalElements: "0",
-            totalPages: "0",
+            size: "\(content.count)",
+            totalElements: "\(content.count)",
+            totalPages: "1",
             hasNext: false,
             hasPrevious: false
         )
@@ -192,5 +200,119 @@ final class MockNoticeRepository: NoticeRepositoryProtocol {
             links: item.links,
             vote: item.vote
         )
+    }
+}
+
+// MARK: - Mock DTO Factory
+
+/// NoticeDTO에는 memberwise init이 없어 JSON 디코딩으로 Mock 인스턴스를 생성합니다.
+private enum MockNoticeDTOFactory {
+
+    static func makeAll() throws -> [NoticeDTO] {
+        let dtos = try [
+            makeDTO(
+                id: "1",
+                title: "9th UMC Hackathon 모집 신청 안내",
+                content: "챌린저 여러분께서 기다리시던 9th UMC Hackathon이 진행됩니다!",
+                viewCount: 445,
+                shouldSendNotification: true,
+                authorNickname: "사과",
+                authorName: "김아요",
+                targetGisu: "9",
+                targetGisuId: "9",
+                targetChapterId: nil,
+                targetSchoolId: nil,
+                chapterName: nil,
+                schoolName: nil
+            ),
+            makeDTO(
+                id: "2",
+                title: "🗣️ 9th UMC 동아리 연합 컨퍼런스 신청 모집 안내",
+                content: "2026년 9th UMCON이 다가오고 있습니다!",
+                viewCount: 421,
+                shouldSendNotification: true,
+                authorNickname: "사과",
+                authorName: "김아요",
+                targetGisu: "9",
+                targetGisuId: "9",
+                targetChapterId: nil,
+                targetSchoolId: nil,
+                chapterName: nil,
+                schoolName: nil
+            ),
+            makeDTO(
+                id: "3",
+                title: "[투표] 9기 기말고사 뒤풀이 메뉴 선정 안내",
+                content: "9기 UMC대 챌린저 여러분 안녕하세요! 기말고사 뒤풀이 회식 메뉴를 결정하고자 합니다.",
+                viewCount: 32,
+                shouldSendNotification: false,
+                authorNickname: "애플",
+                authorName: "박사과",
+                targetGisu: "9",
+                targetGisuId: "9",
+                targetChapterId: "1",
+                targetSchoolId: "1",
+                chapterName: "Nova",
+                schoolName: "UMC 대학교"
+            ),
+            makeDTO(
+                id: "4",
+                title: "9기 해커톤 현장 사진 공유",
+                content: "지난 주말 진행된 해커톤 현장 사진을 공유합니다.",
+                viewCount: 256,
+                shouldSendNotification: false,
+                authorNickname: "너드",
+                authorName: "이서버",
+                targetGisu: "9",
+                targetGisuId: "9",
+                targetChapterId: nil,
+                targetSchoolId: nil,
+                chapterName: nil,
+                schoolName: nil
+            )
+        ]
+        return dtos
+    }
+
+    private static func makeDTO(
+        id: String,
+        title: String,
+        content: String,
+        viewCount: Int,
+        shouldSendNotification: Bool,
+        authorNickname: String,
+        authorName: String,
+        targetGisu: String?,
+        targetGisuId: String,
+        targetChapterId: String?,
+        targetSchoolId: String?,
+        chapterName: String?,
+        schoolName: String?
+    ) throws -> NoticeDTO {
+        let createdAt = ISO8601DateFormatter().string(from: Date())
+        var dict: [String: Any] = [
+            "id": id,
+            "title": title,
+            "content": content,
+            "shouldSendNotification": shouldSendNotification,
+            "viewCount": "\(viewCount)",
+            "createdAt": createdAt,
+            "authorNickname": authorNickname,
+            "authorName": authorName,
+            "targetInfo": [
+                "targetGisu": targetGisu as Any,
+                "targetGisuId": targetGisuId,
+                "targetChapterId": targetChapterId as Any,
+                "targetSchoolId": targetSchoolId as Any,
+                "chapterName": chapterName as Any,
+                "schoolName": schoolName as Any
+            ]
+        ]
+        if let authorChallengerId = Optional<String>.some("0") {
+            dict["authorChallengerId"] = authorChallengerId
+        }
+
+        let data = try JSONSerialization.data(withJSONObject: dict, options: [])
+        return try JSONDecoder().decode(NoticeDTO.self, from: data)
     }
 }
