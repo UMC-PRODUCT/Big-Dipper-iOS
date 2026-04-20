@@ -51,6 +51,9 @@ struct LoginView: View {
                 },
                 onAppleTapped: {
                     viewModel.loginWithApple()
+                },
+                onGuestTapped: {
+                    viewModel.enterGuestMode(appFlow: appFlow)
                 }
             )
         }
@@ -112,10 +115,9 @@ fileprivate struct BottomSocialBtns: View {
 
     // MARK: - Constant
 
-    /// 레이아웃 상수
     private enum Constants {
-        /// 소셜 버튼 간 수직 간격
         static let btnSpacing: CGFloat = 16
+        static let guestBtnTopSpacing: CGFloat = DefaultSpacing.spacing12
     }
 
     // MARK: - Property
@@ -123,29 +125,37 @@ fileprivate struct BottomSocialBtns: View {
     let isLoading: Bool
     var onKakaoTapped: () -> Void
     var onAppleTapped: () -> Void
+    var onGuestTapped: () -> Void
 
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: Constants.btnSpacing) {
-            ForEach(SocialType.appConnectableCases, id: \.self) { btn in
-                Button(action: {
-                    switch btn {
-                    case .kakao:
-                        onKakaoTapped()
-                    case .apple:
-                        onAppleTapped()
-                    case .google:
-                        break
-                    }
-                }, label: {
-                    btn.image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                })
-                .glassEffect(.regular.interactive())
-                .disabled(isLoading)
+        VStack(spacing: 0) {
+            VStack(spacing: Constants.btnSpacing) {
+                ForEach(SocialType.appConnectableCases, id: \.self) { btn in
+                    Button(action: {
+                        switch btn {
+                        case .kakao:
+                            onKakaoTapped()
+                        case .apple:
+                            onAppleTapped()
+                        case .google:
+                            break
+                        }
+                    }, label: {
+                        btn.image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    })
+                    .glassEffect(.regular.interactive())
+                    .disabled(isLoading)
+                }
             }
+
+            MainButton("먼저 살펴보기", action: onGuestTapped)
+                .buttonStyle(.glass)
+                .padding(.top, Constants.guestBtnTopSpacing)
+                .disabled(isLoading)
         }
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
         .padding(.bottom, DefaultConstant.defaultSafeBottom)
