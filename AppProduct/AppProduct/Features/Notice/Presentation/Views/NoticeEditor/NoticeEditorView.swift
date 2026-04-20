@@ -19,6 +19,10 @@ struct NoticeEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(ErrorHandler.self) private var errorHandler
+    @Environment(\.appFlow) private var appFlow
+    @Environment(\.appSessionMode) private var sessionMode
+
+    @State private var showGuestToast: Bool = false
 
     /// 사용자 조직 타입 (중앙/지부/학교)
     @AppStorage(AppStorageKey.organizationType) private var organizationType: String = ""
@@ -120,6 +124,17 @@ struct NoticeEditorView: View {
         .safeAreaBar(edge: .top, content: topSafeAreaContent)
         .safeAreaBar(edge: .bottom, alignment: .leading, content: bottomSafeAreaContent)
         .noticeEditorPresentations(viewModel: viewModel)
+        .onChange(of: viewModel.didCompleteWrite) { _, completed in
+            if completed, sessionMode.isGuest {
+                showGuestToast = true
+            }
+            if completed {
+                viewModel.didCompleteWrite = false
+            }
+        }
+        .guestActionToast(isPresented: $showGuestToast) {
+            appFlow.showLogin()
+        }
     }
 
     // MARK: - Content

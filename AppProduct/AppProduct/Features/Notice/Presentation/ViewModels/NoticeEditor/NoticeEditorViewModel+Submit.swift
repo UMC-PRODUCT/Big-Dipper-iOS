@@ -53,6 +53,7 @@ extension NoticeEditorViewModel {
             }
 
             createState = .loaded(notice)
+            didCompleteWrite = true
             resetForm()
         } catch let error as DomainError {
             createState = .failed(.domain(error))
@@ -131,6 +132,7 @@ extension NoticeEditorViewModel {
                 createState = .loaded(
                     try await noticeUseCase.getDetailNotice(noticeId: noticeId)
                 )
+                didCompleteWrite = true
                 return
             }
 
@@ -141,6 +143,7 @@ extension NoticeEditorViewModel {
                     try await noticeUseCase.getDetailNotice(noticeId: noticeId)
                 )
             }
+            didCompleteWrite = true
         } catch let error as DomainError {
             createState = .failed(.domain(error))
             handleError(error, action: "updateNotice")

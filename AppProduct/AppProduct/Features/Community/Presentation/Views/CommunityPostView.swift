@@ -14,6 +14,11 @@ struct CommunityPostView: View {
 
     @Environment(ErrorHandler.self) var errorHandler
     @Environment(\.dismiss) var dismiss
+    @Environment(\.appFlow) private var appFlow
+    @Environment(\.appSessionMode) private var sessionMode
+
+    @State private var showGuestToast: Bool = false
+
     private let mode: PostMode
 
     enum PostMode {
@@ -108,8 +113,14 @@ struct CommunityPostView: View {
         // 생성 성공 시 화면 자동 닫기
         .onChange(of: vm.submitState) {
             if case .loaded = vm.submitState {
+                if sessionMode.isGuest {
+                    showGuestToast = true
+                }
                 dismiss()
             }
+        }
+        .guestActionToast(isPresented: $showGuestToast) {
+            appFlow.showLogin()
         }
     }
     

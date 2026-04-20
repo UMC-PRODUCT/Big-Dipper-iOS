@@ -17,9 +17,12 @@ struct MyPageProfileView: View {
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appFlow) private var appFlow
+    @Environment(\.appSessionMode) private var sessionMode
     @State private var showAddActivityLogAlert: Bool = false
     @State private var challengerCode: String = ""
     @State private var alertPrompt: AlertPrompt?
+    @State private var showGuestToast: Bool = false
 
     init(container: DIContainer, profileData: ProfileData) {
         let provider = container.resolve(MyPageUseCaseProviding.self)
@@ -59,6 +62,9 @@ struct MyPageProfileView: View {
             message: challengerCodeAlertMessage
         )
         .alertPrompt(item: $alertPrompt)
+        .guestActionToast(isPresented: $showGuestToast) {
+            appFlow.showLogin()
+        }
     }
     
     /// 섹션 구현부
@@ -119,6 +125,9 @@ struct MyPageProfileView: View {
         Task {
             do {
                 try await viewModel.submitProfileUpdate()
+                if sessionMode.isGuest {
+                    showGuestToast = true
+                }
                 dismiss()
             } catch {
                 errorHandler.handle(

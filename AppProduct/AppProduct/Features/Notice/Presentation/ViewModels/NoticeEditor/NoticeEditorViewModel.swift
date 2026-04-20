@@ -91,6 +91,12 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     /// 동일 타입 extension에서도 상태 전환이 가능하도록 setter를 내부 공개합니다.
     var createState: Loadable<NoticeDetail> = .idle
 
+    /// 쓰기 액션(생성/수정) 완료 신호
+    ///
+    /// View에서 `.onChange(of:)` 로 감지해 게스트 토스트를 표시합니다.
+    /// `.loaded` 전이 시 `true`로 설정되며, View가 소비한 뒤 `false`로 초기화합니다.
+    var didCompleteWrite: Bool = false
+
     /// 선택된 메인 카테고리
     var selectedCategory: EditorMainCategory {
         didSet {
