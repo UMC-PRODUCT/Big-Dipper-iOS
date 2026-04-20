@@ -103,6 +103,7 @@ final class EditorToolbarViewModel {
         toggleTextDecoration(.strikethroughStyle, enabled: !isStrikethrough, style: NSUnderlineStyle.single.rawValue)
     }
 
+    /// 현재 단락의 블록 인용문 스타일을 토글합니다.
     @MainActor
     func toggleBlockquote() {
         guard let storage = textStorage else { return }
@@ -414,6 +415,7 @@ final class EditorToolbarViewModel {
             return
         }
 
+        // 빈 에디터 또는 EOF 빈 단락: typingAttributes만으로 상태를 결정합니다.
         if storage.length == 0 || isAtEOFEmptyParagraph(in: storage), let tv = textView {
             syncFormattingStateFromTypingAttributes(tv)
             return

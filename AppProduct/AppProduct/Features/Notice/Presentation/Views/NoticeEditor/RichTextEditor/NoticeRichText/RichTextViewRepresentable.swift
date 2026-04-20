@@ -40,6 +40,7 @@ struct RichTextViewRepresentable: UIViewRepresentable {
         let coordinator = context.coordinator
         toolbarViewModel.onFormattingApplied = { [weak textView, weak coordinator] in
             guard let textView, let coordinator else { return }
+            // IME 조합 중에는 바인딩 갱신을 보류하여 조합 문자열이 깨지는 것을 방지합니다.
             if textView.markedTextRange == nil {
                 coordinator.parent.attributedText = textView.attributedText
             }

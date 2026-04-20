@@ -381,6 +381,7 @@ extension NoticeEditorViewModel {
 // MARK: - Private Policy
 private extension NoticeEditorViewModel {
 
+    /// 메인 카테고리와 역할 조합에 따라 노출 가능한 서브카테고리를 반환합니다.
     static func allowedSubCategories(
         for category: EditorMainCategory,
         memberRole: ManagementTeam?

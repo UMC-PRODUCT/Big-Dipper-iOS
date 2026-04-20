@@ -11,6 +11,9 @@ import PhotosUI
 import SwiftData
 import UIKit
 
+/// 공지사항 에디터 ViewModel
+///
+/// 공지 생성/수정, 카테고리/타겟 선택, 이미지/링크/투표 첨부 상태를 관리합니다.
 @Observable
 final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
 

@@ -34,7 +34,7 @@ extension RichTextCoordinator {
         let hasContent = contentAfterPrefix.contains { !$0.isNewline && !$0.isWhitespace }
 
         if !hasContent {
-            // 빈 목록 줄: 접두사만 제거하고 목록 탈출
+            // 빈 목록 줄 → 접두사만 제거하고 목록 탈출
             let removeRange = NSRange(location: paragraphRange.location, length: prefixNSLength)
             let fontLocation = min(paragraphRange.location, storage.length - 1)
             let currentFont = storage.attribute(.font, at: fontLocation, effectiveRange: nil) as? UIFont
@@ -65,7 +65,7 @@ extension RichTextCoordinator {
             return false
         }
 
-        // 내용 있는 목록 줄: 다음 항목 접두사를 자동으로 이어받습니다.
+        // 내용 있는 목록 줄 → 다음 항목 접두사를 자동으로 이어받습니다
         let nextPrefix = nextListPrefix(for: listKind, currentPrefix: prefix)
         let currentFont = textView.typingAttributes[.font] as? UIFont ?? UIFont.preferredFont(forTextStyle: .body)
         let listStyleID = listStyleID(for: listKind)
