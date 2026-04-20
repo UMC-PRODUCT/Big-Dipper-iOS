@@ -5,7 +5,6 @@
 //  Created by jaewon Lee on 2/8/26.
 //
 
-#if DEBUG
 import Foundation
 
 extension StudyMemberItem {
@@ -177,4 +176,3 @@ extension StudyMemberItem {
         return items
     }()
 }
-#endif

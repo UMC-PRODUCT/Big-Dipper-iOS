@@ -9,6 +9,7 @@ import SwiftUI
 struct AppFlow {
     let showLogin: () -> Void
     let showMain: () -> Void
+    let showGuestMain: () -> Void
     let showSignUp: (
         String,
         String?,
@@ -21,6 +22,7 @@ struct AppFlow {
     static let noop = AppFlow(
         showLogin: {},
         showMain: {},
+        showGuestMain: {},
         showSignUp: { _, _, _, _ in },
         showPendingApproval: {},
         logout: {}

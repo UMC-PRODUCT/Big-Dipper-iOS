@@ -8,7 +8,6 @@
 import Foundation
 import SwiftData
 
-#if DEBUG
 struct StudyGroupPreviewData {
     static let container: DIContainer = {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
@@ -191,4 +190,3 @@ struct StudyGroupPreviewData {
         return formatter.date(from: string) ?? Date()
     }
 }
-#endif

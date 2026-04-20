@@ -7,7 +7,6 @@
 
 import Foundation
 
-#if DEBUG
 /// Preview 및 테스트용 Mock AttendanceRepository
 ///
 /// 실제 네트워크 요청 없이 더미 데이터를 반환합니다.
@@ -153,4 +152,3 @@ final class MockAttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         1
     }
 }
-#endif

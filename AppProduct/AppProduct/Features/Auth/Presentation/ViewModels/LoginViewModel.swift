@@ -85,6 +85,13 @@ final class LoginViewModel {
         }
     }
 
+    /// 게스트 모드 진입
+    ///
+    /// Keychain 및 네트워크에 접근하지 않고 즉시 메인 탭으로 전환합니다.
+    func enterGuestMode(appFlow: AppFlow) {
+        appFlow.showGuestMain()
+    }
+
     /// Apple 로그인 실행
     @MainActor
     func loginWithApple() {
