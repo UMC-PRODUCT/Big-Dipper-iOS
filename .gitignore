@@ -160,3 +160,7 @@ AppProduct/AppProduct/Features/*/Data/Generated/
 
 # Firebase local config
 GoogleService-Info.plist
+
+# Superpowers / brainstorming local caches
+.superpowers/
+docs/superpowers/
