@@ -29,6 +29,7 @@ let project = Project(
                 .project(target: "HomePresentation", path: .relativeToRoot("Features/Home")),
                 .project(target: "CommunityPresentation", path: .relativeToRoot("Features/Community")),
                 .project(target: "MyPagePresentation", path: .relativeToRoot("Features/MyPage")),
+                .project(target: "BadgePresentation", path: .relativeToRoot("Features/Badge")),
             ]
         ),
         .target(

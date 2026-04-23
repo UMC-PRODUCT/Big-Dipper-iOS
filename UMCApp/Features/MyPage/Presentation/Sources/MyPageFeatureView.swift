@@ -1,3 +1,4 @@
+import BadgeDomain
 import SwiftUI
 
 public struct MyPageFeatureView: View {
