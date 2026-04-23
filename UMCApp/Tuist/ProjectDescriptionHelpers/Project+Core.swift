@@ -1,6 +1,6 @@
 import ProjectDescription
 
-private let deploymentTargets: DeploymentTargets = .iOS("26.0")
+private let deploymentTargets: DeploymentTargets = .iOS("26.3")
 private let destinations: Destinations = .iOS
 private let bundleIdBase = "dev.umc.core"
 
