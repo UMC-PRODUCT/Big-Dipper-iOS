@@ -48,13 +48,14 @@ UMCApp/
 │   ├── DesignSystem/              # 디자인 토큰, 색상
 │   ├── UIComponents/              # 공용 UI 컴포넌트 (Kingfisher)
 │   └── DI/                        # 의존성 주입 컨테이너
-└── Features/                      # 6개 기능 모듈
-    ├── Auth/
-    ├── Home/
-    ├── Notice/
+└── Features/                      # 7개 기능 모듈
     ├── Activity/
+    ├── Auth/
+    ├── BusinessCard/              # 전자명함 (3D 렌더링 캡슐화 경계 모듈)
     ├── Community/
-    └── MyPage/
+    ├── Home/
+    ├── MyPage/
+    └── Notice/
 ```
 
 ### 모듈 의존성 방향
@@ -71,6 +72,8 @@ Core Modules          (Foundation / Network / DesignSystem / UIComponents / DI)
     ↓
 External Packages     (Moya 15.0.3 / Kingfisher 8.6.1)
 ```
+
+> **경계 정책 — BusinessCard**: `Model3D`/`RealityView` 등 RealityKit 렌더링은 `BusinessCardPresentation` 내부에만 캡슐화한다. MyPage·Home·Community·Activity·Auth 등 명함을 노출하는 Feature는 `BusinessCardPresentation`만 링크하며, RealityKit을 직접 링크하지 않는다.
 
 ### Feature 모듈 구조
 
