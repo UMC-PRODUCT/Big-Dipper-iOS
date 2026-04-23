@@ -36,6 +36,7 @@ let project = Project(
                 .project(target: "MyPagePresentation", path: .relativeToRoot("Features/MyPage")),
                 .project(target: "BadgePresentation", path: .relativeToRoot("Features/Badge")),
                 .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
+                .project(target: "UMCAppWidget", path: "UMCAppWidget"),
             ]
         ),
         .target(
@@ -43,7 +44,7 @@ let project = Project(
             destinations: .iOS,
             product: .unitTests,
             bundleId: "dev.tuist.UMCAppTests",
-            deploymentTargets: .iOS("26.0"),
+            deploymentTargets: .iOS("26.3"),
             infoPlist: .default,
             buildableFolders: [
                 "UMCApp/Tests",
