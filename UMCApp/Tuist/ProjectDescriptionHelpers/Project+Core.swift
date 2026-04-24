@@ -1,7 +1,5 @@
 import ProjectDescription
 
-private let deploymentTargets: DeploymentTargets = .iOS("26.3")
-private let destinations: Destinations = .iOS
 private let bundleIdBase = "dev.umc.core"
 
 /// Core 모듈용 Project 생성 헬퍼
@@ -11,10 +9,14 @@ private let bundleIdBase = "dev.umc.core"
 /// - Parameters:
 ///   - name: 타겟 이름 (예: "CoreNetwork", "UMCFoundation")
 ///   - bundleIdSuffix: bundleId 접미사 (예: "network", "foundation")
+///   - destinations: 지원 플랫폼 (기본값: `.iOS`)
+///   - deploymentTargets: 배포 대상 (기본값: iOS 26.3)
 ///   - dependencies: 의존성 목록
 public func coreProject(
     name: String,
     bundleIdSuffix: String,
+    destinations: Destinations = .iOS,
+    deploymentTargets: DeploymentTargets = .iOS("26.3"),
     dependencies: [TargetDependency] = []
 ) -> Project {
     Project(
