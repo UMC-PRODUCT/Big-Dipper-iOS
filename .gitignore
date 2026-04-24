@@ -145,6 +145,7 @@ AGENTS.local.md
 CODEX.md
 AGENTS.md
 .claude/
+.mcp.json
 PROJECT_CONTEXT.md
 
 ## Swagger 자동화 개인용 파일 (로컬 전용)
