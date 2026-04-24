@@ -1,7 +1,5 @@
 import ProjectDescription
 
-private let deploymentTargets: DeploymentTargets = .iOS("26.3")
-private let destinations: Destinations = .iOS
 private let bundleIdBase = "dev.umc.feature"
 
 /// Feature 모듈용 Project 생성 헬퍼
@@ -13,11 +11,15 @@ private let bundleIdBase = "dev.umc.feature"
 ///
 /// - Parameters:
 ///   - name: Feature 이름 (예: "Auth", "Home"). 타겟명 및 bundleId 생성에 사용됩니다.
+///   - domainDestinations: Domain 타겟의 지원 플랫폼 (기본값: `.iOS`). watchOS 공유가 필요한 경우 `[.iPhone, .appleWatch]`로 지정.
+///   - domainDeploymentTargets: Domain 타겟의 배포 대상 (기본값: iOS 26.3). watchOS 공유 시 `.multiplatform(iOS:watchOS:)` 로 지정.
 ///   - domainExtraDependencies: Domain 타겟에 추가할 의존성
 ///   - dataExtraDependencies: Data 타겟에 추가할 의존성
 ///   - presentationExtraDependencies: Presentation 타겟에 추가할 의존성
 public func featureProject(
     name: String,
+    domainDestinations: Destinations = .iOS,
+    domainDeploymentTargets: DeploymentTargets = .iOS("26.3"),
     domainExtraDependencies: [TargetDependency] = [],
     dataExtraDependencies: [TargetDependency] = [],
     presentationExtraDependencies: [TargetDependency] = []
@@ -29,10 +31,10 @@ public func featureProject(
         targets: [
             .target(
                 name: "\(name)Domain",
-                destinations: destinations,
+                destinations: domainDestinations,
                 product: .staticFramework,
                 bundleId: "\(bundleIdBase).\(nameLowered).domain",
-                deploymentTargets: deploymentTargets,
+                deploymentTargets: domainDeploymentTargets,
                 sources: ["Domain/Sources/**"],
                 dependencies: [
                     .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
@@ -40,10 +42,10 @@ public func featureProject(
             ),
             .target(
                 name: "\(name)Data",
-                destinations: destinations,
+                destinations: .iOS,
                 product: .staticFramework,
                 bundleId: "\(bundleIdBase).\(nameLowered).data",
-                deploymentTargets: deploymentTargets,
+                deploymentTargets: .iOS("26.3"),
                 sources: ["Data/Sources/**"],
                 dependencies: [
                     .target(name: "\(name)Domain"),
@@ -53,10 +55,10 @@ public func featureProject(
             ),
             .target(
                 name: "\(name)Presentation",
-                destinations: destinations,
+                destinations: .iOS,
                 product: .staticFramework,
                 bundleId: "\(bundleIdBase).\(nameLowered).presentation",
-                deploymentTargets: deploymentTargets,
+                deploymentTargets: .iOS("26.3"),
                 sources: ["Presentation/Sources/**"],
                 dependencies: [
                     .target(name: "\(name)Domain"),

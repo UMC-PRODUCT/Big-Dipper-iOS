@@ -37,6 +37,7 @@ let project = Project(
                 .project(target: "BadgePresentation", path: .relativeToRoot("Features/Badge")),
                 .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
                 .project(target: "UMCAppWidget", path: "UMCAppWidget"),
+                .project(target: "UMCWatchApp", path: "UMCWatchApp"),
             ]
         ),
         .target(

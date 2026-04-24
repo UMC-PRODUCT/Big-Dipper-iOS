@@ -13,5 +13,9 @@
     <array>
         <string>group.dev.umc.appproduct.widget</string>
     </array>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)dev.umc.shared</string>
+    </array>
 </dict>
 </plist>
