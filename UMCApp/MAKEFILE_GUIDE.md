@@ -54,6 +54,8 @@ make open        # Xcode 실행
 | `make graph` | 의존성 그래프(`graph.png`) 생성 | 구조 리뷰할 때 |
 | `make test` | 테스트 실행 | CI 재현 / 로컬 검증 |
 | `make build` | Debug 빌드 | 빌드 가능 여부만 확인할 때 |
+| `make build SCHEME=…` | 특정 스킴(모듈)만 빌드 | 한 모듈만 빠르게 검증할 때 |
+| `make pick` | 스킴 목록에서 골라 빌드 (대화형) | 스킴 이름이 안 떠오를 때 |
 | `make doctor` | 환경 진단 (mise/tuist/xcode 버전) | 다른 팀원과 증상이 다를 때 |
 | `make help` | 전체 타겟 목록 | 까먹었을 때 |
 
@@ -86,9 +88,9 @@ make open
 
 | 변수 | 기본값 | 예시 |
 |------|--------|------|
-| `SCHEME` | `UMCApp` | `make test SCHEME=AuthTests` |
+| `SCHEME` | `UMCApp` | `make build SCHEME=AuthDomain` (모듈 단위 빌드) |
 | `CONFIGURATION` | `Debug` | `make build CONFIGURATION=Release` |
-| `DESTINATION` | `platform=iOS Simulator,name=iPhone 16 Pro` | `make test DESTINATION='platform=iOS Simulator,name=iPhone 15'` |
+| `DESTINATION` | `platform=iOS Simulator,name=iPhone 17 Pro` | `make test DESTINATION='platform=iOS Simulator,name=iPhone 17'` |
 
 예시:
 
@@ -97,7 +99,25 @@ make open
 make build CONFIGURATION=Release
 
 # 다른 시뮬레이터에서 테스트
-make test DESTINATION='platform=iOS Simulator,name=iPhone 15 Pro'
+make test DESTINATION='platform=iOS Simulator,name=iPhone 17'
+
+# 특정 모듈만 빌드 (Tuist가 모듈마다 스킴을 자동 생성)
+make build SCHEME=AuthDomain
+make build SCHEME=NoticePresentation
+make build SCHEME=CoreNetwork
+
+# 스킴 이름이 기억 안 날 때 — 대화형으로 선택
+make pick
+```
+
+> **`make pick`**: `xcodebuild -workspace … -list` 결과를 동적으로 읽어와 선택지를 띄웁니다.
+> `fzf` 가 설치돼 있으면 fuzzy 검색, 없으면 bash `select` 로 번호 선택 메뉴가 뜹니다.
+> 모듈을 추가/삭제해도 별도 동기화가 필요 없습니다.
+
+### 사용 가능한 스킴 확인
+
+```bash
+xcodebuild -workspace UMCApp.xcworkspace -list
 ```
 
 ---
