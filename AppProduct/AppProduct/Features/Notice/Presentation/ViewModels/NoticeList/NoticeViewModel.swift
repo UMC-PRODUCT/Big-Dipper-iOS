@@ -79,7 +79,7 @@ final class NoticeViewModel {
     var isFetchingFirstPage: Bool = false
 
     /// Error Handler
-    private let errorHandler: ErrorHandler
+    let errorHandler: ErrorHandler
 
     /// 페이징 진행 상태 (무한 스크롤 인디케이터 노출용)
     var isLoadingMore: Bool {

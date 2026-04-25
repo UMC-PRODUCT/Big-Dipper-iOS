@@ -52,7 +52,8 @@ make open        # Xcode 실행
 | `make install` | SPM 의존성 설치 | `Tuist/Package.swift` 변경 후 |
 | `make edit` | Tuist 매니페스트 편집 모드 | `Project+Feature.swift` 등 수정 시 |
 | `make graph` | 의존성 그래프(`graph.png`) 생성 | 구조 리뷰할 때 |
-| `make test` | 테스트 실행 | CI 재현 / 로컬 검증 |
+| `make test` | 테스트 실행 (`SCHEME` = `UMCApp`) | CI 재현 / 로컬 검증 |
+| `make test-network` | CoreNetwork 단위+통합 테스트 (`TEST_SERVER_URL` 자동 전달) | 네트워크 레이어 변경 후 |
 | `make build` | Debug 빌드 | 빌드 가능 여부만 확인할 때 |
 | `make build SCHEME=…` | 특정 스킴(모듈)만 빌드 | 한 모듈만 빠르게 검증할 때 |
 | `make pick` | 스킴 목록에서 골라 빌드 (대화형) | 스킴 이름이 안 떠오를 때 |
@@ -91,6 +92,7 @@ make open
 | `SCHEME` | `UMCApp` | `make build SCHEME=AuthDomain` (모듈 단위 빌드) |
 | `CONFIGURATION` | `Debug` | `make build CONFIGURATION=Release` |
 | `DESTINATION` | `platform=iOS Simulator,name=iPhone 17 Pro` | `make test DESTINATION='platform=iOS Simulator,name=iPhone 17'` |
+| `TEST_SERVER_URL` | `http://127.0.0.1:8080` | `make test-network TEST_SERVER_URL=http://127.0.0.1:9090` |
 
 예시:
 
@@ -122,7 +124,64 @@ xcodebuild -workspace UMCApp.xcworkspace -list
 
 ---
 
-## 5. 버전 업그레이드 규칙
+## 5. CoreNetwork 통합 테스트
+
+`CoreNetwork` 모듈은 두 단계로 검증됩니다.
+
+| 계층 | 무엇 | 외부 의존 |
+|------|------|----------|
+| **단위 테스트** | URLProtocol 스텁 + actor Mock 으로 `NetworkClient`/`APIResponse`/`TokenPair` 검증 | 없음 — 항상 실행 |
+| **통합 테스트** | 실제 Vapor 테스트 서버(`AppProductTestServer/`) 의 `/test`, `/protected`, `/auth/reissue` 호출 | 서버 살아있어야 실행 (없으면 자동 스킵) |
+
+`make test-network` 한 번이면 두 계층이 동시에 돌아갑니다 — 통합 테스트는 `IntegrationConfig.isEnabled` 가 서버를 1.5초 ping 으로 감지해서 켜지므로 **서버를 띄워두고 돌리면 38개, 안 띄우면 31개** 가 통과합니다.
+
+### 한 줄로 끝내기 (`make integration`)
+
+레포 루트의 `AppProductTestServer/Makefile` 에 **start → UMCApp test-network → stop** 원샷이 있습니다.
+
+```bash
+cd AppProductTestServer
+make integration   # 서버 자동 기동 → CoreNetwork 통합 테스트 → 서버 자동 종료
+```
+
+테스트가 실패해도 종료 단계는 항상 실행되며, 종료 코드는 보존됩니다 (CI 안전).
+
+### 수동 흐름 (서버 띄워두고 반복 실행)
+
+```bash
+# 터미널 A — 서버 띄우기
+cd AppProductTestServer
+make start         # 백그라운드 + .server.pid / .server.log
+make logs          # tail -f
+make health        # / · /test · /protected 핑
+
+# 터미널 B — 테스트 반복
+cd UMCApp
+make test-network  # 서버 살아있으면 통합도 자동 포함
+
+# 끝
+cd AppProductTestServer && make stop
+```
+
+### 환경 변수
+
+| 변수 | 어디서 | 용도 |
+|------|--------|------|
+| `TEST_SERVER_URL` | `make test-network`, `make integration` | 테스트 코드(`IntegrationConfig.baseURL`) 가 읽는 베이스 URL |
+| `HOST`, `PORT` | `AppProductTestServer/Makefile` | 서버 바인딩 (`make start HOST=0.0.0.0 PORT=9090`) |
+
+### 트러블슈팅 — 포트 8080 점유
+
+```bash
+cd AppProductTestServer
+make stop          # PID 파일 + pkill 패턴 + lsof 폴백 3중 종료
+```
+
+여전히 점유 중이면 `lsof -ti :8080 | xargs kill -9`.
+
+---
+
+## 6. 버전 업그레이드 규칙
 
 Tuist 버전을 올릴 때는 **`mise.toml` 만** 수정합니다. Makefile은 건드리지 않습니다.
 
@@ -145,7 +204,7 @@ make generate
 
 ---
 
-## 6. 트러블슈팅
+## 7. 트러블슈팅
 
 ### `mise: command not found`
 → `brew install mise` 후 셸 재시작.
@@ -164,21 +223,25 @@ make generate
 
 ---
 
-## 7. 파일 구조 참고
+## 8. 파일 구조 참고
 
 ```
-UMCApp/
-├── Makefile              # ← 이 가이드가 설명하는 파일
-├── MAKEFILE_GUIDE.md     # ← 이 문서
-├── mise.toml             # tuist 버전 고정
-├── Tuist.swift
-├── Workspace.swift
-├── Project.swift
-├── Tuist/
-│   ├── Package.swift     # SPM 외부 의존성
-│   └── ProjectDescriptionHelpers/
-├── Core/                 # 공유 인프라 모듈
-└── Features/             # 기능 모듈
+umc-product-iOS/
+├── UMCApp/
+│   ├── Makefile              # ← 이 가이드가 설명하는 파일
+│   ├── MAKEFILE_GUIDE.md     # ← 이 문서
+│   ├── mise.toml             # tuist 버전 고정
+│   ├── Tuist.swift
+│   ├── Workspace.swift
+│   ├── Project.swift
+│   ├── Tuist/
+│   │   ├── Package.swift     # SPM 외부 의존성
+│   │   └── ProjectDescriptionHelpers/
+│   ├── Core/                 # 공유 인프라 모듈
+│   └── Features/             # 기능 모듈
+└── AppProductTestServer/     # CoreNetwork 통합 테스트용 Vapor 서버
+    ├── Makefile              # start / stop / integration 원샷
+    └── Sources/AppProductTestServer/
 ```
 
 모듈 구조 자체에 대한 설명은 루트 `CLAUDE.md` 의 **"Tuist 모듈 구조 (UMCApp)"** 섹션을 참고하세요.

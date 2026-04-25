@@ -151,6 +151,17 @@ test: ## 테스트 실행
 		-destination "$(DESTINATION)" \
 		test
 
+TEST_SERVER_URL ?= http://127.0.0.1:8080
+
+.PHONY: test-network
+test-network: ## CoreNetwork 단위+통합 테스트 (서버 살아있으면 통합도 자동 실행)
+	@TEST_SERVER_URL="$(TEST_SERVER_URL)" xcodebuild \
+		-workspace $(WORKSPACE) \
+		-scheme CoreNetwork \
+		-configuration $(CONFIGURATION) \
+		-destination "$(DESTINATION)" \
+		test
+
 ##@ 정리
 
 .PHONY: clean
