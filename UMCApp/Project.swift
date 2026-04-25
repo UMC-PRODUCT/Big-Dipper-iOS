@@ -1,7 +1,9 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
 let project = Project(
     name: "UMCApp",
+    settings: recommendedProjectSettings,
     targets: [
         .target(
             name: "UMCApp",

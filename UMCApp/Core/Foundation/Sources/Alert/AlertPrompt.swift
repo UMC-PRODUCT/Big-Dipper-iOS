@@ -2,7 +2,7 @@
 //  AlertPrompt.swift
 //  UMCFoundation
 //
-//  Created by JEONG on 4/25/26.
+//  Created by euijjang97 on 4/25/26.
 //
 
 import Foundation

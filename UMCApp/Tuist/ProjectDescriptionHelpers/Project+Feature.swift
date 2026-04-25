@@ -28,6 +28,7 @@ public func featureProject(
 
     return Project(
         name: name,
+        settings: recommendedProjectSettings,
         targets: [
             .target(
                 name: "\(name)Domain",
