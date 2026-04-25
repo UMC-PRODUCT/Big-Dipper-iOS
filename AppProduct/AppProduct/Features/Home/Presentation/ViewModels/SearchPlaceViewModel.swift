@@ -123,7 +123,7 @@ class SearchPlaceViewModel {
             searchResult = .idle
             errorHandler.handle(
                 error,
-                context: .init(feature: "MapSearchError", action: "MapSearchError")
+                context: ErrorContext(feature: "SearchPlace", action: "search")
             )
         }
     }

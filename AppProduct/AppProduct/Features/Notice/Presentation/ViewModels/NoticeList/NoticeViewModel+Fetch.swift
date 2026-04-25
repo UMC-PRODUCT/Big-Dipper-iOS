@@ -325,13 +325,23 @@ extension NoticeViewModel {
     /// - Parameters:
     ///   - error: 화면에 표시할 앱 에러
     ///   - page: 실패한 페이지 인덱스
+    ///   - action: 에러 컨텍스트의 action 식별자
+    ///   - failure: ErrorHandler에 전달할 원본 에러
+    ///
+    /// DomainError는 화면 인라인 에러(Loadable.failed)로만 표시해 Alert 중복을 방지합니다.
+    /// 그 외 에러는 ErrorHandler를 통해 Alert 및 특수 케이스(자동 로그아웃 등) 흐름을 유지합니다.
     @MainActor
     private func handleFetchError(_ error: AppError, page: Int, action: String, failure: Error) {
         if page == 0 {
             noticeItems = .failed(error)
         }
         pagingState.applyFailure()
-        errorHandler?.handle(
+
+        if case .domain = error {
+            return
+        }
+
+        errorHandler.handle(
             failure,
             context: ErrorContext(
                 feature: "Notice",

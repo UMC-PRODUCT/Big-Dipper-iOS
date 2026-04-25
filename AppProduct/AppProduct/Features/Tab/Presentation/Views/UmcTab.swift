@@ -81,7 +81,7 @@ struct UmcTab: View {
         case .home:
             HomeView(container: di)
         case .notice:
-            NoticeView(container: di)
+            NoticeView(container: di, errorHandler: errorHandler)
         case .activity:
             ActivityView()
         case .community:

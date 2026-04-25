@@ -34,9 +34,9 @@ struct NoticeView: View {
     }
     
     // MARK: - Initializer
-    init(container: DIContainer) {
+    init(container: DIContainer, errorHandler: ErrorHandler) {
         _viewModel = State(
-            initialValue: NoticeViewModel(container: container)
+            initialValue: NoticeViewModel(container: container, errorHandler: errorHandler)
         )
     }
     
@@ -82,7 +82,6 @@ struct NoticeView: View {
             .task {
                 applyUserContext()
                 syncSelectedGisuIdForNoticeEditor()
-                viewModel.updateErrorHandler(errorHandler)
                 viewModel.fetchGisuList()
             }
             .onChange(of: pathStore.noticePath.count) { oldCount, newCount in

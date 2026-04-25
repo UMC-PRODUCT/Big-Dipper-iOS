@@ -79,7 +79,7 @@ final class NoticeViewModel {
     var isFetchingFirstPage: Bool = false
 
     /// Error Handler
-    var errorHandler: ErrorHandler?
+    private let errorHandler: ErrorHandler
 
     /// 페이징 진행 상태 (무한 스크롤 인디케이터 노출용)
     var isLoadingMore: Bool {
@@ -98,15 +98,9 @@ final class NoticeViewModel {
     // MARK: - Lifecycle
 
     /// 의존성을 주입받아 공지 탭 상태를 초기화합니다.
-    init(container: DIContainer) {
+    init(container: DIContainer, errorHandler: ErrorHandler) {
         self.container = container
-    }
-
-    // MARK: - Error Handling
-
-    /// ErrorHandler 바인딩
-    func updateErrorHandler(_ handler: ErrorHandler) {
-        self.errorHandler = handler
+        self.errorHandler = errorHandler
     }
 
     // MARK: - Helper

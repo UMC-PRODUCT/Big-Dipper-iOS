@@ -104,7 +104,7 @@ extension NoticeViewModel {
             } else {
                 isGisuListLoaded = false
                 noticeItems = .failed(.domain(.custom(message: "기수 정보를 불러오지 못했습니다.")))
-                errorHandler?.handle(
+                errorHandler.handle(
                     DomainError.custom(message: "기수 정보를 불러오지 못했습니다."),
                     context: .init(
                         feature: "Notice",
@@ -117,7 +117,7 @@ extension NoticeViewModel {
             isGisuListLoaded = false
             generations = []
             noticeItems = .failed(.domain(.custom(message: "기수 정보를 불러오지 못했습니다.")))
-            errorHandler?.handle(
+            errorHandler.handle(
                 error,
                 context: .init(
                     feature: "Notice",
