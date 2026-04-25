@@ -21,6 +21,7 @@ public func widgetExtensionProject(
 ) -> Project {
     Project(
         name: name,
+        settings: recommendedProjectSettings,
         targets: [
             .target(
                 name: name,

@@ -20,6 +20,7 @@ public func watchAppProject(
 ) -> Project {
     Project(
         name: name,
+        settings: recommendedProjectSettings,
         targets: [
             .target(
                 name: name,
