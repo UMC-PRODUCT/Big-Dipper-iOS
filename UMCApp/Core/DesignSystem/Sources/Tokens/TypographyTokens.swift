@@ -135,7 +135,7 @@ public extension Font {
         return .custom(finalWeight.fontName, size: style.size, relativeTo: style.textStyle)
     }
 
-    static func app(size: CGFloat, weight: AppFontWeight = .regular) -> Font {
+    static func app(size: CGFloat, weight: AppFontWeight = .medium) -> Font {
         .custom(weight.fontName, size: size)
     }
 }
