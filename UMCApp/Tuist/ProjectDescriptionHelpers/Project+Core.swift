@@ -22,6 +22,8 @@ public func coreProject(
     destinations: Destinations = .iOS,
     deploymentTargets: DeploymentTargets = .iOS("26.3"),
     dependencies: [TargetDependency] = [],
+    resources: ResourceFileElements? = nil,
+    additionalSettings: SettingsDictionary = [:],
     includesTests: Bool = false,
     testDependencies: [TargetDependency] = [],
     testEntitlements: Path? = nil
@@ -34,7 +36,9 @@ public func coreProject(
             bundleId: "\(bundleIdBase).\(bundleIdSuffix)",
             deploymentTargets: deploymentTargets,
             sources: ["Sources/**"],
-            dependencies: dependencies
+            resources: resources,
+            dependencies: dependencies,
+            settings: additionalSettings.isEmpty ? nil : .settings(base: additionalSettings)
         )
     ]
 

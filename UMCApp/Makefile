@@ -32,7 +32,9 @@ help: ## 이 도움말 출력
 	@echo ""
 	@echo "환경 변수 오버라이드 예시:"
 	@echo "  make pick                                     # 스킴 골라서 빌드 (대화형)"
+	@echo "  make test-pick                                # 스킴 골라서 테스트 (대화형)"
 	@echo "  make build SCHEME=AuthDomain                  # 모듈 단위 빌드"
+	@echo "  make test  SCHEME=AuthDomain                  # 모듈 단위 테스트"
 	@echo "  make test  DESTINATION='platform=iOS Simulator,name=iPhone 17'"
 	@echo "  make build CONFIGURATION=Release"
 	@echo ""
@@ -150,6 +152,34 @@ test: ## 테스트 실행
 		-configuration $(CONFIGURATION) \
 		-destination "$(DESTINATION)" \
 		test
+
+.PHONY: test-pick
+test-pick: ## 스킴을 골라 테스트 (fzf 있으면 fuzzy, 없으면 번호 선택)
+	@if [ ! -d "$(WORKSPACE)" ]; then \
+		echo "⚠️  $(WORKSPACE) 없음 → 먼저 'make generate' 실행"; \
+		exit 1; \
+	fi
+	@SCHEMES=$$(xcodebuild -workspace $(WORKSPACE) -list 2>/dev/null \
+		| awk '/Schemes:/{found=1; next} found && NF{sub(/^[[:space:]]+/, ""); print}'); \
+	if [ -z "$$SCHEMES" ]; then \
+		echo "스킴을 찾지 못했습니다."; exit 1; \
+	fi; \
+	if command -v fzf >/dev/null 2>&1; then \
+		SCHEME=$$(echo "$$SCHEMES" | fzf --prompt="테스트할 스킴 > " --height=40% --reverse); \
+	else \
+		echo ""; \
+		echo "테스트할 스킴을 선택하세요 (번호 입력, Ctrl+C 취소):"; \
+		PS3="> "; \
+		IFS=$$'\n'; \
+		select s in $$SCHEMES; do \
+			SCHEME=$$s; break; \
+		done; \
+	fi; \
+	if [ -z "$$SCHEME" ]; then \
+		echo "선택 취소"; exit 1; \
+	fi; \
+	echo "▶︎ '$$SCHEME' 테스트 시작"; \
+	$(MAKE) test SCHEME="$$SCHEME"
 
 TEST_SERVER_URL ?= http://127.0.0.1:8080
 

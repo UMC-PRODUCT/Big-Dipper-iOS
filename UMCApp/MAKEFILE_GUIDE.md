@@ -53,6 +53,8 @@ make open        # Xcode 실행
 | `make edit` | Tuist 매니페스트 편집 모드 | `Project+Feature.swift` 등 수정 시 |
 | `make graph` | 의존성 그래프(`graph.png`) 생성 | 구조 리뷰할 때 |
 | `make test` | 테스트 실행 (`SCHEME` = `UMCApp`) | CI 재현 / 로컬 검증 |
+| `make test SCHEME=…` | 특정 스킴(모듈)만 테스트 | 한 모듈만 빠르게 검증할 때 |
+| `make test-pick` | 스킴 목록에서 골라 테스트 (대화형) | 스킴 이름이 안 떠오를 때 |
 | `make test-network` | CoreNetwork 단위+통합 테스트 (`TEST_SERVER_URL` 자동 전달) | 네트워크 레이어 변경 후 |
 | `make build` | Debug 빌드 | 빌드 가능 여부만 확인할 때 |
 | `make build SCHEME=…` | 특정 스킴(모듈)만 빌드 | 한 모듈만 빠르게 검증할 때 |
@@ -108,11 +110,16 @@ make build SCHEME=AuthDomain
 make build SCHEME=NoticePresentation
 make build SCHEME=CoreNetwork
 
+# 특정 모듈만 테스트
+make test SCHEME=AuthDomain
+make test SCHEME=CoreNetwork
+
 # 스킴 이름이 기억 안 날 때 — 대화형으로 선택
-make pick
+make pick        # 빌드용
+make test-pick   # 테스트용
 ```
 
-> **`make pick`**: `xcodebuild -workspace … -list` 결과를 동적으로 읽어와 선택지를 띄웁니다.
+> **`make pick` / `make test-pick`**: `xcodebuild -workspace … -list` 결과를 동적으로 읽어와 선택지를 띄웁니다.
 > `fzf` 가 설치돼 있으면 fuzzy 검색, 없으면 bash `select` 로 번호 선택 메뉴가 뜹니다.
 > 모듈을 추가/삭제해도 별도 동기화가 필요 없습니다.
 
