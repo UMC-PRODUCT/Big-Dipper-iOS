@@ -29,6 +29,7 @@ let project = Project(
             ],
             entitlements: .file(path: "UMCApp.entitlements"),
             dependencies: [
+                .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
                 .project(target: "AuthPresentation", path: .relativeToRoot("Features/Auth")),
                 .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
                 .project(target: "NoticePresentation", path: .relativeToRoot("Features/Notice")),
