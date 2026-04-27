@@ -118,7 +118,7 @@ struct NoticeEditorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
         .safeAreaBar(edge: .top, content: topSafeAreaContent)
-        .safeAreaBar(edge: .bottom, alignment: .leading, content: bottomSafeAreaContent)
+//        .safeAreaBar(edge: .bottom, alignment: .leading, content: bottomSafeAreaContent)
         .noticeEditorPresentations(viewModel: viewModel)
     }
 
