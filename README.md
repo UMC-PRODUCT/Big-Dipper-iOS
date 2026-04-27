@@ -152,15 +152,11 @@ xcodebuild -project AppProduct/AppProduct.xcodeproj \
 
 #### 팀 구성
 
-| 구분 | 이름/실명 | 역할 | GitHub |
-|------|------|------|------|
-| 리더 | 제옹/정의찬 | PL | [제옹](https://github.com/JEONG-J) |
-| 팀원 1 | 입력 필요 | 입력 필요 | [GitHub](https://github.com/) |
-| 팀원 2 | 입력 필요 | 입력 필요 | [GitHub](https://github.com/) |
-| 팀원 3 | 입력 필요 | 입력 필요 | [GitHub](https://github.com/) |
-| 팀원 4 | 입력 필요 | 입력 필요 | [GitHub](https://github.com/) |
-| 팀원 5 | 입력 필요 | 입력 필요 | [GitHub](https://github.com/) |
-| 팀원 6 | 입력 필요 | 입력 필요 | [GitHub](https://github.com/) |
+| 제옹/정의찬 | 리버/이재원 | 소피/이예지 | 원/김동민 | 도도/김도연 |
+|:------:|:------:|:------:|:------:|:------:|
+| <img src="https://github.com/user-attachments/assets/00ba6ec3-d252-4e93-b467-b0d0ba654fb4" width="300" height="250"> | <img src="https://github.com/user-attachments/assets/a4ddee14-419e-41da-a89a-e2c2fb23a03f" width="300" height="250"> | <img src="https://github.com/user-attachments/assets/1749df32-f292-4613-916d-b88cf2390cd2" width="300" height="250"> | _사진 추후 추가_ | _사진 추후 추가_ |
+| PL | iOS | iOS | iOS | iOS |
+| [제옹](https://github.com/JEONG-J) | [리버](https://github.com/jwon0523) | [소피](https://github.com/LeeYeJi546) | _추후 추가_ | _추후 추가_ |
 
 #### 2기 신규/강화 기능
 
