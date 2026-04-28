@@ -14,80 +14,40 @@ public enum AppFont {
     case caption1
     case caption2
 
-    case largeTitleEmphasis
-    case title1Emphasis
-    case title2Emphasis
-    case title3Emphasis
-    case bodyEmphasis
-    case calloutEmphasis
-    case subheadlineEmphasis
-    case footnoteEmphasis
-    case caption1Emphasis
-    case caption2Emphasis
-
-    private var baseStyle: AppFont {
-        switch self {
-        case .largeTitleEmphasis:  return .largeTitle
-        case .title1Emphasis:      return .title1
-        case .title2Emphasis:      return .title2
-        case .title3Emphasis:      return .title3
-        case .bodyEmphasis:        return .body
-        case .calloutEmphasis:     return .callout
-        case .subheadlineEmphasis: return .subheadline
-        case .footnoteEmphasis:    return .footnote
-        case .caption1Emphasis:    return .caption1
-        case .caption2Emphasis:    return .caption2
-        default:                   return self
-        }
-    }
-
-    public var isEmphasis: Bool {
-        switch self {
-        case .largeTitleEmphasis, .title1Emphasis, .title2Emphasis, .title3Emphasis,
-             .bodyEmphasis, .calloutEmphasis, .subheadlineEmphasis,
-             .footnoteEmphasis, .caption1Emphasis, .caption2Emphasis:
-            return true
-        default:
-            return false
-        }
-    }
-
     public var size: CGFloat {
         switch self {
-        case .largeTitle, .largeTitleEmphasis:     return 34
-        case .title1, .title1Emphasis:             return 28
-        case .title2, .title2Emphasis:             return 22
-        case .title3, .title3Emphasis:             return 20
-        case .body, .bodyEmphasis:                 return 17
-        case .callout, .calloutEmphasis:           return 16
-        case .subheadline, .subheadlineEmphasis:   return 15
-        case .footnote, .footnoteEmphasis:         return 13
-        case .caption1, .caption1Emphasis:         return 12
-        case .caption2, .caption2Emphasis:         return 11
+        case .largeTitle:  return 34
+        case .title1:      return 28
+        case .title2:      return 22
+        case .title3:      return 20
+        case .body:        return 17
+        case .callout:     return 16
+        case .subheadline: return 15
+        case .footnote:    return 13
+        case .caption1:    return 12
+        case .caption2:    return 11
         }
     }
 
-    public var lineHeightMultiplier: CGFloat {
-        switch baseStyle {
-        case .largeTitle:  return 1.21
-        case .title1:      return 1.21
-        case .title2:      return 1.27
-        case .title3:      return 1.25
-        case .body:        return 1.38
-        case .callout:     return 1.31
-        case .subheadline: return 1.33
-        case .footnote:    return 1.38
-        case .caption1:    return 1.33
-        case .caption2:    return 1.18
-        default:           return 1.0
+    public var lineHeight: CGFloat {
+        switch self {
+        case .largeTitle:  return 41.14
+        case .title1:      return 33.88
+        case .title2:      return 27.94
+        case .title3:      return 25.00
+        case .body:        return 23.46
+        case .callout:     return 20.96
+        case .subheadline: return 19.95
+        case .footnote:    return 17.94
+        case .caption1:    return 15.96
+        case .caption2:    return 12.98
         }
     }
 
-    public var lineHeight: CGFloat { size * lineHeightMultiplier }
     public var lineSpacing: CGFloat { lineHeight - size }
 
     public var textStyle: Font.TextStyle {
-        switch baseStyle {
+        switch self {
         case .largeTitle:  return .largeTitle
         case .title1:      return .title
         case .title2:      return .title2
@@ -98,7 +58,6 @@ public enum AppFont {
         case .footnote:    return .footnote
         case .caption1:    return .caption
         case .caption2:    return .caption2
-        default:           return .body
         }
     }
 }
@@ -130,9 +89,8 @@ public enum AppFontWeight {
 // MARK: - Font Extension
 
 public extension Font {
-    static func app(_ style: AppFont, weight: AppFontWeight? = nil) -> Font {
-        let finalWeight = weight ?? (style.isEmphasis ? .semibold : .regular)
-        return .custom(finalWeight.fontName, size: style.size, relativeTo: style.textStyle)
+    static func app(_ style: AppFont, weight: AppFontWeight = .regular) -> Font {
+        .custom(weight.fontName, size: style.size, relativeTo: style.textStyle)
     }
 
     static func app(size: CGFloat, weight: AppFontWeight = .medium) -> Font {
@@ -146,16 +104,27 @@ public extension View {
     @ViewBuilder
     func appFont(
         _ style: AppFont,
-        weight: AppFontWeight? = nil,
-        color: Color? = nil
+        weight: AppFontWeight = .regular,
+        color: AppColor? = nil
     ) -> some View {
         let view = self
             .font(.app(style, weight: weight))
             .lineSpacing(style.lineSpacing)
         if let color {
-            view.foregroundStyle(color)
+            view.foregroundStyle(color.swiftUIColor)
         } else {
             view
         }
+    }
+
+    func appFont(
+        _ style: AppFont,
+        weight: AppFontWeight = .regular,
+        color: Color
+    ) -> some View {
+        self
+            .font(.app(style, weight: weight))
+            .lineSpacing(style.lineSpacing)
+            .foregroundStyle(color)
     }
 }
