@@ -19,8 +19,7 @@ enum NoticeRouter: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .getAllNotices: return .get
-        case .getDetailNotice: return .get
+        case .getAllNotices, .getDetailNotice: return .get
         case .postNotice: return .post
         }
     }
