@@ -144,9 +144,13 @@ class ScheduleRegistrationViewModel {
             guard let (challengers, nextHasNext, nextCursor) = try? await searchChallengersUseCase.execute(query: query) else {
                 break
             }
-            for challenger in challengers where remainingIds.contains(challenger.memberId) {
+            for challenger in challengers {
+                guard let challengerMemberId = Int(challenger.memberId),
+                      remainingIds.contains(challengerMemberId) else {
+                    continue
+                }
                 matched.append(challenger)
-                remainingIds.remove(challenger.memberId)
+                remainingIds.remove(challengerMemberId)
             }
             hasNext = nextHasNext
             cursor = nextCursor
@@ -247,8 +251,8 @@ class ScheduleRegistrationViewModel {
     @MainActor
     func submitSchedule(gisuId: Int, requiresApproval: Bool) async {
         submitState = .loading
-        var memberIds = Array(Set(participatn.map(\.memberId))).sorted()
-        let myMemberId = UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
+        var memberIds = Array(Set(participatn.compactMap { Int($0.memberId) })).sorted()
+        let myMemberId = AppStorageKey.legacyMemberIdInt()
         if myMemberId != 0, !memberIds.contains(myMemberId) {
             memberIds.append(myMemberId)
         }
@@ -314,7 +318,7 @@ class ScheduleRegistrationViewModel {
             startDate: dataRange.startDate,
             endDate: dataRange.endDate,
             memo: memo,
-            participantMemberIds: Array(Set(participatn.map(\.memberId))).sorted(),
+            participantMemberIds: Array(Set(participatn.compactMap { Int($0.memberId) })).sorted(),
             tags: sanitizedTags.map(\.rawValue).sorted()
         )
     }
@@ -349,8 +353,8 @@ class ScheduleRegistrationViewModel {
         submitState = .loading
         var participantMemberIds: [Int]? = nil
         if !participatn.isEmpty {
-            var memberIds = Array(Set(participatn.map(\.memberId))).sorted()
-            let myMemberId = UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
+            var memberIds = Array(Set(participatn.compactMap { Int($0.memberId) })).sorted()
+            let myMemberId = AppStorageKey.legacyMemberIdInt()
             if myMemberId != 0, !memberIds.contains(myMemberId) {
                 memberIds.append(myMemberId)
             }

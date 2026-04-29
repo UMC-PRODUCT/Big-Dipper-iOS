@@ -33,7 +33,7 @@ struct ChallengerFormView: View {
     let onBottomReached: (() -> Void)?
 
     /// 삭제 불가능한 멤버 ID 집합 (생성자 보호 등)
-    let nonDeletableMemberIds: Set<Int>
+    let nonDeletableMemberIds: Set<String>
     
     // MARK: - Init
     
@@ -52,7 +52,7 @@ struct ChallengerFormView: View {
         selectedIds: Binding<Set<String>> = .constant([]),
         tap: ((ChallengerInfo) -> Void)? = nil,
         onBottomReached: (() -> Void)? = nil,
-        nonDeletableMemberIds: Set<Int> = []
+        nonDeletableMemberIds: Set<String> = []
     ) {
         self._challenger = challenger
         self.isDeletAction = isDeletAction

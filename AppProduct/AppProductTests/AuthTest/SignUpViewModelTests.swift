@@ -35,7 +35,7 @@ struct SignUpViewModelTests {
         let snapshot = await loginUseCase.snapshot()
         let state = await MainActor.run { viewModel.registerState }
 
-        #expect(state == .loaded(1))
+        #expect(state == .loaded("1"))
         #expect(snapshot.kakaoCallCount == 1)
         #expect(snapshot.lastKakaoAccessToken == "kakao-access-token")
         #expect(snapshot.lastKakaoEmail == "umc@example.com")
@@ -67,7 +67,7 @@ struct SignUpViewModelTests {
         let snapshot = await loginUseCase.snapshot()
         let state = await MainActor.run { viewModel.registerState }
 
-        #expect(state == .loaded(1))
+        #expect(state == .loaded("1"))
         #expect(snapshot.appleCallCount == 1)
         #expect(snapshot.lastAppleAuthorizationCode == "apple-code")
         #expect(snapshot.lastAppleEmail == "apple@example.com")
@@ -156,8 +156,8 @@ private actor MockLoginUseCase: LoginUseCaseProtocol {
 }
 
 private struct MockRegisterUseCase: RegisterUseCaseProtocol {
-    func execute(request: RegisterRequestDTO) async throws -> Int {
-        1
+    func execute(request: RegisterRequestDTO) async throws -> String {
+        "1"
     }
 }
 

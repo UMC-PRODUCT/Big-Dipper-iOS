@@ -44,7 +44,7 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     // MARK: - User Context
 
     var memberId: Int {
-        UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
+        AppStorageKey.legacyMemberIdInt()
     }
 
     var gisuId: Int {

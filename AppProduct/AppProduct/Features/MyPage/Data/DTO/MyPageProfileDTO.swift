@@ -252,7 +252,7 @@ extension MyPageProfileResponseDTO {
             .flatMap { UMCPartType(apiValue: $0) } ?? .admin
 
         let challengerInfo = ChallengerInfo(
-            memberId: id.intValue,
+            memberId: id,
             gen: latestRecord?.gisu.intValue ?? latestRole?.gisu?.intValue ?? 0,
             name: latestRecord?.name ?? name,
             nickname: latestRecord?.nickname ?? nickname,

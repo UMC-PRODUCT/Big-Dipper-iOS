@@ -22,6 +22,12 @@ enum AuthRouter: BaseTargetType {
         email: String?,
         fullName: String?
     )
+    /// ID/PW 로그인 (App Store 리뷰어용)
+    case loginByIdPw(body: LoginByIdPwRequestDTO)
+    /// ID/PW 회원가입 (App Store 리뷰어용)
+    case registerByIdPw(body: RegisterByIdPwRequestDTO)
+    /// 로그인 ID 중복 검사
+    case checkLoginIdAvailability(loginId: String)
     /// 액세스 토큰 재발급
     case renewToken(refreshToken: String)
     /// 내 OAuth 연동 정보 조회
@@ -58,6 +64,12 @@ enum AuthRouter: BaseTargetType {
             return "/api/v1/auth/login/kakao"
         case .loginApple:
             return "/api/v1/auth/login/apple"
+        case .loginByIdPw:
+            return "/api/v1/auth/login/id-pw"
+        case .registerByIdPw:
+            return "/api/v1/member/register/id-pw"
+        case .checkLoginIdAvailability:
+            return "/api/v1/auth/login-id/availability"
         case .renewToken:
             return "/api/v1/auth/token/renew"
         case .getMyOAuth:
@@ -85,15 +97,16 @@ enum AuthRouter: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .loginKakao, .loginApple, .renewToken,
-             .sendEmailVerification, .verifyEmailCode, .register,
-             .registerExistingChallenger:
+        case .loginKakao, .loginApple, .loginByIdPw, .registerByIdPw,
+             .renewToken, .sendEmailVerification, .verifyEmailCode,
+             .register, .registerExistingChallenger:
             return .post
         case .addMemberOAuth:
             return .post
         case .deleteMemberOAuth:
             return .delete
-        case .getMyOAuth, .getSchools, .getTerms:
+        case .getMyOAuth, .getSchools, .getTerms,
+             .checkLoginIdAvailability:
             return .get
         }
     }
@@ -123,6 +136,15 @@ enum AuthRouter: BaseTargetType {
             return .requestParameters(
                 parameters: parameters,
                 encoding: JSONEncoding.default
+            )
+        case .loginByIdPw(let body):
+            return .requestJSONEncodable(body)
+        case .registerByIdPw(let body):
+            return .requestJSONEncodable(body)
+        case .checkLoginIdAvailability(let loginId):
+            return .requestParameters(
+                parameters: ["loginId": loginId],
+                encoding: URLEncoding.queryString
             )
         case .renewToken(let refreshToken):
             return .requestParameters(

@@ -32,6 +32,27 @@ protocol AuthRepositoryProtocol: Sendable {
         fullName: String?
     ) async throws -> OAuthLoginResult
 
+    /// ID/PW 로그인 (App Store 리뷰어용 비-OAuth 진입)
+    /// - Parameter body: 로그인 요청 DTO (loginId, password)
+    /// - Returns: 회원 ID + 토큰 쌍
+    func loginByIdPw(
+        _ body: LoginByIdPwRequestDTO
+    ) async throws -> LoginByIdPwResult
+
+    /// ID/PW 회원가입 (App Store 리뷰어용 비-OAuth 진입)
+    /// - Parameter body: 회원가입 요청 DTO (이메일 인증 토큰, ID, 비밀번호 등)
+    /// - Returns: 생성된 회원 ID + 토큰 쌍
+    func registerByIdPw(
+        _ body: RegisterByIdPwRequestDTO
+    ) async throws -> RegisterByIdPwResult
+
+    /// 로그인 ID 중복 검사
+    /// - Parameter loginId: 검사 대상 로그인 ID
+    /// - Returns: 사용 가능 여부 (true = 사용 가능)
+    func checkLoginIdAvailability(
+        loginId: String
+    ) async throws -> Bool
+
     /// 토큰 재발급
     /// - Parameter refreshToken: 리프레시 토큰
     /// - Returns: 새 토큰 쌍
@@ -80,10 +101,10 @@ protocol AuthRepositoryProtocol: Sendable {
 
     /// 회원가입
     /// - Parameter request: 회원가입 요청 DTO
-    /// - Returns: 생성된 회원 ID
+    /// - Returns: 생성된 회원 ID (서버 응답 String 기준)
     func register(
         request: RegisterRequestDTO
-    ) async throws -> Int
+    ) async throws -> String
 
     /// 기존 챌린저 코드 인증
     /// - Parameter code: 운영진 발급 6자리 코드

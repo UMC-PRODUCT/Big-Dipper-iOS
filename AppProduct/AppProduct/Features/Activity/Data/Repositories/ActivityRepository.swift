@@ -69,9 +69,7 @@ final class ActivityRepository: ActivityRepositoryProtocol, @unchecked Sendable 
     }
 
     func fetchCurrentUserId() async throws -> UserID {
-        let memberId = UserDefaults.standard.integer(
-            forKey: AppStorageKey.memberId
-        )
+        let memberId = AppStorageKey.legacyMemberIdInt()
         return UserID(value: String(memberId))
     }
 

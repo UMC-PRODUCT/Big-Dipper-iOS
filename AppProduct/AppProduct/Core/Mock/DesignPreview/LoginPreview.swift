@@ -11,10 +11,27 @@ import SwiftUI
 #Preview("로그인") {
     LoginView(
         loginUseCase: PreviewLoginUseCase(),
+        loginByIdPwUseCase: PreviewLoginByIdPwUseCase(),
         fetchMyProfileUseCase: PreviewFetchMyProfileUseCase(),
         tokenStore: KeychainTokenStore(),
         errorHandler: ErrorHandler()
     )
+}
+
+/// Preview 전용 ID/PW 로그인 UseCase
+private struct PreviewLoginByIdPwUseCase: LoginByIdPwUseCaseProtocol {
+    func execute(
+        loginId: String,
+        password: String
+    ) async throws -> LoginByIdPwResult {
+        LoginByIdPwResult(
+            memberId: "preview_member_id",
+            tokenPair: TokenPair(
+                accessToken: "preview",
+                refreshToken: "preview"
+            )
+        )
+    }
 }
 
 /// Preview 전용 LoginUseCase
@@ -49,7 +66,7 @@ private struct PreviewLoginUseCase: LoginUseCaseProtocol {
 private struct PreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
     func execute() async throws -> HomeProfileResult {
         HomeProfileResult(
-            memberId: 1,
+            memberId: "1",
             schoolId: 1,
             schoolName: "중앙대학교",
             latestChallengerId: nil,
@@ -97,8 +114,8 @@ private struct PreviewVerifyCodeUseCase: VerifyEmailCodeUseCaseProtocol {
 }
 
 private struct PreviewRegisterUseCase: RegisterUseCaseProtocol {
-    func execute(request: RegisterRequestDTO) async throws -> Int {
-        1
+    func execute(request: RegisterRequestDTO) async throws -> String {
+        "1"
     }
 }
 

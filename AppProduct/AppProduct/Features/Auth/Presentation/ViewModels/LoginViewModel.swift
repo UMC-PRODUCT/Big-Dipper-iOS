@@ -14,21 +14,32 @@ final class LoginViewModel {
     // MARK: - Property
 
     private let loginUseCase: LoginUseCaseProtocol
+    private let loginByIdPwUseCase: LoginByIdPwUseCaseProtocol
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     private let kakaoLoginManager: KakaoLoginManager
     private let appleLoginManager: AppleLoginManager
     private let tokenStore: TokenStore
     private let errorHandler: ErrorHandler
 
-    /// 로그인 상태
+    /// 로그인 상태 (OAuth)
     private(set) var loginState: Loadable<OAuthLoginResult> = .idle
+    /// 로그인 상태 (ID/PW)
+    private(set) var loginByIdPwState: Loadable<LoginByIdPwResult> = .idle
     /// 로그인 후 이동할 목적지
     private(set) var destination: LoginDestination?
+
+    /// ID/PW 입력 — 로그인 ID
+    var loginIdInput: String = ""
+    /// ID/PW 입력 — 비밀번호
+    var passwordInput: String = ""
+    /// ID/PW 로그인 인라인 에러 메시지 (네트워크 오류 등 Alert는 errorHandler 사용)
+    private(set) var loginByIdPwErrorMessage: String?
 
     // MARK: - Init
 
     init(
         loginUseCase: LoginUseCaseProtocol,
+        loginByIdPwUseCase: LoginByIdPwUseCaseProtocol,
         fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol,
         tokenStore: TokenStore,
         errorHandler: ErrorHandler,
@@ -36,6 +47,7 @@ final class LoginViewModel {
         appleLoginManager: AppleLoginManager = AppleLoginManager()
     ) {
         self.loginUseCase = loginUseCase
+        self.loginByIdPwUseCase = loginByIdPwUseCase
         self.fetchMyProfileUseCase = fetchMyProfileUseCase
         self.tokenStore = tokenStore
         self.errorHandler = errorHandler
@@ -80,6 +92,65 @@ final class LoginViewModel {
                 action: "loginWithKakao",
                 retryAction: { [weak self] in
                     await self?.loginWithKakao()
+                }
+            ))
+        }
+    }
+
+    /// ID/PW 로그인 실행
+    @MainActor
+    func loginWithIdPw() async {
+        let trimmedId = loginIdInput.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        let trimmedPw = passwordInput
+
+        guard !trimmedId.isEmpty, !trimmedPw.isEmpty else {
+            loginByIdPwErrorMessage = "아이디와 비밀번호를 입력해주세요."
+            return
+        }
+
+        loginByIdPwState = .loading
+        loginByIdPwErrorMessage = nil
+        destination = nil
+
+        do {
+            let result = try await loginByIdPwUseCase.execute(
+                loginId: trimmedId,
+                password: trimmedPw
+            )
+            loginByIdPwState = .loaded(result)
+
+            let profile = try await fetchMyProfileUseCase.execute()
+            let isApproved = isApprovedProfile(profile)
+            UserDefaults.standard.set(
+                isApproved,
+                forKey: AppStorageKey.canAutoLogin
+            )
+            destination = isApproved ? .main : .pendingApproval
+        } catch let error as RepositoryError {
+            handleIdPwError(error)
+        } catch let error as AppError {
+            switch error {
+            case .repository(let repositoryError):
+                handleIdPwError(repositoryError)
+            default:
+                loginByIdPwState = .idle
+                errorHandler.handle(error, context: .init(
+                    feature: "Auth",
+                    action: "loginWithIdPw",
+                    retryAction: { [weak self] in
+                        await self?.loginWithIdPw()
+                    }
+                ))
+            }
+        } catch {
+            loginByIdPwState = .idle
+            errorHandler.handle(error, context: .init(
+                feature: "Auth",
+                action: "loginWithIdPw",
+                retryAction: { [weak self] in
+                    await self?.loginWithIdPw()
                 }
             ))
         }
@@ -136,6 +207,19 @@ final class LoginViewModel {
 // MARK: - Private
 
 private extension LoginViewModel {
+    /// ID/PW 로그인 도메인 에러를 인라인 메시지로 변환합니다.
+    @MainActor
+    func handleIdPwError(_ error: RepositoryError) {
+        if case .serverError(_, let message) = error,
+           let message,
+           !message.isEmpty {
+            loginByIdPwErrorMessage = message
+        } else {
+            loginByIdPwErrorMessage = "아이디 또는 비밀번호가 올바르지 않습니다."
+        }
+        loginByIdPwState = .failed(.repository(error))
+    }
+
     /// 로그인 결과를 기반으로 최종 이동 목적지를 계산합니다.
     func resolveDestination(
         from result: OAuthLoginResult,

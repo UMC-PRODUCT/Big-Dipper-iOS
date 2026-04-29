@@ -23,6 +23,7 @@ struct LoginView: View {
 
     init(
         loginUseCase: LoginUseCaseProtocol,
+        loginByIdPwUseCase: LoginByIdPwUseCaseProtocol,
         fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol,
         tokenStore: TokenStore,
         errorHandler: ErrorHandler
@@ -30,6 +31,7 @@ struct LoginView: View {
         self._viewModel = .init(
             wrappedValue: LoginViewModel(
                 loginUseCase: loginUseCase,
+                loginByIdPwUseCase: loginByIdPwUseCase,
                 fetchMyProfileUseCase: fetchMyProfileUseCase,
                 tokenStore: tokenStore,
                 errorHandler: errorHandler
@@ -40,21 +42,38 @@ struct LoginView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack {
-            Spacer()
-            TopLogo()
-            Spacer()
-            BottomSocialBtns(
-                isLoading: viewModel.loginState.isLoading,
-                onKakaoTapped: {
-                    Task { await viewModel.loginWithKakao() }
-                },
-                onAppleTapped: {
-                    viewModel.loginWithApple()
-                }
-            )
-            .equatable()
+        ScrollView(.vertical) {
+            VStack(spacing: DefaultSpacing.spacing24) {
+                TopLogo()
+                    .padding(.top, DefaultConstant.defaultSafeTop)
+
+                LoginByIdPwSection(
+                    loginId: $viewModel.loginIdInput,
+                    password: $viewModel.passwordInput,
+                    isLoading: viewModel.loginByIdPwState.isLoading,
+                    errorMessage: viewModel.loginByIdPwErrorMessage,
+                    onLoginTapped: {
+                        Task { await viewModel.loginWithIdPw() }
+                    },
+                    onSignUpTapped: {
+                        appFlow.showSignUpByIdPw()
+                    }
+                )
+                .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+
+                BottomSocialBtns(
+                    isLoading: viewModel.loginState.isLoading,
+                    onKakaoTapped: {
+                        Task { await viewModel.loginWithKakao() }
+                    },
+                    onAppleTapped: {
+                        viewModel.loginWithApple()
+                    }
+                )
+                .equatable()
+            }
         }
+        .scrollDismissesKeyboard(.interactively)
         .onChange(of: viewModel.destination) { _, newDestination in
             guard let newDestination else { return }
             switch newDestination {
@@ -180,6 +199,7 @@ fileprivate struct BottomSocialBtns: View, Equatable {
 #Preview("로그인 화면") {
     LoginView(
         loginUseCase: LoginViewPreviewLoginUseCase(),
+        loginByIdPwUseCase: LoginViewPreviewLoginByIdPwUseCase(),
         fetchMyProfileUseCase: LoginViewPreviewFetchMyProfileUseCase(),
         tokenStore: KeychainTokenStore(),
         errorHandler: ErrorHandler()
@@ -210,10 +230,25 @@ private struct LoginViewPreviewLoginUseCase: LoginUseCaseProtocol {
     }
 }
 
+private struct LoginViewPreviewLoginByIdPwUseCase: LoginByIdPwUseCaseProtocol {
+    func execute(
+        loginId: String,
+        password: String
+    ) async throws -> LoginByIdPwResult {
+        LoginByIdPwResult(
+            memberId: "preview_member_id",
+            tokenPair: TokenPair(
+                accessToken: "preview_access_token",
+                refreshToken: "preview_refresh_token"
+            )
+        )
+    }
+}
+
 private struct LoginViewPreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
     func execute() async throws -> HomeProfileResult {
         HomeProfileResult(
-            memberId: 1,
+            memberId: "1",
             schoolId: 1,
             schoolName: "UMC University",
             latestChallengerId: 1,

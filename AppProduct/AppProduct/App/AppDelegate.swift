@@ -163,7 +163,7 @@ private extension AppDelegate {
             logger.notice("[FCM] skip upload trigger=\(trigger, privacy: .public) reason=containerMissing")
             return
         }
-        let memberId = UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
+        let memberId = AppStorageKey.legacyMemberIdInt()
         let fcmToken = UserDefaults.standard.string(forKey: AppStorageKey.userFCMToken) ?? ""
         guard memberId != 0, !fcmToken.isEmpty else { return }
 

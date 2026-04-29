@@ -14,8 +14,8 @@ struct ChallengerMemberDTO: Codable {
 
     /// 챌린저 고유 ID
     let challengerId: Int
-    /// 멤버 고유 ID
-    let memberId: Int
+    /// 멤버 고유 ID (서버 응답 String 기준)
+    let memberId: String
     /// 기수 번호 (예: 9, 10)
     let gisu: Int
     /// 서버 기수 식별 ID
@@ -71,7 +71,7 @@ struct ChallengerMemberDTO: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         challengerId = try container.decodeIntFlexibleIfPresent(forKey: .challengerId) ?? 0
-        memberId = try container.decodeIntFlexibleIfPresent(forKey: .memberId) ?? 0
+        memberId = try container.decodeFlexibleStringIfPresent(forKey: .memberId) ?? ""
         gisu = try container.decodeIntFlexibleIfPresent(forKey: .gisu) ?? 0
         gisuId = try container.decodeIntFlexibleIfPresent(forKey: .gisuId) ?? 0
         chapterId = try container.decodeIntFlexibleIfPresent(forKey: .chapterId)
@@ -295,7 +295,7 @@ extension ChallengerMemberDTO {
         let resolvedRoleName = ManagementTeam.highestPriority(in: roles.map(\.roleType))?.korean ?? "챌린저"
 
         return MemberProfileSummary(
-            memberId: String(memberId),
+            memberId: memberId,
             name: name,
             nickname: nickname,
             generation: gisu,

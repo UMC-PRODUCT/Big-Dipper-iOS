@@ -36,8 +36,8 @@ struct ChallengerInfo: Identifiable, Equatable, Hashable {
     /// 고유 식별자
     var id: UUID = .init()
     
-    /// member ID (서버 연동 등 식별용)
-    let memberId: Int
+    /// member ID (서버 응답 String 기준)
+    let memberId: String
 
     /// challenger ID (챌린저 엔티티 식별용)
     let challengerId: Int
@@ -69,7 +69,7 @@ struct ChallengerInfo: Identifiable, Equatable, Hashable {
 
     init(
         id: UUID = .init(),
-        memberId: Int,
+        memberId: String,
         challengerId: Int? = nil,
         gen: Int,
         name: String,
@@ -80,7 +80,7 @@ struct ChallengerInfo: Identifiable, Equatable, Hashable {
     ) {
         self.id = id
         self.memberId = memberId
-        self.challengerId = challengerId ?? memberId
+        self.challengerId = challengerId ?? (Int(memberId) ?? 0)
         self.gen = gen
         self.name = name
         self.nickname = nickname

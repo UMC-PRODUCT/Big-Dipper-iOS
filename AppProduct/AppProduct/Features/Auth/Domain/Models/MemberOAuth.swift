@@ -14,8 +14,8 @@ struct MemberOAuth: Equatable, Sendable {
 
     /// OAuth 연동 ID
     let memberOAuthId: Int
-    /// 회원 ID
-    let memberId: Int
+    /// 회원 ID (서버 응답 String 기준)
+    let memberId: String
     /// OAuth 제공자 (APPLE, KAKAO)
     let provider: OAuthProvider
 }

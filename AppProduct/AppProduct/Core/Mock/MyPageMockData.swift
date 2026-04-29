@@ -11,7 +11,7 @@ enum MyPageMockData {
     static let profile = ProfileData(
         challengeId: 269,
         challangerInfo: ChallengerInfo(
-            memberId: 1001,
+            memberId: "1001",
             gen: 8,
             name: "홍길동",
             nickname: "길동",

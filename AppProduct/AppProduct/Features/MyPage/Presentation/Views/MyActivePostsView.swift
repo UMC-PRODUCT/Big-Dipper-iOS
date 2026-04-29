@@ -219,7 +219,7 @@ private struct FetchMyPageProfilePreviewUseCase: FetchMyPageProfileUseCaseProtoc
         ProfileData(
             challengeId: 1,
             challangerInfo: ChallengerInfo(
-                memberId: 1,
+                memberId: "1",
                 gen: 8,
                 name: "홍길동",
                 nickname: "길동",

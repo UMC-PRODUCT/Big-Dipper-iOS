@@ -38,8 +38,8 @@ struct GenerationOrganizationContext: Codable, Equatable {
 ///
 /// 프로필 API 한 번 호출로 기수 카드용 데이터와 역할 정보를 함께 반환합니다.
 struct HomeProfileResult: Equatable {
-    /// 멤버 ID
-    let memberId: Int
+    /// 멤버 ID (서버 응답 String 기준)
+    let memberId: String
     /// 학교 ID
     let schoolId: Int
     /// 학교 이름
@@ -64,7 +64,7 @@ struct HomeProfileResult: Equatable {
     let generationOrganizations: [GenerationOrganizationContext]
 
     init(
-        memberId: Int,
+        memberId: String,
         schoolId: Int,
         schoolName: String,
         latestChallengerId: Int?,

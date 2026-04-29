@@ -87,6 +87,79 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         return try apiResponse.unwrap().toDomain()
     }
 
+    /// ID/PW 로그인을 수행합니다.
+    ///
+    /// - Parameter body: loginId / password
+    /// - Returns: 회원 ID + 토큰 쌍
+    func loginByIdPw(
+        _ body: LoginByIdPwRequestDTO
+    ) async throws -> LoginByIdPwResult {
+        do {
+            let response = try await adapter.requestWithoutAuth(
+                AuthRouter.loginByIdPw(body: body)
+            )
+            #if DEBUG
+            if let json = String(data: response.data, encoding: .utf8) {
+                print("[Auth] ID/PW 로그인 응답: \(json)")
+            }
+            #endif
+            let apiResponse = try decoder.decode(
+                APIResponse<LoginByIdPwResponseDTO>.self,
+                from: response.data
+            )
+            return try apiResponse.unwrap().toDomain()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
+    }
+
+    /// ID/PW 회원가입을 수행합니다.
+    ///
+    /// - Parameter body: 회원가입 요청 DTO
+    /// - Returns: 생성된 회원 ID + 토큰 쌍 (가입과 동시에 발급)
+    func registerByIdPw(
+        _ body: RegisterByIdPwRequestDTO
+    ) async throws -> RegisterByIdPwResult {
+        do {
+            let response = try await adapter.requestWithoutAuth(
+                AuthRouter.registerByIdPw(body: body)
+            )
+            #if DEBUG
+            if let json = String(data: response.data, encoding: .utf8) {
+                print("[Auth] ID/PW 회원가입 응답: \(json)")
+            }
+            #endif
+            let apiResponse = try decoder.decode(
+                APIResponse<RegisterByIdPwResponseDTO>.self,
+                from: response.data
+            )
+            return try apiResponse.unwrap().toDomain()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
+    }
+
+    /// 로그인 ID 중복 검사를 수행합니다.
+    ///
+    /// - Parameter loginId: 검사 대상 로그인 ID
+    /// - Returns: 사용 가능 여부 (true = 사용 가능)
+    func checkLoginIdAvailability(
+        loginId: String
+    ) async throws -> Bool {
+        do {
+            let response = try await adapter.requestWithoutAuth(
+                AuthRouter.checkLoginIdAvailability(loginId: loginId)
+            )
+            let apiResponse = try decoder.decode(
+                APIResponse<CheckLoginIdAvailabilityResponseDTO>.self,
+                from: response.data
+            )
+            return try apiResponse.unwrap().available
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
+    }
+
     /// 리프레시 토큰으로 새 토큰 쌍을 발급받습니다.
     func renewToken(
         refreshToken: String
@@ -198,11 +271,10 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
     /// 회원가입을 수행합니다.
     ///
     /// - Parameter request: 회원가입 요청 DTO
-    /// - Returns: 생성된 회원 ID
-    /// - Throws: `RepositoryError.decodingError` memberId 변환 실패 시
+    /// - Returns: 생성된 회원 ID (서버 응답 String 기준)
     func register(
         request: RegisterRequestDTO
-    ) async throws -> Int {
+    ) async throws -> String {
         do {
             let response = try await adapter.requestWithoutAuth(
                 AuthRouter.register(body: request)
@@ -212,13 +284,7 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
                 from: response.data
             )
             let dto = try apiResponse.unwrap()
-            // 서버에서 memberId를 String으로 넘겨줌에 따른 타입 변환
-            guard let id = Int(dto.memberId) else {
-                throw RepositoryError.decodingError(
-                    detail: "memberId 변환 실패: \(dto.memberId)"
-                )
-            }
-            return id
+            return dto.memberId
         } catch let NetworkError.requestFailed(statusCode, data) {
             #if DEBUG
             if let data,

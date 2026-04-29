@@ -16,7 +16,7 @@ final class MockHomeRepository: HomeRepositoryProtocol {
 
     func getMyProfile() async throws -> HomeProfileResult {
         HomeProfileResult(
-            memberId: 0,
+            memberId: "0",
             schoolId: 0,
             schoolName: "UMC 대학교",
             latestChallengerId: nil,
