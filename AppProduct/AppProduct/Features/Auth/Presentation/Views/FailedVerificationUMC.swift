@@ -223,7 +223,7 @@ struct FailedVerificationUMC: View {
 
     /// 카카오톡 문의 채널을 엽니다.
     private func openInquiryChannel() {
-        kakaoPlusManager.openKakaoChannel()
+        kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
     }
 
     /// 승인 대기 화면에서 로그아웃 확인 프롬프트를 표시합니다.
