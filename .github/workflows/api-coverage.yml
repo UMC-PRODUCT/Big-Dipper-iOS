@@ -7,7 +7,7 @@ on:
   push:
     branches: [ "develop" ]
     paths:
-      - "stella/**"
+      - "Stella/**"
       - "AppProduct/**/Router/**"
       - "UMCApp/Features/**/Data/**/Router/**"
       - ".github/workflows/api-coverage.yml"
@@ -28,7 +28,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: stella
+        working-directory: Stella
 
     outputs:
       pages-artifact: ${{ steps.upload-pages.outputs.artifact_id }}
@@ -53,9 +53,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            stella/.build
+            Stella/.build
             ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-spm-apicov-${{ hashFiles('stella/Package.resolved', 'stella/Package.swift') }}
+          key: ${{ runner.os }}-spm-apicov-${{ hashFiles('Stella/Package.resolved', 'Stella/Package.swift') }}
           restore-keys: |
             ${{ runner.os }}-spm-apicov-
 
@@ -91,14 +91,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-snapshot
-          path: stella/coverage.json
+          path: Stella/coverage.json
           retention-days: 30
 
       - name: Upload Pages artifact
         id: upload-pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: stella/_site
+          path: Stella/_site
 
   deploy:
     name: Deploy to GitHub Pages
