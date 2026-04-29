@@ -213,11 +213,13 @@ fileprivate struct CommunityAccessoryView: View {
 
 /// 마이페이지 탭 하단 액세서리 - 문의하기 버튼
 fileprivate struct MyPageAccessoryView: View {
+    @Environment(ErrorHandler.self) private var errorHandler
+
     private let kakaoPlusManager: KakaoPlusManager = .init()
 
     var body: some View {
         Button(action: {
-            kakaoPlusManager.openKakaoChannel()
+            kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
         }) {
             HStack(spacing: DefaultSpacing.spacing8) {
                 Spacer()

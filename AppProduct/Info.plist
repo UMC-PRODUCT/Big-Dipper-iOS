@@ -23,6 +23,7 @@
 	<array>
 		<string>kakaokompassauth</string>
 		<string>kakaoplus</string>
+		<string>kakaotalk</string>
 	</array>
 	<key>UIAppFonts</key>
 	<array>

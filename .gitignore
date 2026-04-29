@@ -165,3 +165,6 @@ GoogleService-Info.plist
 # Superpowers / brainstorming local caches
 .superpowers/
 docs/superpowers/
+
+# Git worktrees
+.worktrees/

@@ -12,6 +12,7 @@ struct HelpSection: View {
     // MARK: - Property
 
     @Environment(\.di) var di
+    @Environment(ErrorHandler.self) private var errorHandler
     /// 섹션의 타입 (헤더 타이틀로 사용됨)
     let sectionType: MyPageSectionType
     let kakaoPlusManager: KakaoPlusManager = .init()
@@ -61,7 +62,7 @@ struct HelpSection: View {
     private func sectionAction(_ help: HelpType) {
         switch help {
         case .inquery:
-            kakaoPlusManager.openKakaoChannel()
+            kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
         }
     }
 }
