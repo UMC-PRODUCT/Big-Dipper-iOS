@@ -51,9 +51,6 @@ struct LoginView: View {
                 },
                 onAppleTapped: {
                     viewModel.loginWithApple()
-                },
-                onGuestTapped: {
-                    viewModel.enterGuestMode(appFlow: appFlow)
                 }
             )
             .equatable()
@@ -119,7 +116,6 @@ fileprivate struct BottomSocialBtns: View, Equatable {
     let isLoading: Bool
     var onKakaoTapped: () -> Void
     var onAppleTapped: () -> Void
-    var onGuestTapped: () -> Void
 
     // MARK: - Equatable
 
@@ -133,7 +129,6 @@ fileprivate struct BottomSocialBtns: View, Equatable {
         GlassEffectContainer {
             VStack(spacing: 0) {
                 socialButtonList
-                guestButton
             }
         }
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
@@ -160,15 +155,6 @@ fileprivate struct BottomSocialBtns: View, Equatable {
         .disabled(isLoading)
         .accessibilityLabel(Text(accessibilityLabel(for: type)))
         .accessibilityHint(Text("소셜 계정으로 로그인합니다"))
-    }
-
-    private var guestButton: some View {
-        MainButton("먼저 살펴보기", action: onGuestTapped)
-            .buttonStyle(.glass)
-            .padding(.top, DefaultSpacing.spacing12)
-            .disabled(isLoading)
-            .accessibilityLabel(Text("먼저 살펴보기"))
-            .accessibilityHint(Text("로그인 없이 앱을 둘러봅니다"))
     }
 
     // MARK: - Function
