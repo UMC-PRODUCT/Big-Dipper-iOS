@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 import StellaCore
@@ -16,7 +17,10 @@ struct EndpointsView: View {
     @Bindable var model: ScanModel
     @State private var selection: EndpointRow.ID?
     @State private var draggingColumn: EndpointColumn?
+    @State private var columnWidths: [EndpointColumn: CGFloat] = [:]
+    @State private var resizeAnchor: (column: EndpointColumn, startWidth: CGFloat)?
     @AppStorage("endpointColumnOrder") private var columnOrderRaw = EndpointColumn.defaultOrderRaw
+    @AppStorage("endpointColumnWidths") private var columnWidthsRaw = ""
 
     var body: some View {
         if model.snapshot == nil {
@@ -43,7 +47,10 @@ struct EndpointsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .onAppear { selectFirstRowIfNeeded() }
+            .onAppear {
+                selectFirstRowIfNeeded()
+                loadColumnWidths()
+            }
             .onChange(of: rows.map(\.id)) { _, _ in selectFirstRowIfNeeded() }
         }
     }
@@ -99,22 +106,24 @@ struct EndpointsView: View {
     }
 
     private var table: some View {
-        ScrollView([.vertical, .horizontal]) {
-            VStack(alignment: .leading, spacing: 0) {
-                endpointHeader
-                ForEach(rows) { row in
-                    endpointRow(row)
-                        .id(row.id)
+        GeometryReader { geometry in
+            ScrollView([.vertical, .horizontal]) {
+                VStack(alignment: .leading, spacing: 0) {
+                    endpointHeader(containerWidth: geometry.size.width)
+                    ForEach(rows) { row in
+                        endpointRow(row, containerWidth: geometry.size.width)
+                            .id(row.id)
+                    }
                 }
+                .frame(minWidth: max(tableMinWidth, geometry.size.width), alignment: .topLeading)
             }
-            .frame(minWidth: tableMinWidth, maxWidth: .infinity, alignment: .topLeading)
+            .defaultScrollAnchor(.topLeading)
+            .background(.background)
         }
-        .defaultScrollAnchor(.topLeading)
-        .background(.background)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private var endpointHeader: some View {
+    private func endpointHeader(containerWidth: CGFloat) -> some View {
         HStack(spacing: 0) {
             ForEach(orderedColumns) { column in
                 HStack(spacing: 6) {
@@ -127,13 +136,18 @@ struct EndpointsView: View {
                         .foregroundStyle(.tertiary)
                 }
                 .padding(.horizontal, 10)
-                .frame(width: column.width, alignment: .leading)
+                .frame(width: widthForColumn(column, containerWidth: containerWidth), alignment: .leading)
                 .frame(height: 30)
                 .background(.background)
                 .overlay(alignment: .trailing) {
                     Rectangle()
                         .fill(.separator)
                         .frame(width: 1)
+                }
+                .overlay(alignment: .trailing) {
+                    if !isLastOrdered(column) {
+                        resizeHandle(for: column)
+                    }
                 }
                 .contextMenu {
                     Button("왼쪽으로 이동") { moveColumn(column, offset: -1) }
@@ -142,6 +156,7 @@ struct EndpointsView: View {
                         .disabled(isLastColumn(column))
                     Divider()
                     Button("기본 순서로") { resetColumnOrder() }
+                    Button("폭 초기화") { resetColumnWidths() }
                 }
                 .opacity(draggingColumn == column ? 0.45 : 1)
                 .onDrag {
@@ -165,7 +180,7 @@ struct EndpointsView: View {
         }
     }
 
-    private func endpointRow(_ row: EndpointRow) -> some View {
+    private func endpointRow(_ row: EndpointRow, containerWidth: CGFloat) -> some View {
         Button {
             selection = row.id
         } label: {
@@ -173,7 +188,7 @@ struct EndpointsView: View {
                 ForEach(orderedColumns) { column in
                     columnCell(column, row: row)
                         .padding(.horizontal, 10)
-                        .frame(width: column.width, alignment: .leading)
+                        .frame(width: widthForColumn(column, containerWidth: containerWidth), alignment: .leading)
                         .frame(height: 30)
                 }
             }
@@ -187,6 +202,35 @@ struct EndpointsView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func resizeHandle(for column: EndpointColumn) -> some View {
+        Color.clear
+            .frame(width: 8)
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                    .onChanged { value in
+                        if resizeAnchor == nil {
+                            resizeAnchor = (column, currentColumnWidth(column))
+                        }
+                        guard let anchor = resizeAnchor, anchor.column == column else { return }
+                        let proposed = anchor.startWidth + value.translation.width
+                        columnWidths[column] = max(column.minWidth, proposed)
+                    }
+                    .onEnded { _ in
+                        resizeAnchor = nil
+                        saveColumnWidths()
+                    }
+            )
     }
 
     @ViewBuilder
@@ -261,7 +305,50 @@ struct EndpointsView: View {
     }
 
     private var tableMinWidth: CGFloat {
-        orderedColumns.reduce(CGFloat.zero) { $0 + $1.width }
+        orderedColumns.reduce(CGFloat.zero) { $0 + currentColumnWidth($1) }
+    }
+
+    private func currentColumnWidth(_ column: EndpointColumn) -> CGFloat {
+        columnWidths[column] ?? column.defaultWidth
+    }
+
+    private func widthForColumn(_ column: EndpointColumn, containerWidth: CGFloat) -> CGFloat {
+        guard isLastOrdered(column) else {
+            return currentColumnWidth(column)
+        }
+        let usedByOthers = orderedColumns
+            .filter { $0 != column }
+            .reduce(CGFloat.zero) { $0 + currentColumnWidth($1) }
+        let remaining = containerWidth - usedByOthers
+        return max(currentColumnWidth(column), remaining)
+    }
+
+    private func isLastOrdered(_ column: EndpointColumn) -> Bool {
+        orderedColumns.last == column
+    }
+
+    private func loadColumnWidths() {
+        var result: [EndpointColumn: CGFloat] = [:]
+        for pair in columnWidthsRaw.split(separator: ",") {
+            let parts = pair.split(separator: ":")
+            guard parts.count == 2,
+                  let column = EndpointColumn(rawValue: String(parts[0])),
+                  let value = Double(parts[1]) else { continue }
+            result[column] = max(column.minWidth, CGFloat(value))
+        }
+        columnWidths = result
+    }
+
+    private func saveColumnWidths() {
+        columnWidthsRaw = columnWidths
+            .sorted { $0.key.rawValue < $1.key.rawValue }
+            .map { "\($0.key.rawValue):\(Int($0.value))" }
+            .joined(separator: ",")
+    }
+
+    private func resetColumnWidths() {
+        columnWidths = [:]
+        columnWidthsRaw = ""
     }
 
     private func persistColumnOrder(_ columns: [EndpointColumn]) {
@@ -360,7 +447,7 @@ private enum EndpointColumn: String, CaseIterable, Identifiable {
         }
     }
 
-    var width: CGFloat {
+    var defaultWidth: CGFloat {
         switch self {
         case .method: return 90
         case .path: return 360
@@ -368,6 +455,17 @@ private enum EndpointColumn: String, CaseIterable, Identifiable {
         case .tag: return 250
         case .owner: return 170
         case .connections: return 260
+        }
+    }
+
+    var minWidth: CGFloat {
+        switch self {
+        case .method: return 60
+        case .path: return 160
+        case .summary: return 120
+        case .tag: return 120
+        case .owner: return 100
+        case .connections: return 140
         }
     }
 }
