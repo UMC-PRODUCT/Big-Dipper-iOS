@@ -42,6 +42,50 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         )
     }
 
+    func loginByIdPw(
+        _ body: LoginByIdPwRequestDTO
+    ) async throws -> LoginByIdPwResult {
+        try await Task.sleep(for: .milliseconds(500))
+
+        guard body.loginId == "reviewer" && body.password == "umc12345!" else {
+            throw RepositoryError.serverError(
+                code: "INVALID_CREDENTIALS",
+                message: "아이디 또는 비밀번호가 올바르지 않습니다."
+            )
+        }
+
+        return LoginByIdPwResult(
+            memberId: "999",
+            tokenPair: TokenPair(
+                accessToken: "mock_id_pw_access_token",
+                refreshToken: "mock_id_pw_refresh_token"
+            )
+        )
+    }
+
+    func registerByIdPw(
+        _ body: RegisterByIdPwRequestDTO
+    ) async throws -> RegisterByIdPwResult {
+        try await Task.sleep(for: .milliseconds(500))
+
+        return RegisterByIdPwResult(
+            memberId: "999",
+            tokenPair: TokenPair(
+                accessToken: "mock_id_pw_access_token",
+                refreshToken: "mock_id_pw_refresh_token"
+            )
+        )
+    }
+
+    func checkLoginIdAvailability(
+        loginId: String
+    ) async throws -> Bool {
+        try await Task.sleep(for: .milliseconds(300))
+        // "reviewer" / "admin" / "test" 는 이미 사용 중인 ID 로 간주
+        let reservedIds: Set<String> = ["reviewer", "admin", "test"]
+        return !reservedIds.contains(loginId.lowercased())
+    }
+
     func renewToken(
         refreshToken: String
     ) async throws -> TokenPair {

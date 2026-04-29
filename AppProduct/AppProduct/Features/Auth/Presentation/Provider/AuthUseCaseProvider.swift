@@ -11,6 +11,12 @@ import Foundation
 protocol AuthUseCaseProviding {
     /// 소셜 로그인 UseCase
     var loginUseCase: LoginUseCaseProtocol { get }
+    /// ID/PW 로그인 UseCase
+    var loginByIdPwUseCase: LoginByIdPwUseCaseProtocol { get }
+    /// ID/PW 회원가입 UseCase
+    var registerByIdPwUseCase: RegisterByIdPwUseCaseProtocol { get }
+    /// 로그인 ID 중복 검사 UseCase
+    var checkLoginIdAvailabilityUseCase: CheckLoginIdAvailabilityUseCaseProtocol { get }
     /// 내 OAuth 정보 조회 UseCase
     var fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol { get }
     /// OAuth 수단 추가 연동 UseCase
@@ -37,6 +43,9 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
     // MARK: - Property
 
     let loginUseCase: LoginUseCaseProtocol
+    let loginByIdPwUseCase: LoginByIdPwUseCaseProtocol
+    let registerByIdPwUseCase: RegisterByIdPwUseCaseProtocol
+    let checkLoginIdAvailabilityUseCase: CheckLoginIdAvailabilityUseCaseProtocol
     let fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol
     let addMemberOAuthUseCase: AddMemberOAuthUseCaseProtocol
     let deleteMemberOAuthUseCase: DeleteMemberOAuthUseCaseProtocol
@@ -57,6 +66,17 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
         self.loginUseCase = LoginUseCase(
             repository: repository,
             tokenStore: tokenStore
+        )
+        self.loginByIdPwUseCase = LoginByIdPwUseCase(
+            repository: repository,
+            tokenStore: tokenStore
+        )
+        self.registerByIdPwUseCase = RegisterByIdPwUseCase(
+            repository: repository,
+            tokenStore: tokenStore
+        )
+        self.checkLoginIdAvailabilityUseCase = CheckLoginIdAvailabilityUseCase(
+            repository: repository
         )
         self.fetchMyOAuthUseCase = FetchMyOAuthUseCase(
             repository: repository
