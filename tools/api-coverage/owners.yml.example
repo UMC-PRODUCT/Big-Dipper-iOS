@@ -1,0 +1,11 @@
+owners:
+  # 태그 단위 기본 담당자 — 해당 tag의 모든 엔드포인트에 적용
+  tags:
+    Notice: euijjang97@gmail.com
+    Auth: euijjang97@gmail.com
+
+  # 엔드포인트 단위 지정 — tag 매핑보다 우선
+  endpoints:
+    - method: GET
+      path: /api/v1/notices/{id}
+      owner: another@example.com

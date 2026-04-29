@@ -1,0 +1,11 @@
+overrides:
+  # OpenAPI에 없는 외부 API 호출은 ignore 처리합니다.
+  - routerCase: TMapGeocodingRouter.geocode
+    ignore: true
+    reason: Third-party geocoding API
+
+  # 자동 매칭이 어려운 Router case는 OpenAPI key로 강제 매핑합니다.
+  # - routerCase: NoticeRouter.searchNotice
+  #   openAPI:
+  #     method: GET
+  #     path: /api/v1/notices/search

@@ -1,0 +1,7 @@
+owners:
+  tags:
+    Notice: tester@example.com
+  endpoints:
+    - method: POST
+      path: /auth/login
+      owner: tester@example.com

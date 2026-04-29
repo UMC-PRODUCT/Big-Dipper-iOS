@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "APICoverageCore", targets: ["APICoverageCore"]),
         .library(name: "APICoverageTestSupport", targets: ["APICoverageTestSupport"]),
         .executable(name: "apicov", targets: ["apicov"]),
+        .executable(name: "stella", targets: ["APICoverageApp"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0"),
@@ -36,6 +37,12 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/apicov"
+        ),
+        .executableTarget(
+            name: "APICoverageApp",
+            dependencies: ["APICoverageCore"],
+            path: "Sources/APICoverageApp",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "APICoverageCoreTests",
