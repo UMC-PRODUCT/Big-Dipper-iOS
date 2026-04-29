@@ -7,7 +7,7 @@ on:
   push:
     branches: [ "develop" ]
     paths:
-      - "tools/api-coverage/**"
+      - "stella/**"
       - "AppProduct/**/Router/**"
       - "UMCApp/Features/**/Data/**/Router/**"
       - ".github/workflows/api-coverage.yml"
@@ -28,7 +28,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: tools/api-coverage
+        working-directory: stella
 
     outputs:
       pages-artifact: ${{ steps.upload-pages.outputs.artifact_id }}
@@ -53,9 +53,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            tools/api-coverage/.build
+            stella/.build
             ~/Library/Caches/org.swift.swiftpm
-          key: ${{ runner.os }}-spm-apicov-${{ hashFiles('tools/api-coverage/Package.resolved', 'tools/api-coverage/Package.swift') }}
+          key: ${{ runner.os }}-spm-apicov-${{ hashFiles('stella/Package.resolved', 'stella/Package.swift') }}
           restore-keys: |
             ${{ runner.os }}-spm-apicov-
 
@@ -76,9 +76,9 @@ jobs:
           .build/release/apicov scan \
             --openapi-url https://dev.api.umc.it.kr/docs-json \
             --auth-env UMC_API_USER:UMC_API_PASS \
-            --app-product ../../AppProduct \
-            --umc-app ../../UMCApp \
-            --blame-root ../.. \
+            --app-product ../AppProduct \
+            --umc-app ../UMCApp \
+            --blame-root .. \
             --out coverage.json \
             "${extra[@]}"
 
@@ -91,14 +91,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-snapshot
-          path: tools/api-coverage/coverage.json
+          path: stella/coverage.json
           retention-days: 30
 
       - name: Upload Pages artifact
         id: upload-pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: tools/api-coverage/_site
+          path: stella/_site
 
   deploy:
     name: Deploy to GitHub Pages

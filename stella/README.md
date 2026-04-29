@@ -5,7 +5,7 @@ UMC PRODUCT API와 iOS 코드베이스(`AppProduct/`, `UMCApp/`)의 Moya Router 
 ## Build
 
 ```bash
-cd tools/api-coverage
+cd stella
 swift build
 ```
 
@@ -18,9 +18,9 @@ export UMC_API_PASS=...
 swift run apicov scan \
   --openapi-url https://dev.api.umc.it.kr/docs-json \
   --auth-env UMC_API_USER:UMC_API_PASS \
-  --app-product ../../AppProduct \
-  --umc-app ../../UMCApp \
-  --blame-root ../.. \
+  --app-product ../AppProduct \
+  --umc-app ../UMCApp \
+  --blame-root .. \
   --authors authors.yml \
   --overrides overrides.yml \
   --owners owners.yml \
@@ -32,9 +32,9 @@ swift run apicov scan \
 ```bash
 swift run apicov scan \
   --openapi-file /tmp/openapi.json \
-  --app-product ../../AppProduct \
-  --umc-app ../../UMCApp \
-  --blame-root ../.. \
+  --app-product ../AppProduct \
+  --umc-app ../UMCApp \
+  --blame-root .. \
   --out coverage.json
 ```
 

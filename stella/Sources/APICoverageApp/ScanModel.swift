@@ -91,7 +91,7 @@ final class ScanModel {
 
     init() {
         let repoRoot = Self.inferRepoRoot()
-        let pkgRoot = repoRoot.appendingPathComponent("tools/api-coverage")
+        let pkgRoot = repoRoot.appendingPathComponent("stella")
         self.appProductPath = repoRoot.appendingPathComponent("AppProduct").path
         self.umcAppPath = repoRoot.appendingPathComponent("UMCApp").path
         self.blameRoot = repoRoot.path
