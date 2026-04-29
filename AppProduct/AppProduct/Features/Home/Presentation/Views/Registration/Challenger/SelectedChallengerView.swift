@@ -28,9 +28,9 @@ struct SelectedChallengerView: View {
     @State var searchNavi: Bool = false
 
     /// 현재 사용자의 memberId (삭제 방지용)
-    private var myMemberIdSet: Set<Int> {
-        let id = UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
-        return id != 0 ? [id] : []
+    private var myMemberIdSet: Set<String> {
+        guard let id = AppStorageKey.memberIdString() else { return [] }
+        return [id]
     }
     
     // MARK: - Body

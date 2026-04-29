@@ -584,8 +584,8 @@ private struct SignUpPreviewVerifyCodeUseCase: VerifyEmailCodeUseCaseProtocol {
 }
 
 private struct SignUpPreviewRegisterUseCase: RegisterUseCaseProtocol {
-    func execute(request: RegisterRequestDTO) async throws -> Int {
-        1
+    func execute(request: RegisterRequestDTO) async throws -> String {
+        "1"
     }
 }
 

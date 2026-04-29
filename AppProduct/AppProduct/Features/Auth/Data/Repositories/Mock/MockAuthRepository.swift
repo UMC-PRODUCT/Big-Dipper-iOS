@@ -59,7 +59,7 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         return [
             MemberOAuth(
                 memberOAuthId: 1,
-                memberId: 102,
+                memberId: "102",
                 provider: .kakao
             )
         ]
@@ -73,12 +73,12 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         return [
             MemberOAuth(
                 memberOAuthId: 1,
-                memberId: 102,
+                memberId: "102",
                 provider: .kakao
             ),
             MemberOAuth(
                 memberOAuthId: 2,
-                memberId: 102,
+                memberId: "102",
                 provider: .apple
             )
         ]
@@ -109,9 +109,9 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
 
     func register(
         request: RegisterRequestDTO
-    ) async throws -> Int {
+    ) async throws -> String {
         try await Task.sleep(for: .milliseconds(500))
-        return 1
+        return "1"
     }
 
     func registerExistingChallenger(

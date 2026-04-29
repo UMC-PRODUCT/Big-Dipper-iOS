@@ -212,6 +212,6 @@ final class NoticeViewModel {
     }
 
     var currentMemberId: Int {
-        UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
+        AppStorageKey.legacyMemberIdInt()
     }
 }

@@ -30,7 +30,7 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
     }
 
     private var currentMemberID: Int {
-        UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
+        AppStorageKey.legacyMemberIdInt()
     }
 
     // MARK: - Function

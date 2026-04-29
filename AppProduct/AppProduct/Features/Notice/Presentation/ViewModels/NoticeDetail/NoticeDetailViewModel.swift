@@ -40,7 +40,7 @@ final class NoticeDetailViewModel {
     }
 
     var currentMemberId: Int {
-        UserDefaults.standard.integer(forKey: AppStorageKey.memberId)
+        AppStorageKey.legacyMemberIdInt()
     }
 
     // MARK: - Core State

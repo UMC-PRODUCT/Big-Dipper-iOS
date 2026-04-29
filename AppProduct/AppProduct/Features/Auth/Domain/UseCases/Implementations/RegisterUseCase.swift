@@ -24,7 +24,7 @@ final class RegisterUseCase: RegisterUseCaseProtocol {
 
     // MARK: - Function
 
-    func execute(request: RegisterRequestDTO) async throws -> Int {
+    func execute(request: RegisterRequestDTO) async throws -> String {
         try await repository.register(request: request)
     }
 }

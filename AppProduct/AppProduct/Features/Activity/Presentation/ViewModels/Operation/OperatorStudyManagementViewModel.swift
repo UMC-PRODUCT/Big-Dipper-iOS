@@ -299,9 +299,9 @@ final class OperatorStudyManagementViewModel {
             )
             studyGroupDetails[index].members = selectedChallengers.map {
                 StudyGroupMember(
-                    serverID: String($0.memberId),
+                    serverID: $0.memberId,
                     challengerID: resolvedChallengerIDs[$0.selectionKey],
-                    memberID: $0.memberId,
+                    memberID: Int($0.memberId),
                     name: $0.name,
                     nickname: $0.nickname,
                     university: $0.schoolName,
@@ -419,9 +419,7 @@ final class OperatorStudyManagementViewModel {
         memberUpdateTargetGroup = group
         selectedChallengers = group.members.map { member in
             ChallengerInfo(
-                memberId: member.memberID
-                    ?? Int(member.serverID)
-                    ?? 0,
+                memberId: member.memberID.map(String.init) ?? member.serverID,
                 challengerId: member.challengerID
                     ?? member.memberID
                     ?? Int(member.serverID)
@@ -640,9 +638,9 @@ final class OperatorStudyManagementViewModel {
             part: part,
             createdDate: Date(),
             leader: StudyGroupMember(
-                serverID: String(leader.memberId),
+                serverID: leader.memberId,
                 challengerID: leaderId,
-                memberID: leader.memberId,
+                memberID: Int(leader.memberId),
                 name: leader.name,
                 nickname: leader.nickname,
                 university: leader.schoolName,
@@ -651,9 +649,9 @@ final class OperatorStudyManagementViewModel {
             ),
             members: members.compactMap {
                 $0.memberId != leader.memberId ? StudyGroupMember(
-                    serverID: String($0.memberId),
+                    serverID: $0.memberId,
                     challengerID: resolvedChallengerIDs[$0.selectionKey],
-                    memberID: $0.memberId,
+                    memberID: Int($0.memberId),
                     name: $0.name,
                     nickname: $0.nickname,
                     university: $0.schoolName,
@@ -973,15 +971,16 @@ final class OperatorStudyManagementViewModel {
     private func resolveChallengerID(
         for challenger: ChallengerInfo
     ) async -> Int? {
+        let memberIdInt = Int(challenger.memberId) ?? 0
         let hasDistinctChallengerID = challenger.challengerId > 0 &&
-            challenger.challengerId != challenger.memberId
+            challenger.challengerId != memberIdInt
         if hasDistinctChallengerID {
             return challenger.challengerId
         }
 
         do {
             if let resolvedID = try await useCase.resolveChallengerId(
-                memberId: challenger.memberId,
+                memberId: memberIdInt,
                 preferredGeneration: challenger.gen
             ),
                resolvedID > 0 {
@@ -991,7 +990,7 @@ final class OperatorStudyManagementViewModel {
             // 조회 실패 시 아래 fallback 규칙으로 처리
         }
 
-        if challenger.memberId <= 0, challenger.challengerId > 0 {
+        if memberIdInt <= 0, challenger.challengerId > 0 {
             return challenger.challengerId
         }
 

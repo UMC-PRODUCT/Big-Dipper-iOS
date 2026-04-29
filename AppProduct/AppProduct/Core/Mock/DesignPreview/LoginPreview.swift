@@ -49,7 +49,7 @@ private struct PreviewLoginUseCase: LoginUseCaseProtocol {
 private struct PreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
     func execute() async throws -> HomeProfileResult {
         HomeProfileResult(
-            memberId: 1,
+            memberId: "1",
             schoolId: 1,
             schoolName: "중앙대학교",
             latestChallengerId: nil,
@@ -97,8 +97,8 @@ private struct PreviewVerifyCodeUseCase: VerifyEmailCodeUseCaseProtocol {
 }
 
 private struct PreviewRegisterUseCase: RegisterUseCaseProtocol {
-    func execute(request: RegisterRequestDTO) async throws -> Int {
-        1
+    func execute(request: RegisterRequestDTO) async throws -> String {
+        "1"
     }
 }
 

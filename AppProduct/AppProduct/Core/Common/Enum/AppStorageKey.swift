@@ -59,3 +59,34 @@ enum AppStorageKey {
     /// 공지 탭에서 현재 선택한 기수 ID (공지 작성 진입 시 사용)
     static let noticeSelectedGisuId: String = "noticeSelectedGisuId"
 }
+
+// MARK: - Member ID 어댑터
+
+extension AppStorageKey {
+
+    /// 멤버 ID를 `String`으로 조회합니다.
+    ///
+    /// 신규 저장값(`String`)을 우선 사용하고, 레거시 `Int` 저장값을 발견하면
+    /// 문자열로 변환해 반환합니다. 둘 다 없으면 `nil`을 반환합니다.
+    static func memberIdString(in defaults: UserDefaults = .standard) -> String? {
+        if let value = defaults.string(forKey: memberId), !value.isEmpty {
+            return value
+        }
+        let legacyInt = defaults.integer(forKey: memberId)
+        return legacyInt > 0 ? String(legacyInt) : nil
+    }
+
+    /// 멤버 ID를 레거시 `Int` 형태로 조회합니다.
+    ///
+    /// 신규 `String` 저장값을 `Int`로 변환해 우선 반환하고, 변환에 실패하거나
+    /// `String` 값이 없으면 레거시 `Int` 저장값으로 폴백합니다.
+    /// `Int` 식별자를 기대하는 out-of-scope 호출자(Activity / Notice / AppDelegate)가
+    /// 점진적 마이그레이션 동안 사용합니다.
+    static func legacyMemberIdInt(in defaults: UserDefaults = .standard) -> Int {
+        if let stringValue = defaults.string(forKey: memberId),
+           let intValue = Int(stringValue) {
+            return intValue
+        }
+        return defaults.integer(forKey: memberId)
+    }
+}

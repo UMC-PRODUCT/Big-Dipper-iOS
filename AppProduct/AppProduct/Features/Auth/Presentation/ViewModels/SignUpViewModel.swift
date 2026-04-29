@@ -72,8 +72,8 @@ final class SignUpViewModel {
     /// 이메일 인증 토큰 (코드 검증 후 저장)
     private(set) var emailVerificationToken: String?
 
-    /// 회원가입 상태
-    private(set) var registerState: Loadable<Int> = .idle
+    /// 회원가입 상태 (성공 시 서버 응답 memberId 보관)
+    private(set) var registerState: Loadable<String> = .idle
 
     /// 폼 유효성 검증 상태
     var isFormValid: Bool {

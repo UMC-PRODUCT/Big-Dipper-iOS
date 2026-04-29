@@ -198,11 +198,10 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
     /// 회원가입을 수행합니다.
     ///
     /// - Parameter request: 회원가입 요청 DTO
-    /// - Returns: 생성된 회원 ID
-    /// - Throws: `RepositoryError.decodingError` memberId 변환 실패 시
+    /// - Returns: 생성된 회원 ID (서버 응답 String 기준)
     func register(
         request: RegisterRequestDTO
-    ) async throws -> Int {
+    ) async throws -> String {
         do {
             let response = try await adapter.requestWithoutAuth(
                 AuthRouter.register(body: request)
@@ -212,13 +211,7 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
                 from: response.data
             )
             let dto = try apiResponse.unwrap()
-            // 서버에서 memberId를 String으로 넘겨줌에 따른 타입 변환
-            guard let id = Int(dto.memberId) else {
-                throw RepositoryError.decodingError(
-                    detail: "memberId 변환 실패: \(dto.memberId)"
-                )
-            }
-            return id
+            return dto.memberId
         } catch let NetworkError.requestFailed(statusCode, data) {
             #if DEBUG
             if let data,

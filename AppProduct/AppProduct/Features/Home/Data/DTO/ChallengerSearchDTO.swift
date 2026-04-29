@@ -60,7 +60,8 @@ struct ChallengerSearchResponseDTO: Codable {
 
 /// 챌린저 검색 결과 항목 DTO
 struct ChallengerSearchItemDTO: Codable {
-    let memberId: Int
+    /// 멤버 ID (서버 응답 String 기준)
+    let memberId: String
     let challengerId: Int
     let nickname: String
     let name: String
@@ -81,7 +82,7 @@ struct ChallengerSearchItemDTO: Codable {
     }
 
     init(
-        memberId: Int,
+        memberId: String,
         challengerId: Int,
         nickname: String,
         name: String,
@@ -102,8 +103,9 @@ struct ChallengerSearchItemDTO: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        memberId = try container.decodeIntFlexibleIfPresent(forKey: .memberId) ?? 0
-        challengerId = try container.decodeIntFlexibleIfPresent(forKey: .challengerId) ?? memberId
+        memberId = try container.decodeStringFlexibleIfPresent(forKey: .memberId) ?? ""
+        let fallbackChallengerId = Int(memberId) ?? 0
+        challengerId = try container.decodeIntFlexibleIfPresent(forKey: .challengerId) ?? fallbackChallengerId
         nickname = try container.decodeIfPresent(String.self, forKey: .nickname) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         part = try container.decodeIfPresent(UMCPartType.self, forKey: .part) ?? .pm

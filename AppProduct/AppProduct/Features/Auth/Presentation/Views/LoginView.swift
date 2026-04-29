@@ -213,7 +213,7 @@ private struct LoginViewPreviewLoginUseCase: LoginUseCaseProtocol {
 private struct LoginViewPreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
     func execute() async throws -> HomeProfileResult {
         HomeProfileResult(
-            memberId: 1,
+            memberId: "1",
             schoolId: 1,
             schoolName: "UMC University",
             latestChallengerId: 1,

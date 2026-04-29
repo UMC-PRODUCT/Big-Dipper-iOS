@@ -13,6 +13,6 @@ import Foundation
 protocol RegisterUseCaseProtocol {
     /// 회원가입 실행
     /// - Parameter request: 회원가입 요청 DTO
-    /// - Returns: 생성된 회원 ID
-    func execute(request: RegisterRequestDTO) async throws -> Int
+    /// - Returns: 생성된 회원 ID (서버 응답 String 기준)
+    func execute(request: RegisterRequestDTO) async throws -> String
 }

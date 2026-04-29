@@ -80,10 +80,10 @@ protocol AuthRepositoryProtocol: Sendable {
 
     /// 회원가입
     /// - Parameter request: 회원가입 요청 DTO
-    /// - Returns: 생성된 회원 ID
+    /// - Returns: 생성된 회원 ID (서버 응답 String 기준)
     func register(
         request: RegisterRequestDTO
-    ) async throws -> Int
+    ) async throws -> String
 
     /// 기존 챌린저 코드 인증
     /// - Parameter code: 운영진 발급 6자리 코드

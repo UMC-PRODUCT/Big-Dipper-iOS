@@ -16,8 +16,8 @@ struct MyProfileResponseDTO: Codable {
 
     // MARK: - Property
 
-    /// 멤버 고유 ID
-    let id: Int
+    /// 멤버 고유 ID (서버 응답 String 기준)
+    let id: String
     /// 이름
     let name: String
     /// 닉네임
@@ -55,7 +55,7 @@ struct MyProfileResponseDTO: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decodeIntFlexibleIfPresent(forKey: .id) ?? 0
+        id = try container.decodeStringFlexibleIfPresent(forKey: .id) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         nickname = try container.decodeIfPresent(String.self, forKey: .nickname) ?? ""
         email = try container.decodeIfPresent(String.self, forKey: .email) ?? ""
@@ -285,5 +285,18 @@ private extension KeyedDecodingContainer {
             return nil
         }
         return try? decodeIntFlexible(forKey: key)
+    }
+
+    func decodeStringFlexibleIfPresent(forKey key: Key) throws -> String? {
+        if let value = try? decode(String.self, forKey: key) {
+            return value
+        }
+        if let value = try? decode(Int.self, forKey: key) {
+            return String(value)
+        }
+        if let value = try? decode(Double.self, forKey: key) {
+            return String(Int(value))
+        }
+        return nil
     }
 }
