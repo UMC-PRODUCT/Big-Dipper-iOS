@@ -7,7 +7,7 @@ import Foundation
 
 // MARK: - MockCommunityRepository
 
-/// 게스트 세션 및 프리뷰용 Community Repository Mock 구현체
+/// 프리뷰 및 테스트용 Community Repository Mock 구현체
 final class MockCommunityRepository: CommunityRepositoryProtocol {
 
     func getSchools() async throws -> [String] {
@@ -35,7 +35,7 @@ final class MockCommunityRepository: CommunityRepositoryProtocol {
 
 // MARK: - MockCommunityPostRepository
 
-/// 게스트 세션 및 프리뷰용 Community Post Repository Mock 구현체
+/// 프리뷰 및 테스트용 Community Post Repository Mock 구현체
 final class MockCommunityPostRepository: CommunityPostRepositoryProtocol {
 
     func postPosts(request: PostRequestDTO) async throws {
@@ -57,7 +57,7 @@ final class MockCommunityPostRepository: CommunityPostRepositoryProtocol {
 
 // MARK: - MockCommunityDetailRepository
 
-/// 게스트 세션 및 프리뷰용 Community Detail Repository Mock 구현체
+/// 프리뷰 및 테스트용 Community Detail Repository Mock 구현체
 final class MockCommunityDetailRepository: CommunityDetailRepositoryProtocol {
 
     func deletePost(postId: Int) async throws {

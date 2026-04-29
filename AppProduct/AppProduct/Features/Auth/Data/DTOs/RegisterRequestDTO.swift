@@ -33,8 +33,8 @@ struct TermsAgreementDTO: Encodable {
 
     // MARK: - Property
 
-    /// 약관 ID
-    let termsId: Int
+    /// 약관 ID (서버 응답 문자열 기준)
+    let termsId: String
     /// 동의 여부
     let isAgreed: Bool
 }

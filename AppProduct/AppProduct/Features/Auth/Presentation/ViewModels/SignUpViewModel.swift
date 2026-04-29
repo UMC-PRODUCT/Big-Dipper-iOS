@@ -224,27 +224,13 @@ final class SignUpViewModel {
         // TODO: 약관 UI 복원 후 제거 - [25.2.10] 이재원
         let agreements = termsAgreements.isEmpty
             ? [
-                TermsAgreementDTO(termsId: 4, isAgreed: true),
-                TermsAgreementDTO(termsId: 2, isAgreed: true),
-                TermsAgreementDTO(termsId: 1, isAgreed: true)
+                TermsAgreementDTO(termsId: "4", isAgreed: true),
+                TermsAgreementDTO(termsId: "2", isAgreed: true),
+                TermsAgreementDTO(termsId: "1", isAgreed: true)
             ]
-            : termsAgreements.compactMap { key, value in
-                guard let termsId = Int(key) else { return nil }
-                return TermsAgreementDTO(termsId: termsId, isAgreed: value)
+            : termsAgreements.map { key, value in
+                TermsAgreementDTO(termsId: key, isAgreed: value)
             }
-
-        if !termsAgreements.isEmpty && agreements.count != termsAgreements.count {
-            registerState = .failed(
-                .validation(
-                    .invalidFormat(
-                        field: "termsId",
-                        expected: "numeric string"
-                    )
-                )
-            )
-            isLoading = false
-            return
-        }
 
         let request = RegisterRequestDTO(
             oAuthVerificationToken: oAuthVerificationToken,

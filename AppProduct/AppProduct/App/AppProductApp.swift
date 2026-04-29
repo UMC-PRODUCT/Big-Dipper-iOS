@@ -23,7 +23,6 @@ struct AppProductApp: App {
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var container: DIContainer
-    @State private var guestContainer: DIContainer
     @State private var didConfigureAppDelegate: Bool = false
     @State private var errorHandler: ErrorHandler = .init()
     @State private var appState: AppState = .splash
@@ -48,8 +47,6 @@ struct AppProductApp: App {
         case pendingApproval
         /// 메인 화면 (탭, 인증 세션)
         case main
-        /// 게스트 메인 화면 (탭, 비인증 세션)
-        case guestMain
     }
     
     init() {
@@ -60,7 +57,6 @@ struct AppProductApp: App {
                 modelContext: sharedModelContainer.mainContext
             )
         )
-        _guestContainer = State(initialValue: DIContainer.guest())
         try? Tips.configure()
     }
     
@@ -146,12 +142,6 @@ extension AppProductApp {
             case .main:
                 UmcTab()
                     .transition(rootTransition)
-
-            case .guestMain:
-                UmcTab()
-                    .environment(\.di, guestContainer)
-                    .environment(\.appSessionMode, .guest)
-                    .transition(rootTransition)
             }
         }
         .animation(.easeInOut(duration: 0.28), value: appState)
@@ -234,7 +224,6 @@ extension AppProductApp {
         AppFlow(
             showLogin: { transition(to: .login) },
             showMain: { transition(to: .main) },
-            showGuestMain: { transition(to: .guestMain) },
             showSignUp: {
                 verificationToken,
                 email,

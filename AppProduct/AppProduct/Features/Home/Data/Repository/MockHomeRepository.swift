@@ -7,7 +7,7 @@ import Foundation
 
 // MARK: - MockHomeRepository
 
-/// 게스트 세션 및 프리뷰용 Home Repository Mock 구현체
+/// 프리뷰 및 테스트용 Home Repository Mock 구현체
 ///
 /// 네트워크 없이 정적 데이터를 반환합니다.
 final class MockHomeRepository: HomeRepositoryProtocol {
@@ -40,7 +40,7 @@ final class MockHomeRepository: HomeRepositoryProtocol {
     func getScheduleDetail(
         scheduleId: Int
     ) async throws -> ScheduleDetailData {
-        throw DomainError.custom(message: "게스트 세션에서는 일정 상세를 조회할 수 없습니다.")
+        throw DomainError.custom(message: "Mock 환경에서는 일정 상세를 조회할 수 없습니다.")
     }
 
     func getRecentNotices(
@@ -54,7 +54,7 @@ final class MockHomeRepository: HomeRepositoryProtocol {
 
 // MARK: - MockScheduleRepository
 
-/// 게스트 세션 및 프리뷰용 Schedule Repository Mock 구현체
+/// 프리뷰 및 테스트용 Schedule Repository Mock 구현체
 final class MockScheduleRepository: ScheduleRepositoryProtocol {
 
     func generateSchedule(schedule: GenerateScheduleRequetDTO) async throws {
@@ -72,7 +72,7 @@ final class MockScheduleRepository: ScheduleRepositoryProtocol {
 
 // MARK: - MockChallengerGenRepository
 
-/// 게스트 세션 및 프리뷰용 ChallengerGen Repository Mock 구현체
+/// 프리뷰 및 테스트용 ChallengerGen Repository Mock 구현체
 final class MockChallengerGenRepository: ChallengerGenRepositoryProtocol {
 
     func replaceMappings(_ pairs: [(gen: Int, gisuId: Int)]) throws {}
@@ -84,7 +84,7 @@ final class MockChallengerGenRepository: ChallengerGenRepositoryProtocol {
 
 // MARK: - MockChallengerSearchRepository
 
-/// 게스트 세션 및 프리뷰용 ChallengerSearch Repository Mock 구현체
+/// 프리뷰 및 테스트용 ChallengerSearch Repository Mock 구현체
 final class MockChallengerSearchRepository: ChallengerSearchRepositoryProtocol {
 
     func searchChallengers(

@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 게스트 세션 및 프리뷰용 NoticeRead Repository Mock 구현체
+/// 프리뷰 및 테스트용 NoticeRead Repository Mock 구현체
 ///
 /// SwiftData 없이 메모리 기반으로 읽음 상태를 관리합니다.
 final class MockNoticeReadRepository: NoticeReadRepositoryProtocol {
