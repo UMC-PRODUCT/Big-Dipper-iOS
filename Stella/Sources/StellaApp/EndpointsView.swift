@@ -100,18 +100,16 @@ struct EndpointsView: View {
 
     private var table: some View {
         ScrollView([.vertical, .horizontal]) {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section {
-                    ForEach(rows) { row in
-                        endpointRow(row)
-                            .id(row.id)
-                    }
-                } header: {
-                    endpointHeader
+            VStack(alignment: .leading, spacing: 0) {
+                endpointHeader
+                ForEach(rows) { row in
+                    endpointRow(row)
+                        .id(row.id)
                 }
             }
             .frame(minWidth: tableMinWidth, maxWidth: .infinity, alignment: .topLeading)
         }
+        .defaultScrollAnchor(.topLeading)
         .background(.background)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -515,6 +513,7 @@ private struct EndpointDetailView: View {
                 }
             }
             .padding(16)
+            .padding(.bottom, 44)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -544,6 +543,7 @@ private struct EndpointDetailView: View {
                 }
             }
             .padding(16)
+            .padding(.bottom, 44)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
