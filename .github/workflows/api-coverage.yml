@@ -80,7 +80,7 @@ jobs:
             --umc-app ../UMCApp \
             --blame-root .. \
             --out coverage.json \
-            "${extra[@]}"
+            ${extra[@]+"${extra[@]}"}
 
       - name: Render HTML report
         run: |
