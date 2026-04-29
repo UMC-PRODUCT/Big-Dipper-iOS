@@ -1,0 +1,115 @@
+name: API Coverage
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [ "develop" ]
+    paths:
+      - "stella/**"
+      - "AppProduct/**/Router/**"
+      - "UMCApp/Features/**/Data/**/Router/**"
+      - ".github/workflows/api-coverage.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: api-coverage
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Scan & render
+    runs-on: macos-26
+
+    defaults:
+      run:
+        working-directory: stella
+
+    outputs:
+      pages-artifact: ${{ steps.upload-pages.outputs.artifact_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26.4+
+        run: |
+          XCODE_PATH=$(ls -d /Applications/Xcode_26.4*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -z "$XCODE_PATH" ]; then
+            echo "Xcode 26.4+ not found on runner. Available:"
+            ls -d /Applications/Xcode_*.app 2>/dev/null || true
+            exit 1
+          fi
+          echo "Selecting $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          xcodebuild -version
+
+      - name: Cache SwiftPM build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            stella/.build
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-apicov-${{ hashFiles('stella/Package.resolved', 'stella/Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-apicov-
+
+      - name: Build apicov
+        run: swift build -c release --product apicov
+
+      - name: Run scan
+        env:
+          UMC_API_USER: ${{ secrets.UMC_API_USER }}
+          UMC_API_PASS: ${{ secrets.UMC_API_PASS }}
+        run: |
+          set -euo pipefail
+          extra=()
+          [ -f authors.yml ]   && extra+=("--authors"   "authors.yml")
+          [ -f overrides.yml ] && extra+=("--overrides" "overrides.yml")
+          [ -f owners.yml ]    && extra+=("--owners"    "owners.yml")
+
+          .build/release/apicov scan \
+            --openapi-url https://dev.api.umc.it.kr/docs-json \
+            --auth-env UMC_API_USER:UMC_API_PASS \
+            --app-product ../AppProduct \
+            --umc-app ../UMCApp \
+            --blame-root .. \
+            --out coverage.json \
+            "${extra[@]}"
+
+      - name: Render HTML report
+        run: |
+          mkdir -p _site
+          .build/release/apicov report coverage.json --out _site/index.html
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-snapshot
+          path: stella/coverage.json
+          retention-days: 30
+
+      - name: Upload Pages artifact
+        id: upload-pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: stella/_site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: scan
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

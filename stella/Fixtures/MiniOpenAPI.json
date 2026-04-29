@@ -1,0 +1,16 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Mini API", "version": "1.0.0" },
+  "paths": {
+    "/notices": {
+      "get":  { "operationId": "getAllNotices", "summary": "공지 전체 조회", "tags": ["Notice"] },
+      "post": { "operationId": "postNotice",    "summary": "공지 생성",      "tags": ["Notice"] }
+    },
+    "/notices/{id}": {
+      "get": { "operationId": "getDetailNotice", "summary": "공지 상세", "tags": ["Notice"] }
+    },
+    "/auth/login": {
+      "post": { "operationId": "login", "summary": "로그인", "tags": ["Auth"] }
+    }
+  }
+}
