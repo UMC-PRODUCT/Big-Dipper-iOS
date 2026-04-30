@@ -51,6 +51,7 @@ final class ScanModel {
     var openAPIFile: String = ""
     var basicUser: String = ""
     var basicPass: String = ""
+    var basicAuthAutoLogin = false
     var appProductPath: String = ""
     var umcAppPath: String = ""
     var blameRoot: String = ""
@@ -59,6 +60,9 @@ final class ScanModel {
     var ownersPath: String = ""
     var apiBaseURL: String = "https://dev.api.umc.it.kr"
     var bearerToken: String = ""
+    var bearerTokenSaveMessage: String = ""
+    var isIssuingAccessToken = false
+    var tokenIssueMessage: String = ""
     var manualOwners: [EditableOwner] = []
     var ownerAssignments: [String: String] = [:]
 
@@ -119,6 +123,11 @@ final class ScanModel {
         if let v = defaults.string(forKey: "apiBaseURL"), !v.isEmpty { apiBaseURL = v }
         basicUser = defaults.string(forKey: "basicUser") ?? ""
         basicPass = defaults.string(forKey: "basicPass") ?? ""
+        if defaults.object(forKey: "basicAuthAutoLogin") != nil {
+            basicAuthAutoLogin = defaults.bool(forKey: "basicAuthAutoLogin")
+        } else {
+            basicAuthAutoLogin = !basicUser.isEmpty || !basicPass.isEmpty
+        }
         bearerToken = KeychainStore.read("bearerToken")
         manualOwners = loadJSON([EditableOwner].self, key: "manualOwners") ?? []
         ownerAssignments = loadJSON([String: String].self, key: "ownerAssignments") ?? [:]
@@ -137,9 +146,17 @@ final class ScanModel {
         defaults.set(apiBaseURL, forKey: "apiBaseURL")
         defaults.set(basicUser, forKey: "basicUser")
         defaults.set(basicPass, forKey: "basicPass")
+        defaults.set(basicAuthAutoLogin, forKey: "basicAuthAutoLogin")
         KeychainStore.write(bearerToken, account: "bearerToken")
         saveJSON(manualOwners, key: "manualOwners")
         saveJSON(ownerAssignments, key: "ownerAssignments")
+    }
+
+    func saveBearerToken() {
+        persistDefaults()
+        bearerTokenSaveMessage = bearerToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Bearer 토큰이 비어 있는 상태로 저장됐습니다."
+            : "Bearer 토큰이 저장됐습니다."
     }
 
     // MARK: - Scan
@@ -171,7 +188,7 @@ final class ScanModel {
                 ])
             }
             let auth: BasicAuth?
-            if !basicUser.isEmpty || !basicPass.isEmpty {
+            if basicAuthAutoLogin && (!basicUser.isEmpty || !basicPass.isEmpty) {
                 auth = BasicAuth(user: basicUser, password: basicPass)
             } else {
                 auth = nil
@@ -509,6 +526,22 @@ final class ScanModel {
 
     // MARK: - API test
 
+    func issueAccessToken() async {
+        persistDefaults()
+        isIssuingAccessToken = true
+        tokenIssueMessage = ""
+        defer { isIssuingAccessToken = false }
+
+        do {
+            let token = try await requestAccessToken()
+            bearerToken = token
+            persistDefaults()
+            tokenIssueMessage = "테스트 토큰 발급 완료"
+        } catch {
+            tokenIssueMessage = "토큰 발급 실패: \((error as NSError).localizedDescription)"
+        }
+    }
+
     func runAPITest(entry: CoverageSnapshot.EndpointEntry) async {
         persistDefaults()
         isAPITestRunning = true
@@ -540,18 +573,83 @@ final class ScanModel {
         return String(data: data, encoding: .utf8) ?? "<\(data.count) bytes>"
     }
 
+    private func requestAccessToken() async throws -> String {
+        let trimmedBaseURL = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let baseURL = URL(string: trimmedBaseURL) else {
+            throw NSError(domain: "StellaApp", code: 30, userInfo: [
+                NSLocalizedDescriptionKey: "API Base URL이 올바르지 않습니다."
+            ])
+        }
+
+        let url = baseURL.appendingPathComponent("test/token/access")
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            throw NSError(domain: "StellaApp", code: 33, userInfo: [
+                NSLocalizedDescriptionKey: "토큰 발급 URL을 만들 수 없습니다."
+            ])
+        }
+        components.queryItems = [URLQueryItem(name: "memberId", value: "1")]
+
+        guard let tokenURL = components.url else {
+            throw NSError(domain: "StellaApp", code: 34, userInfo: [
+                NSLocalizedDescriptionKey: "토큰 발급 URL이 올바르지 않습니다."
+            ])
+        }
+
+        var request = URLRequest(url: tokenURL)
+        request.httpMethod = "GET"
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            let body = String(data: data, encoding: .utf8)
+            throw NSError(domain: "StellaApp", code: http.statusCode, userInfo: [
+                NSLocalizedDescriptionKey: body ?? "HTTP \(http.statusCode)"
+            ])
+        }
+
+        guard let token = extractAccessToken(from: data), !token.isEmpty else {
+            throw NSError(domain: "StellaApp", code: 32, userInfo: [
+                NSLocalizedDescriptionKey: "응답에서 accessToken을 찾을 수 없습니다."
+            ])
+        }
+        return token
+    }
+
+    private func extractAccessToken(from data: Data) -> String? {
+        if let raw = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !raw.isEmpty,
+           !raw.hasPrefix("{") {
+            return raw.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+        }
+
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        if let token = object["accessToken"] as? String {
+            return token
+        }
+        if let result = object["result"] as? String {
+            return result
+        }
+        if let result = object["result"] as? [String: Any],
+           let token = result["accessToken"] as? String {
+            return token
+        }
+        return nil
+    }
+
     func prepareAPITestTemplate(for entry: CoverageSnapshot.EndpointEntry, overwrite: Bool = false) {
         let pathFs = pathFields(for: entry)
         let queryFs = queryFields(for: entry)
 
         if overwrite || apiPathValues.isEmpty {
             apiPathValues = Dictionary(uniqueKeysWithValues: pathFs.map {
-                ($0.name, placeholderValue(name: $0.name, schema: $0.type))
+                ($0.name, placeholderValue(name: $0.name))
             })
         }
         if overwrite || apiQueryValues.isEmpty {
             apiQueryValues = Dictionary(uniqueKeysWithValues: queryFs.map {
-                ($0.name, placeholderValue(name: $0.name, schema: $0.type))
+                ($0.name, placeholderValue(name: $0.name))
             })
         }
         if overwrite || apiRequestBody.isEmpty {
@@ -656,14 +754,11 @@ final class ScanModel {
         return request
     }
 
-    private func placeholderValue(name: String, schema: String? = nil) -> String {
+    private func placeholderValue(name: String) -> String {
         let lowered = name.lowercased()
-        if lowered.contains("id") { return "1" }
-        if lowered.contains("page") || lowered.contains("cursor") { return "0" }
-        if lowered.contains("size") || lowered.contains("limit") { return "20" }
-        if schema == "integer" || schema == "number" { return "0" }
-        if schema == "boolean" { return "false" }
-        return "string"
+        if lowered.contains("page") { return "0" }
+        if lowered.contains("size") { return "20" }
+        return ""
     }
 
     // MARK: - Helpers

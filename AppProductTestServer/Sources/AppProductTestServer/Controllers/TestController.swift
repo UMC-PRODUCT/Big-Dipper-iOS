@@ -13,6 +13,7 @@ struct TestController: RouteCollection {
         routes.get("test", use: testEndpoint)
         routes.get("public", use: publicEndpoint)
         routes.post("test", use: testPostEndpoint)
+        routes.get("test", "token", "access", use: issueAccessToken)
 
         routes.get("protected", use: protectedEndpoint)
         routes.get("user", use: getUserEndpoint)
@@ -29,6 +30,11 @@ struct TestController: RouteCollection {
     @Sendable
     func testPostEndpoint(req: Request) async throws -> CommonDTO<String> {
         return CommonDTO.success("테스트 성공")
+    }
+
+    @Sendable
+    func issueAccessToken(req: Request) async throws -> CommonDTO<String> {
+        CommonDTO.success("valid_token")
     }
 
     @Sendable

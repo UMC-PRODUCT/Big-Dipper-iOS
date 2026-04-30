@@ -712,18 +712,33 @@ private struct EndpointDetailView: View {
     }
 
     private var responsesList: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             ForEach(entry.responses, id: \.statusCode) { response in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(response.statusCode)
-                        .font(.system(.caption, design: .monospaced).weight(.bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
-                    Text(response.description ?? "—")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(response.statusCode)
+                            .font(.system(.caption, design: .monospaced).weight(.bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                        Text(response.description ?? "—")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let content = response.content {
+                        Text(content)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let example = response.example {
+                        codeBlock(example, minHeight: 90, maxHeight: 240, highlightJSON: true)
+                    }
                 }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 6))
             }
         }
     }

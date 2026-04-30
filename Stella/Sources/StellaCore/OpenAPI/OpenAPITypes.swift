@@ -67,10 +67,31 @@ public struct OpenAPIParameter: Codable, Sendable, Equatable {
 public struct OpenAPIResponse: Codable, Sendable, Equatable {
     public let statusCode: String
     public let description: String?
+    public let content: String?
+    public let example: String?
 
-    public init(statusCode: String, description: String?) {
+    public init(
+        statusCode: String,
+        description: String?,
+        content: String? = nil,
+        example: String? = nil
+    ) {
         self.statusCode = statusCode
         self.description = description
+        self.content = content
+        self.example = example
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case statusCode, description, content, example
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        statusCode = try container.decode(String.self, forKey: .statusCode)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        content = try container.decodeIfPresent(String.self, forKey: .content)
+        example = try container.decodeIfPresent(String.self, forKey: .example)
     }
 }
 

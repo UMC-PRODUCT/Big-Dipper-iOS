@@ -56,5 +56,10 @@ let package = Package(
             path: "Tests/apicovTests",
             resources: [.copy("../../Fixtures")]
         ),
+        .testTarget(
+            name: "StellaAppTests",
+            dependencies: ["StellaApp", "StellaCore"],
+            path: "Tests/StellaAppTests"
+        ),
     ]
 )

@@ -35,7 +35,7 @@ public enum OpenAPIParser {
                     parameters: parseParameters(opDict["parameters"]),
                     requestBody: parseRequestBody(opDict["requestBody"]),
                     requestBodyExample: parseRequestBodyExample(opDict["requestBody"], root: root),
-                    responses: parseResponses(opDict["responses"])
+                    responses: parseResponses(opDict["responses"], root: root)
                 ))
             }
         }
@@ -95,15 +95,44 @@ public enum OpenAPIParser {
         return String(data: data, encoding: .utf8)
     }
 
-    private static func parseResponses(_ raw: Any?) -> [OpenAPIResponse] {
+    private static func parseResponses(_ raw: Any?, root: [String: Any]) -> [OpenAPIResponse] {
         guard let responses = raw as? [String: Any] else { return [] }
         return responses.keys.sorted().map { status in
             let item = responses[status] as? [String: Any]
             return OpenAPIResponse(
                 statusCode: status,
-                description: item?["description"] as? String
+                description: item?["description"] as? String,
+                content: parseContentSummary(item?["content"]),
+                example: parseContentExample(item?["content"], root: root)
             )
         }
+    }
+
+    private static func parseContentSummary(_ raw: Any?) -> String? {
+        guard let content = raw as? [String: Any], !content.isEmpty else { return nil }
+        return "content: " + content.keys.sorted().joined(separator: ", ")
+    }
+
+    private static func parseContentExample(_ raw: Any?, root: [String: Any]) -> String? {
+        guard let content = raw as? [String: Any],
+              let schema = preferredMedia(from: content)?["schema"] else {
+            return nil
+        }
+
+        let example = exampleValue(from: schema, root: root, depth: 0)
+        guard JSONSerialization.isValidJSONObject(example),
+              let data = try? JSONSerialization.data(
+                withJSONObject: example,
+                options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+              )
+        else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func preferredMedia(from content: [String: Any]) -> [String: Any]? {
+        let preferred = ["application/json", "application/*+json"]
+        return preferred.compactMap { content[$0] as? [String: Any] }.first
+            ?? content.values.compactMap { $0 as? [String: Any] }.first
     }
 
     private static func compactDescription(_ raw: Any?) -> String? {
@@ -123,7 +152,7 @@ public enum OpenAPIParser {
     }
 
     private static func exampleValue(from raw: Any, root: [String: Any], depth: Int) -> Any {
-        guard depth < 5, let schema = raw as? [String: Any] else {
+        guard depth < 10, let schema = raw as? [String: Any] else {
             return ""
         }
 

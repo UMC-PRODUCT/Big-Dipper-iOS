@@ -37,12 +37,27 @@ struct ScanFormView: View {
                         .textFieldStyle(.roundedBorder)
                 }
                 LabeledContent("Basic 인증") {
-                    HStack {
-                        TextField("사용자", text: $model.basicUser)
-                            .textFieldStyle(.roundedBorder)
-                        SecureField("비밀번호", text: $model.basicPass)
-                            .textFieldStyle(.roundedBorder)
-                        Button("저장") { model.persistDefaults() }
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            TextField("사용자", text: $model.basicUser)
+                                .textFieldStyle(.roundedBorder)
+                            SecureField("비밀번호", text: $model.basicPass)
+                                .textFieldStyle(.roundedBorder)
+                            Toggle("자동 로그인", isOn: $model.basicAuthAutoLogin)
+                                .toggleStyle(.switch)
+                                .onChange(of: model.basicAuthAutoLogin) { _, _ in
+                                    model.persistDefaults()
+                                }
+                        }
+                        Text("켜두면 스캔 시 저장된 Basic 인증 정보를 자동으로 사용합니다.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .onChange(of: model.basicUser) { _, _ in
+                        if model.basicAuthAutoLogin { model.persistDefaults() }
+                    }
+                    .onChange(of: model.basicPass) { _, _ in
+                        if model.basicAuthAutoLogin { model.persistDefaults() }
                     }
                 }
             case .file:
@@ -66,11 +81,43 @@ struct ScanFormView: View {
                 TextField("https://dev.api.umc.it.kr", text: $model.apiBaseURL)
                     .textFieldStyle(.roundedBorder)
             }
+            LabeledContent("토큰 발급") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Button {
+                            Task { await model.issueAccessToken() }
+                        } label: {
+                            if model.isIssuingAccessToken {
+                                Label("발급 중", systemImage: "hourglass")
+                            } else {
+                                Label("토큰 발급", systemImage: "key.fill")
+                            }
+                        }
+                        .disabled(model.isIssuingAccessToken)
+                        Text("/test/token/access?memberId=1")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if !model.tokenIssueMessage.isEmpty {
+                        Text(model.tokenIssueMessage)
+                            .font(.caption)
+                            .foregroundStyle(model.tokenIssueMessage.contains("완료") ? .green : .red)
+                    }
+                }
+            }
             LabeledContent("Bearer 토큰") {
-                HStack {
-                    SecureField("로그인 후 발급받은 access token", text: $model.bearerToken)
-                        .textFieldStyle(.roundedBorder)
-                    Button("저장") { model.persistDefaults() }
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        SecureField("로그인 후 발급받은 access token", text: $model.bearerToken)
+                            .textFieldStyle(.roundedBorder)
+                        Button("저장") { model.saveBearerToken() }
+                    }
+                    if !model.bearerTokenSaveMessage.isEmpty {
+                        Text(model.bearerTokenSaveMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
