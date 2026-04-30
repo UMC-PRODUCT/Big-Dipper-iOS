@@ -147,6 +147,26 @@ final class ScanModelTemplateTests: XCTestCase {
         XCTAssertTrue(ownersYAML.contains("owner: lee@example.com"))
     }
 
+    func testOwnerManagerCreatesMissingYAMLDirectories() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StellaOwnerYAMLMissingDirectory-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let authorsURL = directory.appendingPathComponent("tools/api-coverage/authors.yml")
+        let model = ScanModel()
+        model.authorsPath = authorsURL.path
+
+        model.upsertOwner(EditableOwner(
+            email: "one@example.com",
+            displayName: "원",
+            githubUsername: "one"
+        ))
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: authorsURL.path))
+        let authorsYAML = try String(contentsOf: authorsURL, encoding: .utf8)
+        XCTAssertTrue(authorsYAML.contains("email: one@example.com"))
+    }
+
     func testOwnerYAMLFilesLoadIntoEditableState() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("StellaOwnerYAMLLoad-\(UUID().uuidString)", isDirectory: true)

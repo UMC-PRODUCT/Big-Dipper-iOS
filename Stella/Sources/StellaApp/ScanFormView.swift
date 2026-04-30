@@ -17,8 +17,9 @@ struct ScanFormView: View {
                 OwnerManagerView(model: model)
             }
             .padding(24)
-            .frame(maxWidth: 860, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var openAPISection: some View {
@@ -72,6 +73,7 @@ struct ScanFormView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var apiRuntimeSection: some View {
@@ -121,6 +123,7 @@ struct ScanFormView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var projectsSection: some View {
@@ -130,6 +133,7 @@ struct ScanFormView: View {
             pathRow(label: "UMCApp", binding: $model.umcAppPath, key: \.umcAppPath)
             pathRow(label: "Blame 루트", binding: $model.blameRoot, key: \.blameRoot)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var metadataSection: some View {
@@ -145,6 +149,7 @@ struct ScanFormView: View {
                     model.loadOwnerYAMLFiles()
                 }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func pathRow(
@@ -202,7 +207,7 @@ private struct OwnerManagerView: View {
                     }
                     .tag(owner.id)
                 }
-                .frame(width: 260, height: 180)
+                .frame(minWidth: 260, idealWidth: 320, maxWidth: 420, minHeight: 180)
                 .onChange(of: selection) { _, newValue in
                     if let newValue,
                        let owner = model.manualOwners.first(where: { $0.id == newValue }) {
@@ -235,8 +240,10 @@ private struct OwnerManagerView: View {
                         .disabled(selection == nil)
                     }
                 }
-                .frame(maxWidth: 360)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
