@@ -11,41 +11,35 @@ import SwiftUI
 ///
 /// 이메일 인증, 로그인 ID, 비밀번호, 이름/닉네임, 학교, 약관 동의를 한 화면에서 입력받고
 /// 모든 검증이 통과하면 가입 버튼이 활성화됩니다. 가입 성공 시 서버가 토큰을 즉시 발급하여
-/// `appFlow.showPendingApproval()`로 전환합니다.
+/// `appFlow.showPendingApproval()` 또는 `showMain()`으로 전환합니다.
+///
+/// ## 구조
+/// 본 화면은 ViewModel 상태를 6개 섹션 컴포넌트(`Components/SignUp*Section.swift`)에
+/// 분배하고, 가입 완료/실패와 약관 링크 등 상태 변화 액션만 처리합니다. UI 세부 구현은 모두
+/// 섹션 컴포넌트가 담당합니다.
 struct SignUpByIdPwView: View {
 
     // MARK: - Property
 
     @State private var viewModel: SignUpByIdPwViewModel
+    /// 이메일 변경 감지용 스냅샷 — 값이 바뀌면 인증 상태를 리셋합니다.
     @State private var lastEmailSnapshot: String = ""
     @State private var alertPrompt: AlertPrompt?
-    @FocusState private var focusedField: Field?
+    @FocusState private var focusedField: SignUpByIdPwField?
 
     @Environment(\.appFlow) private var appFlow
     @Environment(\.di) private var di
     @Environment(\.openURL) private var openURL
     @Environment(ErrorHandler.self) private var errorHandler
 
+    /// 가입 완료 후 가입 승인 여부를 확인하기 위해 사용합니다.
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
-
-    // MARK: - Field
-
-    private enum Field: Hashable, CaseIterable {
-        case loginId
-        case password
-        case passwordConfirm
-        case name
-        case nickname
-    }
 
     // MARK: - Constant
 
     private enum Constants {
         static let naviSubTitle: String = "동아리 활동을 위해 정보를 입력해주세요."
         static let spacerSize: CGFloat = 30
-        static let termsTitle: String = "약관 동의"
-        static let allAgreeTitle: String = "전체 동의"
-        static let termsLoadFailedMessage: String = "약관 정보를 불러오지 못했습니다."
         static let signUpButtonTitle: String = "가입 완료"
     }
 
@@ -77,12 +71,58 @@ struct SignUpByIdPwView: View {
         NavigationStack {
             ScrollView(.vertical) {
                 VStack(spacing: Constants.spacerSize) {
-                    emailSection
-                    loginIdSection
-                    passwordSection
-                    nameNicknameSection
-                    schoolSection
-                    termsSection
+                    SignUpEmailSection(
+                        email: $viewModel.emailInput,
+                        onVerificationRequested: {
+                            try await viewModel.requestEmailVerification()
+                        },
+                        onVerificationComplete: { code in
+                            try await viewModel.verifyEmailCode(code)
+                        },
+                        onEmailChanged: handleEmailChange,
+                        onSubmit: { focusedField = .loginId }
+                    )
+
+                    SignUpLoginIdSection(
+                        loginId: $viewModel.loginIdInput,
+                        availability: viewModel.loginIdAvailability,
+                        focusBinding: $focusedField,
+                        onSubmit: { focusedField = .password }
+                    )
+
+                    SignUpPasswordSection(
+                        password: $viewModel.passwordInput,
+                        passwordConfirm: $viewModel.passwordConfirmInput,
+                        isPasswordValid: viewModel.isPasswordValid,
+                        isPasswordConfirmed: viewModel.isPasswordConfirmed,
+                        focusBinding: $focusedField,
+                        onConfirmSubmit: { focusedField = .name }
+                    )
+
+                    SignUpNameNicknameSection(
+                        name: $viewModel.nameInput,
+                        nickname: $viewModel.nicknameInput,
+                        focusBinding: $focusedField,
+                        onNicknameSubmit: { focusedField = nil }
+                    )
+
+                    SignUpSchoolSection(
+                        schoolsState: viewModel.schoolsState,
+                        selectedSchool: $viewModel.selectedSchool
+                    )
+
+                    SignUpTermsSection(
+                        termsState: viewModel.termsState,
+                        termsAgreements: viewModel.termsAgreements,
+                        isAllTermsAgreed: viewModel.isAllTermsAgreed,
+                        onToggleAll: { isAgreed in
+                            viewModel.toggleAllTerms(isAgreed)
+                        },
+                        onToggleRow: { id in
+                            viewModel.termsAgreements[id]?.toggle()
+                        },
+                        onOpenTerms: openTerms
+                    )
                 }
                 .safeAreaPadding(
                     .vertical,
@@ -110,289 +150,12 @@ struct SignUpByIdPwView: View {
             }
         }
     }
-}
 
-// MARK: - Sections
+    // MARK: - Subviews
 
-private extension SignUpByIdPwView {
-
-    var emailSection: some View {
-        FormEmailField(
-            title: "이메일",
-            placeholder: "example@example.com",
-            text: $viewModel.emailInput,
-            onVerificationRequested: {
-                try await viewModel.requestEmailVerification()
-            },
-            onVerificationComplete: { code in
-                try await viewModel.verifyEmailCode(code)
-            },
-            submitLabel: .next,
-            onSubmit: {
-                focusedField = .loginId
-            },
-            onEmailChanged: {
-                if lastEmailSnapshot != viewModel.emailInput {
-                    Task { @MainActor in
-                        viewModel.resetEmailVerification()
-                        lastEmailSnapshot = viewModel.emailInput
-                    }
-                }
-            }
-        )
-    }
-
-    var loginIdSection: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-            TitleLabel(title: "로그인 ID", isRequired: true)
-            HStack(spacing: DefaultSpacing.spacing8) {
-                TextField(
-                    "",
-                    text: $viewModel.loginIdInput,
-                    prompt: Text("아이디 입력").font(.callout)
-                )
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-                .foregroundStyle(.grey900)
-                .padding(DefaultConstant.defaultTextFieldPadding)
-                .glassEffect(.regular, in: .capsule)
-                .submitLabel(.next)
-                .focused($focusedField, equals: .loginId)
-                .onSubmit { focusedField = .password }
-
-                loginIdStatusIndicator
-            }
-            loginIdStatusMessage
-        }
-    }
-
-    @ViewBuilder
-    var loginIdStatusIndicator: some View {
-        switch viewModel.loginIdAvailability {
-        case .loading:
-            ProgressView()
-                .frame(width: 24, height: 24)
-        case .loaded(true):
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-        case .loaded(false), .failed:
-            Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(.red500)
-        case .idle:
-            EmptyView()
-        }
-    }
-
-    @ViewBuilder
-    var loginIdStatusMessage: some View {
-        switch viewModel.loginIdAvailability {
-        case .loaded(true):
-            Text("사용 가능한 아이디입니다.")
-                .appFont(.footnote, color: .green)
-                .padding(.leading, DefaultSpacing.spacing8)
-        case .loaded(false):
-            Text("이미 사용 중인 아이디입니다.")
-                .appFont(.footnote, color: .red500)
-                .padding(.leading, DefaultSpacing.spacing8)
-        case .failed(let error):
-            Text(error.userMessage)
-                .appFont(.footnote, color: .red500)
-                .padding(.leading, DefaultSpacing.spacing8)
-        case .idle, .loading:
-            EmptyView()
-        }
-    }
-
-    var passwordSection: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
-            VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-                TitleLabel(title: "비밀번호", isRequired: true)
-                SecureField(
-                    "",
-                    text: $viewModel.passwordInput,
-                    prompt: Text("8자 이상 입력").font(.callout)
-                )
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-                .foregroundStyle(.grey900)
-                .padding(DefaultConstant.defaultTextFieldPadding)
-                .glassEffect(.regular, in: .capsule)
-                .submitLabel(.next)
-                .focused($focusedField, equals: .password)
-                .onSubmit { focusedField = .passwordConfirm }
-
-                if !viewModel.passwordInput.isEmpty,
-                   !viewModel.isPasswordValid {
-                    Text("8자 이상 입력해 주세요.")
-                        .appFont(.footnote, color: .red500)
-                        .padding(.leading, DefaultSpacing.spacing8)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-                TitleLabel(title: "비밀번호 확인", isRequired: true)
-                SecureField(
-                    "",
-                    text: $viewModel.passwordConfirmInput,
-                    prompt: Text("비밀번호 다시 입력").font(.callout)
-                )
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-                .foregroundStyle(.grey900)
-                .padding(DefaultConstant.defaultTextFieldPadding)
-                .glassEffect(.regular, in: .capsule)
-                .submitLabel(.next)
-                .focused($focusedField, equals: .passwordConfirm)
-                .onSubmit { focusedField = .name }
-
-                if !viewModel.passwordConfirmInput.isEmpty,
-                   !viewModel.isPasswordConfirmed {
-                    Text("비밀번호가 일치하지 않습니다.")
-                        .appFont(.footnote, color: .red500)
-                        .padding(.leading, DefaultSpacing.spacing8)
-                }
-            }
-        }
-    }
-
-    var nameNicknameSection: some View {
-        HStack(alignment: .top, spacing: DefaultSpacing.spacing12) {
-            FormTextField(
-                title: "이름",
-                placeholder: "이름 입력",
-                text: $viewModel.nameInput,
-                isRequired: true,
-                submitLabel: .next,
-                onSubmit: { focusedField = .nickname }
-            )
-            .focused($focusedField, equals: .name)
-
-            FormTextField(
-                title: "닉네임",
-                placeholder: "한글 1~5자",
-                text: $viewModel.nicknameInput,
-                isRequired: true,
-                submitLabel: .done,
-                onSubmit: { focusedField = nil }
-            )
-            .focused($focusedField, equals: .nickname)
-        }
-    }
-
-    @ViewBuilder
-    var schoolSection: some View {
-        switch viewModel.schoolsState {
-        case .idle, .loading:
-            FormPickerField(
-                title: "학교",
-                placeholder: "학교를 선택하세요",
-                selection: .constant(nil as String?),
-                options: [String](),
-                displayText: { $0 }
-            )
-        case .loaded(let schools):
-            FormPickerField(
-                title: "학교",
-                placeholder: "학교를 선택하세요",
-                selection: $viewModel.selectedSchool,
-                options: schools,
-                displayText: { $0.name }
-            )
-        case .failed:
-            FormPickerField(
-                title: "학교",
-                placeholder: "학교 목록을 불러올 수 없습니다",
-                selection: .constant(nil as String?),
-                options: [String](),
-                displayText: { $0 }
-            )
-        }
-    }
-
-    var termsSection: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
-            TitleLabel(title: Constants.termsTitle, isRequired: true)
-
-            VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-                allAgreeButton
-                Divider()
-                termsContent
-            }
-            .padding()
-            .glassEffect(
-                .regular,
-                in: .rect(cornerRadius: DefaultConstant.cornerRadius)
-            )
-        }
-    }
-
-    var allAgreeButton: some View {
-        Button(action: {
-            viewModel.toggleAllTerms(!viewModel.isAllTermsAgreed)
-        }) {
-            HStack(spacing: DefaultSpacing.spacing8) {
-                Image(
-                    systemName: viewModel.isAllTermsAgreed
-                    ? "checkmark.circle.fill" : "circle"
-                )
-                .foregroundStyle(
-                    viewModel.isAllTermsAgreed ? .indigo500 : .grey400
-                )
-                Text(Constants.allAgreeTitle)
-                    .appFont(.calloutEmphasis)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    var termsContent: some View {
-        switch viewModel.termsState {
-        case .idle, .loading:
-            ProgressView()
-        case .failed:
-            Text(Constants.termsLoadFailedMessage)
-                .appFont(.footnote, color: .grey500)
-        case .loaded:
-            VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-                ForEach(termRows) { row in
-                    termsRow(row)
-                }
-            }
-        }
-    }
-
-    func termsRow(_ row: SignUpByIdPwTermRow) -> some View {
-        HStack(spacing: DefaultSpacing.spacing8) {
-            Button(action: {
-                viewModel.termsAgreements[row.id]?.toggle()
-            }) {
-                HStack(spacing: DefaultSpacing.spacing8) {
-                    Image(
-                        systemName: row.isAgreed
-                        ? "checkmark.circle.fill" : "circle"
-                    )
-                    .foregroundStyle(row.isAgreed ? .indigo500 : .grey400)
-                    Text(row.title)
-                        .appFont(.subheadline)
-                    Text(row.isMandatory ? "(필수)" : "(선택)")
-                        .appFont(
-                            .footnote,
-                            color: row.isMandatory ? .red500 : .grey400
-                        )
-                }
-            }
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 0)
-
-            Button("보기", action: { openTerms(row.termsType) })
-                .appFont(.footnote, color: .indigo500)
-                .buttonStyle(.plain)
-        }
-    }
-
-    var submitButton: some View {
+    /// 화면 하단 고정 가입 완료 버튼.
+    /// `viewModel.canSubmit` 이 false 면 비활성, `isLoading` 이면 스피너 표시.
+    private var submitButton: some View {
         MainButton(Constants.signUpButtonTitle, action: {
             focusedField = nil
             signUpCompleted()
@@ -402,28 +165,26 @@ private extension SignUpByIdPwView {
         .buttonStyle(.glassProminent)
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
-
-    var termRows: [SignUpByIdPwTermRow] {
-        guard case .loaded(let terms) = viewModel.termsState else { return [] }
-        return terms
-            .filter { $0.termsType == .service || $0.termsType == .privacy }
-            .sorted { $0.termsType.signUpByIdPwOrder < $1.termsType.signUpByIdPwOrder }
-            .map {
-                SignUpByIdPwTermRow(
-                    id: $0.id,
-                    title: $0.termsType.signUpByIdPwTitle,
-                    isMandatory: $0.isMandatory,
-                    isAgreed: viewModel.termsAgreements[$0.id] == true,
-                    termsType: $0.termsType
-                )
-            }
-    }
 }
 
 // MARK: - Actions
 
 private extension SignUpByIdPwView {
 
+    /// 이메일 텍스트가 바뀌었을 때 인증 상태를 리셋합니다.
+    /// `FormEmailField` 가 자체 디바운스를 적용하므로 SwiftUI `onChange` 대신
+    /// 콜백 + 스냅샷 비교 방식을 사용해 불필요한 리셋을 방지합니다.
+    func handleEmailChange() {
+        if lastEmailSnapshot != viewModel.emailInput {
+            Task { @MainActor in
+                viewModel.resetEmailVerification()
+                lastEmailSnapshot = viewModel.emailInput
+            }
+        }
+    }
+
+    /// 가입 완료 버튼 액션.
+    /// 알림/위치/사진 권한을 먼저 요청한 뒤 실제 가입 API를 호출합니다.
     func signUpCompleted() {
         Task {
             let results = await viewModel.requestPermission(
@@ -440,6 +201,9 @@ private extension SignUpByIdPwView {
         }
     }
 
+    /// `registerState` 변화 핸들러.
+    /// 성공 시 자동 로그인 비활성화 후 승인 여부에 따라 메인/대기 화면으로 이동.
+    /// 실패 시 ErrorHandler로 위임.
     @MainActor
     func handleRegisterStateChange(_ newState: Loadable<RegisterByIdPwResult>) {
         switch newState {
@@ -463,6 +227,7 @@ private extension SignUpByIdPwView {
         }
     }
 
+    /// 가입 직후 프로필을 조회해 정식 회원 승인 여부를 판정합니다.
     func checkApprovalStatus() async -> Bool {
         do {
             let profile = try await fetchMyProfileUseCase.execute()
@@ -472,6 +237,7 @@ private extension SignUpByIdPwView {
         }
     }
 
+    /// 1기수 이상 등록되어 있으면 정식 회원으로 간주합니다.
     func isApprovedProfile(_ profile: HomeProfileResult) -> Bool {
         if !profile.generations.isEmpty { return true }
         for seasonType in profile.seasonTypes {
@@ -496,6 +262,7 @@ private extension SignUpByIdPwView {
         )
     }
 
+    /// 약관 "보기" 버튼 액션 — 약관 원문 링크를 외부 브라우저로 엽니다.
     func openTerms(_ termsType: TermsType) {
         Task {
             do {
@@ -521,44 +288,6 @@ private extension SignUpByIdPwView {
                     )
                 )
             }
-        }
-    }
-}
-
-// MARK: - Models
-
-private struct SignUpByIdPwTermRow: Identifiable {
-    let id: String
-    let title: String
-    let isMandatory: Bool
-    let isAgreed: Bool
-    let termsType: TermsType
-}
-
-// MARK: - TermsType Display
-
-private extension TermsType {
-    var signUpByIdPwTitle: String {
-        switch self {
-        case .service: return "서비스 이용 약관"
-        case .privacy: return "개인정보처리 방침"
-        case .marketing: return "마케팅 정보 수신 동의"
-        }
-    }
-
-    var signUpByIdPwOrder: Int {
-        switch self {
-        case .service: return 0
-        case .privacy: return 1
-        case .marketing: return 2
-        }
-    }
-
-    var signUpByIdPwApiType: String {
-        switch self {
-        case .service: return LawsType.terms.apiType
-        case .privacy: return LawsType.policy.apiType
-        case .marketing: return rawValue
         }
     }
 }

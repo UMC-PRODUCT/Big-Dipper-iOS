@@ -42,38 +42,41 @@ struct LoginView: View {
     // MARK: - Body
 
     var body: some View {
-        ScrollView(.vertical) {
-            VStack(spacing: DefaultSpacing.spacing24) {
-                TopLogo()
-                    .padding(.top, DefaultConstant.defaultSafeTop)
+        VStack(spacing: 0) {
+            Spacer(minLength: DefaultSpacing.spacing24)
 
-                LoginByIdPwSection(
-                    loginId: $viewModel.loginIdInput,
-                    password: $viewModel.passwordInput,
-                    isLoading: viewModel.loginByIdPwState.isLoading,
-                    errorMessage: viewModel.loginByIdPwErrorMessage,
-                    onLoginTapped: {
-                        Task { await viewModel.loginWithIdPw() }
-                    },
-                    onSignUpTapped: {
-                        appFlow.showSignUpByIdPw()
-                    }
-                )
-                .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+            TopLogo()
+                .padding(.bottom, DefaultSpacing.spacing32)
 
-                BottomSocialBtns(
-                    isLoading: viewModel.loginState.isLoading,
-                    onKakaoTapped: {
-                        Task { await viewModel.loginWithKakao() }
-                    },
-                    onAppleTapped: {
-                        viewModel.loginWithApple()
-                    }
-                )
-                .equatable()
-            }
+            Spacer(minLength: DefaultSpacing.spacing24)
+
+            LoginByIdPwSection(
+                loginId: $viewModel.loginIdInput,
+                password: $viewModel.passwordInput,
+                isLoading: viewModel.loginByIdPwState.isLoading,
+                errorMessage: viewModel.loginByIdPwErrorMessage,
+                onLoginTapped: {
+                    Task { await viewModel.loginWithIdPw() }
+                }
+            )
+            .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+            .padding(.bottom, DefaultSpacing.spacing24)
         }
-        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom) {
+            BottomAuthSection(
+                isLoading: viewModel.loginState.isLoading,
+                onSignUpTapped: {
+                    appFlow.showSignUpByIdPw()
+                },
+                onKakaoTapped: {
+                    Task { await viewModel.loginWithKakao() }
+                },
+                onAppleTapped: {
+                    viewModel.loginWithApple()
+                }
+            )
+            .equatable()
+        }
         .onChange(of: viewModel.destination) { _, newDestination in
             guard let newDestination else { return }
             switch newDestination {
@@ -102,7 +105,7 @@ struct LoginView: View {
 
 /// 상단 로고 영역 (Presenter 패턴)
 ///
-/// UMC 로고와 설명 텍스트를 세로로 배치합니다.
+/// UMC 로고 이미지와 앱 슬로건("Focus on Growth, We Handle the Ops")을 세로로 배치합니다.
 /// Equatable 준수로 불필요한 렌더링을 방지합니다.
 fileprivate struct TopLogo: View, Equatable {
 
@@ -110,31 +113,51 @@ fileprivate struct TopLogo: View, Equatable {
 
     /// 레이아웃 및 텍스트 상수
     private enum Constants {
-        /// 로고 설명 문구
-        static let logoDescrip: String = "UMC 활동을 더 편하게 관리해보세요"
+        /// 앱 슬로건 (UMC App Statement)
+        static let appStatement: String = "Focus on Growth, We Handle the Ops"
+        /// 로고 이미지 너비
+        static let logoImageWidth: CGFloat = 160
     }
 
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: DefaultSpacing.spacing4, content: {
-            Logo()
-            Text(Constants.logoDescrip)
-                .appFont(.body, weight: .medium, color: .grey600)
-        })
+        VStack(spacing: DefaultSpacing.spacing16) {
+            Image(.logoLight)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: Constants.logoImageWidth)
+                .accessibilityHidden(true)
+
+            Text(Constants.appStatement)
+                .appFont(.subheadline, color: .grey600)
+        }
     }
 }
 
-// MARK: - BottomSocialBtns
+// MARK: - BottomAuthSection
 
-/// 하단 소셜 로그인 버튼 영역
-fileprivate struct BottomSocialBtns: View, Equatable {
+/// 하단 인증 대안 그룹
+///
+/// "또는" 디바이더, 회원가입 진입 링크, 소셜 로그인 아이콘을 하나의 시각적 클러스터로 묶어
+/// 화면 하단에 배치합니다. 폼 영역(`LoginByIdPwSection`)과 분리되어 인증 대안을 한눈에 인식할 수 있습니다.
+fileprivate struct BottomAuthSection: View, Equatable {
 
     // MARK: - Property
 
     let isLoading: Bool
+    var onSignUpTapped: () -> Void
     var onKakaoTapped: () -> Void
     var onAppleTapped: () -> Void
+
+    // MARK: - Constant
+
+    private enum Constants {
+        static let dividerText: String = "또는"
+        static let signUpPromptText: String = "아직 계정이 없으신가요?"
+        static let signUpButtonTitle: String = "회원가입"
+        static let socialButtonSize: CGFloat = 48
+    }
 
     // MARK: - Equatable
 
@@ -145,10 +168,10 @@ fileprivate struct BottomSocialBtns: View, Equatable {
     // MARK: - Body
 
     var body: some View {
-        GlassEffectContainer {
-            VStack(spacing: 0) {
-                socialButtonList
-            }
+        VStack(spacing: DefaultSpacing.spacing16) {
+            dividerSection
+            signUpLink
+            socialButtons
         }
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
         .padding(.bottom, DefaultConstant.defaultSafeBottom)
@@ -156,11 +179,37 @@ fileprivate struct BottomSocialBtns: View, Equatable {
 
     // MARK: - Subviews
 
-    private var socialButtonList: some View {
-        VStack(spacing: DefaultSpacing.spacing16) {
-            ForEach(SocialType.appConnectableCases, id: \.self) { btn in
-                socialButton(for: btn)
+    private var dividerSection: some View {
+        HStack(spacing: DefaultSpacing.spacing8) {
+            Rectangle()
+                .fill(.grey300)
+                .frame(height: 1)
+            Text(Constants.dividerText)
+                .appFont(.footnote, color: .grey500)
+            Rectangle()
+                .fill(.grey300)
+                .frame(height: 1)
+        }
+    }
+
+    private var signUpLink: some View {
+        HStack(spacing: DefaultSpacing.spacing4) {
+            Text(Constants.signUpPromptText)
+                .appFont(.footnote, color: .grey600)
+            Button(Constants.signUpButtonTitle, action: onSignUpTapped)
+                .appFont(.footnoteEmphasis, color: .indigo500)
+                .buttonStyle(.plain)
+        }
+    }
+
+    private var socialButtons: some View {
+        GlassEffectContainer {
+            HStack(spacing: DefaultSpacing.spacing24) {
+                ForEach(SocialType.appConnectableCases, id: \.self) { type in
+                    socialButton(for: type)
+                }
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -169,8 +218,10 @@ fileprivate struct BottomSocialBtns: View, Equatable {
             type.image
                 .resizable()
                 .aspectRatio(contentMode: .fit)
+                .frame(width: Constants.socialButtonSize, height: Constants.socialButtonSize)
         }
-        .glassEffect(.regular.interactive())
+        .buttonStyle(.plain)
+        .glassEffect(.clear.interactive().tint(type.color), in: .circle)
         .disabled(isLoading)
         .accessibilityLabel(Text(accessibilityLabel(for: type)))
         .accessibilityHint(Text("소셜 계정으로 로그인합니다"))
