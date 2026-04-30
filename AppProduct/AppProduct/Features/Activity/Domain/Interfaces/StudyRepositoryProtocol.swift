@@ -9,7 +9,8 @@ import Foundation
 
 protocol StudyRepositoryProtocol {
     /// 커리큘럼 화면에서 사용하는 데이터(진행률 + 미션 목록)를 가져옵니다.
-    func fetchCurriculumData() async throws -> CurriculumData
+    /// - Parameter weekNo: 조회할 특정 주차 번호. nil이면 전체 주차를 반환합니다.
+    func fetchCurriculumData(weekNo: Int?) async throws -> CurriculumData
 
     /// 커리큘럼 진행률 정보를 가져옵니다.
     /// - Returns: 커리큘럼 진행률 모델
@@ -20,18 +21,6 @@ protocol StudyRepositoryProtocol {
     /// - Returns: 미션 카드 모델 배열
     /// - Throws: 네트워크 오류 또는 파싱 오류
     func fetchMissions() async throws -> [MissionCardModel]
-
-    /// 미션을 제출합니다.
-    /// - Parameters:
-    ///   - missionId: 제출할 original workbook ID
-    ///   - type: 미션 제출 타입 (링크 또는 체크)
-    ///   - link: 제출 링크 (타입이 링크인 경우 필수)
-    /// - Throws: 네트워크 오류, 파싱 오류, 또는 유효성 검증 오류
-    func submitMission(
-        missionId: Int,
-        type: MissionSubmissionType,
-        link: String?
-    ) async throws
 
     // MARK: - 운영진 스터디 관리
 
@@ -83,7 +72,7 @@ protocol StudyRepositoryProtocol {
         preferredGeneration: Int?
     ) async throws -> Int?
 
-    /// 챌린저 워크북 제출 URL을 조회합니다.
+    /// 챌린저 워크북 제출 URL을 조회합니다. (운영진 전용)
     /// - Parameter challengerWorkbookId: 챌린저 워크북 ID
     /// - Returns: 제출 URL 문자열 (없으면 nil)
     /// - Throws: 네트워크 오류 또는 파싱 오류

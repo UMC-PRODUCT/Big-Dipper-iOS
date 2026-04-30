@@ -24,7 +24,7 @@ final class FetchCurriculumUseCase: FetchCurriculumUseCaseProtocol {
 
     // MARK: - Function
 
-    func execute() async throws -> CurriculumData {
-        try await repository.fetchCurriculumData()
+    func execute(weekNo: Int?) async throws -> CurriculumData {
+        try await repository.fetchCurriculumData(weekNo: weekNo)
     }
 }

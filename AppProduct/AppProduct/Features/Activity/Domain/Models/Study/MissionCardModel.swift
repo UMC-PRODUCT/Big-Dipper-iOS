@@ -15,36 +15,33 @@ struct MissionCardModel: Equatable, Identifiable {
     // MARK: - Property
 
     let id: UUID
-    let originalWorkbookId: Int?
-    let challengerWorkbookId: Int?
     let week: Int
     let platform: String
     let title: String
     let missionTitle: String
     let missionType: MissionType
     var status: MissionStatus
+    let isExtra: Bool
 
     // MARK: - Initializer
 
     init(
         id: UUID = UUID(),
-        originalWorkbookId: Int? = nil,
-        challengerWorkbookId: Int? = nil,
         week: Int,
         platform: String,
         title: String,
         missionTitle: String,
         missionType: MissionType = .link,
-        status: MissionStatus
+        status: MissionStatus,
+        isExtra: Bool = false
     ) {
         self.id = id
-        self.originalWorkbookId = originalWorkbookId
-        self.challengerWorkbookId = challengerWorkbookId
         self.week = week
         self.platform = platform
         self.title = title
         self.missionTitle = missionTitle
         self.missionType = missionType
         self.status = status
+        self.isExtra = isExtra
     }
 }
