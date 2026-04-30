@@ -1,18 +1,24 @@
 import Foundation
 import Yams
 
+public struct AuthorMappingEntry: Sendable, Equatable, Codable, Hashable {
+    public let email: String
+    public let displayName: String
+    public let github: String?
+
+    public init(email: String, displayName: String, github: String?) {
+        self.email = email
+        self.displayName = displayName
+        self.github = github
+    }
+}
+
 public struct AuthorMapper: Sendable {
     public static let empty = AuthorMapper(entries: [])
 
-    private struct Entry: Sendable {
-        let email: String
-        let displayName: String
-        let github: String?
-    }
+    public let entries: [AuthorMappingEntry]
 
-    private let entries: [Entry]
-
-    private init(entries: [Entry]) {
+    public init(entries: [AuthorMappingEntry]) {
         self.entries = entries
     }
 
@@ -22,14 +28,14 @@ public struct AuthorMapper: Sendable {
         }
 
         let rawEntries = (root["authors"] as? [[String: Any]]) ?? []
-        let entries = rawEntries.compactMap { dictionary -> Entry? in
+        let entries = rawEntries.compactMap { dictionary -> AuthorMappingEntry? in
             guard let email = dictionary["email"] as? String,
                   let displayName = dictionary["displayName"] as? String
             else {
                 return nil
             }
 
-            return Entry(
+            return AuthorMappingEntry(
                 email: email,
                 displayName: displayName,
                 github: dictionary["github"] as? String
@@ -37,6 +43,20 @@ public struct AuthorMapper: Sendable {
         }
 
         return AuthorMapper(entries: entries)
+    }
+
+    public static func serialize(_ entries: [AuthorMappingEntry]) -> String {
+        guard !entries.isEmpty else { return "authors: []\n" }
+
+        var lines = ["authors:"]
+        for entry in entries.sorted(by: { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }) {
+            lines.append("  - email: \(yamlScalar(entry.email))")
+            lines.append("    displayName: \(yamlScalar(entry.displayName))")
+            if let github = entry.github, !github.isEmpty {
+                lines.append("    github: \(yamlScalar(github))")
+            }
+        }
+        return lines.joined(separator: "\n") + "\n"
     }
 
     public static func load(from url: URL) throws -> AuthorMapper {
@@ -81,5 +101,23 @@ public struct AuthorMapper: Sendable {
             displayName: email,
             githubUsername: nil
         )
+    }
+
+    private static func yamlScalar(_ s: String) -> String {
+        let needsQuotes = s.isEmpty
+            || s.contains(":")
+            || s.contains("#")
+            || s.contains("{")
+            || s.contains("}")
+            || s.contains("[")
+            || s.contains("]")
+            || s.contains(",")
+            || s.contains("\n")
+            || s.trimmingCharacters(in: .whitespacesAndNewlines) != s
+
+        if needsQuotes {
+            return "\"\(s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\""
+        }
+        return s
     }
 }

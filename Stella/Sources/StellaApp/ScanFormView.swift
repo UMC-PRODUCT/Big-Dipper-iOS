@@ -136,8 +136,14 @@ struct ScanFormView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("매핑 (선택)").font(.title3).bold()
             fileRow(label: "authors.yml", binding: $model.authorsPath, key: \.authorsPath)
+                .onChange(of: model.authorsPath) { _, _ in
+                    model.loadOwnerYAMLFiles()
+                }
             fileRow(label: "overrides.yml", binding: $model.overridesPath, key: \.overridesPath)
             fileRow(label: "owners.yml", binding: $model.ownersPath, key: \.ownersPath)
+                .onChange(of: model.ownersPath) { _, _ in
+                    model.loadOwnerYAMLFiles()
+                }
         }
     }
 
