@@ -28,9 +28,7 @@ protocol ActivityUseCaseProviding {
     // MARK: - Study
     /// 커리큘럼 데이터 조회 UseCase
     var fetchCurriculumUseCase: FetchCurriculumUseCaseProtocol { get }
-    /// 미션 제출 UseCase
-    var submitMissionUseCase: SubmitMissionUseCaseProtocol { get }
-    
+
     /// 운영진 스터디원 관리 UseCase
     var fetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol { get }
     
@@ -53,7 +51,6 @@ final class ActivityUseCaseProvider: ActivityUseCaseProviding {
     let operatorAttendanceUseCase: OperatorAttendanceUseCaseProtocol
     let classifyScheduleUseCase: ClassifyScheduleUseCase
     let fetchCurriculumUseCase: FetchCurriculumUseCaseProtocol
-    let submitMissionUseCase: SubmitMissionUseCaseProtocol
     let fetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol
     let fetchMembersUseCase: FetchMembersUseCaseProtocol
 
@@ -79,9 +76,6 @@ final class ActivityUseCaseProvider: ActivityUseCaseProviding {
             repository: classifierRepository
         )
         self.fetchCurriculumUseCase = FetchCurriculumUseCase(
-            repository: repositoryProvider.studyRepository
-        )
-        self.submitMissionUseCase = SubmitMissionUseCase(
             repository: repositoryProvider.studyRepository
         )
         self.fetchStudyMembersUseCase = FetchStudyMembersUseCase(

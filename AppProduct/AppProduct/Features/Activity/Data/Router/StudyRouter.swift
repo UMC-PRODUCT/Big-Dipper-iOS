@@ -11,7 +11,7 @@ import Moya
 
 /// Study Feature API 라우터
 enum StudyRouter {
-    case getCurriculum(part: String)
+    case getCurriculum(gisuId: Int, part: String, weekNo: Int?)
     case getCurriculumWeeks(part: String)
     case createStudyGroupSchedule(body: StudyGroupScheduleCreateRequestDTO)
     case getMyStudyGroups(cursor: Int?, size: Int)
@@ -24,9 +24,7 @@ enum StudyRouter {
         cursor: Int?,
         size: Int
     )
-    case getMyProgress
     case getWorkbookSubmission(challengerWorkbookId: Int)
-    case submitWorkbook(body: WorkbookSubmissionRequestDTO)
     case reviewWorkbook(challengerWorkbookId: Int, body: WorkbookReviewRequestDTO)
     case selectBestWorkbook(challengerWorkbookId: Int, body: BestWorkbookSelectionRequestDTO)
     case createStudyGroup(body: StudyGroupCreateRequestDTO)
@@ -45,7 +43,7 @@ extension StudyRouter: BaseTargetType {
     var path: String {
         switch self {
         case .getCurriculum:
-            return "/api/v1/curriculums"
+            return "/api/v2/curriculums/overview"
         case .getCurriculumWeeks:
             return "/api/v1/curriculums/weeks"
         case .createStudyGroupSchedule:
@@ -60,12 +58,8 @@ extension StudyRouter: BaseTargetType {
             return "/api/v1/member/profile/\(memberId)"
         case .getWorkbookSubmissions:
             return "/api/v1/curriculums/workbook-submissions"
-        case .getMyProgress:
-            return "/api/v1/curriculums/challengers/me/progress"
         case .getWorkbookSubmission(let challengerWorkbookId):
             return "/api/v1/workbooks/challenger/\(challengerWorkbookId)/submissions"
-        case .submitWorkbook:
-            return "/api/v1/workbooks/submission"
         case .reviewWorkbook(let challengerWorkbookId, _):
             return "/api/v1/workbooks/challenger/\(challengerWorkbookId)/review"
         case .selectBestWorkbook(let challengerWorkbookId, _):
@@ -91,8 +85,6 @@ extension StudyRouter: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .submitWorkbook:
-            return .post
         case .reviewWorkbook:
             return .post
         case .selectBestWorkbook:
@@ -120,7 +112,6 @@ extension StudyRouter: BaseTargetType {
              .getStudyGroupDetail,
              .getMemberProfile,
              .getWorkbookSubmissions,
-             .getMyProgress,
              .getWorkbookSubmission:
             return .get
         }
@@ -130,7 +121,19 @@ extension StudyRouter: BaseTargetType {
 
     var task: Task {
         switch self {
-        case .getCurriculum(let part), .getCurriculumWeeks(let part):
+        case .getCurriculum(let gisuId, let part, let weekNo):
+            var parameters: [String: Any] = [
+                "gisuId": gisuId,
+                "part": part
+            ]
+            if let weekNo {
+                parameters["weekNo"] = weekNo
+            }
+            return .requestParameters(
+                parameters: parameters,
+                encoding: URLEncoding.queryString
+            )
+        case .getCurriculumWeeks(let part):
             return .requestParameters(
                 parameters: ["part": part],
                 encoding: URLEncoding.queryString
@@ -166,11 +169,8 @@ extension StudyRouter: BaseTargetType {
         case .getStudyGroupNames,
              .getStudyGroupDetail,
              .getMemberProfile,
-             .getMyProgress,
              .getWorkbookSubmission:
             return .requestPlain
-        case .submitWorkbook(let body):
-            return .requestJSONEncodable(body)
         case .reviewWorkbook(_, let body):
             return .requestJSONEncodable(body)
         case .selectBestWorkbook(_, let body):

@@ -30,31 +30,13 @@ struct ChallengerCurriculumView: View {
         static let bottomPadding: CGFloat = 12
     }
 
-    // MARK: - Computed Property
-
-    /// 잠금 해제된(열린) 미션 수 (.locked, .notStarted 제외)
-    private var openedProgressModel: CurriculumProgressModel {
-        let openedCount = missions.filter {
-            $0.status != .locked && $0.status != .notStarted
-        }.count
-        return CurriculumProgressModel(
-            id: curriculumModel.id,
-            partType: curriculumModel.partType,
-            partName: curriculumModel.partName,
-            curriculumTitle: curriculumModel.curriculumTitle,
-            completedCount: curriculumModel.completedCount,
-            totalCount: curriculumModel.totalCount,
-            openedCount: openedCount
-        )
-    }
-
     // MARK: - Body
 
     var body: some View {
         ScrollView {
             VStack(spacing: DefaultSpacing.spacing24) {
                 // Header
-                ChallengerCurriculumProgressCard(model: openedProgressModel)
+                ChallengerCurriculumProgressCard(model: curriculumModel)
                     .equatable()
                 // Mission List
                 missionListSection

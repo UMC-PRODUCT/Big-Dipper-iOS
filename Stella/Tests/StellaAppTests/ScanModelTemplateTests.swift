@@ -199,4 +199,75 @@ final class ScanModelTemplateTests: XCTestCase {
         XCTAssertEqual(model.manualOwners.first?.githubUsername, "kim")
         XCTAssertEqual(model.ownerAssignments["GET /api/v1/members"], "kim@example.com")
     }
+
+    func testEndpointCopyFormatterIncludesFullAPIInformation() {
+        let owner = AuthorRef(
+            email: "owner@example.com",
+            name: "Owner",
+            displayName: "담당자",
+            githubUsername: "owner"
+        )
+        let entry = CoverageSnapshot.EndpointEntry(
+            key: OpenAPIKey(method: .get, path: "/api/v1/curriculums/progress/me"),
+            tag: "Curriculum V2 | 커리큘럼 Query",
+            operationId: "getMyProgress",
+            summary: "내 커리큘럼 진행 상황 조회",
+            description: "커리큘럼 진행 상태를 조회합니다.",
+            parameters: [
+                OpenAPIParameter(
+                    name: "page",
+                    location: "query",
+                    required: false,
+                    description: "페이지",
+                    schema: "integer"
+                )
+            ],
+            requestBody: "application/json",
+            requestBodyExample: #"{"memberId":1}"#,
+            responses: [
+                OpenAPIResponse(
+                    statusCode: "200",
+                    description: "OK",
+                    content: "application/json",
+                    example: #"{"success":true}"#
+                )
+            ],
+            owner: owner,
+            connections: [
+                "AppProduct": CoverageSnapshot.Connection(
+                    routerEnum: "CurriculumRouter",
+                    caseName: "getMyProgress",
+                    filePath: "AppProduct/Router.swift",
+                    line: 12,
+                    author: owner,
+                    lastCommitSHA: "abcdef123456",
+                    lastCommitDate: Date(timeIntervalSince1970: 0)
+                ),
+                "UMCApp": nil
+            ]
+        )
+        let snapshot = CoverageSnapshot(
+            schemaVersion: CoverageSnapshot.currentSchemaVersion,
+            generatedAt: Date(timeIntervalSince1970: 0),
+            openAPI: CoverageSnapshot.OpenAPISummary(title: "API", version: "1.0.0", totalPaths: 1),
+            projects: [
+                CoverageSnapshot.ProjectInfo(key: "AppProduct", displayName: "AppProduct", rootPath: "/tmp/AppProduct"),
+                CoverageSnapshot.ProjectInfo(key: "UMCApp", displayName: "UMCApp", rootPath: "/tmp/UMCApp")
+            ],
+            endpoints: [entry],
+            unmatchedRouterCases: [],
+            summary: [:]
+        )
+
+        let markdown = EndpointCopyFormatter.markdown(for: entry, snapshot: snapshot)
+
+        XCTAssertTrue(markdown.contains("# GET /api/v1/curriculums/progress/me"))
+        XCTAssertTrue(markdown.contains("내 커리큘럼 진행 상황 조회"))
+        XCTAssertTrue(markdown.contains("Operation ID: getMyProgress"))
+        XCTAssertTrue(markdown.contains("`query` `page`"))
+        XCTAssertTrue(markdown.contains("```json"))
+        XCTAssertTrue(markdown.contains("### 200 OK"))
+        XCTAssertTrue(markdown.contains("AppProduct: CurriculumRouter.getMyProgress"))
+        XCTAssertTrue(markdown.contains("UMCApp: Not connected"))
+    }
 }

@@ -92,6 +92,13 @@ struct EndpointsView: View {
 
             Spacer()
 
+            Button {
+                copySelectedEndpoint()
+            } label: {
+                Label("선택 API 복사", systemImage: "doc.on.doc")
+            }
+            .disabled(selectedDetail == nil)
+
             columnOrderMenu
 
             Text("\(model.filteredEndpoints.count)개 표시")
@@ -202,6 +209,11 @@ struct EndpointsView: View {
             }
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("API 정보 전체 복사") {
+                copyEndpoint(row.entry)
+            }
+        }
     }
 
     @ViewBuilder
@@ -399,6 +411,19 @@ struct EndpointsView: View {
         if selection == nil || !rows.contains(where: { $0.id == selection }) {
             selection = rows.first?.id
         }
+    }
+
+    private func copySelectedEndpoint() {
+        guard let selectedDetail else { return }
+        copyEndpoint(selectedDetail)
+    }
+
+    private func copyEndpoint(_ entry: CoverageSnapshot.EndpointEntry) {
+        guard let snapshot = model.snapshot else { return }
+        let text = EndpointCopyFormatter.markdown(for: entry, snapshot: snapshot)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        model.statusMessage = "\(entry.key.method.rawValue) \(entry.key.path) API 정보를 복사했어요"
     }
 }
 

@@ -46,11 +46,19 @@ struct ChallengerMissionStatusIcon: View, Equatable {
             inProgressIcon
         case .locked:
             lockedIcon
+        case .completed:
+            completedIcon
         case .notStarted:
             notStartedIcon
         case .pendingApproval:
             pendingApprovalIcon
         }
+    }
+
+    private var completedIcon: some View {
+        Image(systemName: "checkmark.circle.fill")
+            .resizable()
+            .foregroundStyle(status.missionListIconColor)
     }
 
     private var passIcon: some View {

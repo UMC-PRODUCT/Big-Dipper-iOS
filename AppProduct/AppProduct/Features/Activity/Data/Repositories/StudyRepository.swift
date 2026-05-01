@@ -38,65 +38,28 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Curriculum
 
-    func fetchCurriculumData() async throws -> CurriculumData {
-        let progressDTO: ChallengerCurriculumProgressDTO
-        do {
-            let progressResponse = try await adapter.request(StudyRouter.getMyProgress)
-            let progressAPIResponse = try decoder.decode(
-                APIResponse<ChallengerCurriculumProgressDTO>.self,
-                from: progressResponse.data
-            )
-            progressDTO = try progressAPIResponse.unwrap()
-        } catch let error as NetworkError {
-            throw Self.parseCurriculumProgressError(from: error) ?? error
+    func fetchCurriculumData(weekNo: Int?) async throws -> CurriculumData {
+        guard let gisuId = preferredGisuId, gisuId > 0 else {
+            throw DomainError.curriculumUnavailableForGeneration
         }
-
-        return progressDTO.toDomain()
+        let part = resolvedPartAPIValue
+        let response = try await adapter.request(
+            StudyRouter.getCurriculum(gisuId: gisuId, part: part, weekNo: weekNo)
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<CurriculumDTO>.self,
+            from: response.data
+        )
+        let dto = try apiResponse.unwrap()
+        return dto.toDomain(part: part)
     }
 
     func fetchCurriculumProgress() async throws -> CurriculumProgressModel {
-        try await fetchCurriculumData().progress
+        try await fetchCurriculumData(weekNo: nil).progress
     }
 
     func fetchMissions() async throws -> [MissionCardModel] {
-        try await fetchCurriculumData().missions
-    }
-
-    // MARK: - Submission
-
-    func submitMission(
-        missionId: Int,
-        type: MissionSubmissionType,
-        link: String?
-    ) async throws {
-        let submissionPayload: String
-        switch type {
-        case .link:
-            guard let link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                throw DomainError.missionLinkRequired
-            }
-            submissionPayload = link
-        case .completeOnly:
-            submissionPayload = "COMPLETED"
-        }
-
-        do {
-            let response = try await adapter.request(
-                StudyRouter.submitWorkbook(
-                    body: WorkbookSubmissionRequestDTO(
-                        originalWorkbookId: missionId,
-                        submission: submissionPayload
-                    )
-                )
-            )
-            let apiResponse = try decoder.decode(
-                APIResponse<EmptyResult>.self,
-                from: response.data
-            )
-            try apiResponse.validateSuccess()
-        } catch let error as NetworkError {
-            throw Self.parseSubmissionError(from: error) ?? error
-        }
+        try await fetchCurriculumData(weekNo: nil).missions
     }
 
     // MARK: - 운영진 스터디 관리 (Fallback)
@@ -1008,73 +971,5 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         return value > 0 ? value : nil
     }
 
-    /// 서버 오류 응답에서 도메인/리포지토리 에러를 파싱합니다.
-    ///
-    /// HTTP 상태 코드와 서버 에러 코드/메시지를 분석하여 적절한 에러 타입으로 변환합니다.
-    /// - Parameter error: 네트워크 계층에서 발생한 `NetworkError`
-    /// - Returns: 변환된 도메인/리포지토리 에러, 변환 불가 시 nil
-    private static func parseSubmissionError(
-        from error: NetworkError
-    ) -> Error? {
-        guard case .requestFailed(let statusCode, let data) = error,
-              let data,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
-            return nil
-        }
-
-        let code = json["code"] as? String
-        let rawMessage = (json["message"] as? String) ?? (json["result"] as? String) ?? ""
-        if statusCode == 404 || code == "CURRICULUM-0006" {
-            return DomainError.missionNotFound
-        }
-        if statusCode == 400,
-           (rawMessage.contains("PENDING") || rawMessage.contains("유효하지 않음")) {
-            return DomainError.workbookAlreadySubmitted
-        }
-        if rawMessage.contains("이미 제출") {
-            return DomainError.workbookAlreadySubmitted
-        }
-        if rawMessage.contains("기한") {
-            return DomainError.workbookDeadlinePassed
-        }
-        if !rawMessage.isEmpty {
-            return RepositoryError.serverError(
-                code: code,
-                message: rawMessage
-            )
-        }
-        return nil
-    }
-
-    /// 커리큘럼 진행률 조회 실패를 도메인/리포지토리 에러로 변환합니다.
-    ///
-    /// `CHALLENGER-0001`은 과거 기수 소속 사용자 케이스로 간주해
-    /// 전용 안내 메시지로 표시할 수 있도록 매핑합니다.
-    private static func parseCurriculumProgressError(
-        from error: NetworkError
-    ) -> Error? {
-        guard case .requestFailed(_, let data) = error,
-              let data,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
-            return nil
-        }
-
-        let code = json["code"] as? String
-        let rawMessage = (json["message"] as? String) ?? (json["result"] as? String) ?? ""
-
-        if code == "CHALLENGER-0001" {
-            return DomainError.curriculumUnavailableForGeneration
-        }
-
-        if !rawMessage.isEmpty {
-            return RepositoryError.serverError(
-                code: code,
-                message: rawMessage
-            )
-        }
-
-        return nil
-    }
 }
+

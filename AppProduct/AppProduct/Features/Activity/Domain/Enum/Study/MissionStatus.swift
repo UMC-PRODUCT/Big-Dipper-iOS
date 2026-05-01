@@ -15,6 +15,7 @@ enum MissionStatus: String, CaseIterable {
     case pendingApproval = "대기중"
     case pass = "Pass"
     case fail = "Fail"
+    case completed = "Completed"
     case locked = "Locked"
 
     var displayText: String {
@@ -29,6 +30,8 @@ enum MissionStatus: String, CaseIterable {
             return "Pass"
         case .fail:
             return "Fail"
+        case .completed:
+            return "완료"
         }
     }
 
@@ -39,10 +42,11 @@ enum MissionStatus: String, CaseIterable {
         case .pendingApproval: return .orange.opacity(0.4)
         case .pass: return .green.opacity(0.4)
         case .fail: return Color.red.opacity(0.4)
+        case .completed: return .green.opacity(0.4)
         case .locked: return .grey200
         }
     }
-    
+
     var missionListIconColor: Color {
         switch self {
         case .notStarted: return .gray.opacity(0.7)
@@ -50,6 +54,7 @@ enum MissionStatus: String, CaseIterable {
         case .pendingApproval: return .orange.opacity(0.7)
         case .pass: return .green.opacity(0.7)
         case .fail: return Color.red.opacity(0.7)
+        case .completed: return .green.opacity(0.7)
         case .locked: return .grey400
         }
     }
@@ -61,6 +66,7 @@ enum MissionStatus: String, CaseIterable {
         case .pendingApproval: return .orange
         case .pass: return .green700
         case .fail: return .red
+        case .completed: return .green700
         case .locked: return .grey400
         }
     }

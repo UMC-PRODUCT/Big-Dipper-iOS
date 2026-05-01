@@ -27,7 +27,6 @@ final class ChallengerStudyViewModel {
     // MARK: - Dependency
 
     private let fetchCurriculumUseCase: FetchCurriculumUseCaseProtocol
-    private let submitMissionUseCase: SubmitMissionUseCaseProtocol
     private let errorHandler: ErrorHandler
 
     // MARK: - State
@@ -38,23 +37,22 @@ final class ChallengerStudyViewModel {
 
     init(
         fetchCurriculumUseCase: FetchCurriculumUseCaseProtocol,
-        submitMissionUseCase: SubmitMissionUseCaseProtocol,
         errorHandler: ErrorHandler
     ) {
         self.fetchCurriculumUseCase = fetchCurriculumUseCase
-        self.submitMissionUseCase = submitMissionUseCase
         self.errorHandler = errorHandler
     }
 
     // MARK: - Action
 
     /// 커리큘럼 데이터 로드
+    /// - Parameter weekNo: 조회할 특정 주차 번호. nil이면 전체 주차를 반환합니다.
     @MainActor
-    func fetchCurriculum() async {
+    func fetchCurriculum(weekNo: Int? = nil) async {
         curriculumState = .loading
 
         do {
-            let data = try await fetchCurriculumUseCase.execute()
+            let data = try await fetchCurriculumUseCase.execute(weekNo: weekNo)
             curriculumState = .loaded(data)
         } catch let error as AppError {
             curriculumState = .failed(error)
@@ -67,50 +65,6 @@ final class ChallengerStudyViewModel {
         } catch {
             curriculumState = .failed(
                 .unknown(message: error.localizedDescription)
-            )
-        }
-    }
-
-    /// 미션 제출 처리
-    /// - Parameters:
-    ///   - mission: 제출할 미션
-    ///   - type: 제출 타입 (링크 또는 완료만)
-    ///   - link: 링크 URL (링크 타입일 경우)
-    @MainActor
-    func submitMission(
-        _ mission: MissionCardModel,
-        type: MissionSubmissionType,
-        link: String?
-    ) async {
-        do {
-            guard let originalWorkbookId = mission.originalWorkbookId else {
-                throw DomainError.missionNotFound
-            }
-
-            try await submitMissionUseCase.execute(
-                missionId: originalWorkbookId,
-                type: type,
-                link: link
-            )
-
-            // 로컬 상태 업데이트
-            if case .loaded(var data) = curriculumState {
-                if let index = data.missions.firstIndex(where: { $0.id == mission.id }) {
-                    data.missions[index].status = .pendingApproval
-                    withAnimation(.easeInOut(duration: DefaultConstant.animationTime)) {
-                        curriculumState = .loaded(data)
-                    }
-                }
-            }
-        } catch let error as DomainError {
-            curriculumState = .failed(.domain(error))
-        } catch {
-            errorHandler.handle(
-                error,
-                context: ErrorContext(
-                    feature: "Study",
-                    action: "submitMission"
-                )
             )
         }
     }

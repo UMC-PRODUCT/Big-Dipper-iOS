@@ -25,7 +25,6 @@ struct ChallengerStudyView: View {
         let activityProvider = container.resolve(ActivityUseCaseProviding.self)
         let challengerStudyViewModel = ChallengerStudyViewModel(
             fetchCurriculumUseCase: activityProvider.fetchCurriculumUseCase,
-            submitMissionUseCase: activityProvider.submitMissionUseCase,
             errorHandler: errorHandler
         )
         self._viewModel = .init(wrappedValue: challengerStudyViewModel)

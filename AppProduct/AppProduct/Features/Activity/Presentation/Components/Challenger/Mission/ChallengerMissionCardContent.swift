@@ -30,7 +30,7 @@ struct ChallengerMissionCardContent: View, Equatable {
             case .pendingApproval, .pass, .fail:
                 missionTitleText
                 statusResultView
-            case .locked:
+            case .locked, .completed:
                 EmptyView()
             }
         }
