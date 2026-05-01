@@ -270,4 +270,38 @@ final class ScanModelTemplateTests: XCTestCase {
         XCTAssertTrue(markdown.contains("AppProduct: CurriculumRouter.getMyProgress"))
         XCTAssertTrue(markdown.contains("UMCApp: Not connected"))
     }
+
+    func testEndpointCopyFormatterJoinsMultipleAPIs() {
+        let first = CoverageSnapshot.EndpointEntry(
+            key: OpenAPIKey(method: .get, path: "/api/v1/first"),
+            tag: "First",
+            operationId: "getFirst",
+            summary: "첫 번째",
+            connections: ["AppProduct": nil]
+        )
+        let second = CoverageSnapshot.EndpointEntry(
+            key: OpenAPIKey(method: .post, path: "/api/v1/second"),
+            tag: "Second",
+            operationId: "createSecond",
+            summary: "두 번째",
+            connections: ["AppProduct": nil]
+        )
+        let snapshot = CoverageSnapshot(
+            schemaVersion: CoverageSnapshot.currentSchemaVersion,
+            generatedAt: Date(timeIntervalSince1970: 0),
+            openAPI: CoverageSnapshot.OpenAPISummary(title: "API", version: "1.0.0", totalPaths: 2),
+            projects: [
+                CoverageSnapshot.ProjectInfo(key: "AppProduct", displayName: "AppProduct", rootPath: "/tmp/AppProduct")
+            ],
+            endpoints: [first, second],
+            unmatchedRouterCases: [],
+            summary: [:]
+        )
+
+        let markdown = EndpointCopyFormatter.markdown(for: [first, second], snapshot: snapshot)
+
+        XCTAssertTrue(markdown.contains("# GET /api/v1/first"))
+        XCTAssertTrue(markdown.contains("# POST /api/v1/second"))
+        XCTAssertTrue(markdown.contains("\n\n---\n\n"))
+    }
 }
