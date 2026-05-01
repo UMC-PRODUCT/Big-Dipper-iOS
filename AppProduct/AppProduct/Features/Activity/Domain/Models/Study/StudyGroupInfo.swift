@@ -9,7 +9,7 @@ import Foundation
 
 /// 스터디 그룹 정보 모델
 ///
-/// 스터디 그룹의 기본 정보, 파트장, 스터디원 목록을 포함합니다.
+/// 스터디 그룹의 기본 정보, 담당 파트장(멘토) 목록, 스터디원 목록을 포함합니다.
 struct StudyGroupInfo: Identifiable, Equatable {
 
     // MARK: - Property
@@ -29,16 +29,19 @@ struct StudyGroupInfo: Identifiable, Equatable {
     /// 생성일
     let createdDate: Date
 
-    /// 담당 파트장
-    let leader: StudyGroupMember
+    /// 담당 파트장(멘토) 목록 (1명 이상)
+    var mentors: [StudyGroupMember]
 
-    /// 스터디원 목록 (파트장 제외)
+    /// 스터디원 목록 (멘토 제외)
     var members: [StudyGroupMember]
 
     // MARK: - Computed Property
 
-    /// 전체 멤버 수 (파트장 포함)
-    var memberCount: Int { members.count + 1 }
+    /// 전체 멤버 수 (멘토 포함)
+    var memberCount: Int { members.count + mentors.count }
+
+    /// 대표 멘토 (UI 호환성을 위해 첫 번째 멘토 반환)
+    var primaryMentor: StudyGroupMember? { mentors.first }
 
     /// 생성일 포맷 문자열
     var formattedCreatedDate: String {
@@ -55,7 +58,7 @@ struct StudyGroupInfo: Identifiable, Equatable {
         name: String,
         part: UMCPartType,
         createdDate: Date,
-        leader: StudyGroupMember,
+        mentors: [StudyGroupMember],
         members: [StudyGroupMember] = []
     ) {
         self.id = id
@@ -63,7 +66,7 @@ struct StudyGroupInfo: Identifiable, Equatable {
         self.name = name
         self.part = part
         self.createdDate = createdDate
-        self.leader = leader
+        self.mentors = mentors
         self.members = members
     }
 }
@@ -80,13 +83,15 @@ extension StudyGroupInfo {
             formatter.dateFormat = "yyyy.MM.dd"
             return formatter.date(from: "2024.03.01") ?? Date()
         }(),
-        leader: StudyGroupMember(
-            serverID: "member_001",
-            name: "홍길동",
-            nickname: "길동이",
-            university: "중앙대",
-            role: .leader
-        ),
+        mentors: [
+            StudyGroupMember(
+                serverID: "member_001",
+                name: "홍길동",
+                nickname: "길동이",
+                university: "중앙대",
+                role: .leader
+            )
+        ],
         members: [
             StudyGroupMember(
                 serverID: "member_002",

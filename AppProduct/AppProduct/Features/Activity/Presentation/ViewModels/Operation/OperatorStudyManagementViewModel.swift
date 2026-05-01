@@ -52,9 +52,6 @@ final class OperatorStudyManagementViewModel {
     /// 편집 시트 이름 입력 상태
     var editingName: String = ""
 
-    /// 편집 시트 파트 선택 상태
-    var editingPart: UMCPartType = .pm
-
     /// 멤버 추가 대상 그룹 (시트 표시용)
     var addMemberGroup: StudyGroupInfo?
 
@@ -63,6 +60,15 @@ final class OperatorStudyManagementViewModel {
 
     /// 시트에서 선택된 챌린저 목록
     var selectedChallengers: [ChallengerInfo] = []
+
+    /// 멘토 추가 대상 그룹 (시트 표시용)
+    var addMentorGroup: StudyGroupInfo?
+
+    /// 멘토 변경 API 호출 대상 그룹 (시트 dismiss 이후 사용)
+    private var mentorUpdateTargetGroup: StudyGroupInfo?
+
+    /// 멘토 시트에서 선택된 챌린저 목록
+    var selectedMentors: [ChallengerInfo] = []
 
     /// 시트 표시 상태
     var selectedMemberForReview: StudyMemberItem?
@@ -90,6 +96,11 @@ final class OperatorStudyManagementViewModel {
 
     /// 제출 현황 탭 필터(그룹/주차) 최초 로드 여부
     private var hasLoadedSubmissionFilters = false
+
+    /// 현재 사용자 기수 ID (UserDefaults 기준)
+    var currentGisuId: Int {
+        UserDefaults.standard.integer(forKey: AppStorageKey.gisuId)
+    }
 
     // MARK: - Initializer
 
@@ -292,11 +303,38 @@ final class OperatorStudyManagementViewModel {
             return
         }
 
-        do {
-            try await useCase.updateStudyGroupMembers(
-                groupId: serverGroupId,
-                challengerIds: Array(updatedChallengerIDs).sorted()
-            )
+        let toAdd = updatedChallengerIDs.subtracting(currentChallengerIDs)
+        let toRemove = currentChallengerIDs.subtracting(updatedChallengerIDs)
+
+        var failures: [String] = []
+
+        for challengerId in toAdd {
+            do {
+                try await useCase.addStudyGroupMember(
+                    groupId: serverGroupId,
+                    memberId: challengerId
+                )
+            } catch let error as DomainError {
+                failures.append(error.userMessage)
+            } catch {
+                failures.append("멤버 추가 실패")
+            }
+        }
+
+        for challengerId in toRemove {
+            do {
+                try await useCase.removeStudyGroupMember(
+                    groupId: serverGroupId,
+                    memberId: challengerId
+                )
+            } catch let error as DomainError {
+                failures.append(error.userMessage)
+            } catch {
+                failures.append("멤버 제거 실패")
+            }
+        }
+
+        if failures.isEmpty {
             studyGroupDetails[index].members = selectedChallengers.map {
                 StudyGroupMember(
                     serverID: $0.memberId,
@@ -308,33 +346,235 @@ final class OperatorStudyManagementViewModel {
                     profileImageURL: $0.profileImage
                 )
             }
-        } catch let error as DomainError {
+        } else {
             alertPrompt = AlertPrompt(
-                title: "변경 실패",
-                message: error.userMessage,
+                title: "일부 변경 실패",
+                message: failures.joined(separator: "\n"),
                 positiveBtnTitle: "확인"
             )
-        } catch {
-            errorHandler.handle(error, context: ErrorContext(
-                feature: "Activity",
-                action: "updateStudyGroupMembers"
-            ))
+            refreshStudyGroupManagementDataInBackground()
         }
 
         selectedChallengers = []
         memberUpdateTargetGroup = nil
     }
 
-    /// 그룹 정보(이름, 파트) 수정 적용
+    /// 멘토 시트 dismiss 시 호출 — 변경된 멘토 목록을 서버에 반영
+    @MainActor
+    func applySelectedMentors() async {
+        guard let targetGroup = mentorUpdateTargetGroup,
+              let index = studyGroupDetails.firstIndex(
+                  where: { $0.id == targetGroup.id }
+              )
+        else {
+            selectedMentors = []
+            mentorUpdateTargetGroup = nil
+            return
+        }
+
+        guard let serverGroupId = Int(targetGroup.serverID) else {
+            alertPrompt = AlertPrompt(
+                title: "변경 실패",
+                message: "유효하지 않은 그룹 ID입니다.",
+                positiveBtnTitle: "확인"
+            )
+            selectedMentors = []
+            mentorUpdateTargetGroup = nil
+            return
+        }
+
+        guard !selectedMentors.isEmpty else {
+            alertPrompt = AlertPrompt(
+                title: "변경 실패",
+                message: "최소 1명의 멘토가 필요합니다.",
+                positiveBtnTitle: "확인"
+            )
+            selectedMentors = []
+            mentorUpdateTargetGroup = nil
+            return
+        }
+
+        let currentChallengerIDs = Set(
+            studyGroupDetails[index]
+                .mentors
+                .compactMap(\.challengerID)
+                .filter { $0 > 0 }
+        )
+        let resolvedChallengerIDs = await resolveChallengerIDs(
+            from: selectedMentors
+        )
+        let unresolvedCount = selectedMentors.count - resolvedChallengerIDs.count
+        guard unresolvedCount == 0 else {
+            alertPrompt = AlertPrompt(
+                title: "변경 실패",
+                message: "선택한 멘토의 챌린저 ID를 확인하지 못했습니다. 다시 시도해 주세요.",
+                positiveBtnTitle: "확인"
+            )
+            selectedMentors = []
+            mentorUpdateTargetGroup = nil
+            return
+        }
+        let updatedChallengerIDs = Set(
+            selectedMentors
+                .compactMap { resolvedChallengerIDs[$0.selectionKey] }
+                .filter { $0 > 0 }
+        )
+
+        if currentChallengerIDs == updatedChallengerIDs {
+            selectedMentors = []
+            mentorUpdateTargetGroup = nil
+            return
+        }
+
+        let toAdd = updatedChallengerIDs.subtracting(currentChallengerIDs)
+        let toRemove = currentChallengerIDs.subtracting(updatedChallengerIDs)
+
+        var failures: [String] = []
+
+        for challengerId in toAdd {
+            do {
+                try await useCase.addStudyGroupMentor(
+                    groupId: serverGroupId,
+                    mentorId: challengerId
+                )
+            } catch let error as DomainError {
+                failures.append(error.userMessage)
+            } catch {
+                failures.append("멘토 추가 실패")
+            }
+        }
+
+        for challengerId in toRemove {
+            do {
+                try await useCase.removeStudyGroupMentor(
+                    groupId: serverGroupId,
+                    mentorId: challengerId
+                )
+            } catch let error as DomainError {
+                failures.append(error.userMessage)
+            } catch {
+                failures.append("멘토 제거 실패")
+            }
+        }
+
+        if failures.isEmpty {
+            studyGroupDetails[index].mentors = selectedMentors.map {
+                StudyGroupMember(
+                    serverID: $0.memberId,
+                    challengerID: resolvedChallengerIDs[$0.selectionKey],
+                    memberID: Int($0.memberId),
+                    name: $0.name,
+                    nickname: $0.nickname,
+                    university: $0.schoolName,
+                    profileImageURL: $0.profileImage,
+                    role: .leader
+                )
+            }
+        } else {
+            alertPrompt = AlertPrompt(
+                title: "일부 변경 실패",
+                message: failures.joined(separator: "\n"),
+                positiveBtnTitle: "확인"
+            )
+            refreshStudyGroupManagementDataInBackground()
+        }
+
+        selectedMentors = []
+        mentorUpdateTargetGroup = nil
+    }
+
+    /// 멤버 단건 삭제 (chip context menu)
+    @MainActor
+    func removeMember(_ member: StudyGroupMember, from group: StudyGroupInfo) async {
+        guard let serverGroupId = Int(group.serverID),
+              let challengerId = member.challengerID, challengerId > 0,
+              let index = studyGroupDetails.firstIndex(where: { $0.id == group.id })
+        else {
+            alertPrompt = AlertPrompt(
+                title: "삭제 실패",
+                message: "유효하지 않은 식별자입니다.",
+                positiveBtnTitle: "확인"
+            )
+            return
+        }
+
+        do {
+            try await useCase.removeStudyGroupMember(
+                groupId: serverGroupId,
+                memberId: challengerId
+            )
+            studyGroupDetails[index].members.removeAll { $0.id == member.id }
+        } catch let error as DomainError {
+            alertPrompt = AlertPrompt(
+                title: "삭제 실패",
+                message: error.userMessage,
+                positiveBtnTitle: "확인"
+            )
+        } catch {
+            errorHandler.handle(error, context: ErrorContext(
+                feature: "Activity",
+                action: "removeStudyGroupMember"
+            ))
+        }
+    }
+
+    /// 멘토 단건 삭제 (chip context menu)
+    ///
+    /// 마지막 멘토 삭제는 차단합니다.
+    @MainActor
+    func removeMentor(_ mentor: StudyGroupMember, from group: StudyGroupInfo) async {
+        guard let index = studyGroupDetails.firstIndex(where: { $0.id == group.id }) else {
+            return
+        }
+
+        guard studyGroupDetails[index].mentors.count > 1 else {
+            alertPrompt = AlertPrompt(
+                title: "삭제 불가",
+                message: "최소 1명의 멘토는 유지되어야 합니다.",
+                positiveBtnTitle: "확인"
+            )
+            return
+        }
+
+        guard let serverGroupId = Int(group.serverID),
+              let challengerId = mentor.challengerID, challengerId > 0
+        else {
+            alertPrompt = AlertPrompt(
+                title: "삭제 실패",
+                message: "유효하지 않은 식별자입니다.",
+                positiveBtnTitle: "확인"
+            )
+            return
+        }
+
+        do {
+            try await useCase.removeStudyGroupMentor(
+                groupId: serverGroupId,
+                mentorId: challengerId
+            )
+            studyGroupDetails[index].mentors.removeAll { $0.id == mentor.id }
+        } catch let error as DomainError {
+            alertPrompt = AlertPrompt(
+                title: "삭제 실패",
+                message: error.userMessage,
+                positiveBtnTitle: "확인"
+            )
+        } catch {
+            errorHandler.handle(error, context: ErrorContext(
+                feature: "Activity",
+                action: "removeStudyGroupMentor"
+            ))
+        }
+    }
+
+    /// 그룹 이름 수정 적용
     /// - Parameters:
     ///   - groupID: 수정할 그룹 ID
     ///   - name: 새 그룹명
-    ///   - part: 새 파트
     @MainActor
     func updateGroup(
         groupID: UUID,
-        name: String,
-        part: UMCPartType
+        name: String
     ) async -> Bool {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
@@ -367,8 +607,7 @@ final class OperatorStudyManagementViewModel {
         do {
             try await useCase.updateStudyGroup(
                 groupId: serverGroupId,
-                name: trimmedName,
-                part: part
+                name: trimmedName
             )
         } catch let error as DomainError {
             alertPrompt = AlertPrompt(
@@ -399,9 +638,9 @@ final class OperatorStudyManagementViewModel {
             id: old.id,
             serverID: old.serverID,
             name: trimmedName,
-            part: part,
+            part: old.part,
             createdDate: old.createdDate,
-            leader: old.leader,
+            mentors: old.mentors,
             members: old.members
         )
         return true
@@ -410,7 +649,6 @@ final class OperatorStudyManagementViewModel {
     /// 그룹 편집 시트 표시
     func showEditSheet(for group: StudyGroupInfo) {
         editingName = group.name
-        editingPart = group.part
         editingGroup = group
     }
 
@@ -435,25 +673,43 @@ final class OperatorStudyManagementViewModel {
         addMemberGroup = group
     }
 
+    /// 멘토 추가 시트 표시
+    func showAddMentorSheet(for group: StudyGroupInfo) {
+        mentorUpdateTargetGroup = group
+        selectedMentors = group.mentors.map { mentor in
+            ChallengerInfo(
+                memberId: mentor.memberID.map(String.init) ?? mentor.serverID,
+                challengerId: mentor.challengerID
+                    ?? mentor.memberID
+                    ?? Int(mentor.serverID)
+                    ?? 0,
+                gen: 0,
+                name: mentor.name,
+                nickname: mentor.nickname ?? mentor.name,
+                schoolName: mentor.university,
+                profileImage: mentor.profileImageURL,
+                part: group.part
+            )
+        }
+        addMentorGroup = group
+    }
+
     /// 새 스터디 그룹 생성 (ChallengerInfo → StudyGroupMember 변환)
     /// - Parameters:
     ///   - name: 그룹명
     ///   - part: 파트
-    ///   - leader: 리더 정보
-    ///   - members: 멤버 목록
+    ///   - mentors: 담당 파트장(멘토) 목록 (1명 이상)
+    ///   - members: 스터디원 목록
     @MainActor
     func createGroup(
         name: String,
         part: UMCPartType,
-        leader: ChallengerInfo,
+        mentors: [ChallengerInfo],
         members: [ChallengerInfo]
     ) async -> Bool {
-        print("createGroup start")
-        print("createGroup raw name count:", name.count)
         let trimmedName = name.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
-        print("createGroup trimmed name count:", trimmedName.count)
         guard !trimmedName.isEmpty else {
             alertPrompt = AlertPrompt(
                 title: "그룹 생성 실패",
@@ -463,15 +719,36 @@ final class OperatorStudyManagementViewModel {
             return false
         }
 
-        print("createGroup before resolve ids")
-        let resolvedChallengerIDs = await resolveChallengerIDs(
-            from: [leader] + members
-        )
-        print("createGroup resolved ids count:", resolvedChallengerIDs.count)
-        guard let leaderId = resolvedChallengerIDs[leader.selectionKey] else {
+        guard !mentors.isEmpty else {
             alertPrompt = AlertPrompt(
                 title: "그룹 생성 실패",
-                message: "파트장의 챌린저 ID를 확인하지 못했습니다. 다시 선택해 주세요.",
+                message: "최소 1명의 담당 파트장(멘토)이 필요합니다.",
+                positiveBtnTitle: "확인"
+            )
+            return false
+        }
+
+        let gisuId = currentGisuId
+        guard gisuId > 0 else {
+            alertPrompt = AlertPrompt(
+                title: "그룹 생성 실패",
+                message: "현재 기수 정보를 확인할 수 없습니다.",
+                positiveBtnTitle: "확인"
+            )
+            return false
+        }
+
+        let resolvedChallengerIDs = await resolveChallengerIDs(
+            from: mentors + members
+        )
+
+        let unresolvedMentor = mentors.contains {
+            resolvedChallengerIDs[$0.selectionKey] == nil
+        }
+        guard !unresolvedMentor else {
+            alertPrompt = AlertPrompt(
+                title: "그룹 생성 실패",
+                message: "선택한 멘토의 챌린저 ID를 확인하지 못했습니다. 다시 시도해 주세요.",
                 positiveBtnTitle: "확인"
             )
             return false
@@ -489,31 +766,28 @@ final class OperatorStudyManagementViewModel {
             return false
         }
 
+        let mentorIds = mentors.compactMap { resolvedChallengerIDs[$0.selectionKey] }
         let memberIds = members
             .compactMap { resolvedChallengerIDs[$0.selectionKey] }
-            .filter { $0 != leaderId }
-        print("createGroup memberIds count:", memberIds.count)
+            .filter { !mentorIds.contains($0) }
 
         do {
-            print("createGroup before api")
             try await useCase.createStudyGroup(
+                gisuId: gisuId,
                 name: trimmedName,
                 part: part,
-                leaderId: leaderId,
-                memberIds: memberIds
+                memberIds: memberIds,
+                mentorIds: mentorIds
             )
-            print("createGroup api success")
             appendCreatedGroupToLocalState(
                 name: trimmedName,
                 part: part,
-                leader: leader,
-                leaderId: leaderId,
+                mentors: mentors,
+                mentorIds: mentorIds,
                 members: members,
                 resolvedChallengerIDs: resolvedChallengerIDs
             )
-            print("createGroup local append success")
             refreshStudyGroupManagementDataInBackground()
-            print("createGroup background refresh scheduled")
 
             return true
         } catch let error as DomainError {
@@ -626,29 +900,33 @@ final class OperatorStudyManagementViewModel {
     private func appendCreatedGroupToLocalState(
         name: String,
         part: UMCPartType,
-        leader: ChallengerInfo,
-        leaderId: Int,
+        mentors: [ChallengerInfo],
+        mentorIds: [Int],
         members: [ChallengerInfo],
         resolvedChallengerIDs: [String: Int]
     ) {
         let localServerID = "new_\(UUID().uuidString)"
+        let mentorMembers: [StudyGroupMember] = mentors.map { mentor in
+            StudyGroupMember(
+                serverID: mentor.memberId,
+                challengerID: resolvedChallengerIDs[mentor.selectionKey],
+                memberID: Int(mentor.memberId),
+                name: mentor.name,
+                nickname: mentor.nickname,
+                university: mentor.schoolName,
+                profileImageURL: mentor.profileImage,
+                role: .leader
+            )
+        }
+        let mentorMemberIds = Set(mentors.map(\.memberId))
         let localGroup = StudyGroupInfo(
             serverID: localServerID,
             name: name,
             part: part,
             createdDate: Date(),
-            leader: StudyGroupMember(
-                serverID: leader.memberId,
-                challengerID: leaderId,
-                memberID: Int(leader.memberId),
-                name: leader.name,
-                nickname: leader.nickname,
-                university: leader.schoolName,
-                profileImageURL: leader.profileImage,
-                role: .leader
-            ),
+            mentors: mentorMembers,
             members: members.compactMap {
-                $0.memberId != leader.memberId ? StudyGroupMember(
+                !mentorMemberIds.contains($0.memberId) ? StudyGroupMember(
                     serverID: $0.memberId,
                     challengerID: resolvedChallengerIDs[$0.selectionKey],
                     memberID: Int($0.memberId),

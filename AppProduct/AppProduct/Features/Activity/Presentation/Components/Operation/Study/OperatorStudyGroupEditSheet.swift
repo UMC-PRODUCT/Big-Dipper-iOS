@@ -9,7 +9,7 @@ import SwiftUI
 
 /// 스터디 그룹 정보 수정 시트
 ///
-/// 그룹 이름과 소속 파트를 수정할 수 있는 시트입니다.
+/// 그룹 이름을 수정할 수 있는 시트입니다.
 struct OperatorStudyGroupEditSheet: View {
     // MARK: - Property
 
@@ -18,19 +18,17 @@ struct OperatorStudyGroupEditSheet: View {
     @State private var isSaving = false
 
     fileprivate enum Constants {
-        static let allParts: [UMCPartType] = UMCPartType.allCases
         static let sectionSpacing: CGFloat = 20
         static let blockSpacing: CGFloat = 8
         static let fieldHeight: CGFloat = 50
         static let fieldHorizontalPadding: CGFloat = 16
         static let contentHorizontalPadding: CGFloat = 20
         static let contentTopPadding: CGFloat = 20
-        static let fieldCornerRadius: CGFloat = 16
     }
 
     // MARK: - Initializer
 
-    /// - Parameter viewModel: 스터디 관리 ViewModel (`editingName`, `editingPart`로 상태를 관리합니다)
+    /// - Parameter viewModel: 스터디 관리 ViewModel (`editingName`으로 상태를 관리합니다)
     init(viewModel: OperatorStudyManagementViewModel) {
         self.viewModel = viewModel
     }
@@ -42,7 +40,6 @@ struct OperatorStudyGroupEditSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Constants.sectionSpacing) {
                     nameSection
-                    partSection
                 }
                 .padding(.horizontal, Constants.contentHorizontalPadding)
                 .padding(.top, Constants.contentTopPadding)
@@ -60,7 +57,7 @@ struct OperatorStudyGroupEditSheet: View {
                 )
             }
         }
-        .presentationDetents([.fraction(0.4)])
+        .presentationDetents([.fraction(0.3)])
         .presentationDragIndicator(.hidden)
         .interactiveDismissDisabled()
     }
@@ -74,57 +71,18 @@ struct OperatorStudyGroupEditSheet: View {
 
             TextField("그룹 이름 지정", text: $viewModel.editingName)
                 .multilineTextAlignment(.leading)
-                .foregroundStyle(.black)
                 .autocorrectionDisabled(true)
                 .padding(.horizontal, Constants.fieldHorizontalPadding)
                 .frame(height: Constants.fieldHeight)
                 .background(
-                    RoundedRectangle(cornerRadius: Constants.fieldCornerRadius)
-                        .fill(Color.grey100)
+                    ConcentricRectangle(
+                        corners: .concentric(minimum: DefaultConstant.concentricRadius)
+                    )
+                    .fill(Color.grey100)
                 )
 
             Text("예시) React A팀")
                 .appFont(.footnote, color: .grey500)
-        }
-    }
-
-    private var partSection: some View {
-        VStack(alignment: .leading, spacing: Constants.blockSpacing) {
-            Text("소속 파트")
-                .appFont(.subheadline, color: .grey700)
-
-            Menu {
-                ForEach(Constants.allParts, id: \.self) { part in
-                    Button {
-                        viewModel.editingPart = part
-                    } label: {
-                        HStack {
-                            Image(systemName: part.icon)
-                            Text(part.name)
-                            if viewModel.editingPart == part {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                    .foregroundStyle(part.color)
-                }
-            } label: {
-                HStack(spacing: Constants.blockSpacing) {
-                    Image(systemName: viewModel.editingPart.icon)
-                        .foregroundStyle(viewModel.editingPart.color)
-                    Text(viewModel.editingPart.name)
-                        .appFont(.body, color: viewModel.editingPart.color)
-                    Spacer()
-                    Image(systemName: "chevron.up.chevron.down")
-                        .foregroundStyle(.grey500)
-                }
-                .padding(.horizontal, Constants.fieldHorizontalPadding)
-                .frame(height: Constants.fieldHeight)
-                .background(
-                    RoundedRectangle(cornerRadius: Constants.fieldCornerRadius)
-                        .fill(Color.grey100)
-                )
-            }
         }
     }
 
@@ -135,7 +93,6 @@ struct OperatorStudyGroupEditSheet: View {
     }
 
     private func submit() {
-        guard !isSaveDisabled else { return }
         guard !isSaving else { return }
         isSaving = true
 
@@ -146,8 +103,7 @@ struct OperatorStudyGroupEditSheet: View {
             }
             let isSuccess = await viewModel.updateGroup(
                 groupID: groupID,
-                name: viewModel.editingName.trimmingCharacters(in: .whitespacesAndNewlines),
-                part: viewModel.editingPart
+                name: viewModel.editingName.trimmingCharacters(in: .whitespacesAndNewlines)
             )
             isSaving = false
             if isSuccess {

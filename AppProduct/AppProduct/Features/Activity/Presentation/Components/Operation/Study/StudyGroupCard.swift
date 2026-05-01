@@ -11,7 +11,7 @@ import SwiftUI
 
 /// 스터디 그룹 상세 카드
 ///
-/// 그룹명, 파트, 파트장, 멤버 목록과 관리 액션을 표시합니다.
+/// 그룹명, 파트, 멘토(담당 파트장) 목록, 멤버 목록과 관리 액션을 표시합니다.
 struct StudyGroupCard: View, Equatable {
 
     // MARK: - Property
@@ -22,7 +22,10 @@ struct StudyGroupCard: View, Equatable {
     private var onEdit: (() -> Void)?
     private var onDelete: (() -> Void)?
     private var onAddMember: (() -> Void)?
+    private var onAddMentor: (() -> Void)?
     private var onSchedule: (() -> Void)?
+    private var onRemoveMember: ((StudyGroupMember) -> Void)?
+    private var onRemoveMentor: ((StudyGroupMember) -> Void)?
 
     // MARK: - Initializer
 
@@ -31,22 +34,30 @@ struct StudyGroupCard: View, Equatable {
     ///   - onEdit: 편집 버튼 탭 콜백
     ///   - onDelete: 삭제 버튼 탭 콜백
     ///   - onAddMember: 멤버 추가 버튼 탭 콜백
+    ///   - onAddMentor: 멘토 추가 버튼 탭 콜백
     ///   - onSchedule: 일정 등록 버튼 탭 콜백
+    ///   - onRemoveMember: 멤버 칩 삭제 콜백
+    ///   - onRemoveMentor: 멘토 칩 삭제 콜백
     init(
         detail: StudyGroupInfo,
         onEdit: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil,
         onAddMember: (() -> Void)? = nil,
-        onSchedule: (() -> Void)? = nil
+        onAddMentor: (() -> Void)? = nil,
+        onSchedule: (() -> Void)? = nil,
+        onRemoveMember: ((StudyGroupMember) -> Void)? = nil,
+        onRemoveMentor: ((StudyGroupMember) -> Void)? = nil
     ) {
         self.detail = detail
         self.onEdit = onEdit
         self.onDelete = onDelete
         self.onAddMember = onAddMember
+        self.onAddMentor = onAddMentor
         self.onSchedule = onSchedule
+        self.onRemoveMember = onRemoveMember
+        self.onRemoveMentor = onRemoveMentor
     }
 
-    
     // MARK: - Equatable
 
     static func == (lhs: Self, rhs: Self) -> Bool {
@@ -58,7 +69,7 @@ struct StudyGroupCard: View, Equatable {
     var body: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
             headerSection
-            leaderSection
+            mentorSection
             membersSection
         }
         .padding(DefaultConstant.defaultCardPadding)
@@ -66,8 +77,7 @@ struct StudyGroupCard: View, Equatable {
             ConcentricRectangle(
                 corners: .concentric(minimum: DefaultConstant.concentricRadius)
             )
-            .fill(.white)
-            .glass()
+            .glassEffect(.regular)
         )
         .alertPrompt(item: $deleteAlertPrompt)
     }
@@ -79,7 +89,7 @@ struct StudyGroupCard: View, Equatable {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
             HStack(spacing: DefaultSpacing.spacing8) {
                 Text(detail.name)
-                    .appFont(.calloutEmphasis, color: .black)
+                    .appFont(.calloutEmphasis)
 
                 InfoBadge(
                     detail.part.name,
@@ -119,11 +129,11 @@ struct StudyGroupCard: View, Equatable {
             }
         } label: {
             Image(systemName: "gearshape")
-                .font(.system(size: 20))
-                .foregroundStyle(.black)
+                .font(.app(.title3))
                 .padding(DefaultConstant.iconPadding)
-                .glassEffect()
+                .glassEffect(.regular.interactive())
         }
+        .accessibilityLabel("그룹 설정")
     }
 
     private var scheduleActionButton: some View {
@@ -149,13 +159,28 @@ struct StudyGroupCard: View, Equatable {
     }
 
     @ViewBuilder
-    private var leaderSection: some View {
+    private var mentorSection: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-            SectionHeaderView(title: "담당 파트장")
-            StudyGroupLeaderRow(
-                leader: detail.leader,
-                partTintColor: detail.part.color
-            )
+            HStack {
+                SectionHeaderView(title: "담당 파트장")
+                Spacer()
+                addMentorButton
+            }
+
+            ForEach(detail.mentors) { mentor in
+                StudyGroupLeaderRow(
+                    leader: mentor,
+                    partTintColor: detail.part.color
+                )
+                .equatable()
+                .contextMenu {
+                    Button(role: .destructive) {
+                        onRemoveMentor?(mentor)
+                    } label: {
+                        Label("멘토 삭제", systemImage: "trash")
+                    }
+                }
+            }
         }
     }
 
@@ -174,7 +199,14 @@ struct StudyGroupCard: View, Equatable {
                         member: member,
                         showsBestWorkbookBadge: topBestWorkbookMemberServerIDs.contains(member.serverID)
                     )
-                        .equatable()
+                    .equatable()
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            onRemoveMember?(member)
+                        } label: {
+                            Label("멤버 삭제", systemImage: "trash")
+                        }
+                    }
                 }
             }
         }
@@ -201,9 +233,20 @@ struct StudyGroupCard: View, Equatable {
         } label: {
             Image(systemName: "plus")
                 .padding(DefaultConstant.defaultBtnPadding)
-                .foregroundStyle(.black)
         }
-        .glassEffect()
+        .glassEffect(.regular.interactive())
+        .accessibilityLabel("스터디원 추가")
+    }
+
+    private var addMentorButton: some View {
+        Button {
+            onAddMentor?()
+        } label: {
+            Image(systemName: "plus")
+                .padding(DefaultConstant.defaultBtnPadding)
+        }
+        .glassEffect(.regular.interactive())
+        .accessibilityLabel("멘토 추가")
     }
 
 }
@@ -216,8 +259,11 @@ struct StudyGroupCard: View, Equatable {
         detail: .preview,
         onEdit: { print("Edit") },
         onDelete: { print("Delete") },
-        onAddMember: { print("Add") },
-        onSchedule: { print("Schedule") }
+        onAddMember: { print("Add Member") },
+        onAddMentor: { print("Add Mentor") },
+        onSchedule: { print("Schedule") },
+        onRemoveMember: { _ in print("Remove Member") },
+        onRemoveMentor: { _ in print("Remove Mentor") }
     )
     .padding(DefaultConstant.defaultSafeHorizon)
 }

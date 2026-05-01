@@ -84,6 +84,18 @@ struct OperatorStudyManagementView: View {
         .sheet(item: $viewModel.editingGroup) { _ in
             OperatorStudyGroupEditSheet(viewModel: viewModel)
         }
+        .sheet(
+            item: $viewModel.addMentorGroup,
+            onDismiss: {
+                Task {
+                    await viewModel.applySelectedMentors()
+                }
+            }
+        ) { _ in
+            SelectedChallengerView(
+                challenger: $viewModel.selectedMentors
+            )
+        }
         .navigationDestination(isPresented: $showCreateView) {
             OperatorStudyGroupCreateView(viewModel: viewModel)
         }
@@ -143,11 +155,17 @@ struct OperatorStudyManagementView: View {
                                 for: group
                             )
                         },
+                        onAddMentor: {
+                            viewModel.showAddMentorSheet(for: group)
+                        },
                         onSchedule: {
-                            guard group.leader.challengerID == currentChallengerId else {
+                            let isMentor = group.mentors.contains { mentor in
+                                mentor.challengerID == currentChallengerId
+                            }
+                            guard isMentor else {
                                 viewModel.alertPrompt = AlertPrompt(
                                     title: "권한 없음",
-                                    message: "그룹 리더만 일정을 등록할 수 있습니다.",
+                                    message: "담당 파트장(멘토)만 일정을 등록할 수 있습니다.",
                                     positiveBtnTitle: "확인"
                                 )
                                 return
@@ -163,6 +181,16 @@ struct OperatorStudyManagementView: View {
                                     )
                                 )
                             )
+                        },
+                        onRemoveMember: { member in
+                            Task {
+                                await viewModel.removeMember(member, from: group)
+                            }
+                        },
+                        onRemoveMentor: { mentor in
+                            Task {
+                                await viewModel.removeMentor(mentor, from: group)
+                            }
                         }
                     )
                     .equatable()

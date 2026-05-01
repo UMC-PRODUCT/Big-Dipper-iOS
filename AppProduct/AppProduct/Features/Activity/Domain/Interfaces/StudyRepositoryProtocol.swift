@@ -105,38 +105,68 @@ protocol StudyRepositoryProtocol {
     /// 스터디 그룹을 생성합니다.
     ///
     /// - Parameters:
+    ///   - gisuId: 기수 ID
     ///   - name: 그룹 이름
     ///   - part: 스터디 파트
-    ///   - leaderId: 파트장 챌린저 ID
     ///   - memberIds: 스터디원 챌린저 ID 목록
+    ///   - mentorIds: 담당 파트장(멘토) 챌린저 ID 목록
     /// - Throws: 네트워크 오류 또는 파싱 오류
     func createStudyGroup(
+        gisuId: Int,
         name: String,
         part: UMCPartType,
-        leaderId: Int,
-        memberIds: [Int]
+        memberIds: [Int],
+        mentorIds: [Int]
     ) async throws
 
-    /// 스터디 그룹 멤버를 변경합니다. (추가/삭제 반영)
+    /// 스터디 그룹에 스터디원을 추가합니다.
     /// - Parameters:
     ///   - groupId: 그룹 ID
-    ///   - challengerIds: 스터디원 챌린저 ID 목록
+    ///   - memberId: 추가할 챌린저 ID
     /// - Throws: 네트워크 오류 또는 파싱 오류
-    func updateStudyGroupMembers(
+    func addStudyGroupMember(
         groupId: Int,
-        challengerIds: [Int]
+        memberId: Int
     ) async throws
 
-    /// 스터디 그룹 정보를 수정합니다.
+    /// 스터디 그룹에서 스터디원을 제거합니다.
+    /// - Parameters:
+    ///   - groupId: 그룹 ID
+    ///   - memberId: 제거할 챌린저 ID
+    /// - Throws: 네트워크 오류 또는 파싱 오류
+    func removeStudyGroupMember(
+        groupId: Int,
+        memberId: Int
+    ) async throws
+
+    /// 스터디 그룹에 담당 파트장(멘토)을 추가합니다.
+    /// - Parameters:
+    ///   - groupId: 그룹 ID
+    ///   - mentorId: 추가할 챌린저 ID
+    /// - Throws: 네트워크 오류 또는 파싱 오류
+    func addStudyGroupMentor(
+        groupId: Int,
+        mentorId: Int
+    ) async throws
+
+    /// 스터디 그룹에서 담당 파트장(멘토)을 제거합니다.
+    /// - Parameters:
+    ///   - groupId: 그룹 ID
+    ///   - mentorId: 제거할 챌린저 ID
+    /// - Throws: 네트워크 오류 또는 파싱 오류
+    func removeStudyGroupMentor(
+        groupId: Int,
+        mentorId: Int
+    ) async throws
+
+    /// 스터디 그룹 정보를 수정합니다. (이름만 수정 가능)
     /// - Parameters:
     ///   - groupId: 그룹 ID
     ///   - name: 그룹 이름
-    ///   - part: 스터디 파트
     /// - Throws: 네트워크 오류 또는 파싱 오류
     func updateStudyGroup(
         groupId: Int,
-        name: String,
-        part: UMCPartType
+        name: String
     ) async throws
 
     /// 스터디 그룹을 삭제합니다.

@@ -20,11 +20,10 @@ struct OperatorStudyGroupCreateView: View {
     @State private var name: String = ""
     @FocusState private var isNameFocused: Bool
     @State private var selectedPart: UMCPartType?
-    @State private var selectedLeader: [ChallengerInfo] = []
+    @State private var selectedMentors: [ChallengerInfo] = []
     @State private var selectedMembers: [ChallengerInfo] = []
-    @State private var fixedLeader: ChallengerInfo?
 
-    @State private var showLeaderSheet = false
+    @State private var showMentorSheet = false
     @State private var showMemberSheet = false
     @State private var isSaving = false
 
@@ -46,8 +45,9 @@ struct OperatorStudyGroupCreateView: View {
     fileprivate enum Constants {
         static let allParts: [UMCPartType] = UMCPartType.allCases
         static let participantText: String = "초대받은 스터디원"
+        static let mentorText: String = "담당 파트장(멘토)"
         static let chevronImage: String = "chevron.right"
-        static let leaderPlaceholderText: String = "담당 파트장을 선택하세요"
+        static let mentorPlaceholderText: String = "담당 파트장(멘토)을 선택하세요 (1명 이상)"
         static let groupNamePlaceholder: String = "그룹 이름 지정"
         static let groupNameGuideText: String = "예: React 실습 A팀"
         static let groupNameMaxLength: Int = 20
@@ -60,8 +60,9 @@ struct OperatorStudyGroupCreateView: View {
 
     var body: some View {
         Form {
+            generationSection
             nameSection
-            partAndLeaderSection
+            partAndMentorSection
             memberSection
         }
         .scrollDismissesKeyboard(.interactively)
@@ -76,22 +77,9 @@ struct OperatorStudyGroupCreateView: View {
                 dismissOnTap: false
             )
         }
-        .sheet(isPresented: $showLeaderSheet) {
-            SelectedChallengerView(challenger: $selectedLeader)
+        .sheet(isPresented: $showMentorSheet) {
+            SelectedChallengerView(challenger: $selectedMentors)
                 .interactiveDismissDisabled()
-        }
-        .onChange(of: showLeaderSheet) { _, isPresented in
-            guard !isPresented else { return }
-            if let fixedLeader {
-                selectedLeader = [fixedLeader]
-                return
-            }
-            if !isPresented, selectedLeader.count > 1 {
-                selectedLeader = [selectedLeader[0]]
-            }
-            if let first = selectedLeader.first {
-                fixedLeader = first
-            }
         }
         .sheet(isPresented: $showMemberSheet) {
             SelectedChallengerView(challenger: $selectedMembers)
@@ -101,16 +89,28 @@ struct OperatorStudyGroupCreateView: View {
 
     // MARK: - Sections
 
+    private var generationSection: some View {
+        Section {
+            HStack {
+                Text("기수")
+                    .appFont(.subheadline, color: .grey700)
+                Spacer()
+                Text(generationDisplayText)
+                    .appFont(.subheadline, color: .grey900)
+            }
+        }
+    }
+
     private var nameSection: some View {
         Section {
             nameInputSection
         }
     }
 
-    private var partAndLeaderSection: some View {
+    private var partAndMentorSection: some View {
         Section {
             partSection
-            leaderRow
+            mentorRow
         }
     }
 
@@ -126,7 +126,7 @@ struct OperatorStudyGroupCreateView: View {
             }
         } label: {
             Text(Constants.partText)
-                .appFont(.subheadline, color: .black)
+                .appFont(.subheadline, color: .grey900)
         }
         .pickerStyle(.menu)
     }
@@ -139,21 +139,22 @@ struct OperatorStudyGroupCreateView: View {
 
     // MARK: - Rows
 
-    private var leaderRow: some View {
+    private var mentorRow: some View {
         selectionButton(
-            title: selectedLeaderText,
-            titleColor: .black,
-            countText: selectedLeaderCountText,
-            isPlaceholder: selectedLeader.isEmpty
+            title: selectedMentorsText,
+            titleColor: .grey900,
+            countText: selectedMentorsCountText,
+            isPlaceholder: selectedMentors.isEmpty
         ) {
-            showLeaderSheet = true
+            showMentorSheet = true
         }
+        .accessibilityLabel(Constants.mentorText)
     }
 
     private var memberRow: some View {
         selectionButton(
             title: Constants.participantText,
-            titleColor: .black,
+            titleColor: .grey900,
             countText: selectedMembersCountText
         ) {
             showMemberSheet = true
@@ -162,13 +163,24 @@ struct OperatorStudyGroupCreateView: View {
 
     // MARK: - Function
 
-    private var selectedLeaderText: String {
-        selectedLeader.first.flatMap { "\($0.nickname)/\($0.name)" }
-            ?? Constants.leaderPlaceholderText
+    private var generationDisplayText: String {
+        let gisuId = viewModel.currentGisuId
+        guard gisuId > 0 else { return "정보 없음" }
+        return "\(gisuId)기"
     }
 
-    private var selectedLeaderCountText: String? {
-        selectedLeader.isEmpty ? nil : "1명"
+    private var selectedMentorsText: String {
+        if selectedMentors.isEmpty {
+            return Constants.mentorPlaceholderText
+        }
+        if selectedMentors.count == 1, let only = selectedMentors.first {
+            return "\(only.nickname)/\(only.name)"
+        }
+        return Constants.mentorText
+    }
+
+    private var selectedMentorsCountText: String? {
+        selectedMentors.isEmpty ? nil : "\(selectedMentors.count)명"
     }
 
     private var selectedMembersCountText: String? {
@@ -178,8 +190,9 @@ struct OperatorStudyGroupCreateView: View {
     private var isValid: Bool {
         !trimmedName.isEmpty
             && selectedPart != nil
-            && !selectedLeader.isEmpty
+            && !selectedMentors.isEmpty
             && !selectedMembers.isEmpty
+            && viewModel.currentGisuId > 0
     }
 
     private var trimmedName: String {
@@ -192,34 +205,24 @@ struct OperatorStudyGroupCreateView: View {
 
     private func save() {
         guard !isSaving else { return }
-        guard let leader = selectedLeader.first,
-              let selectedPart,
+        guard let selectedPart,
+              !selectedMentors.isEmpty,
               !selectedMembers.isEmpty
         else { return }
 
-        print("save start")
-        print("raw name count:", name.count)
-        print("leader memberId:", leader.memberId)
-        print("members count:", selectedMembers.count)
-
         let nameToSave = NSString(string: trimmedName) as String
         let partToSave = selectedPart
-        let leaderToSave = leader
+        let mentorsToSave = selectedMentors
         let membersToSave = selectedMembers
 
-        print("save snapshot ready")
-        print("trimmed name count:", nameToSave.count)
-
         Task { @MainActor in
-            print("save task start")
             isSaving = true
             let didSave = await viewModel.createGroup(
                 name: nameToSave,
                 part: partToSave,
-                leader: leaderToSave,
+                mentors: mentorsToSave,
                 members: membersToSave
             )
-            print("save task finished:", didSave)
             isSaving = false
 
             if didSave {
