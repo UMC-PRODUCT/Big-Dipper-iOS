@@ -11,15 +11,18 @@ import Foundation
 ///
 /// `POST /api/v1/study-groups`
 struct StudyGroupCreateRequestDTO: Codable, Sendable, Equatable {
+    /// 기수 ID
+    let gisuId: Int
+
     /// 그룹 이름
     let name: String
 
     /// 파트(API 값)
     let part: String
 
-    /// 파트장 챌린저 ID
-    let leaderId: Int
-
     /// 스터디원 챌린저 ID 목록
     let memberIds: [Int]
+
+    /// 담당 파트장(멘토) 챌린저 ID 목록
+    let mentorIds: [Int]
 }

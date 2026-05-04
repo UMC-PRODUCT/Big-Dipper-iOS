@@ -57,29 +57,36 @@ protocol FetchStudyMembersUseCaseProtocol {
 
     /// 스터디 그룹 생성
     /// - Parameters:
+    ///   - gisuId: 기수 ID
     ///   - name: 그룹 이름
     ///   - part: 스터디 파트
-    ///   - leaderId: 파트장 챌린저 ID
     ///   - memberIds: 스터디원 챌린저 ID 목록
+    ///   - mentorIds: 담당 파트장(멘토) 챌린저 ID 목록
     /// - Throws: 네트워크 오류 또는 파싱 오류
     func createStudyGroup(
+        gisuId: Int,
         name: String,
         part: UMCPartType,
-        leaderId: Int,
-        memberIds: [Int]
+        memberIds: [Int],
+        mentorIds: [Int]
     ) async throws
 
-    /// 스터디 그룹 멤버 변경
-    func updateStudyGroupMembers(
-        groupId: Int,
-        challengerIds: [Int]
-    ) async throws
+    /// 스터디 그룹에 스터디원 추가
+    func addStudyGroupMember(groupId: Int, memberId: Int) async throws
 
-    /// 스터디 그룹 수정
+    /// 스터디 그룹에서 스터디원 제거
+    func removeStudyGroupMember(groupId: Int, memberId: Int) async throws
+
+    /// 스터디 그룹에 담당 파트장(멘토) 추가
+    func addStudyGroupMentor(groupId: Int, mentorId: Int) async throws
+
+    /// 스터디 그룹에서 담당 파트장(멘토) 제거
+    func removeStudyGroupMentor(groupId: Int, mentorId: Int) async throws
+
+    /// 스터디 그룹 수정 (이름만 수정 가능)
     func updateStudyGroup(
         groupId: Int,
-        name: String,
-        part: UMCPartType
+        name: String
     ) async throws
 
     /// 스터디 그룹 삭제

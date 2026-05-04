@@ -97,38 +97,44 @@ final class FetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol {
     }
 
     func createStudyGroup(
+        gisuId: Int,
         name: String,
         part: UMCPartType,
-        leaderId: Int,
-        memberIds: [Int]
+        memberIds: [Int],
+        mentorIds: [Int]
     ) async throws {
         try await repository.createStudyGroup(
+            gisuId: gisuId,
             name: name,
             part: part,
-            leaderId: leaderId,
-            memberIds: memberIds
+            memberIds: memberIds,
+            mentorIds: mentorIds
         )
     }
 
-    func updateStudyGroupMembers(
-        groupId: Int,
-        challengerIds: [Int]
-    ) async throws {
-        try await repository.updateStudyGroupMembers(
-            groupId: groupId,
-            challengerIds: challengerIds
-        )
+    func addStudyGroupMember(groupId: Int, memberId: Int) async throws {
+        try await repository.addStudyGroupMember(groupId: groupId, memberId: memberId)
+    }
+
+    func removeStudyGroupMember(groupId: Int, memberId: Int) async throws {
+        try await repository.removeStudyGroupMember(groupId: groupId, memberId: memberId)
+    }
+
+    func addStudyGroupMentor(groupId: Int, mentorId: Int) async throws {
+        try await repository.addStudyGroupMentor(groupId: groupId, mentorId: mentorId)
+    }
+
+    func removeStudyGroupMentor(groupId: Int, mentorId: Int) async throws {
+        try await repository.removeStudyGroupMentor(groupId: groupId, mentorId: mentorId)
     }
 
     func updateStudyGroup(
         groupId: Int,
-        name: String,
-        part: UMCPartType
+        name: String
     ) async throws {
         try await repository.updateStudyGroup(
             groupId: groupId,
-            name: name,
-            part: part
+            name: name
         )
     }
 

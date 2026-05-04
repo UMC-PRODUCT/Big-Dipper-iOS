@@ -28,9 +28,12 @@ enum StudyRouter {
     case reviewWorkbook(challengerWorkbookId: Int, body: WorkbookReviewRequestDTO)
     case selectBestWorkbook(challengerWorkbookId: Int, body: BestWorkbookSelectionRequestDTO)
     case createStudyGroup(body: StudyGroupCreateRequestDTO)
-    case updateStudyGroupMembers(groupId: Int, body: StudyGroupMembersUpdateRequestDTO)
     case updateStudyGroup(groupId: Int, body: StudyGroupUpdateRequestDTO)
     case deleteStudyGroup(groupId: Int)
+    case addStudyGroupMember(groupId: Int, memberId: Int)
+    case removeStudyGroupMember(groupId: Int, memberId: Int)
+    case addStudyGroupMentor(groupId: Int, mentorId: Int)
+    case removeStudyGroupMentor(groupId: Int, mentorId: Int)
     case createChallengerPoint(challengerId: Int, body: ChallengerPointCreateRequestDTO)
     case deleteChallengerPoint(challengerPointId: Int)
     case searchChallengersOffset(page: Int, size: Int, schoolId: Int)
@@ -66,12 +69,16 @@ extension StudyRouter: BaseTargetType {
             return "/api/v1/workbooks/challenger/\(challengerWorkbookId)/best"
         case .createStudyGroup:
             return "/api/v1/study-groups"
-        case .updateStudyGroupMembers(let groupId, _):
-            return "/api/v1/study-groups/\(groupId)/members"
         case .updateStudyGroup(let groupId, _):
             return "/api/v1/study-groups/\(groupId)"
         case .deleteStudyGroup(let groupId):
             return "/api/v1/study-groups/\(groupId)"
+        case .addStudyGroupMember(let groupId, let memberId),
+             .removeStudyGroupMember(let groupId, let memberId):
+            return "/api/v1/study-groups/\(groupId)/members/\(memberId)"
+        case .addStudyGroupMentor(let groupId, let mentorId),
+             .removeStudyGroupMentor(let groupId, let mentorId):
+            return "/api/v1/study-groups/\(groupId)/mentors/\(mentorId)"
         case .createChallengerPoint(let challengerId, _):
             return "/api/v1/challenger/\(challengerId)/points"
         case .deleteChallengerPoint(let challengerPointId):
@@ -97,13 +104,17 @@ extension StudyRouter: BaseTargetType {
             return .delete
         case .searchChallengersOffset:
             return .get
-        case .updateStudyGroupMembers:
-            return .put
         case .createStudyGroupSchedule:
             return .post
         case .updateStudyGroup:
             return .patch
         case .deleteStudyGroup:
+            return .delete
+        case .addStudyGroupMember,
+             .addStudyGroupMentor:
+            return .patch
+        case .removeStudyGroupMember,
+             .removeStudyGroupMentor:
             return .delete
         case .getCurriculum,
              .getCurriculumWeeks,
@@ -177,15 +188,17 @@ extension StudyRouter: BaseTargetType {
             return .requestJSONEncodable(body)
         case .createStudyGroup(let body):
             return .requestJSONEncodable(body)
-        case .updateStudyGroupMembers(_, let body):
-            return .requestJSONEncodable(body)
         case .updateStudyGroup(_, let body):
             return .requestJSONEncodable(body)
         case .createChallengerPoint(_, let body):
             return .requestJSONEncodable(body)
         case .deleteChallengerPoint:
             return .requestPlain
-        case .deleteStudyGroup:
+        case .deleteStudyGroup,
+             .addStudyGroupMember,
+             .removeStudyGroupMember,
+             .addStudyGroupMentor,
+             .removeStudyGroupMentor:
             return .requestPlain
         case .searchChallengersOffset(let page, let size, let schoolId):
             return .requestParameters(

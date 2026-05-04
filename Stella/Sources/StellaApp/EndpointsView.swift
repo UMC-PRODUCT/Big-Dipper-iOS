@@ -15,7 +15,8 @@ struct EndpointRow: Identifiable {
 
 struct EndpointsView: View {
     @Bindable var model: ScanModel
-    @State private var selection: EndpointRow.ID?
+    @State private var selectedIDs: Set<EndpointRow.ID> = []
+    @State private var primarySelection: EndpointRow.ID?
     @State private var draggingColumn: EndpointColumn?
     @State private var columnWidths: [EndpointColumn: CGFloat] = [:]
     @State private var resizeAnchor: (column: EndpointColumn, startWidth: CGFloat)?
@@ -93,9 +94,9 @@ struct EndpointsView: View {
             Spacer()
 
             Button {
-                copySelectedEndpoint()
+                copySelectedEndpoints()
             } label: {
-                Label("선택 API 복사", systemImage: "doc.on.doc")
+                Label(copyButtonTitle, systemImage: "doc.on.doc")
             }
             .disabled(selectedDetail == nil)
 
@@ -189,7 +190,7 @@ struct EndpointsView: View {
 
     private func endpointRow(_ row: EndpointRow, containerWidth: CGFloat) -> some View {
         Button {
-            selection = row.id
+            selectRow(row)
         } label: {
             HStack(spacing: 0) {
                 ForEach(orderedColumns) { column in
@@ -200,7 +201,7 @@ struct EndpointsView: View {
                 }
             }
             .contentShape(Rectangle())
-            .foregroundStyle(selection == row.id ? Color.white : Color.primary)
+            .foregroundStyle(selectedIDs.contains(row.id) ? Color.white : Color.primary)
             .background(rowBackground(row))
             .overlay(alignment: .bottom) {
                 Rectangle()
@@ -210,6 +211,12 @@ struct EndpointsView: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
+            if selectedIDs.count > 1, selectedIDs.contains(row.id) {
+                Button("선택한 API \(selectedIDs.count)개 복사") {
+                    copySelectedEndpoints()
+                }
+                Divider()
+            }
             Button("API 정보 전체 복사") {
                 copyEndpoint(row.entry)
             }
@@ -279,7 +286,7 @@ struct EndpointsView: View {
     }
 
     private func rowBackground(_ row: EndpointRow) -> some ShapeStyle {
-        if selection == row.id {
+        if selectedIDs.contains(row.id) {
             return AnyShapeStyle(Color.accentColor)
         }
         guard let index = rows.firstIndex(where: { $0.id == row.id }),
@@ -403,19 +410,71 @@ struct EndpointsView: View {
     }
 
     private var selectedDetail: CoverageSnapshot.EndpointEntry? {
-        guard let selection else { return nil }
-        return rows.first { $0.id == selection }?.entry
+        guard let primarySelection else { return nil }
+        return rows.first { $0.id == primarySelection }?.entry
     }
 
     private func selectFirstRowIfNeeded() {
-        if selection == nil || !rows.contains(where: { $0.id == selection }) {
-            selection = rows.first?.id
+        let availableIDs = Set(rows.map(\.id))
+        selectedIDs.formIntersection(availableIDs)
+        if let primarySelection, availableIDs.contains(primarySelection) {
+            return
+        }
+        primarySelection = rows.first?.id
+        selectedIDs = primarySelection.map { [$0] } ?? []
+    }
+
+    private var selectedEntries: [CoverageSnapshot.EndpointEntry] {
+        rows
+            .filter { selectedIDs.contains($0.id) }
+            .map(\.entry)
+    }
+
+    private var copyButtonTitle: String {
+        selectedIDs.count > 1 ? "선택 API \(selectedIDs.count)개 복사" : "선택 API 복사"
+    }
+
+    private func selectRow(_ row: EndpointRow) {
+        let modifiers = NSEvent.modifierFlags
+        if modifiers.contains(.shift), let primarySelection,
+           let anchorIndex = rows.firstIndex(where: { $0.id == primarySelection }),
+           let targetIndex = rows.firstIndex(where: { $0.id == row.id }) {
+            let range = min(anchorIndex, targetIndex)...max(anchorIndex, targetIndex)
+            selectedIDs = Set(rows[range].map(\.id))
+        } else if modifiers.contains(.command) {
+            if selectedIDs.contains(row.id) {
+                selectedIDs.remove(row.id)
+                if primarySelection == row.id {
+                    primarySelection = selectedIDs.first ?? rows.first?.id
+                }
+            } else {
+                selectedIDs.insert(row.id)
+                primarySelection = row.id
+            }
+        } else {
+            selectedIDs = [row.id]
+            primarySelection = row.id
+        }
+
+        if selectedIDs.isEmpty {
+            selectedIDs = [row.id]
+            primarySelection = row.id
         }
     }
 
-    private func copySelectedEndpoint() {
-        guard let selectedDetail else { return }
-        copyEndpoint(selectedDetail)
+    private func copySelectedEndpoints() {
+        guard let snapshot = model.snapshot else { return }
+        let entries = selectedEntries
+        guard !entries.isEmpty else { return }
+        let text = EndpointCopyFormatter.markdown(for: entries, snapshot: snapshot)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        if entries.count == 1 {
+            let entry = entries[0]
+            model.statusMessage = "\(entry.key.method.rawValue) \(entry.key.path) API 정보를 복사했어요"
+        } else {
+            model.statusMessage = "API \(entries.count)개 정보를 복사했어요"
+        }
     }
 
     private func copyEndpoint(_ entry: CoverageSnapshot.EndpointEntry) {

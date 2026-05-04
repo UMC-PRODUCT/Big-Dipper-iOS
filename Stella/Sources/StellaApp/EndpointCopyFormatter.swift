@@ -78,6 +78,15 @@ enum EndpointCopyFormatter {
         return lines.joined(separator: "\n")
     }
 
+    static func markdown(
+        for entries: [CoverageSnapshot.EndpointEntry],
+        snapshot: CoverageSnapshot
+    ) -> String {
+        entries
+            .map { markdown(for: $0, snapshot: snapshot) }
+            .joined(separator: "\n\n---\n\n")
+    }
+
     private static func ownerText(_ owner: AuthorRef?) -> String {
         guard let owner else { return "-" }
         if let github = owner.githubUsername, !github.isEmpty {

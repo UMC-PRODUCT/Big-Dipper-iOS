@@ -204,35 +204,62 @@ final class MockStudyRepository: StudyRepositoryProtocol {
     }
 
     func createStudyGroup(
+        gisuId: Int,
         name: String,
         part: UMCPartType,
-        leaderId: Int,
-        memberIds: [Int]
+        memberIds: [Int],
+        mentorIds: [Int]
     ) async throws {
+        _ = gisuId
         _ = name
         _ = part
-        _ = leaderId
         _ = memberIds
+        _ = mentorIds
         try await Task.sleep(for: .milliseconds(300))
     }
 
-    func updateStudyGroupMembers(
+    func addStudyGroupMember(
         groupId: Int,
-        challengerIds: [Int]
+        memberId: Int
     ) async throws {
         _ = groupId
-        _ = challengerIds
-        try await Task.sleep(for: .milliseconds(300))
+        _ = memberId
+        try await Task.sleep(for: .milliseconds(200))
+    }
+
+    func removeStudyGroupMember(
+        groupId: Int,
+        memberId: Int
+    ) async throws {
+        _ = groupId
+        _ = memberId
+        try await Task.sleep(for: .milliseconds(200))
+    }
+
+    func addStudyGroupMentor(
+        groupId: Int,
+        mentorId: Int
+    ) async throws {
+        _ = groupId
+        _ = mentorId
+        try await Task.sleep(for: .milliseconds(200))
+    }
+
+    func removeStudyGroupMentor(
+        groupId: Int,
+        mentorId: Int
+    ) async throws {
+        _ = groupId
+        _ = mentorId
+        try await Task.sleep(for: .milliseconds(200))
     }
 
     func updateStudyGroup(
         groupId: Int,
-        name: String,
-        part: UMCPartType
+        name: String
     ) async throws {
         _ = groupId
         _ = name
-        _ = part
         try await Task.sleep(for: .milliseconds(300))
     }
 

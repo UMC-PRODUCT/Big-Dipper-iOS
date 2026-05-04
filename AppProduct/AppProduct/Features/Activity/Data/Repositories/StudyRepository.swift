@@ -205,7 +205,7 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         let memberIDs = Array(
             Set(
                 detailDTOs.flatMap { item in
-                    [item.dto.leader.memberId] + item.dto.members.map(\.memberId)
+                    item.dto.mentors.map(\.memberId) + item.dto.members.map(\.memberId)
                 }
             )
         )
@@ -349,18 +349,20 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
     }
 
     func createStudyGroup(
+        gisuId: Int,
         name: String,
         part: UMCPartType,
-        leaderId: Int,
-        memberIds: [Int]
+        memberIds: [Int],
+        mentorIds: [Int]
     ) async throws {
         let response = try await adapter.request(
             StudyRouter.createStudyGroup(
                 body: StudyGroupCreateRequestDTO(
+                    gisuId: gisuId,
                     name: name,
                     part: part.apiValue,
-                    leaderId: leaderId,
-                    memberIds: memberIds
+                    memberIds: memberIds,
+                    mentorIds: mentorIds
                 )
             )
         )
@@ -427,16 +429,12 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
 
     func updateStudyGroup(
         groupId: Int,
-        name: String,
-        part: UMCPartType
+        name: String
     ) async throws {
         let response = try await adapter.request(
             StudyRouter.updateStudyGroup(
                 groupId: groupId,
-                body: StudyGroupUpdateRequestDTO(
-                    name: name,
-                    part: part.apiValue
-                )
+                body: StudyGroupUpdateRequestDTO(name: name)
             )
         )
 
@@ -459,19 +457,47 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         }
     }
 
-    func updateStudyGroupMembers(
+    func addStudyGroupMember(
         groupId: Int,
-        challengerIds: [Int]
+        memberId: Int
     ) async throws {
         let response = try await adapter.request(
-            StudyRouter.updateStudyGroupMembers(
-                groupId: groupId,
-                body: StudyGroupMembersUpdateRequestDTO(
-                    challengerIds: challengerIds
-                )
-            )
+            StudyRouter.addStudyGroupMember(groupId: groupId, memberId: memberId)
         )
+        try validateEmptyResultIfNeeded(response: response)
+    }
 
+    func removeStudyGroupMember(
+        groupId: Int,
+        memberId: Int
+    ) async throws {
+        let response = try await adapter.request(
+            StudyRouter.removeStudyGroupMember(groupId: groupId, memberId: memberId)
+        )
+        try validateEmptyResultIfNeeded(response: response)
+    }
+
+    func addStudyGroupMentor(
+        groupId: Int,
+        mentorId: Int
+    ) async throws {
+        let response = try await adapter.request(
+            StudyRouter.addStudyGroupMentor(groupId: groupId, mentorId: mentorId)
+        )
+        try validateEmptyResultIfNeeded(response: response)
+    }
+
+    func removeStudyGroupMentor(
+        groupId: Int,
+        mentorId: Int
+    ) async throws {
+        let response = try await adapter.request(
+            StudyRouter.removeStudyGroupMentor(groupId: groupId, mentorId: mentorId)
+        )
+        try validateEmptyResultIfNeeded(response: response)
+    }
+
+    private func validateEmptyResultIfNeeded(response: Response) throws {
         if response.data.isEmpty {
             return
         }

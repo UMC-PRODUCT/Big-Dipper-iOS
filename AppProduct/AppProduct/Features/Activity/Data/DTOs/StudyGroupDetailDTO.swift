@@ -18,7 +18,7 @@ struct StudyGroupDetailDTO: Codable, Sendable, Equatable {
     let schools: [StudyGroupSchoolDTO]
     let createdAt: String
     let memberCount: Int
-    let leader: StudyGroupChallengerDTO
+    let mentors: [StudyGroupChallengerDTO]
     let members: [StudyGroupChallengerDTO]
 
     private enum CodingKeys: String, CodingKey {
@@ -29,6 +29,7 @@ struct StudyGroupDetailDTO: Codable, Sendable, Equatable {
         case schools
         case createdAt
         case memberCount
+        case mentors
         case leader
         case members
     }
@@ -42,8 +43,28 @@ struct StudyGroupDetailDTO: Codable, Sendable, Equatable {
         schools = try container.decodeIfPresent([StudyGroupSchoolDTO].self, forKey: .schools) ?? []
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
         memberCount = try container.decodeIntFlexibleIfPresent(forKey: .memberCount) ?? 0
-        leader = try container.decode(StudyGroupChallengerDTO.self, forKey: .leader)
+
+        if let decodedMentors = try container.decodeIfPresent([StudyGroupChallengerDTO].self, forKey: .mentors) {
+            mentors = decodedMentors
+        } else if let legacyLeader = try container.decodeIfPresent(StudyGroupChallengerDTO.self, forKey: .leader) {
+            mentors = [legacyLeader]
+        } else {
+            mentors = []
+        }
         members = try container.decodeIfPresent([StudyGroupChallengerDTO].self, forKey: .members) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(groupId, forKey: .groupId)
+        try container.encode(name, forKey: .name)
+        try container.encode(part, forKey: .part)
+        try container.encodeIfPresent(partDisplayName, forKey: .partDisplayName)
+        try container.encode(schools, forKey: .schools)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(memberCount, forKey: .memberCount)
+        try container.encode(mentors, forKey: .mentors)
+        try container.encode(members, forKey: .members)
     }
 }
 
@@ -114,18 +135,20 @@ extension StudyGroupDetailDTO {
         let university = schools.first?.schoolName ?? ""
         let parsedDate = Self.parseISO8601Date(createdAt) ?? Date()
 
-        let leaderMember = StudyGroupMember(
-            serverID: String(leader.memberId),
-            challengerID: leader.challengerId,
-            memberID: leader.memberId,
-            name: leader.name,
-            university: university,
-            profileImageURL: normalizedURL(leader.profileImageUrl),
-            role: .leader,
-            bestWorkbookPoint: bestWorkbookPointByMemberID[leader.memberId]
-                ?? leader.bestWorkbookPoint
-                ?? 0
-        )
+        let mentorItems = mentors.map { mentor in
+            StudyGroupMember(
+                serverID: String(mentor.memberId),
+                challengerID: mentor.challengerId,
+                memberID: mentor.memberId,
+                name: mentor.name,
+                university: university,
+                profileImageURL: normalizedURL(mentor.profileImageUrl),
+                role: .leader,
+                bestWorkbookPoint: bestWorkbookPointByMemberID[mentor.memberId]
+                    ?? mentor.bestWorkbookPoint
+                    ?? 0
+            )
+        }
 
         let memberItems = members.map { member in
             StudyGroupMember(
@@ -147,7 +170,7 @@ extension StudyGroupDetailDTO {
             name: name.isEmpty ? (defaultGroupName ?? "") : name,
             part: partType,
             createdDate: parsedDate,
-            leader: leaderMember,
+            mentors: mentorItems,
             members: memberItems
         )
     }

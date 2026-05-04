@@ -30,13 +30,13 @@ struct StudyGroupPreviewData {
             name: "React A",
             part: .front(type: .web),
             createdDate: date("2024.03.01"),
-            leader: StudyGroupMember(
+            mentors: [StudyGroupMember(
                 serverID: "m_001",
                 name: "김연진",
                 nickname: "코튼",
                 university: "상명대",
                 role: .leader
-            ),
+            )],
             members: [
                 StudyGroupMember(
                     serverID: "m_002",
@@ -58,13 +58,13 @@ struct StudyGroupPreviewData {
             name: "Spring 스터디",
             part: .server(type: .spring),
             createdDate: date("2024.03.05"),
-            leader: StudyGroupMember(
+            mentors: [StudyGroupMember(
                 serverID: "m_010",
                 name: "박경운",
                 nickname: "하늘",
                 university: "중앙대",
                 role: .leader
-            ),
+            )],
             members: [
                 StudyGroupMember(
                     serverID: "m_011",
@@ -79,13 +79,13 @@ struct StudyGroupPreviewData {
             name: "iOS Deep Dive",
             part: .front(type: .ios),
             createdDate: date("2024.03.10"),
-            leader: StudyGroupMember(
+            mentors: [StudyGroupMember(
                 serverID: "m_020",
                 name: "이재원",
                 nickname: "리버",
                 university: "한성대",
                 role: .leader
-            ),
+            )],
             members: [
                 StudyGroupMember(
                     serverID: "m_021",
@@ -108,13 +108,13 @@ struct StudyGroupPreviewData {
             name: "Android Compose",
             part: .front(type: .android),
             createdDate: date("2024.03.12"),
-            leader: StudyGroupMember(
+            mentors: [StudyGroupMember(
                 serverID: "m_030",
                 name: "박유수",
                 nickname: "어헛차",
                 university: "숭실대",
                 role: .leader
-            ),
+            )],
             members: [
                 StudyGroupMember(
                     serverID: "m_031",
@@ -130,13 +130,13 @@ struct StudyGroupPreviewData {
             name: "UX 리서치",
             part: .design,
             createdDate: date("2024.03.15"),
-            leader: StudyGroupMember(
+            mentors: [StudyGroupMember(
                 serverID: "m_040",
                 name: "이희원",
                 nickname: "삼이",
                 university: "성신여대",
                 role: .leader
-            ),
+            )],
             members: [
                 StudyGroupMember(
                     serverID: "m_041",
@@ -151,13 +151,13 @@ struct StudyGroupPreviewData {
             name: "PM 전략",
             part: .pm,
             createdDate: date("2024.03.18"),
-            leader: StudyGroupMember(
+            mentors: [StudyGroupMember(
                 serverID: "m_050",
                 name: "정의찬",
                 nickname: "제옹",
                 university: "중앙대",
                 role: .leader
-            )
+            )]
         ),
         // 7. Node Express — Node
         StudyGroupInfo(
@@ -165,13 +165,13 @@ struct StudyGroupPreviewData {
             name: "Node Express",
             part: .server(type: .node),
             createdDate: date("2024.03.20"),
-            leader: StudyGroupMember(
+            mentors: [StudyGroupMember(
                 serverID: "m_060",
                 name: "정성훈",
                 nickname: "노디",
                 university: "경희대",
                 role: .leader
-            ),
+            )],
             members: [
                 StudyGroupMember(
                     serverID: "m_061",

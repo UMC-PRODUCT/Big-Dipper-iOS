@@ -510,17 +510,17 @@ private extension MemberRepository {
         var descriptorByMemberId: [Int: GroupMemberDescriptor] = [:]
 
         groups.forEach { group in
-            let school = group.leader.university
-            let leaderMemberId = group.leader.memberID
-                ?? Int(group.leader.serverID)
-                ?? 0
-            if leaderMemberId > 0 {
-                descriptorByMemberId[leaderMemberId] = GroupMemberDescriptor(
-                    memberId: leaderMemberId,
-                    challengerId: group.leader.challengerID,
-                    name: group.leader.name,
-                    profileImageURL: group.leader.profileImageURL,
-                    schoolName: school,
+            group.mentors.forEach { mentor in
+                let mentorMemberId = mentor.memberID
+                    ?? Int(mentor.serverID)
+                    ?? 0
+                guard mentorMemberId > 0 else { return }
+                descriptorByMemberId[mentorMemberId] = GroupMemberDescriptor(
+                    memberId: mentorMemberId,
+                    challengerId: mentor.challengerID,
+                    name: mentor.name,
+                    profileImageURL: mentor.profileImageURL,
+                    schoolName: mentor.university,
                     generation: "-",
                     part: group.part,
                     position: "Leader",
