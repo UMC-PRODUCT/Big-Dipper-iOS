@@ -6,5 +6,11 @@ owners:
       path: /api/v1/attendances/available
       owner: euijjang97@gmail.com
     - method: GET
+      path: "/api/v1/attendances/challenger/{challengerId}/history"
+      owner: euijjang97@gmail.com
+    - method: POST
+      path: /api/v1/attendances/check
+      owner: LeeYeJi546
+    - method: GET
       path: /api/v1/attendances/pending
       owner: euijjang97@gmail.com
