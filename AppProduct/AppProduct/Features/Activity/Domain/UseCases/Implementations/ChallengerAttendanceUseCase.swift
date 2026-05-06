@@ -154,8 +154,8 @@ final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol {
     /// 현재 시간이 어느 출석 시간대에 속하는지 확인
     func isWithinAttendanceTime(info: SessionInfo) -> AttendanceTimeWindow {
         let now = Date()
-        let onTimeThreshold = TimeInterval(AttendancePolicy.onTimeThresholdMinutes * 60)
-        let lateThreshold = TimeInterval(AttendancePolicy.lateThresholdMinutes * 60)
+        let onTimeThreshold = TimeInterval(AttendanceGeofenceConstants.onTimeThresholdMinutes * 60)
+        let lateThreshold = TimeInterval(AttendanceGeofenceConstants.lateThresholdMinutes * 60)
         let startTime = info.startTime
 
         if info.isAllDay {

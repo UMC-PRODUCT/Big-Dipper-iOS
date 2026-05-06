@@ -68,7 +68,7 @@ final class BaseMapViewModel {
         await locationManager.startGeofenceMonitoring(
             at: sessionLocation,
             identifier: "Session_\(info.sessionId)",
-            radius: AttendancePolicy.geofenceRadius
+            radius: AttendanceGeofenceConstants.geofenceRadius
         )
     }
 
