@@ -26,7 +26,8 @@ final class GenerateScheduleUseCase: GenerateScheduleUseCaseProtocol {
 
     // MARK: - Function
 
-    func execute(schedule: GenerateScheduleRequetDTO) async throws {
+    @discardableResult
+    func execute(schedule: GenerateScheduleRequetDTO) async throws -> Int {
         try await repository.generateSchedule(schedule: schedule)
     }
 }

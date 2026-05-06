@@ -61,6 +61,15 @@ protocol StudyRepositoryProtocol {
     /// - Throws: 네트워크 오류 또는 파싱 오류
     func fetchWeeks() async throws -> [Int]
 
+    /// 주차 커리큘럼 옵션 목록을 가져옵니다.
+    ///
+    /// 스터디 그룹 일정을 특정 주차 커리큘럼에 연결할 때 (`POST /api/v1/study-groups/schedules`)
+    /// 사용자가 선택할 수 있는 주차 정보(weeklyCurriculumId · weekNo · title)를 반환합니다.
+    ///
+    /// - Returns: 주차 커리큘럼 옵션 배열 (서버 응답 순서를 유지)
+    /// - Throws: 네트워크 오류 또는 파싱 오류
+    func fetchWeeklyCurriculumOptions() async throws -> [WeeklyCurriculumOption]
+
     /// 멤버 ID로 챌린저 ID를 조회합니다.
     /// - Parameters:
     ///   - memberId: 멤버 ID
@@ -175,32 +184,19 @@ protocol StudyRepositoryProtocol {
     /// - Throws: 네트워크 오류 또는 파싱 오류
     func deleteStudyGroup(groupId: Int) async throws
 
-    /// 스터디 그룹 일정을 생성합니다.
+    /// 1단계 V2 일정 생성으로 받은 `scheduleId` 를 스터디 그룹/주차 커리큘럼에 연결합니다.
+    ///
+    /// `POST /api/v1/study-groups/schedules` 엔드포인트의 단순 래퍼입니다.
+    /// 1단계 일정 생성은 `ScheduleRepositoryProtocol.generateSchedule(...)` 으로 호출합니다.
     ///
     /// - Parameters:
-    ///   - name: 일정 이름
-    ///   - startsAt: 시작 일시
-    ///   - endsAt: 종료 일시
-    ///   - isAllDay: 종일 여부
-    ///   - locationName: 장소명
-    ///   - latitude: 위도
-    ///   - longitude: 경도
-    ///   - description: 일정 설명
+    ///   - scheduleId: 1단계에서 생성된 일정 ID
     ///   - studyGroupId: 스터디 그룹 ID
-    ///   - gisuId: 기수 ID
-    ///   - requiresApproval: 승인 필요 여부
-    /// - Throws: 네트워크 오류 또는 파싱 오류
-    func createStudyGroupSchedule(
-        name: String,
-        startsAt: Date,
-        endsAt: Date,
-        isAllDay: Bool,
-        locationName: String,
-        latitude: Double,
-        longitude: Double,
-        description: String,
+    ///   - weeklyCurriculumId: 주차 커리큘럼 ID
+    /// - Throws: 네트워크 오류 또는 파싱 오류 (`SCHEDULE-0009`, `ORGANIZAITON-0023`, `CURRICULUM-0014` 등)
+    func linkStudyGroupSchedule(
+        scheduleId: Int,
         studyGroupId: Int,
-        gisuId: Int,
-        requiresApproval: Bool
+        weeklyCurriculumId: Int
     ) async throws
 }

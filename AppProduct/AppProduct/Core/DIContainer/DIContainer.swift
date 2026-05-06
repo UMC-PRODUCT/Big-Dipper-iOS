@@ -233,6 +233,9 @@ extension DIContainer {
                 ),
                 classifierRepository: container.resolve(
                     ScheduleClassifierRepository.self
+                ),
+                scheduleRepository: container.resolve(
+                    ScheduleRepositoryProtocol.self
                 )
             )
         }

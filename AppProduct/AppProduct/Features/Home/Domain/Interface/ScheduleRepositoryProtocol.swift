@@ -18,9 +18,21 @@ protocol ScheduleRepositoryProtocol: Sendable {
     /// 출석 포함 일정을 생성합니다.
     ///
     /// - Parameter schedule: 일정 생성 요청 DTO (제목, 날짜, 장소, 참여자 등)
+    /// - Returns: 생성된 일정 ID (V2 응답의 `result.scheduleId`)
     /// - Throws: 서버 에러 또는 네트워크 에러
+    @discardableResult
     func generateSchedule(
         schedule: GenerateScheduleRequetDTO
+    ) async throws -> Int
+
+    /// 일정을 단순 삭제합니다 (출석부 연동 없이).
+    ///
+    /// 스터디 그룹 일정 2단계 호출 실패 시 베스트 에포트 롤백 등에 사용합니다.
+    ///
+    /// - Parameter scheduleId: 삭제할 일정 ID
+    /// - Throws: 서버 에러 또는 네트워크 에러
+    func deleteSchedule(
+        scheduleId: Int
     ) async throws
 
     /// 일정 정보를 부분 수정합니다.

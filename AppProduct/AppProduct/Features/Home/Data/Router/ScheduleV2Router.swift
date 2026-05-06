@@ -26,6 +26,8 @@ enum ScheduleV2Router {
     case postSchedule(request: GenerateScheduleRequetDTO)
     /// 일정 수정 (부분 갱신)
     case patchSchedule(scheduleId: Int, request: UpdateScheduleRequestDTO)
+    /// 일정 삭제 (스터디 그룹 일정 2단계 실패 시 베스트 에포트 롤백 등)
+    case deleteSchedule(scheduleId: Int)
 }
 
 extension ScheduleV2Router: BaseTargetType {
@@ -44,6 +46,8 @@ extension ScheduleV2Router: BaseTargetType {
             return "/api/v2/schedules"
         case .patchSchedule(let scheduleId, _):
             return "/api/v2/schedules/\(scheduleId)"
+        case .deleteSchedule(let scheduleId):
+            return "/api/v2/schedules/\(scheduleId)"
         }
     }
 
@@ -57,6 +61,8 @@ extension ScheduleV2Router: BaseTargetType {
             return .post
         case .patchSchedule:
             return .patch
+        case .deleteSchedule:
+            return .delete
         }
     }
 
@@ -64,7 +70,7 @@ extension ScheduleV2Router: BaseTargetType {
 
     var task: Moya.Task {
         switch self {
-        case .getCapabilities, .getScheduleDetail:
+        case .getCapabilities, .getScheduleDetail, .deleteSchedule:
             return .requestPlain
         case .getMySchedules(let from, let to, let isAttendanceRequired):
             return .requestParameters(

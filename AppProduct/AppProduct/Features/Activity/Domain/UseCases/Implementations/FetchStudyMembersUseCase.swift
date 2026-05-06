@@ -15,11 +15,16 @@ final class FetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol {
     // MARK: - Property
 
     private let repository: StudyRepositoryProtocol
+    private let scheduleRepository: ScheduleRepositoryProtocol
 
     // MARK: - Init
 
-    init(repository: StudyRepositoryProtocol) {
+    init(
+        repository: StudyRepositoryProtocol,
+        scheduleRepository: ScheduleRepositoryProtocol
+    ) {
         self.repository = repository
+        self.scheduleRepository = scheduleRepository
     }
 
     // MARK: - Function
@@ -54,6 +59,10 @@ final class FetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol {
 
     func fetchWeeks() async throws -> [Int] {
         try await repository.fetchWeeks()
+    }
+
+    func fetchWeeklyCurriculumOptions() async throws -> [WeeklyCurriculumOption] {
+        try await repository.fetchWeeklyCurriculumOptions()
     }
 
     func resolveChallengerId(
@@ -142,31 +151,25 @@ final class FetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol {
         try await repository.deleteStudyGroup(groupId: groupId)
     }
 
-    func createStudyGroupSchedule(
-        name: String,
-        startsAt: Date,
-        endsAt: Date,
-        isAllDay: Bool,
-        locationName: String,
-        latitude: Double,
-        longitude: Double,
-        description: String,
+    func createStudySchedule(
+        request: GenerateScheduleRequetDTO
+    ) async throws -> Int {
+        try await scheduleRepository.generateSchedule(schedule: request)
+    }
+
+    func linkStudyGroupSchedule(
+        scheduleId: Int,
         studyGroupId: Int,
-        gisuId: Int,
-        requiresApproval: Bool
+        weeklyCurriculumId: Int
     ) async throws {
-        try await repository.createStudyGroupSchedule(
-            name: name,
-            startsAt: startsAt,
-            endsAt: endsAt,
-            isAllDay: isAllDay,
-            locationName: locationName,
-            latitude: latitude,
-            longitude: longitude,
-            description: description,
+        try await repository.linkStudyGroupSchedule(
+            scheduleId: scheduleId,
             studyGroupId: studyGroupId,
-            gisuId: gisuId,
-            requiresApproval: requiresApproval
+            weeklyCurriculumId: weeklyCurriculumId
         )
+    }
+
+    func deleteSchedule(scheduleId: Int) async throws {
+        try await scheduleRepository.deleteSchedule(scheduleId: scheduleId)
     }
 }

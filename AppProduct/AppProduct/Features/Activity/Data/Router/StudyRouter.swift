@@ -13,7 +13,7 @@ import Moya
 enum StudyRouter {
     case getCurriculum(gisuId: Int, part: String, weekNo: Int?)
     case getCurriculumWeeks(part: String)
-    case createStudyGroupSchedule(body: StudyGroupScheduleCreateRequestDTO)
+    case linkStudyGroupSchedule(body: StudyGroupScheduleCreateRequestDTO)
     case getMyStudyGroups(cursor: Int?, size: Int)
     case getStudyGroupNames
     case getStudyGroupDetail(groupId: Int)
@@ -49,8 +49,8 @@ extension StudyRouter: BaseTargetType {
             return "/api/v2/curriculums/overview"
         case .getCurriculumWeeks:
             return "/api/v1/curriculums/weeks"
-        case .createStudyGroupSchedule:
-            return "/api/v1/schedules/study-group"
+        case .linkStudyGroupSchedule:
+            return "/api/v1/study-groups/schedules"
         case .getMyStudyGroups:
             return "/api/v1/study-groups/managed"
         case .getStudyGroupNames:
@@ -104,7 +104,7 @@ extension StudyRouter: BaseTargetType {
             return .delete
         case .searchChallengersOffset:
             return .get
-        case .createStudyGroupSchedule:
+        case .linkStudyGroupSchedule:
             return .post
         case .updateStudyGroup:
             return .patch
@@ -149,7 +149,7 @@ extension StudyRouter: BaseTargetType {
                 parameters: ["part": part],
                 encoding: URLEncoding.queryString
             )
-        case .createStudyGroupSchedule(let body):
+        case .linkStudyGroupSchedule(let body):
             return .requestJSONEncodable(body)
         case .getMyStudyGroups(let cursor, let size):
             var parameters: [String: Any] = [

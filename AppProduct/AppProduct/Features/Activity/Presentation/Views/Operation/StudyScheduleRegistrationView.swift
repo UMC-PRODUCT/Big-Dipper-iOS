@@ -10,7 +10,7 @@ import SwiftUI
 /// 스터디 일정 등록 화면
 ///
 /// 스터디 그룹 카드에서 "스터디 일정 등록하기" 버튼을 탭하면 푸시됩니다.
-/// 스터디명, 일시(시작/종료), 장소를 입력받습니다.
+/// 스터디명, 주차 커리큘럼, 일시(시작/종료), 장소를 입력받아 V2 일정 API 2단계로 호출합니다.
 struct StudyScheduleRegistrationView: View {
 
     // MARK: - Property
@@ -53,6 +53,10 @@ struct StudyScheduleRegistrationView: View {
                 studyNameField
             }
 
+            Section("주차 커리큘럼") {
+                weeklyCurriculumPicker
+            }
+
             Section {
                 dateTimeSection
             }
@@ -73,6 +77,10 @@ struct StudyScheduleRegistrationView: View {
                 isLoading: isSubmitting,
                 dismissOnTap: false
             )
+        }
+        .alertPrompt(item: $viewModel.alertPrompt)
+        .task {
+            await viewModel.loadWeeklyOptions()
         }
     }
 
@@ -104,6 +112,42 @@ struct StudyScheduleRegistrationView: View {
         .appFont(.body, color: .black)
         .submitLabel(.next)
         .tint(.indigo500)
+    }
+
+    /// 주차 커리큘럼 선택 Picker
+    @ViewBuilder
+    private var weeklyCurriculumPicker: some View {
+        switch viewModel.weeklyOptionsState {
+        case .idle, .loading:
+            HStack {
+                Text("주차 목록 불러오는 중…")
+                    .appFont(.body, color: .grey500)
+                Spacer()
+                ProgressView()
+            }
+        case .failed:
+            HStack {
+                Text("주차 목록을 불러오지 못했어요")
+                    .appFont(.body, color: .grey500)
+                Spacer()
+                Button("재시도") {
+                    Task { await viewModel.loadWeeklyOptions() }
+                }
+                .appFont(.footnote, color: .indigo500)
+            }
+        case .loaded(let options) where options.isEmpty:
+            Text("등록된 주차 커리큘럼이 없어요")
+                .appFont(.body, color: .grey500)
+        case .loaded(let options):
+            Picker("주차 커리큘럼", selection: $viewModel.selectedWeeklyOption) {
+                ForEach(options) { option in
+                    Text("\(option.weekNo)주차 · \(option.title)")
+                        .tag(Optional(option))
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(.indigo500)
+        }
     }
 
     /// 시작/종료 날짜·시간 선택 섹션

@@ -42,13 +42,35 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
     /// 출석 포함 일정을 생성합니다.
     ///
     /// - Parameter schedule: 일정 생성 요청 DTO
+    /// - Returns: 생성된 일정 ID (V2 응답의 `result.scheduleId`)
     /// - Throws: 서버 에러 또는 네트워크 에러
+    @discardableResult
     func generateSchedule(
         schedule: GenerateScheduleRequetDTO
-    ) async throws {
+    ) async throws -> Int {
         let response = try await adapter.request(
             ScheduleV2Router.postSchedule(request: schedule)
         )
+        let apiResponse = try decoder.decode(
+            APIResponse<Int>.self,
+            from: response.data
+        )
+        return try apiResponse.unwrap()
+    }
+
+    /// 일정을 단순 삭제합니다.
+    ///
+    /// - Parameter scheduleId: 삭제할 일정 ID
+    /// - Throws: 서버 에러 또는 네트워크 에러
+    func deleteSchedule(
+        scheduleId: Int
+    ) async throws {
+        let response = try await adapter.request(
+            ScheduleV2Router.deleteSchedule(scheduleId: scheduleId)
+        )
+        if response.data.isEmpty {
+            return
+        }
         let apiResponse = try decoder.decode(
             APIResponse<EmptyResult>.self,
             from: response.data
