@@ -1,0 +1,247 @@
+//
+//  AttendanceListView.swift
+//  AppProduct
+//
+//  Created by JEONG on 5/6/26.
+//
+
+import SwiftUI
+
+/// 운영진 출석 현황 목록 화면 (Schedule V2 #658)
+///
+/// `GET /api/v2/schedules/attendance` 의 응답을 카드 리스트로 표시하고,
+/// 상태 필터 칩을 통해 클라이언트가 서버 측 필터링을 트리거합니다.
+///
+/// 행 탭 시 `Activity.attendanceDetail(scheduleId:)` 로 stack push.
+struct AttendanceListView: View {
+
+    // MARK: - Property
+
+    @Environment(NavigationRouter.self) private var router
+    @State private var viewModel: AttendanceListViewModel
+
+    // MARK: - Init
+
+    init(
+        container: DIContainer,
+        errorHandler: ErrorHandler
+    ) {
+        let useCase = container.resolve(ActivityUseCaseProviding.self)
+            .operatorAttendanceUseCase
+        _viewModel = State(initialValue: AttendanceListViewModel(
+            container: container,
+            errorHandler: errorHandler,
+            useCase: useCase
+        ))
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
+            filterChipRow
+
+            switch viewModel.listState {
+            case .idle, .loading:
+                loadingView
+            case .loaded(let infos):
+                if infos.isEmpty {
+                    emptyView
+                } else {
+                    listContent(infos: infos)
+                }
+            case .failed(let error):
+                errorView(error: error)
+            }
+        }
+        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        .padding(.top, DefaultConstant.defaultSafeTop)
+        .navigationTitle("출석 현황")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if case .idle = viewModel.listState {
+                await viewModel.fetch()
+            }
+        }
+    }
+
+    // MARK: - View Components
+
+    private var filterChipRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DefaultSpacing.spacing8) {
+                ChipButton(
+                    "전체",
+                    isSelected: viewModel.selectedFilter == nil
+                ) {
+                    Task { await viewModel.filterButtonTapped(viewModel.selectedFilter ?? .present) }
+                }
+                .buttonSize(.small)
+
+                ForEach(viewModel.filterableStatuses, id: \.self) { status in
+                    ChipButton(
+                        status.displayText,
+                        isSelected: viewModel.selectedFilter == status
+                    ) {
+                        Task { await viewModel.filterButtonTapped(status) }
+                    }
+                    .buttonSize(.small)
+                }
+            }
+        }
+    }
+
+    private var loadingView: some View {
+        VStack {
+            Spacer()
+            ProgressView()
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var emptyView: some View {
+        VStack(spacing: DefaultSpacing.spacing12) {
+            Spacer()
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 36))
+                .foregroundStyle(.grey400)
+            Text("표시할 일정이 없습니다")
+                .appFont(.subheadline, color: .grey500)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func errorView(error: AppError) -> some View {
+        VStack(spacing: DefaultSpacing.spacing12) {
+            Spacer()
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 36))
+                .foregroundStyle(.orange)
+            Text(error.userMessage)
+                .appFont(.subheadline, color: .grey600)
+                .multilineTextAlignment(.center)
+            Button("다시 시도") {
+                Task { await viewModel.fetch() }
+            }
+            .buttonStyle(.borderedProminent)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func listContent(infos: [ScheduleAttendanceInfo]) -> some View {
+        ScrollView {
+            LazyVStack(spacing: DefaultSpacing.spacing12) {
+                ForEach(infos) { info in
+                    Button {
+                        router.push(to: .activity(.attendanceDetail(scheduleId: info.scheduleId)))
+                    } label: {
+                        AttendanceListRow(info: info)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Row
+
+private struct AttendanceListRow: View, Equatable {
+
+    let info: ScheduleAttendanceInfo
+
+    static func == (lhs: AttendanceListRow, rhs: AttendanceListRow) -> Bool {
+        lhs.info.scheduleId == rhs.info.scheduleId
+            && lhs.info.totalCount == rhs.info.totalCount
+            && lhs.info.presentCount == rhs.info.presentCount
+            && lhs.info.pendingCount == rhs.info.pendingCount
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(info.name)
+                    .appFont(.calloutEmphasis, color: .grey700)
+                    .lineLimit(1)
+                Spacer()
+                Text(rateText)
+                    .appFont(.footnote, color: .grey500)
+            }
+
+            HStack(spacing: DefaultSpacing.spacing8) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.grey500)
+                Text(dateRangeText)
+                    .appFont(.footnote, color: .grey500)
+            }
+
+            if let location = info.location {
+                HStack(spacing: DefaultSpacing.spacing8) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.grey500)
+                    Text(location.locationName)
+                        .appFont(.footnote, color: .grey500)
+                        .lineLimit(1)
+                }
+            } else if info.isOnline {
+                HStack(spacing: DefaultSpacing.spacing8) {
+                    Image(systemName: "video")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.grey500)
+                    Text("비대면")
+                        .appFont(.footnote, color: .grey500)
+                }
+            }
+
+            HStack(spacing: DefaultSpacing.spacing8) {
+                Text("출석 \(info.presentCount) / \(info.totalCount)")
+                    .appFont(.footnote, color: .grey600)
+                if info.pendingCount > 0 {
+                    InfoBadge(
+                        "대기 \(info.pendingCount)",
+                        textColor: .orange,
+                        tintColor: .yellow,
+                        glassVariant: .clear
+                    )
+                }
+            }
+        }
+        .padding(DefaultSpacing.spacing16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(
+            .regular.interactive(),
+            in: ConcentricRectangle(
+                corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                isUniform: true
+            )
+        )
+    }
+
+    private var rateText: String {
+        guard info.totalCount > 0 else { return "—" }
+        let percent = Int((info.attendanceRate * 100).rounded())
+        return "\(percent)%"
+    }
+
+    private var dateRangeText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "M월 d일 (E) HH:mm"
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        let start = formatter.string(from: info.startsAt)
+
+        let endFormatter = DateFormatter()
+        endFormatter.dateFormat = "HH:mm"
+        endFormatter.locale = Locale(identifier: "ko_KR")
+        endFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        let end = endFormatter.string(from: info.endsAt)
+
+        return "\(start) ~ \(end)"
+    }
+}

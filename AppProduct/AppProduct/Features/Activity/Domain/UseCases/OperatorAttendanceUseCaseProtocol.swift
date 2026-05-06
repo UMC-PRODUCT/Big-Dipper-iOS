@@ -29,5 +29,23 @@ protocol OperatorAttendanceUseCaseProtocol {
     ) async throws
 
     /// 일정별 출석 통계 조회
+    ///
+    /// - Important: V1 엔드포인트 호출. V2 마이그레이션 완료 후 제거 예정.
+    /// - SeeAlso: ``fetchAttendanceList(from:to:attendanceStatus:)``
     func fetchScheduleStats() async throws -> [ScheduleAttendanceStats]
+
+    /// 운영진용 일정 출석 현황 목록 조회 (V2)
+    ///
+    /// 직책별 조회 범위는 서버에서 자동 분기됩니다.
+    func fetchAttendanceList(
+        from: Date?,
+        to: Date?,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> [ScheduleAttendanceInfo]
+
+    /// 단일 일정 출석 현황 조회 (V2)
+    func fetchAttendanceDetail(
+        scheduleId: Int,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> ScheduleAttendanceInfo
 }

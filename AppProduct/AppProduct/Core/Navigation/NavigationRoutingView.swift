@@ -140,6 +140,17 @@ private extension NavigationRoutingView {
                 studyName: studyName,
                 studyGroupId: studyGroupId
             )
+        case .attendanceList:
+            AttendanceListView(
+                container: di,
+                errorHandler: errorHandler
+            )
+        case .attendanceDetail(let scheduleId):
+            AttendanceDetailView(
+                container: di,
+                errorHandler: errorHandler,
+                scheduleId: scheduleId
+            )
         }
     }
 }
