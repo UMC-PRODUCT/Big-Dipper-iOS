@@ -6,3 +6,9 @@
 //
 
 import Foundation
+
+public struct MyPageTerms {
+    let id: String
+    let link: String
+    let isMandatory: Bool
+}
