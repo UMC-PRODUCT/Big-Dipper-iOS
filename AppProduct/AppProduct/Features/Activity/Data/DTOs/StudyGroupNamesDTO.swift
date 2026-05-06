@@ -20,11 +20,13 @@ struct StudyGroupNamesDTO: Codable, Sendable, Equatable {
 struct StudyGroupNameItemDTO: Codable, Sendable, Equatable {
     let groupId: Int
     let name: String
+    let createdAt: String?
 
     private enum CodingKeys: String, CodingKey {
         case groupId
         case id
         case name
+        case createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -34,12 +36,14 @@ struct StudyGroupNameItemDTO: Codable, Sendable, Equatable {
             ?? container.decodeIntFlexibleIfPresent(forKey: .id)
             ?? 0
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(groupId, forKey: .groupId)
         try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
     }
 }
 
