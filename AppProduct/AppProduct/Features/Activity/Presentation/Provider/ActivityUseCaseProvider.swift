@@ -58,7 +58,8 @@ final class ActivityUseCaseProvider: ActivityUseCaseProviding {
 
     init(
         repositoryProvider: ActivityRepositoryProviding,
-        classifierRepository: ScheduleClassifierRepository
+        classifierRepository: ScheduleClassifierRepository,
+        scheduleRepository: ScheduleRepositoryProtocol
     ) {
         self.fetchSessionsUseCase = FetchSessionsUseCase(
             repository: repositoryProvider.activityRepository
@@ -79,7 +80,8 @@ final class ActivityUseCaseProvider: ActivityUseCaseProviding {
             repository: repositoryProvider.studyRepository
         )
         self.fetchStudyMembersUseCase = FetchStudyMembersUseCase(
-            repository: repositoryProvider.studyRepository
+            repository: repositoryProvider.studyRepository,
+            scheduleRepository: scheduleRepository
         )
         self.fetchMembersUseCase = FetchMembersUseCase(
             repository: repositoryProvider.memberRepository

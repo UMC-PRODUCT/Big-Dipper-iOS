@@ -168,6 +168,17 @@ final class MockStudyRepository: StudyRepositoryProtocol {
         return Array(1...10)
     }
 
+    func fetchWeeklyCurriculumOptions() async throws -> [WeeklyCurriculumOption] {
+        try await Task.sleep(for: .milliseconds(200))
+        return missions.map {
+            WeeklyCurriculumOption(
+                weeklyCurriculumId: $0.week,
+                weekNo: $0.week,
+                title: $0.title
+            )
+        }
+    }
+
     func resolveChallengerId(
         memberId: Int,
         preferredGeneration: Int?
@@ -270,30 +281,14 @@ final class MockStudyRepository: StudyRepositoryProtocol {
         try await Task.sleep(for: .milliseconds(200))
     }
 
-    func createStudyGroupSchedule(
-        name: String,
-        startsAt: Date,
-        endsAt: Date,
-        isAllDay: Bool,
-        locationName: String,
-        latitude: Double,
-        longitude: Double,
-        description: String,
+    func linkStudyGroupSchedule(
+        scheduleId: Int,
         studyGroupId: Int,
-        gisuId: Int,
-        requiresApproval: Bool
+        weeklyCurriculumId: Int
     ) async throws {
-        _ = name
-        _ = startsAt
-        _ = endsAt
-        _ = isAllDay
-        _ = locationName
-        _ = latitude
-        _ = longitude
-        _ = description
+        _ = scheduleId
         _ = studyGroupId
-        _ = gisuId
-        _ = requiresApproval
+        _ = weeklyCurriculumId
         try await Task.sleep(for: .milliseconds(300))
     }
 }

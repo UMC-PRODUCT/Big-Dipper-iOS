@@ -11,5 +11,7 @@ import Foundation
 protocol GenerateScheduleUseCaseProtocol {
     /// 일정 생성
     /// - Parameter schedule: 일정 생성 요청 DTO
-    func execute(schedule: GenerateScheduleRequetDTO) async throws
+    /// - Returns: 생성된 일정 ID (V2 응답의 `result.scheduleId`)
+    @discardableResult
+    func execute(schedule: GenerateScheduleRequetDTO) async throws -> Int
 }

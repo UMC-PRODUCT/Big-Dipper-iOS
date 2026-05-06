@@ -31,6 +31,11 @@ protocol FetchStudyMembersUseCaseProtocol {
     /// 스터디 주차 목록 조회
     func fetchWeeks() async throws -> [Int]
 
+    /// 주차 커리큘럼 옵션(weeklyCurriculumId · weekNo · title) 목록 조회
+    ///
+    /// 스터디 그룹 일정 등록 화면에서 어느 주차 커리큘럼에 연결할지 선택할 때 사용합니다.
+    func fetchWeeklyCurriculumOptions() async throws -> [WeeklyCurriculumOption]
+
     /// 멤버 ID를 챌린저 ID로 변환
     func resolveChallengerId(
         memberId: Int,
@@ -95,18 +100,23 @@ protocol FetchStudyMembersUseCaseProtocol {
     /// - Throws: 네트워크 오류 또는 파싱 오류
     func deleteStudyGroup(groupId: Int) async throws
 
-    /// 스터디 그룹 일정 생성
-    func createStudyGroupSchedule(
-        name: String,
-        startsAt: Date,
-        endsAt: Date,
-        isAllDay: Bool,
-        locationName: String,
-        latitude: Double,
-        longitude: Double,
-        description: String,
+    /// 스터디 그룹 일정 — 1단계 V2 일정 생성
+    ///
+    /// `POST /api/v2/schedules` 를 호출해 일반 일정을 만들고 `scheduleId` 를 반환합니다.
+    /// 본 메서드는 호출자가 참여자에서 본인을 제외한 멤버 ID 와 출석 정책 등을 채워서 전달합니다.
+    func createStudySchedule(
+        request: GenerateScheduleRequetDTO
+    ) async throws -> Int
+
+    /// 스터디 그룹 일정 — 2단계 스터디 그룹/주차 커리큘럼 연결
+    ///
+    /// `POST /api/v1/study-groups/schedules`
+    func linkStudyGroupSchedule(
+        scheduleId: Int,
         studyGroupId: Int,
-        gisuId: Int,
-        requiresApproval: Bool
+        weeklyCurriculumId: Int
     ) async throws
+
+    /// 일정 단순 삭제 (스터디 그룹 일정 2단계 실패 시 베스트 에포트 롤백 용)
+    func deleteSchedule(scheduleId: Int) async throws
 }

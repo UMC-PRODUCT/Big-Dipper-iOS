@@ -58,7 +58,7 @@ final class MockHomeRepository: HomeRepositoryProtocol {
 /// 프리뷰 및 테스트용 Schedule Repository Mock 구현체
 final class MockScheduleRepository: ScheduleRepositoryProtocol {
 
-    func generateSchedule(schedule: GenerateScheduleRequetDTO) async throws {
+    func generateSchedule(schedule: GenerateScheduleRequetDTO) async throws -> Int {
         throw DomainError.insufficientPermission(required: "인증")
     }
 
@@ -67,6 +67,10 @@ final class MockScheduleRepository: ScheduleRepositoryProtocol {
     }
 
     func deleteScheduleWithAttendance(scheduleId: Int) async throws {
+        throw DomainError.insufficientPermission(required: "인증")
+    }
+
+    func deleteSchedule(scheduleId: Int) async throws {
         throw DomainError.insufficientPermission(required: "인증")
     }
 }

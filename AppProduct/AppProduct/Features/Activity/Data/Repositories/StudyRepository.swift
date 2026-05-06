@@ -62,6 +62,30 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         try await fetchCurriculumData(weekNo: nil).missions
     }
 
+    func fetchWeeklyCurriculumOptions() async throws -> [WeeklyCurriculumOption] {
+        guard let gisuId = preferredGisuId, gisuId > 0 else {
+            throw DomainError.curriculumUnavailableForGeneration
+        }
+        let part = resolvedPartAPIValue
+        let response = try await adapter.request(
+            StudyRouter.getCurriculum(gisuId: gisuId, part: part, weekNo: nil)
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<CurriculumDTO>.self,
+            from: response.data
+        )
+        let dto = try apiResponse.unwrap()
+        return dto.weeks
+            .sorted { $0.weekNo < $1.weekNo }
+            .map {
+                WeeklyCurriculumOption(
+                    weeklyCurriculumId: $0.weeklyCurriculumId,
+                    weekNo: $0.weekNo,
+                    title: $0.title
+                )
+            }
+    }
+
     // MARK: - 운영진 스터디 관리 (Fallback)
 
     func fetchStudyMembers(
@@ -388,43 +412,31 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         }
     }
 
-    func createStudyGroupSchedule(
-        name: String,
-        startsAt: Date,
-        endsAt: Date,
-        isAllDay: Bool,
-        locationName: String,
-        latitude: Double,
-        longitude: Double,
-        description: String,
+    func linkStudyGroupSchedule(
+        scheduleId: Int,
         studyGroupId: Int,
-        gisuId: Int,
-        requiresApproval: Bool
+        weeklyCurriculumId: Int
     ) async throws {
         let response = try await adapter.request(
-            StudyRouter.createStudyGroupSchedule(
+            StudyRouter.linkStudyGroupSchedule(
                 body: StudyGroupScheduleCreateRequestDTO(
-                    name: name,
-                    startsAt: startsAt,
-                    endsAt: endsAt,
-                    isAllDay: isAllDay,
-                    locationName: locationName,
-                    latitude: latitude,
-                    longitude: longitude,
-                    description: description,
-                    tags: ["STUDY"],
+                    scheduleId: scheduleId,
                     studyGroupId: studyGroupId,
-                    gisuId: gisuId,
-                    requiresApproval: requiresApproval
+                    weeklyCurriculumId: weeklyCurriculumId
                 )
             )
         )
 
-        let apiResponse = try decoder.decode(
-            APIResponse<String>.self,
+        if response.data.isEmpty {
+            return
+        }
+
+        if let apiResponse = try? decoder.decode(
+            APIResponse<EmptyResult>.self,
             from: response.data
-        )
-        try apiResponse.validateSuccess()
+        ) {
+            try apiResponse.validateSuccess()
+        }
     }
 
     func updateStudyGroup(
