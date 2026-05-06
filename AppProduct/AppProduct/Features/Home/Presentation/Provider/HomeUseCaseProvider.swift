@@ -29,6 +29,8 @@ protocol HomeUseCaseProviding {
     var classifyScheduleUseCase: ClassifyScheduleUseCase { get }
     /// 챌린저 검색 UseCase
     var searchChallengersUseCase: SearchChallengersUseCaseProtocol { get }
+    /// 일정 생성/수정 권한 조회 UseCase
+    var fetchScheduleCapabilitiesUseCase: FetchScheduleCapabilitiesUseCaseProtocol { get }
 }
 
 /// Home UseCase Provider 구현
@@ -49,6 +51,7 @@ final class HomeUseCaseProvider: HomeUseCaseProviding {
     let deleteScheduleUseCase: DeleteScheduleUseCaseProtocol
     let classifyScheduleUseCase: ClassifyScheduleUseCase
     let searchChallengersUseCase: SearchChallengersUseCaseProtocol
+    let fetchScheduleCapabilitiesUseCase: FetchScheduleCapabilitiesUseCaseProtocol
 
     // MARK: - Init
 
@@ -56,7 +59,8 @@ final class HomeUseCaseProvider: HomeUseCaseProviding {
         homeRepository: HomeRepositoryProtocol,
         scheduleRepository: ScheduleRepositoryProtocol,
         classifierRepository: ScheduleClassifierRepository,
-        challengerSearchRepository: ChallengerSearchRepositoryProtocol
+        challengerSearchRepository: ChallengerSearchRepositoryProtocol,
+        scheduleCapabilitiesRepository: ScheduleCapabilitiesRepositoryProtocol
     ) {
         self.fetchMyProfileUseCase = FetchMyProfileUseCase(
             repository: homeRepository
@@ -87,6 +91,9 @@ final class HomeUseCaseProvider: HomeUseCaseProviding {
         )
         self.searchChallengersUseCase = SearchChallengersUseCase(
             repository: challengerSearchRepository
+        )
+        self.fetchScheduleCapabilitiesUseCase = FetchScheduleCapabilitiesUseCase(
+            repository: scheduleCapabilitiesRepository
         )
     }
 }

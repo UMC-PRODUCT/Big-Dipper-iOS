@@ -1,0 +1,42 @@
+//
+//  AttendancePolicyError.swift
+//  AppProduct
+//
+//  Created by euijjang97 on 5/6/26.
+//
+
+import Foundation
+
+/// 출석 정책 입력 폼의 인라인 검증 에러
+///
+/// 일정 생성/수정 화면의 출석 정책 섹션에서 사용자 입력을 검증할 때 사용합니다.
+/// 단조 증가(checkInStartAt < onTimeEndAt < lateEndAt) 와
+/// 일정 종료 범위(lateEndAt ≤ endsAt) 위반 케이스를 표현합니다.
+enum AttendancePolicyError: Equatable, Sendable {
+
+    /// 시각 순서가 단조 증가가 아님
+    case invalidOrder(OrderField)
+
+    /// 지각 종료 시각이 일정 종료 시각을 초과함
+    case lateExceedsEnd
+
+    /// 단조 증가 위반 위치
+    enum OrderField: Equatable, Sendable {
+        /// 체크인 시작 ≥ 정시 종료
+        case checkInVsOnTime
+        /// 정시 종료 ≥ 지각 종료
+        case onTimeVsLate
+    }
+
+    /// 화면에 노출할 한국어 메시지
+    var message: String {
+        switch self {
+        case .invalidOrder(.checkInVsOnTime):
+            return "체크인 시작은 정시 종료보다 빨라야 합니다."
+        case .invalidOrder(.onTimeVsLate):
+            return "정시 종료는 지각 종료보다 빨라야 합니다."
+        case .lateExceedsEnd:
+            return "지각 종료는 일정 종료 시각을 넘을 수 없습니다."
+        }
+    }
+}
