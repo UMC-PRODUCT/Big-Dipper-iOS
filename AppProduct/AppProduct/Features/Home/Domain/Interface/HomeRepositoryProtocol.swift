@@ -14,14 +14,18 @@ protocol HomeRepositoryProtocol: Sendable {
     /// - Returns: 기수 카드용 데이터 + 역할별 (challengerId, gisuId) 매핑
     func getMyProfile() async throws -> HomeProfileResult
 
-    /// 월별 내 일정 조회
+    /// 기간 내 내 일정 조회 (V2)
+    ///
     /// - Parameters:
-    ///   - year: 연도 (예: 2026)
-    ///   - month: 월 (1~12)
-    /// - Returns: 날짜별로 그룹핑된 일정 딕셔너리
-    func getSchedules(
-        year: Int, month: Int
-    ) async throws -> [Date: [ScheduleData]]
+    ///   - from: 조회 시작 시각 (UTC ISO8601 송신, 일반적으로 KST 월초 자정)
+    ///   - to: 조회 종료 시각 (UTC ISO8601 송신, 일반적으로 KST 월말 23:59:59.999)
+    ///   - isAttendanceRequired: 출석 필수 일정만 조회할지 여부
+    /// - Returns: KST 자정 기준 날짜별로 그룹핑된 일정 딕셔너리
+    func fetchMySchedules(
+        from: Date,
+        to: Date,
+        isAttendanceRequired: Bool
+    ) async throws -> [Date: [ScheduleDetailData]]
 
     /// 일정 상세 조회
     /// - Parameter scheduleId: 일정 ID

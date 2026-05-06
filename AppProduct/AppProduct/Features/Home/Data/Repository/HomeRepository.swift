@@ -40,22 +40,27 @@ final class HomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
         return profile.toHomeProfileResult(seasonTypes: seasonTypes)
     }
 
-    /// 월별 일정을 조회하고 날짜별로 그룹핑하여 반환합니다.
-    func getSchedules(
-        year: Int, month: Int
-    ) async throws -> [Date: [ScheduleData]] {
+    /// 기간 내 일정을 조회하고 KST 자정 기준 날짜별로 그룹핑하여 반환합니다.
+    func fetchMySchedules(
+        from: Date,
+        to: Date,
+        isAttendanceRequired: Bool
+    ) async throws -> [Date: [ScheduleDetailData]] {
         let response = try await adapter.request(
-            HomeRouter.getSchedules(year: year, month: month)
+            ScheduleV2Router.getMySchedules(
+                from: from,
+                to: to,
+                isAttendanceRequired: isAttendanceRequired
+            )
         )
         let apiResponse = try decoder.decode(
-            APIResponse<[HomeScheduleResponseDTO]>.self,
+            APIResponse<[ScheduleDetailDTO]>.self,
             from: response.data
         )
         let schedules = try apiResponse.unwrap().map {
-            $0.toScheduleData()
+            $0.toScheduleDetailData()
         }
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = ServerDateTimeConverter.kstTimeZone
+        let calendar = Calendar.kstGregorian
         return Dictionary(grouping: schedules) {
             calendar.startOfDay(for: $0.startsAt)
         }
@@ -64,7 +69,7 @@ final class HomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
     /// 일정 상세를 조회합니다.
     func getScheduleDetail(scheduleId: Int) async throws -> ScheduleDetailData {
         let response = try await adapter.request(
-            HomeRouter.getScheduleDetail(scheduleId: scheduleId)
+            ScheduleV2Router.getScheduleDetail(scheduleId: scheduleId)
         )
         let apiResponse = try decoder.decode(
             APIResponse<ScheduleDetailDTO>.self,

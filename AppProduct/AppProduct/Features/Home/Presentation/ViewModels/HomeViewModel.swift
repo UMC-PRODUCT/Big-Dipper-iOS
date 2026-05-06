@@ -34,9 +34,9 @@ final class HomeViewModel {
     private(set) var generationData: Loadable<[GenerationData]> = .idle
 
     /// 날짜별 일정 데이터 딕셔너리
-    /// - Key: 날짜 (Date)
-    /// - Value: 해당 날짜의 일정 리스트 ([ScheduleData])
-    var scheduleByDates: [Date: [ScheduleData]] = [:]
+    /// - Key: KST 자정 기준 날짜
+    /// - Value: 해당 날짜의 일정 리스트 ([ScheduleDetailData])
+    var scheduleByDates: [Date: [ScheduleDetailData]] = [:]
 
     /// 최근 공지사항 데이터 (로딩 상태 포함)
     private(set) var recentNoticeData: Loadable<[RecentNoticeData]> = .idle
@@ -189,21 +189,40 @@ final class HomeViewModel {
         }
     }
 
-    /// 월별 일정 조회
+    /// 월별 일정 조회 (V2 `from`/`to` 변환)
+    ///
+    /// 화면이 보고 있는 (year, month) 를 KST 기준 월초/월말 Date 로 변환해
+    /// V2 일정 목록 API 를 호출합니다. 캘린더 화면 특성상 출석 필수 여부와 무관한
+    /// 모든 일정을 보여줘야 하므로 `isAttendanceRequired = false` 로 고정 호출합니다.
     ///
     /// - Parameters:
-    ///   - year: 조회 연도 (nil이면 현재 연도)
-    ///   - month: 조회 월 (nil이면 현재 월)
+    ///   - year: 조회 연도 (nil이면 현재 연도, KST 기준)
+    ///   - month: 조회 월 (nil이면 현재 월, KST 기준)
     @MainActor
     func fetchSchedules(year: Int? = nil, month: Int? = nil) async {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = ServerDateTimeConverter.kstTimeZone
+        let calendar = Calendar.kstGregorian
         let now = Date()
         let y = year ?? calendar.component(.year, from: now)
         let m = month ?? calendar.component(.month, from: now)
+
+        guard
+            let startOfMonth = calendar.date(from: DateComponents(year: y, month: m, day: 1)),
+            let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth)
+        else {
+            scheduleByDates = [:]
+            return
+        }
+
+        let from = startOfMonth.kstStartOfDay
+        let to = endOfMonth.kstEndOfDay
+
         do {
             scheduleByDates = try await useCaseProvider
-                .fetchSchedulesUseCase.execute(year: y, month: m)
+                .fetchSchedulesUseCase.execute(
+                    from: from,
+                    to: to,
+                    isAttendanceRequired: false
+                )
         } catch {
             scheduleByDates = [:]
         }
@@ -245,10 +264,8 @@ final class HomeViewModel {
     ///
     /// - Parameter date: 조회하려는 날짜
     /// - Returns: 해당 날짜의 일정 데이터 배열 (없으면 빈 배열 반환)
-    func getSchedules(_ date: Date) -> [ScheduleData] {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = ServerDateTimeConverter.kstTimeZone
-        let normalizedDate = calendar.startOfDay(for: date)
+    func getSchedules(_ date: Date) -> [ScheduleDetailData] {
+        let normalizedDate = Calendar.kstGregorian.startOfDay(for: date)
         return scheduleByDates[normalizedDate] ?? []
     }
 

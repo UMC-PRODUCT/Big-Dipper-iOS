@@ -80,10 +80,12 @@ struct ScheduleDetailView: View {
         case .loaded(let data):
             content(data)
                 .task {
-                    await viewModel.fetchRoadAddress(
-                        latitude: data.latitude,
-                        longitude: data.longitude
-                    )
+                    if let location = data.location {
+                        await viewModel.fetchRoadAddress(
+                            latitude: location.latitude,
+                            longitude: location.longitude
+                        )
+                    }
                 }
         case .failed(let error):
             RetryContentUnavailableView(
@@ -166,10 +168,10 @@ struct ScheduleDetailView: View {
     /// 도로명 주소가 아직 조회되지 않은 경우 먼저 조회 후 수정 화면을 엽니다.
     @MainActor
     private func openModifySheetIfPossible(with data: ScheduleDetailData) async {
-        if viewModel.roadAddress == nil {
+        if viewModel.roadAddress == nil, let location = data.location {
             await viewModel.fetchRoadAddress(
-                latitude: data.latitude,
-                longitude: data.longitude
+                latitude: location.latitude,
+                longitude: location.longitude
             )
         }
         viewModel.isShowModify = true
@@ -235,10 +237,11 @@ struct ScheduleDetailView: View {
                 data: data,
                 roadAddress: viewModel.roadAddress,
                 onMapLinkTapped: {
+                    guard let location = data.location else { return }
                     viewModel.mapLinkTapped(
-                        latitude: data.latitude,
-                        longitude: data.longitude,
-                        locationName: data.locationName
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        locationName: location.locationName
                     )
                 }
             )
@@ -314,19 +317,25 @@ private struct SchedulePlaceDateInfo: View, Equatable {
     private var locationSection: some View {
         infoSection(iconName: "mappin.and.ellipse", tintColor: .blue) {
             VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
-                Text(data.locationName)
-                    .appFont(.calloutEmphasis)
-                    .foregroundStyle(.black)
+                if let location = data.location {
+                    Text(location.locationName)
+                        .appFont(.calloutEmphasis)
+                        .foregroundStyle(.black)
 
-                if let roadAddress {
-                    Text(roadAddress)
-                        .appFont(.subheadline)
-                        .foregroundStyle(.grey600)
+                    if let roadAddress {
+                        Text(roadAddress)
+                            .appFont(.subheadline)
+                            .foregroundStyle(.grey600)
+                    }
+
+                    Button(Constants.mapButtonTitle, action: onMapLinkTapped)
+                        .appFont(.footnote)
+                        .foregroundStyle(.blue)
+                } else {
+                    Text("비대면")
+                        .appFont(.calloutEmphasis)
+                        .foregroundStyle(.black)
                 }
-
-                Button(Constants.mapButtonTitle, action: onMapLinkTapped)
-                    .appFont(.footnote)
-                    .foregroundStyle(.blue)
             }
         }
     }

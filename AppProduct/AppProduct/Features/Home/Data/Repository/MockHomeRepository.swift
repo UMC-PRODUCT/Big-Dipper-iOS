@@ -30,10 +30,11 @@ final class MockHomeRepository: HomeRepositoryProtocol {
         )
     }
 
-    func getSchedules(
-        year: Int,
-        month: Int
-    ) async throws -> [Date: [ScheduleData]] {
+    func fetchMySchedules(
+        from: Date,
+        to: Date,
+        isAttendanceRequired: Bool
+    ) async throws -> [Date: [ScheduleDetailData]] {
         [:]
     }
 
