@@ -13,18 +13,18 @@ import Playgrounds
 /// 일정 제목, 소제목, 그리고 자동 분류된 카테고리 아이콘을 표시합니다.
 /// `ScheduleClassifierRepository`를 통해 일정 제목을 분석하여 적절한 카테고리를 설정합니다.
 struct ScheduleListCard: View, Equatable {
-    
+
     // MARK: - Properties
-    
-    /// 표시할 일정 데이터
-    let data: ScheduleData
+
+    /// 표시할 일정 데이터 (V2 통합 모델)
+    let data: ScheduleDetailData
 
     /// 부모에서 미리 분류한 카테고리 (nil이면 카드 내부에서 분류)
     private let resolvedCategory: ScheduleIconCategory?
-    
+
     /// 일정 카테고리 (자동 분류됨, 기본값: .general)
     @State var category: ScheduleIconCategory = .general
-    
+
     /// 분류 로딩 상태
     @State var isLoading: Bool
 
@@ -33,7 +33,7 @@ struct ScheduleListCard: View, Equatable {
         let repository = ScheduleClassifierRepositoryImpl()
         return ClassifyScheduleUseCaseImpl(repository: repository)
     }()
-    
+
     private enum Constants {
         /// 아이콘 패딩
         static let iconPadding: CGFloat = 8
@@ -44,22 +44,22 @@ struct ScheduleListCard: View, Equatable {
         /// 라인 limit 제한
         static let lineLimit: Int = 1
     }
-    
+
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.data == rhs.data
     }
-    
+
     // MARK: - Init
-    
+
     /// ScheduleListCard 생성자
     /// - Parameter data: 표시할 일정 데이터
-    init(data: ScheduleData, category: ScheduleIconCategory? = nil) {
+    init(data: ScheduleDetailData, category: ScheduleIconCategory? = nil) {
         self.data = data
         self.resolvedCategory = category
         _category = State(initialValue: category ?? .general)
         _isLoading = State(initialValue: category == nil)
     }
-    
+
     var body: some View {
         HStack(spacing: DefaultSpacing.spacing24, content: {
             CardIconImage(image: category.symbol, color: category.color, isLoading: $isLoading)
@@ -73,7 +73,7 @@ struct ScheduleListCard: View, Equatable {
                 .fill(.white)
                 .glass()
         }
-        .task(id: data.id) {
+        .task(id: data.scheduleId) {
             if let resolvedCategory {
                 category = resolvedCategory
                 isLoading = false
@@ -81,16 +81,16 @@ struct ScheduleListCard: View, Equatable {
             }
 
             isLoading = true
-            category = await Self.sharedUseCase.execute(title: data.title)
+            category = await Self.sharedUseCase.execute(title: data.name)
             isLoading = false
         }
     }
-    
+
     /// 일정 내용 정보 (제목, 부제목)
     private var infoContent: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing8, content: {
             // 일정 제목
-            Text(data.title)
+            Text(data.name)
                 .appFont(.calloutEmphasis, color: .grey900)
                 .lineLimit(Constants.lineLimit)
             // 참여 상태 + D-Day
@@ -100,13 +100,10 @@ struct ScheduleListCard: View, Equatable {
     }
 
     private var statusText: String {
-        data.status == "종료됨" ? data.status : "\(data.status) · \(dDayText)"
+        let status = data.participationStatusText
+        return status == "종료됨" ? status : "\(status) · \(data.dDayText)"
     }
 
-    private var dDayText: String {
-        data.dDayText
-    }
-    
     private var chevron: some View {
         Image(systemName: DefaultConstant.chevronForwardImage)
             .renderingMode(.template)
@@ -118,12 +115,36 @@ struct ScheduleListCard: View, Equatable {
 #Preview {
     VStack {
         ScheduleListCard(data: .init(
-            scheduleId: 1, title: "컨퍼런스",
-            startsAt: .now, endsAt: .now, status: "참여 예정", dDay: 7
+            scheduleId: 1,
+            name: "컨퍼런스",
+            description: "",
+            tags: [],
+            startsAt: .now.addingTimeInterval(60 * 60 * 24 * 7),
+            endsAt: .now.addingTimeInterval(60 * 60 * 24 * 7 + 3600),
+            location: nil,
+            participants: [],
+            authorMemberId: 0,
+            attendancePolicy: nil,
+            attendanceStatus: nil,
+            isAttendanceChecked: false,
+            isOnline: true,
+            isParticipant: true
         ))
         ScheduleListCard(data: .init(
-            scheduleId: 2, title: "데모데이",
-            startsAt: .now, endsAt: .now, status: "참여 예정", dDay: -14
+            scheduleId: 2,
+            name: "데모데이",
+            description: "",
+            tags: [],
+            startsAt: .now.addingTimeInterval(-60 * 60 * 24 * 14),
+            endsAt: .now.addingTimeInterval(-60 * 60 * 24 * 14 + 3600),
+            location: nil,
+            participants: [],
+            authorMemberId: 0,
+            attendancePolicy: nil,
+            attendanceStatus: nil,
+            isAttendanceChecked: false,
+            isOnline: false,
+            isParticipant: false
         ))
     }
     .safeAreaPadding(.horizontal, 16)

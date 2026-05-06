@@ -264,7 +264,7 @@ struct HomeView: View {
     }
 
     @MainActor
-    private func classifyScheduleCategories(for schedules: [ScheduleData]) async {
+    private func classifyScheduleCategories(for schedules: [ScheduleDetailData]) async {
         let ids = schedules.map(\.scheduleId)
 
         guard !ids.isEmpty else {
@@ -280,7 +280,7 @@ struct HomeView: View {
         await withTaskGroup(of: (Int, ScheduleIconCategory).self) { group in
             for schedule in schedules {
                 group.addTask {
-                    let category = await Self.sharedScheduleClassifierUseCase.execute(title: schedule.title)
+                    let category = await Self.sharedScheduleClassifierUseCase.execute(title: schedule.name)
                     return (schedule.scheduleId, category)
                 }
             }
@@ -296,13 +296,13 @@ struct HomeView: View {
         isScheduleCategoryLoading = false
     }
 
-    private func areScheduleCategoriesReady(for schedules: [ScheduleData]) -> Bool {
+    private func areScheduleCategoriesReady(for schedules: [ScheduleDetailData]) -> Bool {
         schedules.allSatisfy { scheduleCategories[$0.scheduleId] != nil }
     }
 
-    private func scheduleClassificationTaskKey(for schedules: [ScheduleData]) -> String {
+    private func scheduleClassificationTaskKey(for schedules: [ScheduleDetailData]) -> String {
         schedules
-            .map { "\($0.scheduleId):\($0.title)" }
+            .map { "\($0.scheduleId):\($0.name)" }
             .joined(separator: "|")
     }
 

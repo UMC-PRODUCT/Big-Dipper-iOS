@@ -18,6 +18,14 @@ import Moya
 enum ScheduleV2Router {
     /// 일정 생성/수정 권한 사전 조회 (SCHEDULE-Q001)
     case getCapabilities
+    /// 내 일정 목록 조회 (기간 + 출석 필수 필터)
+    case getMySchedules(from: Date, to: Date, isAttendanceRequired: Bool)
+    /// 일정 상세 조회
+    case getScheduleDetail(scheduleId: Int)
+    /// 일정 생성
+    case postSchedule(request: GenerateScheduleRequetDTO)
+    /// 일정 수정 (부분 갱신)
+    case patchSchedule(scheduleId: Int, request: UpdateScheduleRequestDTO)
 }
 
 extension ScheduleV2Router: BaseTargetType {
@@ -28,6 +36,14 @@ extension ScheduleV2Router: BaseTargetType {
         switch self {
         case .getCapabilities:
             return "/api/v2/schedules/capabilities"
+        case .getMySchedules:
+            return "/api/v2/schedules/me"
+        case .getScheduleDetail(let scheduleId):
+            return "/api/v2/schedules/\(scheduleId)"
+        case .postSchedule:
+            return "/api/v2/schedules"
+        case .patchSchedule(let scheduleId, _):
+            return "/api/v2/schedules/\(scheduleId)"
         }
     }
 
@@ -35,8 +51,12 @@ extension ScheduleV2Router: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .getCapabilities:
+        case .getCapabilities, .getMySchedules, .getScheduleDetail:
             return .get
+        case .postSchedule:
+            return .post
+        case .patchSchedule:
+            return .patch
         }
     }
 
@@ -44,8 +64,21 @@ extension ScheduleV2Router: BaseTargetType {
 
     var task: Moya.Task {
         switch self {
-        case .getCapabilities:
+        case .getCapabilities, .getScheduleDetail:
             return .requestPlain
+        case .getMySchedules(let from, let to, let isAttendanceRequired):
+            return .requestParameters(
+                parameters: [
+                    "from": ServerDateTimeConverter.toUTCDateTimeString(from),
+                    "to": ServerDateTimeConverter.toUTCDateTimeString(to),
+                    "isAttendanceRequired": isAttendanceRequired
+                ],
+                encoding: URLEncoding.queryString
+            )
+        case .postSchedule(let request):
+            return .requestJSONEncodable(request)
+        case .patchSchedule(_, let request):
+            return .requestJSONEncodable(request)
         }
     }
 }

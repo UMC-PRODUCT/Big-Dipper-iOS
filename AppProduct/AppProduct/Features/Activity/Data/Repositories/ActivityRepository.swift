@@ -109,8 +109,8 @@ final class ActivityRepository: ActivityRepositoryProtocol, @unchecked Sendable 
                 startTime: startTime,
                 endTime: endTime,
                 location: Coordinate(
-                    latitude: detail.latitude,
-                    longitude: detail.longitude
+                    latitude: detail.location?.latitude ?? 0,
+                    longitude: detail.location?.longitude ?? 0
                 ),
                 isAllDay: detail.isAllDay
             ),

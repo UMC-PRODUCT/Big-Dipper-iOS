@@ -47,10 +47,10 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
         schedule: GenerateScheduleRequetDTO
     ) async throws {
         let response = try await adapter.request(
-            ScheduleRouter.postGenerateSchedule(schedule: schedule)
+            ScheduleV2Router.postSchedule(request: schedule)
         )
         let apiResponse = try decoder.decode(
-            APIResponse<String>.self,
+            APIResponse<EmptyResult>.self,
             from: response.data
         )
         try apiResponse.validateSuccess()
@@ -67,9 +67,9 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
         schedule: UpdateScheduleRequestDTO
     ) async throws {
         let response = try await adapter.request(
-            ScheduleRouter.patchUpdateSchedule(
+            ScheduleV2Router.patchSchedule(
                 scheduleId: scheduleId,
-                schedule: schedule
+                request: schedule
             )
         )
         let apiResponse = try decoder.decode(

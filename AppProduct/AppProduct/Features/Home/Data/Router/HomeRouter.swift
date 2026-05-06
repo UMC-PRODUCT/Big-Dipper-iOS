@@ -12,13 +12,10 @@ import Moya
 /// 홈 Feature API 라우터
 ///
 /// 홈 대시보드에 필요한 API 엔드포인트를 정의합니다.
+/// 일정 관련 V1 엔드포인트는 V2 마이그레이션으로 ``ScheduleV2Router`` 로 이전되었습니다.
 enum HomeRouter {
     /// 내 프로필 조회 (기수 + 역할 정보)
     case getGen
-    /// 월별 내 일정 조회
-    case getSchedules(year: Int, month: Int)
-    /// 일정 상세 조회
-    case getScheduleDetail(scheduleId: Int)
     /// 최근 공지사항 조회
     case getNoticeRecent(query: NoticeListRequestDTO)
     /// 기수 상세 조회
@@ -30,14 +27,11 @@ enum HomeRouter {
 extension HomeRouter: BaseTargetType {
 
     // MARK: - Path
+
     var path: String {
         switch self {
         case .getGen:
             return "/api/v1/member/me"
-        case .getSchedules:
-            return "/api/v1/schedules/my-list"
-        case .getScheduleDetail(let scheduleId):
-            return "/api/v1/schedules/\(scheduleId)"
         case .getNoticeRecent:
             return "/api/v1/notices"
         case .getGisuDetail(let gisuId):
@@ -51,7 +45,7 @@ extension HomeRouter: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .getGen, .getSchedules, .getScheduleDetail, .getNoticeRecent, .getGisuDetail:
+        case .getGen, .getNoticeRecent, .getGisuDetail:
             return .get
         case .putFCMToken:
             return .put
@@ -63,13 +57,6 @@ extension HomeRouter: BaseTargetType {
     var task: Moya.Task {
         switch self {
         case .getGen:
-            return .requestPlain
-        case .getSchedules(let year, let month):
-            return .requestParameters(
-                parameters: ["year": year, "month": month],
-                encoding: URLEncoding.queryString
-            )
-        case .getScheduleDetail:
             return .requestPlain
         case .getNoticeRecent(let query):
             return .requestParameters(

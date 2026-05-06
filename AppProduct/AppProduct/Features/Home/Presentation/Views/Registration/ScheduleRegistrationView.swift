@@ -20,8 +20,6 @@ struct ScheduleRegistrationView: View {
 
     @Environment(\.dismiss) var dismiss
 
-    /// 일정 생성 요청에 필요한 현재 기수 식별자입니다.
-    @AppStorage(AppStorageKey.gisuId) private var gisuId: Int = 0
     /// 현재 로그인 사용자의 역할입니다.
     @AppStorage(AppStorageKey.memberRole) private var memberRole: ManagementTeam = .challenger
     /// 운영진 생성 플로우에서 출석부 생성 여부 확인 다이얼로그 표시 상태입니다.
@@ -95,12 +93,35 @@ struct ScheduleRegistrationView: View {
     /// 입력 섹션을 순서대로 배치한 기본 폼입니다.
     private var formContent: some View {
         Form {
+            inlineErrorSection
             section(.title, .place)
             section(.allDay, .date)
             section(.participation)
             section(.tag)
             section(.memo)
         }
+    }
+
+    /// 수정 모드에서 시작된 일정 가드 또는 서버 에러 메시지를 노출하는 섹션입니다.
+    @ViewBuilder
+    private var inlineErrorSection: some View {
+        if let message = inlineErrorDisplayMessage {
+            Section {
+                Text(message)
+                    .appFont(.subheadline, color: .red500)
+            }
+        }
+    }
+
+    /// 화면에 표시할 인라인 에러 메시지입니다.
+    ///
+    /// 수정 모드에서 이미 시작된 일정인 경우 가드 메시지를 우선 노출하고,
+    /// 그 외에는 ViewModel 이 보유한 서버 에러 메시지를 그대로 보여줍니다.
+    private var inlineErrorDisplayMessage: String? {
+        if mode == .edit, viewModel.isEditingStartedSchedule {
+            return "이미 시작된 일정은 수정할 수 없습니다."
+        }
+        return viewModel.inlineErrorMessage
     }
 
     /// 모드에 따라 상단 툴바 구성을 분기합니다.
@@ -166,24 +187,21 @@ struct ScheduleRegistrationView: View {
     }
 
     /// 운영진 생성 플로우에서 표시할 확인 다이얼로그 액션 목록입니다.
+    ///
+    /// V2 마이그레이션 이후 출석 정책 입력 UI 가 분리될 때까지 두 선택지 모두
+    /// 동일하게 출석 정책 없이 일정을 생성합니다.
     @ViewBuilder
     private func approvalConfirmationActions() -> some View {
         if memberRole != .challenger {
             Button("출석부 생성합니다", role: .destructive) {
                 Task {
-                    await viewModel.submitSchedule(
-                        gisuId: gisuId,
-                        requiresApproval: true
-                    )
+                    await viewModel.submitSchedule()
                 }
             }
 
             Button("일정만 생성할게요") {
                 Task {
-                    await viewModel.submitSchedule(
-                        gisuId: gisuId,
-                        requiresApproval: false
-                    )
+                    await viewModel.submitSchedule()
                 }
             }
         }
@@ -207,9 +225,11 @@ struct ScheduleRegistrationView: View {
 
     /// 현재 입력 상태에서 저장 액션을 비활성화해야 하는지 계산합니다.
     ///
-    /// 생성 모드는 필수값 충족 여부만 확인하고, 수정 모드는 변경 사항 존재 여부를 함께 확인합니다.
+    /// 생성 모드는 필수값 충족 여부만 확인하고, 수정 모드는 변경 사항 존재 여부와
+    /// 이미 시작된 일정인지(SCHEDULE-0028 사전 차단) 여부를 함께 확인합니다.
     private var isActionDisabled: Bool {
         if mode == .edit {
+            if viewModel.isEditingStartedSchedule { return true }
             return !viewModel.canSubmit || !viewModel.hasChangesInEditMode || isSubmitting
         }
         return !viewModel.canSubmit || isSubmitting
@@ -235,10 +255,7 @@ struct ScheduleRegistrationView: View {
     private func submitCreateAction() {
         if memberRole == .challenger {
             Task {
-                await viewModel.submitSchedule(
-                    gisuId: gisuId,
-                    requiresApproval: false
-                )
+                await viewModel.submitSchedule()
             }
         } else {
             showApprovalConfirmationDialog = true
