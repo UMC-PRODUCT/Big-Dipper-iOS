@@ -63,12 +63,12 @@ enum NoticeRouter: BaseTargetType {
     case readNotice(noticeId: Int)
     /// 투표 응답(사용자 선택 전송)
     case submitVoteResponse(
-        voteId: Int,
+        noticeId: Int,
         optionIds: [Int]
     )
     /// 투표 응답 수정
     case updateVoteResponse(
-        voteId: Int,
+        noticeId: Int,
         optionIds: [Int]
     )
     
@@ -122,10 +122,10 @@ enum NoticeRouter: BaseTargetType {
             return "/api/v1/notices/\(noticeId)/reminders"
         case .readNotice(let noticeId):
             return "/api/v1/notices/\(noticeId)/read"
-        case .submitVoteResponse(let voteId, _):
-            return "/api/v1/surveys/votes/\(voteId)/responses"
-        case .updateVoteResponse(let voteId, _):
-            return "/api/v1/surveys/votes/\(voteId)/responses"
+        case .submitVoteResponse(let noticeId, _):
+            return "/api/v1/notices/\(noticeId)/votes/responses"
+        case .updateVoteResponse(let noticeId, _):
+            return "/api/v1/notices/\(noticeId)/votes/responses"
         case .updateNotice(let noticeId, _):
             return "/api/v1/notices/\(noticeId)"
         case .updateLink(let noticeId, _):

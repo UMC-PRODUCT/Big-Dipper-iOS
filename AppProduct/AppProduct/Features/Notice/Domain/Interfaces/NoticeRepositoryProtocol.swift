@@ -43,10 +43,10 @@ protocol NoticeRepositoryProtocol {
     func readNotice(noticeId: Int) async throws
 
     /// 투표 응답(사용자 선택 전송)
-    func submitVoteResponse(voteId: Int, optionIds: [Int]) async throws
+    func submitVoteResponse(noticeId: Int, optionIds: [Int]) async throws
 
     /// 투표 응답 수정
-    func updateVoteResponse(voteId: Int, optionIds: [Int]) async throws
+    func updateVoteResponse(noticeId: Int, optionIds: [Int]) async throws
     
     // MARK: - 공지 수정
     /// 공지사항 수정 (제목, 본문)
