@@ -6,3 +6,7 @@
 //
 
 import Foundation
+
+public protocol FetchTermsUseCaseProtocol {
+    func execute(termsType: String) async throws -> MyPageTerms
+}
