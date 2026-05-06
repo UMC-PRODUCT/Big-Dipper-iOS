@@ -29,7 +29,7 @@ final class LocationManager: NSObject {
     private var monitor: CLMonitor?
     private var monitorTask: Task<Void, Never>?
 
-    static let geofenceRadius: CLLocationDistance = AttendancePolicy.geofenceRadius
+    static let geofenceRadius: CLLocationDistance = AttendanceGeofenceConstants.geofenceRadius
     private let monitorName = "AttendanceGeofenceMonitor"
     
     // Computed Property

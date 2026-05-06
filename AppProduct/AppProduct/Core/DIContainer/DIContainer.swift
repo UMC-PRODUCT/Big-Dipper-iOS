@@ -263,6 +263,16 @@ extension DIContainer {
                 adapter: container.resolve(MoyaNetworkAdapter.self)
             )
         }
+        container.register(ScheduleCapabilitiesRepositoryProtocol.self) {
+            ScheduleCapabilitiesRepository(
+                adapter: container.resolve(MoyaNetworkAdapter.self)
+            )
+        }
+        container.register(FetchScheduleCapabilitiesUseCaseProtocol.self) {
+            FetchScheduleCapabilitiesUseCase(
+                repository: container.resolve(ScheduleCapabilitiesRepositoryProtocol.self)
+            )
+        }
         container.register(ChallengerGenRepositoryProtocol.self) {
             ChallengerGenRepository(modelContext: modelContext)
         }

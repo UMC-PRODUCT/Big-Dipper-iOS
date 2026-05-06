@@ -70,7 +70,7 @@ struct BaseMapComponent: View, Equatable {
         if let geofenceCenter = viewModel.geofenceCenter {
             MapCircle(
                 center: geofenceCenter,
-                radius: AttendancePolicy.geofenceRadius)
+                radius: AttendanceGeofenceConstants.geofenceRadius)
             .foregroundStyle(
                 viewModel.isUserInsideGeofence
                 ? .indigo300.opacity(0.3)

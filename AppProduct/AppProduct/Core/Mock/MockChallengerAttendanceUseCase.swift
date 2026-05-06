@@ -109,8 +109,8 @@ final class MockChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol
         }
 
         let now = Date()
-        let onTimeThreshold = TimeInterval(AttendancePolicy.onTimeThresholdMinutes * 60)
-        let lateThreshold = TimeInterval(AttendancePolicy.lateThresholdMinutes * 60)
+        let onTimeThreshold = TimeInterval(AttendanceGeofenceConstants.onTimeThresholdMinutes * 60)
+        let lateThreshold = TimeInterval(AttendanceGeofenceConstants.lateThresholdMinutes * 60)
         let startTime = info.startTime
 
         if now < startTime.addingTimeInterval(-onTimeThreshold) {
