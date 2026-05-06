@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// 마이페이지 약관 링크 정보
 public struct MyPageTerms {
     let id: String
     let link: String
