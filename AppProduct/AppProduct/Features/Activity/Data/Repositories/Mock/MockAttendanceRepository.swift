@@ -104,6 +104,83 @@ final class MockAttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         ]
     }
 
+    func fetchAttendanceList(
+        from: Date?,
+        to: Date?,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> [ScheduleAttendanceInfo] {
+        _ = from
+        _ = to
+        _ = attendanceStatus
+        return [
+            ScheduleAttendanceInfo(
+                scheduleId: 1,
+                name: "9기 OT",
+                description: "오리엔테이션",
+                startsAt: .now,
+                endsAt: .now.addingTimeInterval(60 * 90),
+                location: ScheduleLocation(
+                    latitude: 37.50543,
+                    longitude: 126.9569,
+                    locationName: "중앙대학교 R&D센터"
+                ),
+                isOnline: false,
+                authorMemberId: 1,
+                attendancePolicy: nil,
+                tags: ["LEADERSHIP"],
+                participants: [
+                    ParticipantAttendance(
+                        memberId: 1,
+                        name: "홍길동",
+                        nickname: "길동이",
+                        profileImageUrl: "",
+                        schoolId: 1,
+                        schoolName: "중앙대학교",
+                        attendanceStatus: .presentPending,
+                        isLocationVerified: true,
+                        excuseReason: nil
+                    )
+                ]
+            )
+        ]
+    }
+
+    func fetchAttendanceDetail(
+        scheduleId: Int,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> ScheduleAttendanceInfo {
+        _ = attendanceStatus
+        return ScheduleAttendanceInfo(
+            scheduleId: scheduleId,
+            name: "9기 OT",
+            description: "오리엔테이션",
+            startsAt: .now,
+            endsAt: .now.addingTimeInterval(60 * 90),
+            location: ScheduleLocation(
+                latitude: 37.50543,
+                longitude: 126.9569,
+                locationName: "중앙대학교 R&D센터"
+            ),
+            isOnline: false,
+            authorMemberId: 1,
+            attendancePolicy: nil,
+            tags: ["LEADERSHIP"],
+            participants: [
+                ParticipantAttendance(
+                    memberId: 1,
+                    name: "홍길동",
+                    nickname: "길동이",
+                    profileImageUrl: "",
+                    schoolId: 1,
+                    schoolName: "중앙대학교",
+                    attendanceStatus: .present,
+                    isLocationVerified: true,
+                    excuseReason: nil
+                )
+            ]
+        )
+    }
+
     func getAvailableSchedules(
     ) async throws -> [AvailableAttendanceSchedule] {
         [

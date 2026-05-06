@@ -127,6 +127,42 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         return try apiResponse.unwrap().map { $0.toDomain() }
     }
 
+    func fetchAttendanceList(
+        from: Date?,
+        to: Date?,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> [ScheduleAttendanceInfo] {
+        let response = try await adapter.request(
+            ScheduleV2Router.getAttendanceList(
+                from: from,
+                to: to,
+                attendanceStatus: attendanceStatus?.serverQueryValue
+            )
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<[ScheduleAttendanceInfoDTO]>.self,
+            from: response.data
+        )
+        return try apiResponse.unwrap().map { $0.toDomain() }
+    }
+
+    func fetchAttendanceDetail(
+        scheduleId: Int,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> ScheduleAttendanceInfo {
+        let response = try await adapter.request(
+            ScheduleV2Router.getAttendanceDetail(
+                scheduleId: scheduleId,
+                attendanceStatus: attendanceStatus?.serverQueryValue
+            )
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<ScheduleAttendanceInfoDTO>.self,
+            from: response.data
+        )
+        return try apiResponse.unwrap().toDomain()
+    }
+
     // MARK: - 액션
 
     func approveAttendance(recordId: Int) async throws {

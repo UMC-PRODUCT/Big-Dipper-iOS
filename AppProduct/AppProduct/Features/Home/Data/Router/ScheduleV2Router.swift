@@ -28,6 +28,14 @@ enum ScheduleV2Router {
     case patchSchedule(scheduleId: Int, request: UpdateScheduleRequestDTO)
     /// 일정 삭제 (스터디 그룹 일정 2단계 실패 시 베스트 에포트 롤백 등)
     case deleteSchedule(scheduleId: Int)
+    /// 운영진용 일정 출석 현황 목록 조회 (SCHEDULE-Q004)
+    ///
+    /// - `from` / `to` 미지정 시 서버 기본값(요청 시점 -1개월 ~ +24시간) 적용
+    /// - `attendanceStatus` 미지정 시 모든 상태 반환
+    /// - 직책별 조회 범위는 서버에서 자동 분기
+    case getAttendanceList(from: Date?, to: Date?, attendanceStatus: String?)
+    /// 운영진용 단일 일정 출석 현황 조회 (SCHEDULE-Q005)
+    case getAttendanceDetail(scheduleId: Int, attendanceStatus: String?)
 }
 
 extension ScheduleV2Router: BaseTargetType {
@@ -48,6 +56,10 @@ extension ScheduleV2Router: BaseTargetType {
             return "/api/v2/schedules/\(scheduleId)"
         case .deleteSchedule(let scheduleId):
             return "/api/v2/schedules/\(scheduleId)"
+        case .getAttendanceList:
+            return "/api/v2/schedules/attendance"
+        case .getAttendanceDetail(let scheduleId, _):
+            return "/api/v2/schedules/\(scheduleId)/attendance"
         }
     }
 
@@ -55,7 +67,8 @@ extension ScheduleV2Router: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .getCapabilities, .getMySchedules, .getScheduleDetail:
+        case .getCapabilities, .getMySchedules, .getScheduleDetail,
+             .getAttendanceList, .getAttendanceDetail:
             return .get
         case .postSchedule:
             return .post
@@ -85,6 +98,29 @@ extension ScheduleV2Router: BaseTargetType {
             return .requestJSONEncodable(request)
         case .patchSchedule(_, let request):
             return .requestJSONEncodable(request)
+        case .getAttendanceList(let from, let to, let attendanceStatus):
+            var parameters: [String: Any] = [:]
+            if let from {
+                parameters["from"] = ServerDateTimeConverter.toUTCDateTimeString(from)
+            }
+            if let to {
+                parameters["to"] = ServerDateTimeConverter.toUTCDateTimeString(to)
+            }
+            if let attendanceStatus {
+                parameters["attendanceStatus"] = attendanceStatus
+            }
+            return .requestParameters(
+                parameters: parameters,
+                encoding: URLEncoding.queryString
+            )
+        case .getAttendanceDetail(_, let attendanceStatus):
+            guard let attendanceStatus else {
+                return .requestPlain
+            }
+            return .requestParameters(
+                parameters: ["attendanceStatus": attendanceStatus],
+                encoding: URLEncoding.queryString
+            )
         }
     }
 }

@@ -95,6 +95,15 @@ enum NavigationDestination: Hashable {
     enum Activity: Hashable {
         /// 스터디 일정 등록 (studyName: 스터디명, studyGroupId: 스터디 그룹 ID)
         case studyScheduleRegistration(studyName: String, studyGroupId: Int)
+        /// 운영진 출석 현황 목록 (Schedule V2)
+        ///
+        /// 필터: 상태(`AttendanceStatusV2`) + 기간 (`from`/`to`).
+        /// `canCreateAttendanceRequiredSchedule = true` 인 사용자만 진입 가능 (AC-E1).
+        case attendanceList
+        /// 운영진 단일 일정 출석 현황 (Schedule V2)
+        ///
+        /// 진입 경로: 출석 현황 목록 → 행 탭, 또는 일정 상세 → "출석 현황" 버튼.
+        case attendanceDetail(scheduleId: Int)
     }
 
     case auth(Auth)

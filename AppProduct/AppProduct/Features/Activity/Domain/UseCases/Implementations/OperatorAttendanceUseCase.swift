@@ -59,4 +59,26 @@ final class OperatorAttendanceUseCase: OperatorAttendanceUseCaseProtocol {
     {
         try await repository.getScheduleStats()
     }
+
+    func fetchAttendanceList(
+        from: Date?,
+        to: Date?,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> [ScheduleAttendanceInfo] {
+        try await repository.fetchAttendanceList(
+            from: from,
+            to: to,
+            attendanceStatus: attendanceStatus
+        )
+    }
+
+    func fetchAttendanceDetail(
+        scheduleId: Int,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> ScheduleAttendanceInfo {
+        try await repository.fetchAttendanceDetail(
+            scheduleId: scheduleId,
+            attendanceStatus: attendanceStatus
+        )
+    }
 }

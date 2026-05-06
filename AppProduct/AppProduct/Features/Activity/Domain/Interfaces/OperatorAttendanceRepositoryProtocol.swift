@@ -29,7 +29,36 @@ protocol OperatorAttendanceRepositoryProtocol {
     ) async throws -> [AttendanceHistoryItem]
 
     /// 일정별 출석 통계 조회 (관리자)
+    ///
+    /// - Important: V1 엔드포인트(`GET /api/v1/schedules`) 호출. V2 마이그레이션 완료 후 제거 예정.
+    /// - SeeAlso: ``fetchAttendanceList(from:to:attendanceStatus:)`` (V2)
     func getScheduleStats() async throws -> [ScheduleAttendanceStats]
+
+    /// 일정 출석 현황 목록 조회 (V2, 관리자)
+    ///
+    /// `GET /api/v2/schedules/attendance` 호출. 직책별 조회 범위는 서버에서 자동 분기.
+    ///
+    /// - Parameters:
+    ///   - from: 조회 시작 시각 (`nil` 이면 서버 기본값 = 요청 시점 -1개월)
+    ///   - to: 조회 종료 시각 (`nil` 이면 서버 기본값 = 요청 시점 +24시간)
+    ///   - attendanceStatus: 필터링할 출석 상태 (`nil` 이면 모든 상태)
+    func fetchAttendanceList(
+        from: Date?,
+        to: Date?,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> [ScheduleAttendanceInfo]
+
+    /// 단일 일정 출석 현황 조회 (V2, 관리자)
+    ///
+    /// `GET /api/v2/schedules/{scheduleId}/attendance` 호출.
+    ///
+    /// - Parameters:
+    ///   - scheduleId: 일정 식별자
+    ///   - attendanceStatus: 필터링할 출석 상태 (`nil` 이면 모든 상태)
+    func fetchAttendanceDetail(
+        scheduleId: Int,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> ScheduleAttendanceInfo
 
     // MARK: - 액션
 
