@@ -45,11 +45,11 @@ final class MockNoticeRepository: NoticeRepositoryProtocol {
 
     func readNotice(noticeId: Int) async throws {}
 
-    func submitVoteResponse(voteId: Int, optionIds: [Int]) async throws {
+    func submitVoteResponse(noticeId: Int, optionIds: [Int]) async throws {
         throw DomainError.insufficientPermission(required: "인증")
     }
 
-    func updateVoteResponse(voteId: Int, optionIds: [Int]) async throws {
+    func updateVoteResponse(noticeId: Int, optionIds: [Int]) async throws {
         throw DomainError.insufficientPermission(required: "인증")
     }
 

@@ -227,15 +227,12 @@ struct NoticeDetailView: View {
                     container: di,
                     onVote: { optionIds in
                         Task {
-                            await viewModel.handleVote(voteId: vote.id, optionIds: optionIds)
+                            await viewModel.handleVote(optionIds: optionIds)
                         }
                     },
                     onUpdateVote: { optionIds in
                         Task {
-                            await viewModel.handleUpdateVote(
-                                voteId: vote.id,
-                                optionIds: optionIds
-                            )
+                            await viewModel.handleUpdateVote(optionIds: optionIds)
                         }
                     }
                 )

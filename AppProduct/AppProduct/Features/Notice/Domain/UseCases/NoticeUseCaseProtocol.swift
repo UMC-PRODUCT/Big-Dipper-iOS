@@ -81,15 +81,15 @@ protocol NoticeUseCaseProtocol {
 
     /// 투표 응답(사용자 선택 전송)
     /// - Parameters:
-    ///   - voteId: 투표 ID
+    ///   - noticeId: 공지 ID
     ///   - optionIds: 선택한 옵션 ID 목록
-    func submitVoteResponse(voteId: Int, optionIds: [Int]) async throws
+    func submitVoteResponse(noticeId: Int, optionIds: [Int]) async throws
 
     /// 투표 응답 수정
     /// - Parameters:
-    ///   - voteId: 투표 ID
-    ///   - optionIds: 수정할 옵션 ID 목록
-    func updateVoteResponse(voteId: Int, optionIds: [Int]) async throws
+    ///   - noticeId: 공지 ID
+    ///   - optionIds: 수정할 옵션 ID 목록 (빈 배열 전송 시 응답 취소)
+    func updateVoteResponse(noticeId: Int, optionIds: [Int]) async throws
     
     // MARK: - 리마인더 (POST)
     

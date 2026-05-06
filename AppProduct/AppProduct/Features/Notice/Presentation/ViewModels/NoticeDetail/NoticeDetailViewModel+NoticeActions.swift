@@ -598,7 +598,7 @@ extension NoticeDetailViewModel {
     ///
     /// 선택 옵션을 서버로 전송한 뒤 공지 상세를 재조회하여 최신 투표 상태를 반영합니다.
     @MainActor
-    func handleVote(voteId: String, optionIds: [String]) async {
+    func handleVote(optionIds: [String]) async {
         guard case .loaded = noticeState else {
             return
         }
@@ -608,17 +608,13 @@ extension NoticeDetailViewModel {
             isSubmittingVote = true
             defer { isSubmittingVote = false }
 
-            guard let resolvedVoteId = Int(voteId) else {
-                throw DomainError.custom(message: "유효하지 않은 투표 ID입니다.")
-            }
-
             let resolvedOptionIds = optionIds.compactMap(Int.init)
             guard !resolvedOptionIds.isEmpty else {
                 throw DomainError.custom(message: "유효한 투표 항목이 없습니다.")
             }
 
             try await noticeUseCase.submitVoteResponse(
-                voteId: resolvedVoteId,
+                noticeId: noticeID,
                 optionIds: resolvedOptionIds
             )
 
@@ -637,7 +633,7 @@ extension NoticeDetailViewModel {
                     retryAction: { [weak self] in
                         guard let self = self else { return }
                         Task {
-                            await self.handleVote(voteId: voteId, optionIds: optionIds)
+                            await self.handleVote(optionIds: optionIds)
                         }
                     }
                 )
@@ -652,7 +648,7 @@ extension NoticeDetailViewModel {
                     retryAction: { [weak self] in
                         guard let self = self else { return }
                         Task {
-                            await self.handleVote(voteId: voteId, optionIds: optionIds)
+                            await self.handleVote(optionIds: optionIds)
                         }
                     }
                 )
@@ -679,10 +675,7 @@ extension NoticeDetailViewModel {
                         retryAction: { [weak self] in
                             guard let self = self else { return }
                             Task {
-                                await self.handleVote(
-                                    voteId: voteId,
-                                    optionIds: optionIds
-                                )
+                                await self.handleVote(optionIds: optionIds)
                             }
                         }
                     )
@@ -698,7 +691,7 @@ extension NoticeDetailViewModel {
                     retryAction: { [weak self] in
                         guard let self = self else { return }
                         Task {
-                            await self.handleVote(voteId: voteId, optionIds: optionIds)
+                            await self.handleVote(optionIds: optionIds)
                         }
                     }
                 )
@@ -709,8 +702,9 @@ extension NoticeDetailViewModel {
     /// 투표 응답 수정 처리
     ///
     /// 기존 투표를 수정(PUT)한 뒤 공지 상세를 재조회하여 최신 투표 상태를 반영합니다.
+    /// 빈 배열 전송 시 기존 응답이 취소(삭제)됩니다.
     @MainActor
-    func handleUpdateVote(voteId: String, optionIds: [String]) async {
+    func handleUpdateVote(optionIds: [String]) async {
         guard case .loaded = noticeState else { return }
         guard !isSubmittingVote else { return }
 
@@ -718,14 +712,10 @@ extension NoticeDetailViewModel {
             isSubmittingVote = true
             defer { isSubmittingVote = false }
 
-            guard let resolvedVoteId = Int(voteId) else {
-                throw DomainError.custom(message: "유효하지 않은 투표 ID입니다.")
-            }
-
             let resolvedOptionIds = optionIds.compactMap(Int.init)
 
             try await noticeUseCase.updateVoteResponse(
-                voteId: resolvedVoteId,
+                noticeId: noticeID,
                 optionIds: resolvedOptionIds
             )
 
@@ -742,7 +732,7 @@ extension NoticeDetailViewModel {
                     action: "handleUpdateVote",
                     retryAction: { [weak self] in
                         guard let self else { return }
-                        Task { await self.handleUpdateVote(voteId: voteId, optionIds: optionIds) }
+                        Task { await self.handleUpdateVote(optionIds: optionIds) }
                     }
                 )
             )
@@ -755,7 +745,7 @@ extension NoticeDetailViewModel {
                     action: "handleUpdateVote",
                     retryAction: { [weak self] in
                         guard let self else { return }
-                        Task { await self.handleUpdateVote(voteId: voteId, optionIds: optionIds) }
+                        Task { await self.handleUpdateVote(optionIds: optionIds) }
                     }
                 )
             )
@@ -781,10 +771,7 @@ extension NoticeDetailViewModel {
                         retryAction: { [weak self] in
                             guard let self else { return }
                             Task {
-                                await self.handleUpdateVote(
-                                    voteId: voteId,
-                                    optionIds: optionIds
-                                )
+                                await self.handleUpdateVote(optionIds: optionIds)
                             }
                         }
                     )
@@ -800,10 +787,7 @@ extension NoticeDetailViewModel {
                     retryAction: { [weak self] in
                         guard let self else { return }
                         Task {
-                            await self.handleUpdateVote(
-                                voteId: voteId,
-                                optionIds: optionIds
-                            )
+                            await self.handleUpdateVote(optionIds: optionIds)
                         }
                     }
                 )

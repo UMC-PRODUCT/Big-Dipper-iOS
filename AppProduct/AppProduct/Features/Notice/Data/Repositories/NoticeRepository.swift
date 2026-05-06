@@ -192,9 +192,9 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     }
 
     /// 투표 응답(사용자 선택 전송)
-    func submitVoteResponse(voteId: Int, optionIds: [Int]) async throws {
+    func submitVoteResponse(noticeId: Int, optionIds: [Int]) async throws {
         let response = try await adapter.request(
-            NoticeRouter.submitVoteResponse(voteId: voteId, optionIds: optionIds)
+            NoticeRouter.submitVoteResponse(noticeId: noticeId, optionIds: optionIds)
         )
 
         let apiResponse = try JSONDecoder().decode(
@@ -205,9 +205,9 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     }
 
     /// 투표 응답 수정
-    func updateVoteResponse(voteId: Int, optionIds: [Int]) async throws {
+    func updateVoteResponse(noticeId: Int, optionIds: [Int]) async throws {
         let response = try await adapter.request(
-            NoticeRouter.updateVoteResponse(voteId: voteId, optionIds: optionIds)
+            NoticeRouter.updateVoteResponse(noticeId: noticeId, optionIds: optionIds)
         )
 
         let apiResponse = try JSONDecoder().decode(

@@ -171,22 +171,22 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
     }
 
     /// 투표 응답(사용자 선택 전송)
-    func submitVoteResponse(voteId: Int, optionIds: [Int]) async throws {
-        guard voteId > 0 else {
-            throw DomainError.custom(message: "유효하지 않은 투표입니다")
+    func submitVoteResponse(noticeId: Int, optionIds: [Int]) async throws {
+        guard noticeId > 0 else {
+            throw DomainError.custom(message: "유효하지 않은 공지입니다")
         }
         guard !optionIds.isEmpty else {
             throw DomainError.custom(message: "선택한 항목이 없습니다")
         }
-        try await repository.submitVoteResponse(voteId: voteId, optionIds: optionIds)
+        try await repository.submitVoteResponse(noticeId: noticeId, optionIds: optionIds)
     }
 
     /// 투표 응답 수정 (빈 배열 전송 시 투표 해제)
-    func updateVoteResponse(voteId: Int, optionIds: [Int]) async throws {
-        guard voteId > 0 else {
-            throw DomainError.custom(message: "유효하지 않은 투표입니다")
+    func updateVoteResponse(noticeId: Int, optionIds: [Int]) async throws {
+        guard noticeId > 0 else {
+            throw DomainError.custom(message: "유효하지 않은 공지입니다")
         }
-        try await repository.updateVoteResponse(voteId: voteId, optionIds: optionIds)
+        try await repository.updateVoteResponse(noticeId: noticeId, optionIds: optionIds)
     }
     
     /// 미확인 대상에게 공지 리마인더 발송
