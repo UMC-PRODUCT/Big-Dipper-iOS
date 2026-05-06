@@ -121,6 +121,12 @@ struct NoticeVoteCard: View {
     private var statusBadge: some View {
         Group {
             switch vote.status {
+            case .notStarted:
+                Text("시작 전")
+                    .appFont(.footnoteEmphasis, color: .grey700)
+                    .padding(Constants.capsulePadding)
+                    .background(Color.grey400.opacity(Constants.capsuleOpacity))
+                    .clipShape(Capsule())
             case .active:
                 Text("진행중")
                     .appFont(.footnoteEmphasis, color: .green)
@@ -239,17 +245,17 @@ struct NoticeVoteCard: View {
                 }
             }
 
-            if !vote.isAnonymous && vote.totalVotes > 0 {
+            if !vote.isAnonymous && vote.totalParticipants > 0 {
                 Button(action: { showAllVotersSheet = true }) {
                     HStack(spacing: DefaultSpacing.spacing4) {
                         Image(systemName: "person.2.fill")
                             .font(.system(size: 11))
-                        Text("총 \(vote.totalVotes)명 참여")
+                        Text("총 \(vote.totalParticipants)명 참여")
                     }
                     .appFont(.footnote, color: .indigo500)
                 }
             } else {
-                Text("총 \(vote.totalVotes)명 참여")
+                Text("총 \(vote.totalParticipants)명 참여")
                     .appFont(.footnote, color: .grey600)
             }
         }
