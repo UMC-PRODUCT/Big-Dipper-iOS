@@ -52,7 +52,7 @@ extension StudyRouter: BaseTargetType {
         case .createStudyGroupSchedule:
             return "/api/v1/schedules/study-group"
         case .getMyStudyGroups:
-            return "/api/v1/study-groups"
+            return "/api/v1/study-groups/managed"
         case .getStudyGroupNames:
             return "/api/v1/study-groups/names"
         case .getStudyGroupDetail(let groupId):
