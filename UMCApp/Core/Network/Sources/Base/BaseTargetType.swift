@@ -16,17 +16,29 @@ import Moya
 ///
 /// ## 사용 예시
 /// ```swift
-/// enum NoticeAPI: BaseTargetType {
-///     case fetchList(generation: Int)
+/// public enum MyPageRouter {
+///      case getTerms(termsType: String)
+/// }
 ///
-///     var path: String {
+/// extension MyPageRouter: BaseTargetType {
+///      public var path: String {
 ///         switch self {
-///         case .fetchList: return "/api/v1/notices"
+///         case .getTerms(let termsType):
+///             return "/api/v1/terms/type/\(termsType)"
 ///         }
-///     }
-///
-///     var method: Moya.Method { .get }
-///     var task: Task { .requestPlain }
+///      }
+///      public var method: Moya.Method {
+///         switch self {
+///         case .getTerms:
+///             return .get
+///         }
+///      }
+///      public var task: Moya.Task {
+///         switch self {
+///         case .getTerms:
+///             return .requestPlain
+///         }
+///      }
 /// }
 /// ```
 public protocol BaseTargetType: TargetType {}
