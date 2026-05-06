@@ -71,11 +71,7 @@ struct ScheduleRegistrationView: View {
             .scrollDismissesKeyboard(.immediately)
             .navigation(naviTitle: navigationTitle, displayMode: .inline)
             .toolbar { toolbarContent }
-            .onChange(of: viewModel.showStartDatePicker) { dismissKeyboard() }
-            .onChange(of: viewModel.showStartTimePicker) { dismissKeyboard() }
-            .onChange(of: viewModel.showEndDatePicker) { dismissKeyboard() }
-            .onChange(of: viewModel.showEndTimePicker) { dismissKeyboard() }
-            .onChange(of: viewModel.isAllDay) { dismissKeyboard() }
+            .modifier(KeyboardDismissOnPickerToggle(viewModel: viewModel))
             .onChange(of: viewModel.submitState) {
                 if case .loaded = viewModel.submitState {
                     dismiss()
@@ -85,6 +81,13 @@ struct ScheduleRegistrationView: View {
                 if mode == .edit {
                     await viewModel.fetchPrefillParticipants()
                 }
+                await viewModel.loadCapabilities()
+            }
+            .onChange(of: viewModel.dataRange.startDate) {
+                viewModel.prefillAttendancePolicyIfNeeded()
+            }
+            .onChange(of: viewModel.isAllDay) {
+                viewModel.prefillAttendancePolicyIfNeeded()
             }
     }
 
@@ -96,6 +99,7 @@ struct ScheduleRegistrationView: View {
             inlineErrorSection
             section(.title, .place)
             section(.allDay, .date)
+            AttendancePolicySection(viewModel: viewModel)
             section(.participation)
             section(.tag)
             section(.memo)
@@ -612,6 +616,243 @@ fileprivate struct ParticipantSection: View {
         })
     }
     
+}
+
+// MARK: - Keyboard Dismiss On Picker Toggle
+
+/// 일정 / 출석 정책의 모든 picker 토글과 `isAllDay` 변경 시 키보드를 내리는 ViewModifier.
+///
+/// `body` 의 `.onChange` 체인이 길어져 컴파일러 type-check 가 타임아웃되는 문제를 회피하기 위해
+/// 별도 `ViewModifier` 로 분리했습니다.
+fileprivate struct KeyboardDismissOnPickerToggle: ViewModifier {
+
+    let viewModel: ScheduleRegistrationViewModel
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: viewModel.showStartDatePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showStartTimePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showEndDatePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showEndTimePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showCheckInStartDatePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showCheckInStartTimePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showOnTimeEndDatePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showOnTimeEndTimePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showLateEndDatePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.showLateEndTimePicker) { dismissKeyboard() }
+            .onChange(of: viewModel.isAllDay) { dismissKeyboard() }
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
+    }
+}
+
+// MARK: - Attendance Policy Time Section
+
+/// 출석 정책 3개 시각(체크인 시작 / 정시 종료 / 지각 종료) 입력 섹션입니다.
+///
+/// `DateTimeRow` 패턴을 그대로 재사용하며, 시각 변경 시 `onTimesChanged` 콜백으로
+/// ViewModel 의 dirty flag 토글과 검증 갱신을 트리거합니다.
+fileprivate struct AttendancePolicyTimeSection: View {
+
+    @Binding var checkInStartAt: Date
+    @Binding var onTimeEndAt: Date
+    @Binding var lateEndAt: Date
+
+    @Binding var showCheckInDatePicker: Bool
+    @Binding var showCheckInTimePicker: Bool
+    @Binding var showOnTimeDatePicker: Bool
+    @Binding var showOnTimeTimePicker: Bool
+    @Binding var showLateDatePicker: Bool
+    @Binding var showLateTimePicker: Bool
+
+    let onTimesChanged: () -> Void
+
+    var body: some View {
+        Group {
+            row(
+                title: "체크인 시작",
+                date: $checkInStartAt,
+                isDateActive: showCheckInDatePicker,
+                isTimeActive: showCheckInTimePicker,
+                dateTap: {
+                    withAnimation {
+                        showCheckInDatePicker.toggle()
+                        closeOthers(except: .checkInDate)
+                    }
+                },
+                timeTap: {
+                    withAnimation {
+                        showCheckInTimePicker.toggle()
+                        closeOthers(except: .checkInTime)
+                    }
+                }
+            )
+            picker(condition: showCheckInDatePicker, date: $checkInStartAt, isTime: false)
+            picker(condition: showCheckInTimePicker, date: $checkInStartAt, isTime: true)
+
+            row(
+                title: "정시 종료",
+                date: $onTimeEndAt,
+                isDateActive: showOnTimeDatePicker,
+                isTimeActive: showOnTimeTimePicker,
+                dateTap: {
+                    withAnimation {
+                        showOnTimeDatePicker.toggle()
+                        closeOthers(except: .onTimeDate)
+                    }
+                },
+                timeTap: {
+                    withAnimation {
+                        showOnTimeTimePicker.toggle()
+                        closeOthers(except: .onTimeTime)
+                    }
+                }
+            )
+            picker(condition: showOnTimeDatePicker, date: $onTimeEndAt, isTime: false)
+            picker(condition: showOnTimeTimePicker, date: $onTimeEndAt, isTime: true)
+
+            row(
+                title: "지각 종료",
+                date: $lateEndAt,
+                isDateActive: showLateDatePicker,
+                isTimeActive: showLateTimePicker,
+                dateTap: {
+                    withAnimation {
+                        showLateDatePicker.toggle()
+                        closeOthers(except: .lateDate)
+                    }
+                },
+                timeTap: {
+                    withAnimation {
+                        showLateTimePicker.toggle()
+                        closeOthers(except: .lateTime)
+                    }
+                }
+            )
+            picker(condition: showLateDatePicker, date: $lateEndAt, isTime: false)
+            picker(condition: showLateTimePicker, date: $lateEndAt, isTime: true)
+        }
+        .onChange(of: checkInStartAt) { onTimesChanged() }
+        .onChange(of: onTimeEndAt) { onTimesChanged() }
+        .onChange(of: lateEndAt) { onTimesChanged() }
+    }
+
+    /// 단일 시각 입력 행
+    private func row(
+        title: String,
+        date: Binding<Date>,
+        isDateActive: Bool,
+        isTimeActive: Bool,
+        dateTap: @escaping () -> Void,
+        timeTap: @escaping () -> Void
+    ) -> some View {
+        DateTimeRow(
+            title: title,
+            date: date.wrappedValue,
+            isAllDay: false,
+            isDatePickerActive: isDateActive,
+            isTimePickerActive: isTimeActive,
+            dateTap: dateTap,
+            timeTap: timeTap
+        )
+        .equatable()
+    }
+
+    /// 날짜 또는 시간 피커
+    @ViewBuilder
+    private func picker(condition: Bool, date: Binding<Date>, isTime: Bool) -> some View {
+        if condition {
+            if isTime {
+                TimePickerRow(date: date, range: nil)
+            } else {
+                DatePickerRow(date: date, range: nil)
+            }
+        }
+    }
+
+    /// 한 번에 하나의 picker 만 열리도록 다른 picker 들을 닫습니다.
+    private func closeOthers(except keep: PickerSlot) {
+        if keep != .checkInDate { showCheckInDatePicker = false }
+        if keep != .checkInTime { showCheckInTimePicker = false }
+        if keep != .onTimeDate { showOnTimeDatePicker = false }
+        if keep != .onTimeTime { showOnTimeTimePicker = false }
+        if keep != .lateDate { showLateDatePicker = false }
+        if keep != .lateTime { showLateTimePicker = false }
+    }
+
+    /// 현재 활성 picker 슬롯 식별자
+    private enum PickerSlot {
+        case checkInDate, checkInTime, onTimeDate, onTimeTime, lateDate, lateTime
+    }
+}
+
+// MARK: - Attendance Policy Section
+
+/// 출석 정책 입력 섹션 (운영진 전용, 비-하루종일 일정 한정).
+///
+/// `canCreateAttendanceRequiredSchedule` 권한과 `isAllDay == false` 가 모두 충족될 때만
+/// 노출되며, 토글 ON 시 3개 시각 행과 인라인 검증 에러를 표시합니다.
+fileprivate struct AttendancePolicySection: View {
+
+    @Bindable var viewModel: ScheduleRegistrationViewModel
+
+    var body: some View {
+        if shouldShowSection {
+            Section {
+                Toggle(isOn: toggleBinding) {
+                    Text("출석 필수")
+                        .appFont(.body, color: .black)
+                }
+                .tint(.indigo500)
+
+                if viewModel.isAttendanceRequired {
+                    AttendancePolicyTimeSection(
+                        checkInStartAt: $viewModel.attendanceCheckInStartAt,
+                        onTimeEndAt: $viewModel.attendanceOnTimeEndAt,
+                        lateEndAt: $viewModel.attendanceLateEndAt,
+                        showCheckInDatePicker: $viewModel.showCheckInStartDatePicker,
+                        showCheckInTimePicker: $viewModel.showCheckInStartTimePicker,
+                        showOnTimeDatePicker: $viewModel.showOnTimeEndDatePicker,
+                        showOnTimeTimePicker: $viewModel.showOnTimeEndTimePicker,
+                        showLateDatePicker: $viewModel.showLateEndDatePicker,
+                        showLateTimePicker: $viewModel.showLateEndTimePicker,
+                        onTimesChanged: {
+                            viewModel.attendanceTimesChanged()
+                        }
+                    )
+
+                    if let message = viewModel.attendancePolicyError?.message {
+                        Text(message)
+                            .appFont(.footnote, color: .red500)
+                    }
+                }
+            } header: {
+                Text("출석 체크")
+            }
+        }
+    }
+
+    /// 권한 + 비-하루종일 조건이 모두 충족됐는지 여부.
+    private var shouldShowSection: Bool {
+        guard !viewModel.isAllDay else { return false }
+        guard case .loaded(let caps) = viewModel.capabilitiesState else { return false }
+        return caps.canCreateAttendanceRequiredSchedule
+    }
+
+    /// 토글 변경 시 ViewModel 의 dirty/prefill 처리를 함께 트리거하는 바인딩.
+    private var toggleBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.isAttendanceRequired },
+            set: { newValue in
+                viewModel.attendanceToggleChanged(to: newValue)
+            }
+        )
+    }
 }
 
 // MARK: - Memo Section

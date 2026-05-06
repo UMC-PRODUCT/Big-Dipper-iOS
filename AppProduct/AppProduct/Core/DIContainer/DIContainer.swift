@@ -297,6 +297,9 @@ extension DIContainer {
                 ),
                 challengerSearchRepository: container.resolve(
                     ChallengerSearchRepositoryProtocol.self
+                ),
+                scheduleCapabilitiesRepository: container.resolve(
+                    ScheduleCapabilitiesRepositoryProtocol.self
                 )
             )
         }

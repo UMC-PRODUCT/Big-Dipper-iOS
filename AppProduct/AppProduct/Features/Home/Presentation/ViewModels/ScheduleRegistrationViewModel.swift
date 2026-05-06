@@ -24,6 +24,8 @@ class ScheduleRegistrationViewModel {
     private let classifyScheduleUseCase: ClassifyScheduleUseCase
     /// 챌린저 검색 UseCase (수정 모드 참여자 조회용)
     private let searchChallengersUseCase: SearchChallengersUseCaseProtocol
+    /// 일정 생성/수정 권한 조회 UseCase
+    private let fetchScheduleCapabilitiesUseCase: FetchScheduleCapabilitiesUseCaseProtocol
 
     /// 전역 에러 핸들러 (실패 시 Alert 표시용)
     private let errorHandler: ErrorHandler
@@ -73,6 +75,45 @@ class ScheduleRegistrationViewModel {
     /// 인라인 에러 메시지 (예: 시작된 일정 수정 차단 SCHEDULE-0028)
     private(set) var inlineErrorMessage: String?
 
+    // MARK: - Attendance Policy
+
+    /// 일정 생성/수정 권한 조회 상태
+    private(set) var capabilitiesState: Loadable<ScheduleCapabilities> = .idle
+
+    /// 출석 필수 일정 토글 상태
+    var isAttendanceRequired: Bool = false
+
+    /// 출석 체크인 시작 시각
+    var attendanceCheckInStartAt: Date = .now
+
+    /// 정시 출석 종료 시각 (= 지각 시작)
+    var attendanceOnTimeEndAt: Date = .now
+
+    /// 지각 종료 시각 (= 결석 시작)
+    var attendanceLateEndAt: Date = .now
+
+    /// 출석 정책 인라인 검증 에러
+    private(set) var attendancePolicyError: AttendancePolicyError?
+
+    /// 사용자가 출석 정책 시각을 직접 수정한 적이 있는지 여부 (자동 prefill 차단용)
+    private var isAttendancePolicyDirty: Bool = false
+
+    /// 수정 모드 진입 시점의 `isAttendanceRequired` 값 (PATCH 전환 플래그 산출용)
+    private var initialIsAttendanceRequired: Bool = false
+
+    /// 체크인 시작 날짜 DatePicker 표시 여부
+    var showCheckInStartDatePicker: Bool = false
+    /// 체크인 시작 시간 DatePicker 표시 여부
+    var showCheckInStartTimePicker: Bool = false
+    /// 정시 종료 날짜 DatePicker 표시 여부
+    var showOnTimeEndDatePicker: Bool = false
+    /// 정시 종료 시간 DatePicker 표시 여부
+    var showOnTimeEndTimePicker: Bool = false
+    /// 지각 종료 날짜 DatePicker 표시 여부
+    var showLateEndDatePicker: Bool = false
+    /// 지각 종료 시간 DatePicker 표시 여부
+    var showLateEndTimePicker: Bool = false
+
     /// 장소를 포함한 필수 입력 충족 여부
     ///
     /// 비대면 일정(`isOnline == true`) 인 경우 장소 검증을 건너뜁니다.
@@ -104,6 +145,7 @@ class ScheduleRegistrationViewModel {
             updateScheduleUseCase: provider.updateScheduleUseCase,
             classifyScheduleUseCase: provider.classifyScheduleUseCase,
             searchChallengersUseCase: provider.searchChallengersUseCase,
+            fetchScheduleCapabilitiesUseCase: provider.fetchScheduleCapabilitiesUseCase,
             errorHandler: errorHandler
         )
     }
@@ -113,12 +155,14 @@ class ScheduleRegistrationViewModel {
         updateScheduleUseCase: UpdateScheduleUseCaseProtocol,
         classifyScheduleUseCase: ClassifyScheduleUseCase,
         searchChallengersUseCase: SearchChallengersUseCaseProtocol,
+        fetchScheduleCapabilitiesUseCase: FetchScheduleCapabilitiesUseCaseProtocol,
         errorHandler: ErrorHandler
     ) {
         self.generateScheduleUseCase = generateScheduleUseCase
         self.updateScheduleUseCase = updateScheduleUseCase
         self.classifyScheduleUseCase = classifyScheduleUseCase
         self.searchChallengersUseCase = searchChallengersUseCase
+        self.fetchScheduleCapabilitiesUseCase = fetchScheduleCapabilitiesUseCase
         self.errorHandler = errorHandler
     }
 
@@ -155,6 +199,18 @@ class ScheduleRegistrationViewModel {
             .filter { !$0.isDeprecated }
         isTagManuallyOverridden = !tag.isEmpty
         prefillMemberIds = Set(detail.participantMemberIds)
+
+        if let policy = detail.attendancePolicy {
+            isAttendanceRequired = true
+            attendanceCheckInStartAt = policy.checkInStartAt
+            attendanceOnTimeEndAt = policy.onTimeEndAt
+            attendanceLateEndAt = policy.lateEndAt
+            isAttendancePolicyDirty = true
+        } else {
+            isAttendanceRequired = false
+        }
+        initialIsAttendanceRequired = isAttendanceRequired
+
         initialEditSnapshot = currentEditSnapshot
     }
 
@@ -268,12 +324,140 @@ class ScheduleRegistrationViewModel {
         isTagManuallyOverridden = !sanitized.isEmpty
     }
 
-    /// 일정을 서버에 생성합니다 (V2).
+    // MARK: - Attendance Policy Function
+
+    /// 일정 생성/수정 권한을 조회하여 출석 정책 섹션 노출 여부를 결정합니다.
     ///
-    /// 출석 정책(`attendancePolicy`) 입력 UI 는 본 마이그레이션 범위 밖이므로
-    /// 항상 `nil` 로 송신합니다.
+    /// 호출 실패 시에는 안전 기본값으로 권한 미보유로 간주하여 섹션이 노출되지 않도록 합니다.
+    @MainActor
+    func loadCapabilities() async {
+        capabilitiesState = .loading
+        do {
+            let capabilities = try await fetchScheduleCapabilitiesUseCase.execute()
+            capabilitiesState = .loaded(capabilities)
+            if !capabilities.canCreateAttendanceRequiredSchedule {
+                isAttendanceRequired = false
+            }
+            prefillAttendancePolicyIfNeeded()
+        } catch {
+            capabilitiesState = .idle
+            errorHandler.handle(error, context: ErrorContext(
+                feature: "Home",
+                action: "loadCapabilities"
+            ))
+        }
+    }
+
+    /// 일정 시작/종료 시각을 기준으로 출석 정책 기본값을 자동으로 채웁니다.
+    ///
+    /// - 일반 일정: `startsAt - 20분 / startsAt / startsAt + 60분`
+    /// - 하루종일 일정: 출석 정책 섹션 자체를 비노출하므로 prefill 생략
+    /// - 사용자가 한 번이라도 직접 시각을 수정한 경우(`isAttendancePolicyDirty == true`)에는 덮어쓰지 않습니다.
+    func prefillAttendancePolicyIfNeeded() {
+        guard !isAttendancePolicyDirty else { return }
+        guard !isAllDay else { return }
+        let startsAt = dataRange.startDate
+        attendanceCheckInStartAt = startsAt.addingTimeInterval(-20 * 60)
+        attendanceOnTimeEndAt = startsAt
+        attendanceLateEndAt = startsAt.addingTimeInterval(60 * 60)
+    }
+
+    /// 사용자가 출석 정책 시각 중 하나라도 직접 수정했음을 기록합니다.
+    ///
+    /// 이후 일정 시작 시각이 변경되어도 자동 prefill 로 덮어쓰지 않습니다.
+    func markAttendancePolicyDirty() {
+        isAttendancePolicyDirty = true
+    }
+
+    /// 출석 필수 토글 변경 시 dirty 플래그를 리셋하고 즉시 prefill 합니다.
+    ///
+    /// OFF -> ON 전환은 사용자가 새로 정책을 부여하려는 명확한 의도이므로
+    /// 이전 dirty 상태를 무효화하고 일정 시각 기준 기본값으로 채웁니다.
+    @MainActor
+    func attendanceToggleChanged(to newValue: Bool) {
+        if newValue {
+            isAttendancePolicyDirty = false
+            prefillAttendancePolicyIfNeeded()
+        }
+        attendancePolicyError = validateAttendancePolicy()
+    }
+
+    /// 출석 정책 입력 폼을 검증합니다.
+    ///
+    /// - Returns: 검증 위반이 있으면 ``AttendancePolicyError``, 없으면 `nil`
+    private func validateAttendancePolicy() -> AttendancePolicyError? {
+        guard isAttendanceRequired else { return nil }
+        guard attendanceCheckInStartAt < attendanceOnTimeEndAt else {
+            return .invalidOrder(.checkInVsOnTime)
+        }
+        guard attendanceOnTimeEndAt < attendanceLateEndAt else {
+            return .invalidOrder(.onTimeVsLate)
+        }
+        guard attendanceLateEndAt <= dataRange.endDate else {
+            return .lateExceedsEnd
+        }
+        return nil
+    }
+
+    /// 출석 정책 시각 변경 시 dirty 표시 + 검증을 갱신합니다.
+    @MainActor
+    func attendanceTimesChanged() {
+        markAttendancePolicyDirty()
+        attendancePolicyError = validateAttendancePolicy()
+    }
+
+    /// 송신용 출석 정책 DTO 를 생성합니다.
+    ///
+    /// 출석 토글이 OFF 이거나 하루종일 일정인 경우 `nil` 을 반환합니다.
+    private func makeAttendancePolicyDTOForSubmit() -> V2AttendancePolicyDTO? {
+        guard isAttendanceRequired, !isAllDay else { return nil }
+        return V2AttendancePolicyDTO(
+            domain: AttendancePolicy(
+                checkInStartAt: attendanceCheckInStartAt,
+                onTimeEndAt: attendanceOnTimeEndAt,
+                lateEndAt: attendanceLateEndAt
+            )
+        )
+    }
+
+    /// 수정 모드에서 PATCH 송신용 `isAttendanceRequired` 전환 플래그를 산출합니다.
+    ///
+    /// 진입 시점 상태와 현재 토글값을 비교해 다음 규칙으로 결정합니다:
+    /// - 변화 없음 → `nil` (필드 미송신, 백엔드 기존 상태 유지)
+    /// - OFF → ON → `true` (`attendancePolicy` 필수 동반 송신)
+    /// - ON → OFF → `false` (백엔드가 기존 출석 정책 자동 삭제)
+    private var attendanceRequiredTransitionFlag: Bool? {
+        if initialIsAttendanceRequired == isAttendanceRequired {
+            return nil
+        }
+        return isAttendanceRequired
+    }
+
+    /// 수정 모드에서 PATCH 송신용 `attendancePolicy` 값을 산출합니다.
+    ///
+    /// - 토글 OFF: `nil` (필드 자체 미송신 — 전환 플래그 `false` 가 삭제 처리)
+    /// - 토글 ON: 현재 폼의 3개 시각 DTO
+    /// - 하루종일: `nil`
+    private func makeAttendancePolicyDTOForUpdate() -> V2AttendancePolicyDTO? {
+        guard isAttendanceRequired, !isAllDay else { return nil }
+        return V2AttendancePolicyDTO(
+            domain: AttendancePolicy(
+                checkInStartAt: attendanceCheckInStartAt,
+                onTimeEndAt: attendanceOnTimeEndAt,
+                lateEndAt: attendanceLateEndAt
+            )
+        )
+    }
+
+    /// 일정을 서버에 생성합니다 (V2).
     @MainActor
     func submitSchedule() async {
+        attendancePolicyError = validateAttendancePolicy()
+        guard attendancePolicyError == nil else {
+            submitState = .idle
+            return
+        }
+
         submitState = .loading
         inlineErrorMessage = nil
         let memberIds = sanitizedParticipantMemberIds()
@@ -285,7 +469,7 @@ class ScheduleRegistrationViewModel {
             location: locationDTOForSubmit(),
             participantMemberIds: memberIds,
             tags: sanitizedTags,
-            attendancePolicy: nil
+            attendancePolicy: makeAttendancePolicyDTOForSubmit()
         )
         do {
             try await generateScheduleUseCase.execute(schedule: dto)
@@ -413,6 +597,12 @@ class ScheduleRegistrationViewModel {
             return
         }
 
+        attendancePolicyError = validateAttendancePolicy()
+        guard attendancePolicyError == nil else {
+            submitState = .idle
+            return
+        }
+
         submitState = .loading
         inlineErrorMessage = nil
 
@@ -425,9 +615,9 @@ class ScheduleRegistrationViewModel {
             location: locationDTOForSubmit(),
             participantMemberIds: participantMemberIds,
             tags: sanitizedTags,
-            attendancePolicy: nil,
+            attendancePolicy: makeAttendancePolicyDTOForUpdate(),
             isOnline: isOnlineDiff,
-            isAttendanceRequired: nil
+            isAttendanceRequired: attendanceRequiredTransitionFlag
         )
         do {
             try await updateScheduleUseCase.execute(
