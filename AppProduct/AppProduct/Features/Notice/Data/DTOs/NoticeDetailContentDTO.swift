@@ -16,6 +16,8 @@ struct NoticeDetailVoteDTO: Codable {
     let endsAtExclusive: String
     let options: [NoticeDetailVoteOptionDTO]
     let mySelectedOptionIds: [String]
+    let status: String?
+    let totalParticipants: Int?
 
     private enum CodingKeys: String, CodingKey {
         case voteId
@@ -26,6 +28,8 @@ struct NoticeDetailVoteDTO: Codable {
         case endsAtExclusive
         case options
         case mySelectedOptionIds
+        case status
+        case totalParticipants
     }
 
     init(from decoder: Decoder) throws {
@@ -38,18 +42,28 @@ struct NoticeDetailVoteDTO: Codable {
         self.endsAtExclusive = try container.decode(String.self, forKey: .endsAtExclusive)
         self.options = try container.decode([NoticeDetailVoteOptionDTO].self, forKey: .options)
         self.mySelectedOptionIds = try container.decodeStringArrayFlexible(forKey: .mySelectedOptionIds)
+        self.status = try container.decodeIfPresent(String.self, forKey: .status)
+        self.totalParticipants = try container.decodeIntFlexibleIfPresent(forKey: .totalParticipants)
     }
 
     func toDomain() -> NoticeVote {
-        NoticeVote(
+        let startDate = parseISO8601(startsAt)
+        let endDate = parseISO8601(endsAtExclusive)
+        let resolvedStatus: VoteStatus = status
+            .flatMap { VoteStatus(rawValue: $0) }
+            ?? VoteStatus.fallback(now: .now, startsAt: startDate, endsAt: endDate)
+
+        return NoticeVote(
             id: voteId,
             question: title,
             options: options.map { $0.toDomain() },
-            startDate: parseISO8601(startsAt),
-            endDate: parseISO8601(endsAtExclusive),
+            startDate: startDate,
+            endDate: endDate,
             allowMultipleChoices: allowMultipleChoice,
             isAnonymous: isAnonymous,
-            userVotedOptionIds: mySelectedOptionIds
+            userVotedOptionIds: mySelectedOptionIds,
+            status: resolvedStatus,
+            totalParticipants: totalParticipants
         )
     }
 }
@@ -59,12 +73,14 @@ struct NoticeDetailVoteOptionDTO: Codable {
     let content: String
     let voteCount: String
     let selectedMemberIds: [String]
+    let voteRate: Double?
 
     private enum CodingKeys: String, CodingKey {
         case optionId
         case content
         case voteCount
         case selectedMemberIds
+        case voteRate
     }
 
     init(from decoder: Decoder) throws {
@@ -73,6 +89,7 @@ struct NoticeDetailVoteOptionDTO: Codable {
         self.content = try container.decode(String.self, forKey: .content)
         self.voteCount = try container.decodeStringFlexible(forKey: .voteCount)
         self.selectedMemberIds = (try? container.decodeStringArrayFlexible(forKey: .selectedMemberIds)) ?? []
+        self.voteRate = try container.decodeDoubleFlexibleIfPresent(forKey: .voteRate)
     }
 
     func toDomain() -> VoteOption {
@@ -80,7 +97,8 @@ struct NoticeDetailVoteOptionDTO: Codable {
             id: optionId,
             title: content,
             voteCount: Int(voteCount) ?? 0,
-            selectedMemberIds: selectedMemberIds
+            selectedMemberIds: selectedMemberIds,
+            voteRate: voteRate
         )
     }
 }
@@ -151,6 +169,32 @@ private extension KeyedDecodingContainer {
             return values.map(String.init)
         }
         return []
+    }
+
+    func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
+        if let value = try? decodeIfPresent(Int.self, forKey: key) {
+            return value
+        }
+        if let value = try? decodeIfPresent(Double.self, forKey: key) {
+            return Int(value)
+        }
+        if let value = try? decodeIfPresent(String.self, forKey: key) {
+            return Int(value)
+        }
+        return nil
+    }
+
+    func decodeDoubleFlexibleIfPresent(forKey key: Key) throws -> Double? {
+        if let value = try? decodeIfPresent(Double.self, forKey: key) {
+            return value
+        }
+        if let value = try? decodeIfPresent(Int.self, forKey: key) {
+            return Double(value)
+        }
+        if let value = try? decodeIfPresent(String.self, forKey: key) {
+            return Double(value)
+        }
+        return nil
     }
 }
 

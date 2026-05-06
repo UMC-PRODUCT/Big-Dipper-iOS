@@ -295,27 +295,52 @@ struct NoticeVote: Equatable, Identifiable, Hashable {
     let isAnonymous: Bool
     /// 현재 사용자가 투표한 옵션 ID 목록
     let userVotedOptionIds: [String]
-    
-    /// 전체 투표 수
+    /// 투표 상태 (서버 제공)
+    let status: VoteStatus
+    /// 전체 참여자 수 (서버 제공) — 복수 선택 시 voteCount 합과 다를 수 있음
+    let totalParticipants: Int
+
+    init(
+        id: String,
+        question: String,
+        options: [VoteOption],
+        startDate: Date,
+        endDate: Date,
+        allowMultipleChoices: Bool,
+        isAnonymous: Bool,
+        userVotedOptionIds: [String],
+        status: VoteStatus? = nil,
+        totalParticipants: Int? = nil
+    ) {
+        self.id = id
+        self.question = question
+        self.options = options
+        self.startDate = startDate
+        self.endDate = endDate
+        self.allowMultipleChoices = allowMultipleChoices
+        self.isAnonymous = isAnonymous
+        self.userVotedOptionIds = userVotedOptionIds
+        self.status = status
+            ?? VoteStatus.fallback(now: .now, startsAt: startDate, endsAt: endDate)
+        self.totalParticipants = totalParticipants
+            ?? options.reduce(0) { $0 + $1.voteCount }
+    }
+
+    /// 옵션별 voteCount 합계 (복수 선택 시 totalParticipants와 다름)
     var totalVotes: Int {
         options.reduce(0) { $0 + $1.voteCount }
     }
-    
+
     /// 투표 종료 여부
     var isEnded: Bool {
-        Date() > endDate
+        status == .ended
     }
-    
-    /// 투표 상태
-    var status: VoteStatus {
-        isEnded ? .ended : .active
-    }
-    
+
     /// 사용자 투표 여부
     var hasUserVoted: Bool {
         !userVotedOptionIds.isEmpty
     }
-    
+
     /// 날짜 포맷 (MM.dd - MM.dd)
     var formattedPeriod: String {
         startDate.dateRange(to: endDate)
@@ -328,25 +353,43 @@ struct VoteOption: Equatable, Identifiable, Hashable {
     let title: String
     let voteCount: Int
     let selectedMemberIds: [String]
+    /// 옵션 득표율 (서버 계산값, 0.0 ~ 100.0)
+    let voteRate: Double
 
-    init(id: String, title: String, voteCount: Int, selectedMemberIds: [String] = []) {
+    init(
+        id: String,
+        title: String,
+        voteCount: Int,
+        selectedMemberIds: [String] = [],
+        voteRate: Double? = nil
+    ) {
         self.id = id
         self.title = title
         self.voteCount = voteCount
         self.selectedMemberIds = selectedMemberIds
+        self.voteRate = voteRate ?? 0
     }
 
-    /// 투표율 계산
+    /// 투표율 — 서버 voteRate 우선, 없으면 클라이언트 계산
     func percentage(totalVotes: Int) -> Double {
+        if voteRate > 0 { return voteRate }
         guard totalVotes > 0 else { return 0 }
         return Double(voteCount) / Double(totalVotes) * 100
     }
 }
 
-/// 투표 상태
-enum VoteStatus {
-    case active  // 진행 중
-    case ended   // 종료
+/// 투표 상태 (서버 enum 매핑)
+enum VoteStatus: String {
+    case notStarted = "NOT_STARTED"
+    case active = "OPEN"
+    case ended = "CLOSED"
+
+    /// 미정의 raw value 또는 서버 미제공 시 fallback (시작/종료 시각 기반)
+    static func fallback(now: Date, startsAt: Date, endsAt: Date) -> VoteStatus {
+        if now < startsAt { return .notStarted }
+        if now >= endsAt { return .ended }
+        return .active
+    }
 }
 
 
