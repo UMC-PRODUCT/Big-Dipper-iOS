@@ -134,9 +134,11 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
     ) async throws -> [ScheduleAttendanceInfo] {
         let response = try await adapter.request(
             ScheduleV2Router.getAttendanceList(
-                from: from,
-                to: to,
-                attendanceStatus: attendanceStatus?.serverQueryValue
+                query: AttendanceListQuery(
+                    from: from,
+                    to: to,
+                    attendanceStatus: attendanceStatus?.serverQueryValue
+                )
             )
         )
         let apiResponse = try decoder.decode(
@@ -153,7 +155,9 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         let response = try await adapter.request(
             ScheduleV2Router.getAttendanceDetail(
                 scheduleId: scheduleId,
-                attendanceStatus: attendanceStatus?.serverQueryValue
+                query: AttendanceDetailQuery(
+                    attendanceStatus: attendanceStatus?.serverQueryValue
+                )
             )
         )
         let apiResponse = try decoder.decode(

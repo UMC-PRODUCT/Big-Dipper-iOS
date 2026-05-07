@@ -25,10 +25,7 @@ enum NoticeRouter: BaseTargetType {
     /// 공지 열람 현황 상세 조회 (사용자 리스트)
     case getNoticeReadStatusList(
         noticeId: Int,
-        cursorId: Int,
-        filterType: String,
-        organizationIds: [Int],
-        status: String
+        query: NoticeReadStatusListQuery
     )
     /// 공지사항 검색
     case searchNotice(
@@ -47,29 +44,29 @@ enum NoticeRouter: BaseTargetType {
     /// 공지사항 링크 추가
     case addLink(
         noticeId: Int,
-        links: [String]
+        body: NoticeLinksRequestDTO
     )
     /// 공지사항 이미지 추가
     case addImage(
         noticeId: Int,
-        imageIds: [String]
+        body: NoticeImagesRequestDTO
     )
     /// 공지사항 리마인더 발송
     case sendReminder(
         noticeId: Int,
-        targetIds: [Int]
+        body: NoticeReminderRequestDTO
     )
     /// 공지사항 읽음 처리
     case readNotice(noticeId: Int)
     /// 투표 응답(사용자 선택 전송)
     case submitVoteResponse(
         noticeId: Int,
-        optionIds: [Int]
+        body: NoticeVoteResponseRequestDTO
     )
     /// 투표 응답 수정
     case updateVoteResponse(
         noticeId: Int,
-        optionIds: [Int]
+        body: NoticeVoteResponseRequestDTO
     )
     
     // PATCH Method
@@ -81,12 +78,12 @@ enum NoticeRouter: BaseTargetType {
     /// 공지사항 링크 수정
     case updateLink(
         noticeId: Int,
-        links: [String]
+        body: NoticeLinksRequestDTO
     )
     /// 공지사항 이미지 수정
     case updateImage(
         noticeId: Int,
-        imageIds: [String]
+        body: NoticeImagesRequestDTO
     )
     
     // DELETE Method
@@ -106,7 +103,7 @@ enum NoticeRouter: BaseTargetType {
             return "/api/v1/notices/\(noticeId)"
         case .getNoticeReadStatusCount(let noticeId):
             return "/api/v1/notices/\(noticeId)/read-statics"
-        case .getNoticeReadStatusList(let noticeId, _, _, _, _):
+        case .getNoticeReadStatusList(let noticeId, _):
             return "/api/v1/notices/\(noticeId)/read-status"
         case .searchNotice:
             return "/api/v1/notices/search"
@@ -164,31 +161,20 @@ enum NoticeRouter: BaseTargetType {
         switch self {
         case .getAllNotices(let request):
             return .requestParameters(
-                parameters: request.queryItems,
+                parameters: request.toParameters,
                 encoding: URLEncoding.queryString
             )
         case .getDetailNotice:
             return .requestPlain
         case .getNoticeReadStatusCount:
             return .requestPlain
-        case .getNoticeReadStatusList(
-            _,
-            let cursorId,
-            let filterType,
-            let organizationIds,
-            let status
-        ):
+        case .getNoticeReadStatusList(_, let query):
             return .requestParameters(
-                parameters: [
-                    "cursorId": cursorId,
-                    "filterType": filterType,
-                    "organizationIds": organizationIds,
-                    "status": status
-                ],
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
         case .searchNotice(let keyword, let request):
-            var params = request.queryItems
+            var params = request.toParameters
             params["keyword"] = keyword
             return .requestParameters(
                 parameters: params,
@@ -198,45 +184,24 @@ enum NoticeRouter: BaseTargetType {
             return .requestJSONEncodable(body)
         case .addVote(_, let body):
             return .requestJSONEncodable(body)
-        case .addLink(_, let links):
-            return .requestParameters(
-                parameters: ["links": links],
-                encoding: JSONEncoding.default
-            )
-        case .addImage(_, let imageIds):
-            return .requestParameters(
-                parameters: ["imageIds": imageIds],
-                encoding: JSONEncoding.default
-            )
-        case .sendReminder(_, let targetIds):
-            return .requestParameters(
-                parameters: ["targetIds": targetIds],
-                encoding: JSONEncoding.default
-            )
+        case .addLink(_, let body):
+            return .requestJSONEncodable(body)
+        case .addImage(_, let body):
+            return .requestJSONEncodable(body)
+        case .sendReminder(_, let body):
+            return .requestJSONEncodable(body)
         case .readNotice:
             return .requestPlain
-        case .submitVoteResponse(_, let optionIds):
-            return .requestParameters(
-                parameters: ["optionIds": optionIds],
-                encoding: JSONEncoding.default
-            )
-        case .updateVoteResponse(_, let optionIds):
-            return .requestParameters(
-                parameters: ["optionIds": optionIds],
-                encoding: JSONEncoding.default
-            )
+        case .submitVoteResponse(_, let body):
+            return .requestJSONEncodable(body)
+        case .updateVoteResponse(_, let body):
+            return .requestJSONEncodable(body)
         case .updateNotice(_, let body):
             return .requestJSONEncodable(body)
-        case .updateLink(_, let links):
-            return .requestParameters(
-                parameters: ["links": links],
-                encoding: JSONEncoding.default
-            )
-        case .updateImage(_, let imageIds):
-            return .requestParameters(
-                parameters: ["imageIds": imageIds],
-                encoding: JSONEncoding.default
-            )
+        case .updateLink(_, let body):
+            return .requestJSONEncodable(body)
+        case .updateImage(_, let body):
+            return .requestJSONEncodable(body)
         case .deleteNotice, .deleteVote:
             return .requestPlain
         }

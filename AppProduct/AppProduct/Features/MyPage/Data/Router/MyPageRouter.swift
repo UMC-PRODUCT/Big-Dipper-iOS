@@ -109,7 +109,7 @@ extension MyPageRouter: BaseTargetType {
              .getCommentedPosts(let query),
              .getScrappedPosts(let query):
             return .requestParameters(
-                parameters: query.queryItems,
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
         case .getTerms:

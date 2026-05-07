@@ -48,9 +48,11 @@ final class HomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
     ) async throws -> [Date: [ScheduleDetailData]] {
         let response = try await adapter.request(
             ScheduleV2Router.getMySchedules(
-                from: from,
-                to: to,
-                isAttendanceRequired: isAttendanceRequired
+                query: MySchedulesQuery(
+                    from: from,
+                    to: to,
+                    isAttendanceRequired: isAttendanceRequired
+                )
             )
         )
         let apiResponse = try decoder.decode(

@@ -31,7 +31,7 @@ struct ChallengerSearchRequestDTO {
     }
 
     /// Query Parameter Dictionary 변환
-    var queryItems: [String: Any] {
+    var toParameters: [String: Any] {
         var params: [String: Any] = [
             "size": size
         ]

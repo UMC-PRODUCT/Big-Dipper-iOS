@@ -43,13 +43,19 @@ struct NoticeRepository: NoticeRepositoryProtocol {
         
         if !links.isEmpty {
             _ = try await adapter.request(
-                NoticeRouter.addLink(noticeId: noticeId, links: links)
+                NoticeRouter.addLink(
+                    noticeId: noticeId,
+                    body: NoticeLinksRequestDTO(links: links)
+                )
             )
         }
-        
+
         if !imageIds.isEmpty {
             let imageResponse = try await adapter.request(
-                NoticeRouter.addImage(noticeId: noticeId, imageIds: imageIds)
+                NoticeRouter.addImage(
+                    noticeId: noticeId,
+                    body: NoticeImagesRequestDTO(imageIds: imageIds)
+                )
             )
             let imageApiResponse = try JSONDecoder().decode(
                 APIResponse<NoticeAddImagesResponseDTO>.self,
@@ -138,7 +144,10 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     /// 공지사항 링크 추가 → NoticeItemModel 반환
     func addLink(noticeId: Int, links: [String]) async throws -> NoticeItemModel {
         let response = try await adapter.request(
-            NoticeRouter.addLink(noticeId: noticeId, links: links)
+            NoticeRouter.addLink(
+                noticeId: noticeId,
+                body: NoticeLinksRequestDTO(links: links)
+            )
         )
         
         let apiResponse = try JSONDecoder().decode(
@@ -153,7 +162,10 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     /// 공지사항 이미지 추가 → NoticeItemModel 반환
     func addImage(noticeId: Int, imageIds: [String]) async throws -> NoticeItemModel {
         let response = try await adapter.request(
-            NoticeRouter.addImage(noticeId: noticeId, imageIds: imageIds)
+            NoticeRouter.addImage(
+                noticeId: noticeId,
+                body: NoticeImagesRequestDTO(imageIds: imageIds)
+            )
         )
         
         let apiResponse = try JSONDecoder().decode(
@@ -168,7 +180,10 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     /// 공지사항 리마인더 발송
     func sendReminder(noticeId: Int, targetIds: [Int]) async throws {
         let response = try await adapter.request(
-            NoticeRouter.sendReminder(noticeId: noticeId, targetIds: targetIds)
+            NoticeRouter.sendReminder(
+                noticeId: noticeId,
+                body: NoticeReminderRequestDTO(targetIds: targetIds)
+            )
         )
         
         let apiResponse = try JSONDecoder().decode(
@@ -194,7 +209,10 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     /// 투표 응답(사용자 선택 전송)
     func submitVoteResponse(noticeId: Int, optionIds: [Int]) async throws {
         let response = try await adapter.request(
-            NoticeRouter.submitVoteResponse(noticeId: noticeId, optionIds: optionIds)
+            NoticeRouter.submitVoteResponse(
+                noticeId: noticeId,
+                body: NoticeVoteResponseRequestDTO(optionIds: optionIds)
+            )
         )
 
         let apiResponse = try JSONDecoder().decode(
@@ -207,7 +225,10 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     /// 투표 응답 수정
     func updateVoteResponse(noticeId: Int, optionIds: [Int]) async throws {
         let response = try await adapter.request(
-            NoticeRouter.updateVoteResponse(noticeId: noticeId, optionIds: optionIds)
+            NoticeRouter.updateVoteResponse(
+                noticeId: noticeId,
+                body: NoticeVoteResponseRequestDTO(optionIds: optionIds)
+            )
         )
 
         let apiResponse = try JSONDecoder().decode(
@@ -238,7 +259,10 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     /// 공지사항 링크 수정 → NoticeDetail 반환
     func updateLinks(noticeId: Int, links: [String]) async throws -> NoticeDetail {
         let response = try await adapter.request(
-            NoticeRouter.updateLink(noticeId: noticeId, links: links)
+            NoticeRouter.updateLink(
+                noticeId: noticeId,
+                body: NoticeLinksRequestDTO(links: links)
+            )
         )
         
         let apiResponse = try JSONDecoder().decode(
@@ -254,7 +278,10 @@ struct NoticeRepository: NoticeRepositoryProtocol {
     /// 공지사항 이미지 수정 → NoticeDetail 반환
     func updateImages(noticeId: Int, imageIds: [String]) async throws -> NoticeDetail {
         let response = try await adapter.request(
-            NoticeRouter.updateImage(noticeId: noticeId, imageIds: imageIds)
+            NoticeRouter.updateImage(
+                noticeId: noticeId,
+                body: NoticeImagesRequestDTO(imageIds: imageIds)
+            )
         )
         
         let apiResponse = try JSONDecoder().decode(
@@ -287,7 +314,7 @@ struct NoticeRepository: NoticeRepositoryProtocol {
             #if DEBUG
             print(
                 "[NoticeRepository] getAllNotices success " +
-                "query=\(request.queryItems) " +
+                "query=\(request.toParameters) " +
                 "contentCount=\(pageDTO.content.count) " +
                 "totalElements=\(pageDTO.totalElements)"
             )
@@ -352,10 +379,12 @@ struct NoticeRepository: NoticeRepositoryProtocol {
         let response = try await adapter.request(
             NoticeRouter.getNoticeReadStatusList(
                 noticeId: noticeId,
-                cursorId: cursorId,
-                filterType: filterType,
-                organizationIds: organizationIds,
-                status: status
+                query: NoticeReadStatusListQuery(
+                    cursorId: cursorId,
+                    filterType: filterType,
+                    organizationIds: organizationIds,
+                    status: status
+                )
             )
         )
         

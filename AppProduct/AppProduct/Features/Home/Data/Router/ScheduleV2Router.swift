@@ -19,7 +19,7 @@ enum ScheduleV2Router {
     /// 일정 생성/수정 권한 사전 조회 (SCHEDULE-Q001)
     case getCapabilities
     /// 내 일정 목록 조회 (기간 + 출석 필수 필터)
-    case getMySchedules(from: Date, to: Date, isAttendanceRequired: Bool)
+    case getMySchedules(query: MySchedulesQuery)
     /// 일정 상세 조회
     case getScheduleDetail(scheduleId: Int)
     /// 일정 생성
@@ -33,9 +33,9 @@ enum ScheduleV2Router {
     /// - `from` / `to` 미지정 시 서버 기본값(요청 시점 -1개월 ~ +24시간) 적용
     /// - `attendanceStatus` 미지정 시 모든 상태 반환
     /// - 직책별 조회 범위는 서버에서 자동 분기
-    case getAttendanceList(from: Date?, to: Date?, attendanceStatus: String?)
+    case getAttendanceList(query: AttendanceListQuery)
     /// 운영진용 단일 일정 출석 현황 조회 (SCHEDULE-Q005)
-    case getAttendanceDetail(scheduleId: Int, attendanceStatus: String?)
+    case getAttendanceDetail(scheduleId: Int, query: AttendanceDetailQuery)
 }
 
 extension ScheduleV2Router: BaseTargetType {
@@ -85,40 +85,27 @@ extension ScheduleV2Router: BaseTargetType {
         switch self {
         case .getCapabilities, .getScheduleDetail, .deleteSchedule:
             return .requestPlain
-        case .getMySchedules(let from, let to, let isAttendanceRequired):
+        case .getMySchedules(let query):
             return .requestParameters(
-                parameters: [
-                    "from": ServerDateTimeConverter.toUTCDateTimeString(from),
-                    "to": ServerDateTimeConverter.toUTCDateTimeString(to),
-                    "isAttendanceRequired": isAttendanceRequired
-                ],
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
         case .postSchedule(let request):
             return .requestJSONEncodable(request)
         case .patchSchedule(_, let request):
             return .requestJSONEncodable(request)
-        case .getAttendanceList(let from, let to, let attendanceStatus):
-            var parameters: [String: Any] = [:]
-            if let from {
-                parameters["from"] = ServerDateTimeConverter.toUTCDateTimeString(from)
-            }
-            if let to {
-                parameters["to"] = ServerDateTimeConverter.toUTCDateTimeString(to)
-            }
-            if let attendanceStatus {
-                parameters["attendanceStatus"] = attendanceStatus
-            }
+        case .getAttendanceList(let query):
             return .requestParameters(
-                parameters: parameters,
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
-        case .getAttendanceDetail(_, let attendanceStatus):
-            guard let attendanceStatus else {
+        case .getAttendanceDetail(_, let query):
+            let params = query.toParameters
+            guard !params.isEmpty else {
                 return .requestPlain
             }
             return .requestParameters(
-                parameters: ["attendanceStatus": attendanceStatus],
+                parameters: params,
                 encoding: URLEncoding.queryString
             )
         }

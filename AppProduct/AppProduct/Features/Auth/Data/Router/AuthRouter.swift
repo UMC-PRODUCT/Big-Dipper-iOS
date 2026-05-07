@@ -15,21 +15,17 @@ enum AuthRouter: BaseTargetType {
     // MARK: - Cases
 
     /// 카카오 소셜 로그인
-    case loginKakao(accessToken: String, email: String)
+    case loginKakao(body: LoginKakaoRequestDTO)
     /// Apple 소셜 로그인
-    case loginApple(
-        authorizationCode: String,
-        email: String?,
-        fullName: String?
-    )
+    case loginApple(body: LoginAppleRequestDTO)
     /// ID/PW 로그인 (App Store 리뷰어용)
     case loginByIdPw(body: LoginByIdPwRequestDTO)
     /// ID/PW 회원가입 (App Store 리뷰어용)
     case registerByIdPw(body: RegisterByIdPwRequestDTO)
     /// 로그인 ID 중복 검사
-    case checkLoginIdAvailability(loginId: String)
+    case checkLoginIdAvailability(query: CheckLoginIdAvailabilityQuery)
     /// 액세스 토큰 재발급
-    case renewToken(refreshToken: String)
+    case renewToken(body: RenewTokenRequestDTO)
     /// 내 OAuth 연동 정보 조회
     case getMyOAuth
     /// 로그인 OAuth 수단 추가 연동
@@ -41,12 +37,9 @@ enum AuthRouter: BaseTargetType {
         kakaoAccessToken: String?
     )
     /// 이메일 인증 발송
-    case sendEmailVerification(email: String)
+    case sendEmailVerification(body: SendEmailVerificationRequestDTO)
     /// 이메일 인증코드 검증
-    case verifyEmailCode(
-        emailVerificationId: String,
-        verificationCode: String
-    )
+    case verifyEmailCode(body: VerifyEmailCodeRequestDTO)
     /// 회원가입
     case register(body: RegisterRequestDTO)
     /// 기존 챌린저 코드 인증
@@ -115,44 +108,21 @@ enum AuthRouter: BaseTargetType {
 
     var task: Moya.Task {
         switch self {
-        case .loginKakao(let accessToken, let email):
-            return .requestParameters(
-                parameters: [
-                    "accessToken": accessToken,
-                    "email": email
-                ],
-                encoding: JSONEncoding.default
-            )
-        case .loginApple(let authorizationCode, let email, let fullName):
-            var parameters: [String: String] = [
-                "authorizationCode": authorizationCode
-            ]
-            if let email, !email.isEmpty {
-                parameters["email"] = email
-            }
-            if let fullName, !fullName.isEmpty {
-                parameters["fullName"] = fullName
-            }
-            return .requestParameters(
-                parameters: parameters,
-                encoding: JSONEncoding.default
-            )
+        case .loginKakao(let body):
+            return .requestJSONEncodable(body)
+        case .loginApple(let body):
+            return .requestJSONEncodable(body)
         case .loginByIdPw(let body):
             return .requestJSONEncodable(body)
         case .registerByIdPw(let body):
             return .requestJSONEncodable(body)
-        case .checkLoginIdAvailability(let loginId):
+        case .checkLoginIdAvailability(let query):
             return .requestParameters(
-                parameters: ["loginId": loginId],
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
-        case .renewToken(let refreshToken):
-            return .requestParameters(
-                parameters: [
-                    "refreshToken": refreshToken
-                ],
-                encoding: JSONEncoding.default
-            )
+        case .renewToken(let body):
+            return .requestJSONEncodable(body)
         case .getMyOAuth:
             return .requestPlain
         case .addMemberOAuth(let oAuthVerificationToken):
@@ -172,19 +142,10 @@ enum AuthRouter: BaseTargetType {
                     kakaoAccessToken: kakaoAccessToken
                 )
             )
-        case .sendEmailVerification(let email):
-            return .requestParameters(
-                parameters: ["email": email],
-                encoding: JSONEncoding.default
-            )
-        case .verifyEmailCode(let id, let code):
-            return .requestParameters(
-                parameters: [
-                    "emailVerificationId": id,
-                    "verificationCode": code
-                ],
-                encoding: JSONEncoding.default
-            )
+        case .sendEmailVerification(let body):
+            return .requestJSONEncodable(body)
+        case .verifyEmailCode(let body):
+            return .requestJSONEncodable(body)
         case .register(let body):
             return .requestJSONEncodable(body)
         case .registerExistingChallenger(let code):
