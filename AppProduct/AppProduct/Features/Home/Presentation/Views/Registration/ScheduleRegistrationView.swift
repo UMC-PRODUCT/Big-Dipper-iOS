@@ -381,28 +381,6 @@ fileprivate struct TitleView: View, Equatable {
     }
 }
 
-// MARK: - In-Person Toggle
-
-/// "대면 일정" 설정 토글 뷰
-///
-/// `isInPerson == true` 이면 대면(장소 입력 필수), `false` 이면 비대면.
-/// ViewModel의 `isOnline` 과 의미가 반전되어 있으므로 inverse binding 으로 연결합니다.
-fileprivate struct InPersonToggle: View, Equatable {
-    @Binding var isInPerson: Bool
-
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.isInPerson == rhs.isInPerson
-    }
-
-    var body: some View {
-        Toggle(isOn: $isInPerson) {
-            Text("대면 일정")
-                .appFont(.body, color: .black)
-        }
-        .tint(.indigo500)
-    }
-}
-
 // MARK: - All Day Toggle
 
 /// "하루 종일" 설정 토글 뷰

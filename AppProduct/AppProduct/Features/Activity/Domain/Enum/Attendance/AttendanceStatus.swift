@@ -65,7 +65,7 @@ extension AttendanceStatus {
     ///   (e.g., "PRESENT", "LATE", "ABSENT", "PENDING",
     ///    "PRESENT_PENDING", "LATE_PENDING", "EXCUSED",
     ///    "EXCUSED_PENDING")
-    init(serverStatus: String) {
+    nonisolated init(serverStatus: String) {
         switch serverStatus {
         case "PRESENT", "EXCUSED":
             self = .present
