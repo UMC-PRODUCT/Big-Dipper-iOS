@@ -60,7 +60,7 @@ extension HomeRouter: BaseTargetType {
             return .requestPlain
         case .getNoticeRecent(let query):
             return .requestParameters(
-                parameters: query.queryItems,
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
         case .getGisuDetail:

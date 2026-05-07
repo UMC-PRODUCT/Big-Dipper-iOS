@@ -22,7 +22,7 @@ struct MyPagePostListQuery {
         self.sort = sort
     }
 
-    var queryItems: [String: Any] {
+    var toParameters: [String: Any] {
         var params: [String: Any] = [
             "page": page,
             "size": size

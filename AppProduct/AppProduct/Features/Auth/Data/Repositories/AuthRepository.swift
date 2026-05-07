@@ -42,7 +42,12 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         email: String
     ) async throws -> OAuthLoginResult {
         let response = try await adapter.requestWithoutAuth(
-            AuthRouter.loginKakao(accessToken: accessToken, email: email)
+            AuthRouter.loginKakao(
+                body: LoginKakaoRequestDTO(
+                    accessToken: accessToken,
+                    email: email
+                )
+            )
         )
         #if DEBUG
         if let json = String(data: response.data, encoding: .utf8) {
@@ -70,9 +75,11 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
     ) async throws -> OAuthLoginResult {
         let response = try await adapter.requestWithoutAuth(
             AuthRouter.loginApple(
-                authorizationCode: authorizationCode,
-                email: email,
-                fullName: fullName
+                body: LoginAppleRequestDTO(
+                    authorizationCode: authorizationCode,
+                    email: email,
+                    fullName: fullName
+                )
             )
         )
         #if DEBUG
@@ -148,7 +155,9 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
     ) async throws -> Bool {
         do {
             let response = try await adapter.requestWithoutAuth(
-                AuthRouter.checkLoginIdAvailability(loginId: loginId)
+                AuthRouter.checkLoginIdAvailability(
+                    query: CheckLoginIdAvailabilityQuery(loginId: loginId)
+                )
             )
             let apiResponse = try decoder.decode(
                 APIResponse<CheckLoginIdAvailabilityResponseDTO>.self,
@@ -165,7 +174,9 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         refreshToken: String
     ) async throws -> TokenPair {
         let response = try await adapter.requestWithoutAuth(
-            AuthRouter.renewToken(refreshToken: refreshToken)
+            AuthRouter.renewToken(
+                body: RenewTokenRequestDTO(refreshToken: refreshToken)
+            )
         )
         let apiResponse = try decoder.decode(
             APIResponse<TokenRenewResponseDTO>.self,
@@ -236,7 +247,9 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         email: String
     ) async throws -> String {
         let response = try await adapter.requestWithoutAuth(
-            AuthRouter.sendEmailVerification(email: email)
+            AuthRouter.sendEmailVerification(
+                body: SendEmailVerificationRequestDTO(email: email)
+            )
         )
         let apiResponse = try decoder.decode(
             APIResponse<EmailVerificationResponseDTO>.self,
@@ -257,8 +270,10 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
     ) async throws -> String {
         let response = try await adapter.requestWithoutAuth(
             AuthRouter.verifyEmailCode(
-                emailVerificationId: emailVerificationId,
-                verificationCode: verificationCode
+                body: VerifyEmailCodeRequestDTO(
+                    emailVerificationId: emailVerificationId,
+                    verificationCode: verificationCode
+                )
             )
         )
         let apiResponse = try decoder.decode(

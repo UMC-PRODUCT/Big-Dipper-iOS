@@ -45,7 +45,7 @@ extension ChallengerSearchRouter: BaseTargetType {
         switch self {
         case .searchCursor(let query):
             return .requestParameters(
-                parameters: query.queryItems,
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
         }
