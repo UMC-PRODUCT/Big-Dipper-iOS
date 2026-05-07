@@ -14,22 +14,36 @@ protocol ChallengerAttendanceUseCaseProtocol {
     var isLocationAuthorized: Bool { get }
 
     /// 출석 가능한 세션 목록 조회
-    func fetchAvailableSchedules() async throws -> [AvailableAttendanceSchedule]
+    func fetchAvailableSchedules() async throws -> [ScheduleDetailData]
 
     /// 내 출석 이력 조회
-    func fetchMyHistory() async throws -> [AttendanceHistoryItem]
+    func fetchMyHistory() async throws -> [ScheduleDetailData]
 
-    /// GPS 기반 출석 요청 (pending 상태로 서버 전송)
+    /// GPS 기반 출석 요청 (V2)
     /// - throws: LocationError.notAuthorized, LocationError.locationFailed, DomainError.attendanceOutOfRange
-    func requestGPSAttendance(sessionId: SessionID, userId: UserID, sheetId: Int) async throws -> Attendance
+    func requestGPSAttendance(
+        sessionId: SessionID,
+        userId: UserID,
+        scheduleId: Int
+    ) async throws -> Attendance
 
-    /// 지각 사유 제출
+    /// 지각 사유 제출 (V2)
     /// - throws: DomainError.attendanceReasonRequired
-    func submitLateReason(sessionId: SessionID, userId: UserID, reason: String, sheetId: Int) async throws -> Attendance
+    func submitLateReason(
+        sessionId: SessionID,
+        userId: UserID,
+        reason: String,
+        scheduleId: Int
+    ) async throws -> Attendance
 
-    /// 불참 사유 제출
+    /// 불참 사유 제출 (V2)
     /// - throws: DomainError.attendanceReasonRequired
-    func submitAbsentReason(sessionId: SessionID, userId: UserID, reason: String, sheetId: Int) async throws -> Attendance
+    func submitAbsentReason(
+        sessionId: SessionID,
+        userId: UserID,
+        reason: String,
+        scheduleId: Int
+    ) async throws -> Attendance
 
     /// 현재 시간이 어느 출석 시간대에 속하는지 확인
     func isWithinAttendanceTime(info: SessionInfo) -> AttendanceTimeWindow

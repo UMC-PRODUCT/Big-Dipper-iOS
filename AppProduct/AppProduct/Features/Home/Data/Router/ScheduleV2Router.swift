@@ -36,6 +36,12 @@ enum ScheduleV2Router {
     case getAttendanceList(query: AttendanceListQuery)
     /// 운영진용 단일 일정 출석 현황 조회 (SCHEDULE-Q005)
     case getAttendanceDetail(scheduleId: Int, query: AttendanceDetailQuery)
+    /// 출석 일괄 승인/반려 (V1 approve + reject 통합, SCHEDULE-0014)
+    case decideAttendances(scheduleId: Int, body: [DecideAttendanceItemDTO])
+    /// 사유 출석 제출 (V1 submitReason 대체, SCHEDULE-0015)
+    case excuseAttendance(scheduleId: Int, body: ExcuseAttendanceRequestDTO)
+    /// GPS 출석 요청 (V1 check 대체, SCHEDULE-0013)
+    case requestAttendance(scheduleId: Int, body: RequestAttendanceRequestDTO)
 }
 
 extension ScheduleV2Router: BaseTargetType {
@@ -60,6 +66,12 @@ extension ScheduleV2Router: BaseTargetType {
             return "/api/v2/schedules/attendance"
         case .getAttendanceDetail(let scheduleId, _):
             return "/api/v2/schedules/\(scheduleId)/attendance"
+        case .decideAttendances(let scheduleId, _):
+            return "/api/v2/schedules/\(scheduleId)/attendances/decide"
+        case .excuseAttendance(let scheduleId, _):
+            return "/api/v2/schedules/\(scheduleId)/attendances/excuse"
+        case .requestAttendance(let scheduleId, _):
+            return "/api/v2/schedules/\(scheduleId)/attendances/request"
         }
     }
 
@@ -70,7 +82,7 @@ extension ScheduleV2Router: BaseTargetType {
         case .getCapabilities, .getMySchedules, .getScheduleDetail,
              .getAttendanceList, .getAttendanceDetail:
             return .get
-        case .postSchedule:
+        case .postSchedule, .decideAttendances, .excuseAttendance, .requestAttendance:
             return .post
         case .patchSchedule:
             return .patch
@@ -108,6 +120,12 @@ extension ScheduleV2Router: BaseTargetType {
                 parameters: params,
                 encoding: URLEncoding.queryString
             )
+        case .decideAttendances(_, let body):
+            return .requestJSONEncodable(body)
+        case .excuseAttendance(_, let body):
+            return .requestJSONEncodable(body)
+        case .requestAttendance(_, let body):
+            return .requestJSONEncodable(body)
         }
     }
 }

@@ -25,11 +25,6 @@ protocol FetchMembersUseCaseProtocol {
         challengerPointId: Int
     ) async throws
 
-    /// 특정 챌린저의 출석/활동 기록을 조회합니다.
-    func fetchAttendanceRecords(
-        challengerId: Int
-    ) async throws -> [MemberAttendanceRecord]
-
     /// 특정 챌린저의 포인트 히스토리를 조회합니다.
     func fetchPointHistory(
         challengerId: Int

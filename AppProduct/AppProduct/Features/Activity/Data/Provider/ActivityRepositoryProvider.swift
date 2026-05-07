@@ -75,8 +75,7 @@ extension ActivityRepositoryProvider {
     ) -> ActivityRepositoryProvider {
         let attendanceRepo = AttendanceRepository(adapter: adapter)
         let activityRepository = ActivityRepository(
-            attendanceRepository: attendanceRepo,
-            homeRepository: homeRepository
+            attendanceRepository: attendanceRepo
         )
         let studyRepository = StudyRepository(adapter: adapter)
         let memberRepository = MemberRepository(

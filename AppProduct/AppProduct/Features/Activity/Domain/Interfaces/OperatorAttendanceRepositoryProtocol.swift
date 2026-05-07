@@ -7,6 +7,15 @@
 
 import Foundation
 
+// MARK: - Input Model
+
+/// 출석 일괄 결정 요청 항목 도메인 입력 모델
+struct AttendanceDecisionInput: Equatable, Sendable {
+    let isApproved: Bool
+    let participantMemberId: Int
+    let reason: String
+}
+
 // MARK: - Protocol
 
 /// 운영진 출석 관리 데이터 접근 Repository
@@ -22,11 +31,6 @@ protocol OperatorAttendanceRepositoryProtocol {
     /// 전체 승인 대기 출석 목록 일괄 조회 (관리자)
     /// - Returns: scheduleId별로 그룹핑된 Dictionary
     func getAllPendingAttendances() async throws -> [Int: [PendingAttendanceRecord]]
-
-    /// 챌린저 출석 이력 조회
-    func getChallengerHistory(
-        challengerId: Int
-    ) async throws -> [AttendanceHistoryItem]
 
     /// 일정별 출석 통계 조회 (관리자)
     ///
@@ -62,11 +66,11 @@ protocol OperatorAttendanceRepositoryProtocol {
 
     // MARK: - 액션
 
-    /// 출석 승인 (관리자)
-    func approveAttendance(recordId: Int) async throws
-
-    /// 출석 반려 (관리자)
-    func rejectAttendance(recordId: Int) async throws
+    /// 출석 일괄 승인/반려 (V2)
+    func decideAttendances(
+        scheduleId: Int,
+        decisions: [AttendanceDecisionInput]
+    ) async throws -> [AttendanceDecisionResult]
 
     /// 세션 출석 위치 변경 (관리자)
     func updateScheduleLocation(

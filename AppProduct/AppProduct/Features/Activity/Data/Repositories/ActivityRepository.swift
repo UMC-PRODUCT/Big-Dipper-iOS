@@ -10,62 +10,32 @@ import SwiftUI
 
 /// Activity Repository 실제 구현체
 ///
-/// 출석 가능 일정 API를 통해 세션 목록을 제공합니다.
+/// V2 `GET /api/v2/schedules/me` 를 통해 출석 필수 일정을 조회하여 세션 목록을 제공합니다.
 final class ActivityRepository: ActivityRepositoryProtocol, @unchecked Sendable {
-    private struct SessionDetailPayload: Sendable {
-        let schedule: AvailableAttendanceSchedule
-        let detail: ScheduleDetailData
-    }
 
     // MARK: - Property
 
     private let attendanceRepository: ChallengerAttendanceRepositoryProtocol
-    private let homeRepository: HomeRepositoryProtocol
 
     // MARK: - Init
 
-    init(
-        attendanceRepository: ChallengerAttendanceRepositoryProtocol,
-        homeRepository: HomeRepositoryProtocol
-    ) {
+    init(attendanceRepository: ChallengerAttendanceRepositoryProtocol) {
         self.attendanceRepository = attendanceRepository
-        self.homeRepository = homeRepository
     }
 
     // MARK: - Function
 
     @MainActor
     func fetchSessions() async throws -> [Session] {
+        let now = Date.now
+        let to = Calendar.kstGregorian.date(byAdding: .day, value: 14, to: now) ?? now
         let schedules = try await attendanceRepository
-            .getAvailableSchedules()
+            .fetchMySchedulesForAttendance(from: now, to: to)
 
-        let payloads = try await withThrowingTaskGroup(
-            of: SessionDetailPayload.self
-        ) { group in
-            for schedule in schedules {
-                group.addTask { [homeRepository] in
-                    let detail = try await homeRepository.getScheduleDetail(
-                        scheduleId: schedule.scheduleId
-                    )
-                    return SessionDetailPayload(
-                        schedule: schedule,
-                        detail: detail
-                    )
-                }
-            }
-
-            var payloads: [SessionDetailPayload] = []
-            for try await payload in group {
-                payloads.append(payload)
-            }
-            return payloads
-        }
-
-        return payloads
+        return schedules
+            .filter { $0.isParticipant }
             .map(Self.makeSession(from:))
-            .sorted { lhs, rhs in
-                lhs.info.startTime < rhs.info.startTime
-            }
+            .sorted { $0.info.startTime < $1.info.startTime }
     }
 
     func fetchCurrentUserId() async throws -> UserID {
@@ -75,77 +45,47 @@ final class ActivityRepository: ActivityRepositoryProtocol, @unchecked Sendable 
 
     // MARK: - Private Helper
 
-    /// 시간 문자열 → 오늘 날짜 기준 Date 변환
-    ///
-    /// 지원 형식: ISO 8601, "HH:mm:ss", "HH:mm"
-    nonisolated private static func parseTime(_ timeString: String) -> Date {
-        // 서버 UTC 시간(ISO 8601 또는 HH:mm:ss/HH:mm) 파싱
-        ServerDateTimeConverter.parseUTCDateTimeOrTime(timeString) ?? Date()
-    }
-
-    private static func makeSession(
-        from payload: SessionDetailPayload
-    ) -> Session {
-        let schedule = payload.schedule
-        let detail = payload.detail
-        let startTime = parseTime(schedule.startTime)
-        var endTime = parseTime(schedule.endTime)
-
-        // FIXME: 자정 넘김 휴리스틱 — 서버가 ISO 8601 datetime 반환 시 제거 (#304) - [25.02.18] 이재원
-        if endTime < startTime {
-            endTime = Calendar.current.date(
-                byAdding: .day, value: 1, to: endTime
-            ) ?? endTime
-        }
-
-        return Session(
+    private static func makeSession(from data: ScheduleDetailData) -> Session {
+        Session(
             info: SessionInfo(
-                sessionId: SessionID(
-                    value: String(schedule.scheduleId)
-                ),
+                sessionId: SessionID(value: String(data.scheduleId)),
                 icon: .Activity.profile,
-                title: schedule.scheduleName,
+                title: data.name,
                 week: 0,
-                startTime: startTime,
-                endTime: endTime,
+                startTime: data.startsAt,
+                endTime: data.endsAt,
                 location: Coordinate(
-                    latitude: detail.location?.latitude ?? 0,
-                    longitude: detail.location?.longitude ?? 0
+                    latitude: data.location?.latitude ?? 0,
+                    longitude: data.location?.longitude ?? 0
                 ),
-                isAllDay: detail.isAllDay
+                isAllDay: data.isAllDay
             ),
-            initialAttendance: mapAttendance(
-                schedule: schedule
-            )
+            initialAttendance: mapAttendance(from: data)
         )
     }
 
-    /// AvailableAttendanceSchedule의 status → 초기 Attendance 변환
     nonisolated private static func mapAttendance(
-        schedule: AvailableAttendanceSchedule
+        from data: ScheduleDetailData
     ) -> Attendance? {
-        switch schedule.status {
+        let status = data.attendanceStatus ?? .beforeAttendance
+        switch status {
         case .beforeAttendance:
             return nil
         case .pendingApproval:
             return Attendance(
-                sessionId: SessionID(
-                    value: String(schedule.scheduleId)
-                ),
+                sessionId: SessionID(value: String(data.scheduleId)),
                 userId: UserID(value: ""),
-                type: schedule.locationVerified ? .gps : .reason,
+                type: data.isAttendanceChecked ? .gps : .reason,
                 status: .pendingApproval,
                 locationVerification: nil,
                 reason: nil
             )
         case .present, .late, .absent:
             return Attendance(
-                sessionId: SessionID(
-                    value: String(schedule.scheduleId)
-                ),
+                sessionId: SessionID(value: String(data.scheduleId)),
                 userId: UserID(value: ""),
-                type: schedule.locationVerified ? .gps : .reason,
-                status: schedule.status,
+                type: data.isAttendanceChecked ? .gps : .reason,
+                status: status,
                 locationVerification: nil,
                 reason: nil
             )

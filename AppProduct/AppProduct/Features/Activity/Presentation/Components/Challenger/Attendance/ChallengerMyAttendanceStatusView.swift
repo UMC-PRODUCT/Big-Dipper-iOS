@@ -18,7 +18,7 @@ struct ChallengerMyAttendanceStatusView: View {
     // MARK: - Init
 
     /// History API 데이터로 초기화
-    init(historyItems: [AttendanceHistoryItem]) {
+    init(historyItems: [ScheduleDetailData]) {
         self.models = historyItems.compactMap {
             MyAttendanceItemModel(from: $0)
         }
@@ -61,16 +61,27 @@ struct ChallengerMyAttendanceStatusView: View {
 
         ChallengerMyAttendanceStatusView(
             historyItems: [
-                AttendanceHistoryItem(
-                    attendanceId: 1,
+                ScheduleDetailData(
                     scheduleId: 1,
-                    scheduleName: "정기 세션",
+                    name: "정기 세션",
+                    description: "",
                     tags: ["STUDY"],
-                    scheduledDate: "2026-02-17",
-                    startTime: "14:00",
-                    endTime: "16:00",
-                    status: .present,
-                    statusDisplay: "출석"
+                    startsAt: Calendar.current.date(
+                        bySettingHour: 14, minute: 0, second: 0,
+                        of: Date()
+                    ) ?? Date(),
+                    endsAt: Calendar.current.date(
+                        bySettingHour: 16, minute: 0, second: 0,
+                        of: Date()
+                    ) ?? Date(),
+                    location: nil,
+                    participants: [],
+                    authorMemberId: 1,
+                    attendancePolicy: nil,
+                    attendanceStatus: .present,
+                    isAttendanceChecked: true,
+                    isOnline: false,
+                    isParticipant: true
                 )
             ]
         )

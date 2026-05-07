@@ -14,22 +14,30 @@ protocol ChallengerAttendanceRepositoryProtocol {
 
     // MARK: - 조회
 
-    /// 내 출석 이력 조회
-    func getMyHistory() async throws -> [AttendanceHistoryItem]
-
-    /// 출석 가능 일정 조회
-    func getAvailableSchedules(
-    ) async throws -> [AvailableAttendanceSchedule]
+    /// 기간 내 내 일정 목록 조회 (V2, 출석 필수 필터 적용 가능)
+    ///
+    /// `GET /api/v2/schedules/me?isAttendanceRequired=true`
+    func fetchMySchedulesForAttendance(
+        from: Date,
+        to: Date
+    ) async throws -> [ScheduleDetailData]
 
     // MARK: - 액션
 
-    /// GPS 출석 체크
-    func checkAttendance(
-        request: AttendanceCheckRequestDTO
-    ) async throws -> Int
+    /// GPS 출석 요청 (V2)
+    func requestAttendance(
+        scheduleId: Int,
+        latitude: Double,
+        longitude: Double,
+        locationVerified: Bool
+    ) async throws -> AttendanceDecisionResult
 
-    /// 사유 제출 출석
-    func submitReason(
-        request: AttendanceReasonRequestDTO
-    ) async throws -> Int
+    /// 사유 출석 제출 (V2)
+    func submitExcuse(
+        scheduleId: Int,
+        excuseReason: String,
+        isVerified: Bool,
+        latitude: Double,
+        longitude: Double
+    ) async throws -> AttendanceDecisionResult
 }

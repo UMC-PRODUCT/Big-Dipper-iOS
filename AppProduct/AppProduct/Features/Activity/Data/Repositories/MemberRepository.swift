@@ -176,35 +176,6 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
         try apiResponse.validateSuccess()
     }
 
-    /// 챌린저의 출석 이력을 조회합니다.
-    ///
-    /// - Parameter challengerId: 조회할 챌린저 ID
-    /// - Returns: 세션별 출석 기록 배열
-    /// - Throws: 네트워크 오류 또는 디코딩 오류
-    func fetchAttendanceRecords(
-        challengerId: Int
-    ) async throws -> [MemberAttendanceRecord] {
-        let response = try await adapter.request(
-            AttendanceRouter.getChallengerHistory(
-                challengerId: challengerId
-            )
-        )
-
-        let apiResponse = try decoder.decode(
-            APIResponse<[AttendanceHistoryItemDTO]>.self,
-            from: response.data
-        )
-        let historyItems = try apiResponse.unwrap().map { $0.toDomain() }
-
-        return historyItems.map { item in
-            MemberAttendanceRecord(
-                sessionTitle: item.scheduleName,
-                week: 0,
-                status: item.status
-            )
-        }
-    }
-
     /// 챌린저 상세에서 전체 포인트 히스토리를 조회합니다.
     func fetchPointHistory(
         challengerId: Int

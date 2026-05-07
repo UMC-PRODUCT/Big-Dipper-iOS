@@ -17,6 +17,7 @@ struct OperatorAttendancePreviewData {
     static let pendingMembers: [OperatorPendingMember] = [
         OperatorPendingMember(
             serverID: "member_1",
+            participantMemberId: 1,
             name: "이재원",
             nickname: "리버",
             university: "한성대학교",
@@ -26,6 +27,7 @@ struct OperatorAttendancePreviewData {
         ),
         OperatorPendingMember(
             serverID: "member_2",
+            participantMemberId: 2,
             name: "정의찬",
             nickname: "제옹",
             university: "중앙대학교",
@@ -35,6 +37,7 @@ struct OperatorAttendancePreviewData {
         ),
         OperatorPendingMember(
             serverID: "member_3",
+            participantMemberId: 3,
             name: "이예지",
             nickname: "소피",
             university: "가천대학교",
@@ -44,6 +47,7 @@ struct OperatorAttendancePreviewData {
         ),
         OperatorPendingMember(
             serverID: "member_4",
+            participantMemberId: 4,
             name: "김미주",
             nickname: "마티",
             university: "덕성여대",

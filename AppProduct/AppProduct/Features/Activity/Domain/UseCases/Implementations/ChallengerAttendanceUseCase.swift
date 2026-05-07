@@ -35,120 +35,100 @@ final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol {
     // MARK: - Function
 
     /// 출석 가능한 세션 목록 조회
-    func fetchAvailableSchedules() async throws -> [AvailableAttendanceSchedule] {
-        return try await repository.getAvailableSchedules()
+    ///
+    /// 향후 ±2주 범위에서 출석 필수(`attendancePolicy != nil`) + 참여자인 일정을 반환합니다.
+    /// 출석 창이 아직 열리지 않은 일정도 포함하여 View에서 `beforeAttendance` 상태로 표시할 수 있도록 합니다.
+    func fetchAvailableSchedules() async throws -> [ScheduleDetailData] {
+        let now = Date.now
+        let to = Calendar.kstGregorian.date(byAdding: .day, value: 14, to: now) ?? now
+        let schedules = try await repository.fetchMySchedulesForAttendance(from: now, to: to)
+        return schedules.filter { $0.attendancePolicy != nil && $0.isParticipant }
     }
 
     /// 내 출석 이력 조회
-    func fetchMyHistory() async throws -> [AttendanceHistoryItem] {
-        return try await repository.getMyHistory()
+    ///
+    /// 6개월 이내 일정 중 출석 정책이 있는 과거 일정을 반환합니다.
+    func fetchMyHistory() async throws -> [ScheduleDetailData] {
+        let now = Date.now
+        let sixMonthsAgo = Calendar.kstGregorian.date(
+            byAdding: .month, value: -6, to: now
+        ) ?? now
+        let schedules = try await repository.fetchMySchedulesForAttendance(
+            from: sixMonthsAgo,
+            to: now
+        )
+        return schedules.filter { $0.attendancePolicy != nil }
     }
 
-    /// GPS 기반 출석 요청 (pending 상태로 서버 전송)
+    /// GPS 기반 출석 요청 (V2)
     /// - throws: LocationError.notAuthorized, LocationError.locationFailed, DomainError.attendanceOutOfRange
-    func requestGPSAttendance(sessionId: SessionID, userId: UserID, sheetId: Int) async throws -> Attendance {
-        // 위치 권한 검증
+    func requestGPSAttendance(
+        sessionId: SessionID,
+        userId: UserID,
+        scheduleId: Int
+    ) async throws -> Attendance {
         guard locationManager.isAuthorized else {
             throw LocationError.notAuthorized
         }
 
-        // 현재 위치 조회
         guard let coordinate = locationManager.currentCoordinate else {
             throw LocationError.locationFailed("현재 위치를 가져올 수 없습니다.")
         }
 
-        // 지오펜싱 검증
         guard locationManager.isInsideGeofence else {
             throw DomainError.attendanceOutOfRange
         }
 
-        // 서버에 GPS 출석 요청
-        _ = try await repository.checkAttendance(
-            request: AttendanceCheckRequestDTO(
-                attendanceSheetId: sheetId,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-                locationVerified: true
-            )
+        let result = try await repository.requestAttendance(
+            scheduleId: scheduleId,
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            locationVerified: true
         )
 
-        return Attendance(
-            sessionId: sessionId,
-            userId: userId,
-            type: .gps,
-            status: .beforeAttendance,
-            locationVerification: LocationVerification(
-                isVerified: true,
-                coordinate: coordinate,
-                address: .init(
-                    fullAddress: "",
-                    city: "",
-                    district: ""
-                ),
-                verifiedAt: .now
-            ),
-            reason: nil
-        )
+        return result.toAttendance(sessionId: sessionId, userId: userId)
     }
 
-    /// 지각 사유 제출
+    /// 지각 사유 제출 (V2)
     /// - throws: DomainError.attendanceReasonRequired
     func submitLateReason(
         sessionId: SessionID,
         userId: UserID,
         reason: String,
-        sheetId: Int
+        scheduleId: Int
     ) async throws -> Attendance {
-        // 사유 필수 검증
         guard !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw DomainError.attendanceReasonRequired
         }
 
-        // 서버에 지각 사유 제출
-        _ = try await repository.submitReason(
-            request: AttendanceReasonRequestDTO(
-                attendanceSheetId: sheetId,
-                reason: reason
-            )
-        )
-
-        return Attendance(
+        let result = try await submitExcuse(
             sessionId: sessionId,
             userId: userId,
-            type: .reason,
-            status: .pendingApproval,
-            locationVerification: nil,
-            reason: reason
+            reason: reason,
+            scheduleId: scheduleId
         )
+        return result
     }
 
-    /// 불참 사유 제출
+    /// 불참 사유 제출 (V2)
     /// - throws: DomainError.attendanceReasonRequired
     func submitAbsentReason(
         sessionId: SessionID,
         userId: UserID,
         reason: String,
-        sheetId: Int
+        scheduleId: Int
     ) async throws -> Attendance {
         guard !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw DomainError.attendanceReasonRequired
         }
 
-        _ = try await repository.submitReason(
-            request: AttendanceReasonRequestDTO(
-                attendanceSheetId: sheetId,
-                reason: reason
-            )
-        )
-
-        return Attendance(
+        let result = try await submitExcuse(
             sessionId: sessionId,
             userId: userId,
-            type: .reason,
-            status: .pendingApproval,
-            locationVerification: nil,
-            reason: reason
+            reason: reason,
+            scheduleId: scheduleId
         )
+        return result
     }
 
     /// 현재 시간이 어느 출석 시간대에 속하는지 확인
@@ -167,22 +147,18 @@ final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol {
             }
             return .expired
         } else {
-            // 세션 시작 - threshold 이전이면 너무 이름
             if now < startTime.addingTimeInterval(-onTimeThreshold) {
                 return .tooEarly
             }
 
-            // 세션 시작 ± threshold 내이면 정시 출석 가능
             if now <= startTime.addingTimeInterval(onTimeThreshold) {
                 return .onTime
             }
 
-            // 세션 시작 + lateThreshold 내이면 지각 시간대
             if now <= startTime.addingTimeInterval(lateThreshold) {
                 return .lateWindow
             }
 
-            // 그 이후는 마감
             return .expired
         }
     }
@@ -198,5 +174,25 @@ final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol {
     /// 지오펜스 모니터링 중지
     func stopGeofenceMonitoring() async {
         await locationManager.stopAllGeofenceMonitoring()
+    }
+
+    // MARK: - Private
+
+    private func submitExcuse(
+        sessionId: SessionID,
+        userId: UserID,
+        reason: String,
+        scheduleId: Int
+    ) async throws -> Attendance {
+        let coordinate = locationManager.currentCoordinate
+
+        let result = try await repository.submitExcuse(
+            scheduleId: scheduleId,
+            excuseReason: reason,
+            isVerified: coordinate != nil,
+            latitude: coordinate?.latitude ?? 0.0,
+            longitude: coordinate?.longitude ?? 0.0
+        )
+        return result.toAttendance(sessionId: sessionId, userId: userId)
     }
 }

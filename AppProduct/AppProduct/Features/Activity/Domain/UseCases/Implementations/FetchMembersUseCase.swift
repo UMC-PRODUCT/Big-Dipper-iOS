@@ -44,14 +44,6 @@ final class FetchMembersUseCase: FetchMembersUseCaseProtocol {
         )
     }
 
-    func fetchAttendanceRecords(
-        challengerId: Int
-    ) async throws -> [MemberAttendanceRecord] {
-        try await repository.fetchAttendanceRecords(
-            challengerId: challengerId
-        )
-    }
-
     func fetchPointHistory(
         challengerId: Int
     ) async throws -> [OperatorMemberPenaltyHistory] {
