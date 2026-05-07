@@ -119,4 +119,9 @@ protocol FetchStudyMembersUseCaseProtocol {
 
     /// 일정 단순 삭제 (스터디 그룹 일정 2단계 실패 시 베스트 에포트 롤백 용)
     func deleteSchedule(scheduleId: Int) async throws
+
+    /// 단일 스터디 그룹의 멘토 + 멤버 전체 목록을 반환합니다.
+    ///
+    /// 스터디 그룹 일정 등록 시 참여자 자동 추가에 사용됩니다.
+    func fetchStudyGroupMembers(groupId: Int) async throws -> [StudyGroupMember]
 }

@@ -412,6 +412,25 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         }
     }
 
+    func fetchStudyGroupDetail(groupId: Int) async throws -> StudyGroupInfo {
+        let response = try await adapter.request(
+            StudyRouter.getStudyGroupDetail(groupId: groupId)
+        )
+
+        let dto: StudyGroupDetailDTO
+        if let apiResponse = try? decoder.decode(
+            APIResponse<StudyGroupDetailDTO>.self,
+            from: response.data
+        ),
+           let wrapped = try? apiResponse.unwrap() {
+            dto = wrapped
+        } else {
+            dto = try decoder.decode(StudyGroupDetailDTO.self, from: response.data)
+        }
+
+        return dto.toDomain()
+    }
+
     func linkStudyGroupSchedule(
         scheduleId: Int,
         studyGroupId: Int,

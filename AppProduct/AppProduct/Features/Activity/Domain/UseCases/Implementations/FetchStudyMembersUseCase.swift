@@ -172,4 +172,9 @@ final class FetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol {
     func deleteSchedule(scheduleId: Int) async throws {
         try await scheduleRepository.deleteSchedule(scheduleId: scheduleId)
     }
+
+    func fetchStudyGroupMembers(groupId: Int) async throws -> [StudyGroupMember] {
+        let detail = try await repository.fetchStudyGroupDetail(groupId: groupId)
+        return detail.mentors + detail.members
+    }
 }
