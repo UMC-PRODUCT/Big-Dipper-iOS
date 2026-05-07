@@ -2,7 +2,7 @@
 //  ScheduleAttendanceInfoDTO.swift
 //  AppProduct
 //
-//  Created by JEONG on 5/6/26.
+//  Created by euijjang97 on 5/6/26.
 //
 
 import Foundation

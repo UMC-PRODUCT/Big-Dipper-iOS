@@ -281,6 +281,12 @@ final class MockStudyRepository: StudyRepositoryProtocol {
         try await Task.sleep(for: .milliseconds(200))
     }
 
+    func fetchStudyGroupDetail(groupId: Int) async throws -> StudyGroupInfo {
+        _ = groupId
+        try await Task.sleep(for: .milliseconds(200))
+        return StudyGroupInfo.preview
+    }
+
     func linkStudyGroupSchedule(
         scheduleId: Int,
         studyGroupId: Int,

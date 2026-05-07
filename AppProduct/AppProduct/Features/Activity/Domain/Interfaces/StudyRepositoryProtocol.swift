@@ -184,6 +184,15 @@ protocol StudyRepositoryProtocol {
     /// - Throws: 네트워크 오류 또는 파싱 오류
     func deleteStudyGroup(groupId: Int) async throws
 
+    /// 단일 스터디 그룹 상세 정보를 조회합니다.
+    ///
+    /// `GET /api/v1/study-groups/{groupId}`
+    ///
+    /// - Parameter groupId: 조회할 스터디 그룹 ID
+    /// - Returns: 멘토와 멤버 목록이 포함된 `StudyGroupInfo` 도메인 모델
+    /// - Throws: 네트워크 오류 또는 파싱 오류
+    func fetchStudyGroupDetail(groupId: Int) async throws -> StudyGroupInfo
+
     /// 1단계 V2 일정 생성으로 받은 `scheduleId` 를 스터디 그룹/주차 커리큘럼에 연결합니다.
     ///
     /// `POST /api/v1/study-groups/schedules` 엔드포인트의 단순 래퍼입니다.

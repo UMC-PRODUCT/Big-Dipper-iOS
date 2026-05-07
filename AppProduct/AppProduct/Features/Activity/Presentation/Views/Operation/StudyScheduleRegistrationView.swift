@@ -61,9 +61,11 @@ struct StudyScheduleRegistrationView: View {
                 dateTimeSection
             }
 
-            Section {
-                PlaceSelectView(place: $viewModel.place)
+            Section("출석 체크") {
+                attendancePolicySection
             }
+
+            placeSection
         }
         .scrollDismissesKeyboard(.interactively)
         .navigation(
@@ -80,7 +82,12 @@ struct StudyScheduleRegistrationView: View {
         }
         .alertPrompt(item: $viewModel.alertPrompt)
         .task {
-            await viewModel.loadWeeklyOptions()
+            async let weekly: () = viewModel.loadWeeklyOptions()
+            async let participants: () = viewModel.loadParticipantMembers()
+            _ = await (weekly, participants)
+        }
+        .onChange(of: viewModel.startDate) {
+            viewModel.prefillAttendancePolicyIfNeeded()
         }
     }
 
@@ -100,6 +107,49 @@ struct StudyScheduleRegistrationView: View {
     }
 
     // MARK: - Section Components
+
+    /// 출석 정책 3개 시각 입력 + 인라인 에러 섹션
+    @ViewBuilder
+    private var attendancePolicySection: some View {
+        AttendancePolicyTimeSection(
+            checkInStartAt: $viewModel.attendanceCheckInStartAt,
+            onTimeEndAt: $viewModel.attendanceOnTimeEndAt,
+            lateEndAt: $viewModel.attendanceLateEndAt,
+            showCheckInDatePicker: $viewModel.showCheckInStartDatePicker,
+            showCheckInTimePicker: $viewModel.showCheckInStartTimePicker,
+            showOnTimeDatePicker: $viewModel.showOnTimeEndDatePicker,
+            showOnTimeTimePicker: $viewModel.showOnTimeEndTimePicker,
+            showLateDatePicker: $viewModel.showLateEndDatePicker,
+            showLateTimePicker: $viewModel.showLateEndTimePicker,
+            onTimesChanged: {
+                Task { @MainActor in
+                    viewModel.attendanceTimesChanged()
+                }
+            }
+        )
+        if let message = viewModel.attendancePolicyError?.message {
+            Text(message)
+                .appFont(.footnote, color: .red500)
+        }
+    }
+
+    /// 대면/비대면 토글 + 장소 입력 섹션
+    private var placeSection: some View {
+        Section {
+            InPersonToggle(
+                isInPerson: Binding(
+                    get: { !viewModel.isOnline },
+                    set: { viewModel.inPersonModeToggleChanged(to: $0) }
+                )
+            )
+            if !viewModel.isOnline {
+                PlaceSelectView(place: $viewModel.place)
+            } else {
+                Text("비대면 스터디는 장소가 자동으로 비워집니다")
+                    .appFont(.footnote, color: .grey500)
+            }
+        }
+    }
 
     /// 스터디명 입력 필드
     private var studyNameField: some View {

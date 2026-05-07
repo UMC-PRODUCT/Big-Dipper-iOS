@@ -2,7 +2,7 @@
 //  VerifyEmailCodeRequestDTO.swift
 //  AppProduct
 //
-//  Created by JEONG on 5/7/26.
+//  Created by euijjang97 on 5/7/26.
 //
 
 import Foundation
