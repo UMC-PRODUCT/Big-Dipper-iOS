@@ -15,6 +15,7 @@ struct OperatorAttendanceSectionView: View {
 
     // MARK: - Property
 
+    @Environment(NavigationRouter.self) private var router
     @State private var viewModel: OperatorAttendanceViewModel
     @State private var selectedPendingSessionId: UUID?
     @Environment(\.scenePhase) private var scenePhase
@@ -169,6 +170,8 @@ struct OperatorAttendanceSectionView: View {
     private func sessionListView(
         sessions: [OperatorSessionAttendance]) -> some View {
         LazyVStack(spacing: DefaultSpacing.spacing16) {
+            attendanceListEntryButton
+
             ForEach(sessions) { sessionAttendance in
                 OperatorSessionCard(
                     sessionAttendance: sessionAttendance,
@@ -178,6 +181,49 @@ struct OperatorAttendanceSectionView: View {
             }
         }
         .padding(.top, DefaultSpacing.spacing16)
+    }
+
+    // MARK: - Attendance List Entry Button
+
+    private var attendanceListEntryButton: some View {
+        Button {
+            router.push(to: .activity(.attendanceList))
+        } label: {
+            HStack(spacing: DefaultSpacing.spacing12) {
+                Image(systemName: "checklist")
+                    .font(.system(size: 20))
+                    .foregroundStyle(.indigo500)
+
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
+                    Text("출석 현황 목록")
+                        .appFont(.calloutEmphasis)
+                    Text("일정별 출석률과 참여자 상태를 확인합니다")
+                        .appFont(.footnote, color: .grey500)
+                }
+
+                Spacer()
+
+                InfoBadge(
+                    "운영진 전용",
+                    textColor: .indigo500,
+                    tintColor: .indigo,
+                    glassVariant: .clear
+                )
+            }
+            .padding(DefaultSpacing.spacing16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(
+                .regular.interactive(),
+                in: ConcentricRectangle(
+                    corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                    isUniform: true
+                )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("출석 현황 목록")
+        .accessibilityHint("일정별 출석률과 참여자 상태를 확인합니다")
+        .accessibilityAddTraits(.isButton)
     }
 
     // MARK: - Action Factories

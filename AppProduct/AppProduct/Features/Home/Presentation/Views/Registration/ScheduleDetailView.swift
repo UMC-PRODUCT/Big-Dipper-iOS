@@ -118,6 +118,13 @@ struct ScheduleDetailView: View {
                     }) {
                         Image(systemName: "pencil")
                     }
+                    .disabled(viewModel.isScheduleStarted)
+                    .accessibilityLabel(
+                        viewModel.isScheduleStarted ? "일정 수정 불가" : "일정 수정"
+                    )
+                    .accessibilityHint(
+                        viewModel.isScheduleStarted ? "이미 시작된 일정은 수정할 수 없습니다" : ""
+                    )
                 }
 
                 if viewModel.canDeleteSchedule {
@@ -222,6 +229,10 @@ struct ScheduleDetailView: View {
         ScrollView(content: {
             VStack(alignment: .leading, spacing: DefaultSpacing.spacing24, content: {
                 topContent(data)
+                if let policy = data.attendancePolicy {
+                    AttendancePolicyDisplaySection(policy: policy)
+                        .equatable()
+                }
                 detailDescription(data)
             })
         })
@@ -246,6 +257,14 @@ struct ScheduleDetailView: View {
                 }
             )
             .equatable()
+
+            if viewModel.isScheduleStarted {
+                HStack(spacing: DefaultSpacing.spacing8) {
+                    Image(systemName: "lock.fill")
+                    Text("이미 시작된 일정은 수정할 수 없습니다")
+                }
+                .appFont(.caption1, color: .grey500)
+            }
         })
     }
 
@@ -365,22 +384,16 @@ private struct SchedulePlaceDateInfo: View, Equatable {
     }
 
     private var dateText: String {
-        if Calendar.current.isDate(data.startsAt, inSameDayAs: data.endsAt) {
+        guard data.startsAt <= data.endsAt else {
             return data.startsAt.toYearMonthDayWithWeekday()
         }
-
-        return "\(data.startsAt.toYearMonthDayWithWeekday()) - \(data.endsAt.toYearMonthDayWithWeekday())"
+        return (data.startsAt...data.endsAt).scheduleDateRangeText
     }
 
     private var timeText: String {
-        if data.isAllDay {
-            return "종일"
+        guard data.startsAt <= data.endsAt else {
+            return data.startsAt.toHourMinutes()
         }
-
-        if Calendar.current.isDate(data.startsAt, inSameDayAs: data.endsAt) {
-            return data.startsAt.timeRange(to: data.endsAt)
-        }
-
-        return "\(data.startsAt.toMonthDayWeekDayWithTime()) - \(data.endsAt.toMonthDayWeekDayWithTime())"
+        return (data.startsAt...data.endsAt).scheduleTimeRangeText
     }
 }

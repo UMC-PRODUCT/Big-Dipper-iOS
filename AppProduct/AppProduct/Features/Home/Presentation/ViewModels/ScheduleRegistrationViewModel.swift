@@ -75,6 +75,9 @@ class ScheduleRegistrationViewModel {
     /// 인라인 에러 메시지 (예: 시작된 일정 수정 차단 SCHEDULE-0028)
     private(set) var inlineErrorMessage: String?
 
+    /// 파괴적 작업 확인 다이얼로그 상태
+    var alertPrompt: AlertPrompt?
+
     // MARK: - Attendance Policy
 
     /// 일정 생성/수정 권한 조회 상태
@@ -369,12 +372,36 @@ class ScheduleRegistrationViewModel {
         isAttendancePolicyDirty = true
     }
 
-    /// 출석 필수 토글 변경 시 dirty 플래그를 리셋하고 즉시 prefill 합니다.
+    /// 출석 필수 토글 변경 진입점.
+    ///
+    /// 수정 모드에서 기존에 출석이 필수였던 일정을 OFF 로 전환할 때만
+    /// destructive AlertPrompt 를 띄워 사용자의 의도를 재확인합니다.
+    /// 그 외 경우(생성 모드, 단순 ON, 기존 OFF → ON 등)는 즉시 반영합니다.
+    @MainActor
+    func attendanceToggleChanged(to newValue: Bool) {
+        if !newValue, initialIsAttendanceRequired {
+            alertPrompt = AlertPrompt(
+                title: "출석 데이터 삭제",
+                message: "출석 필수를 해제하면 기존 출석 데이터가 삭제됩니다. 계속하시겠습니까?",
+                positiveBtnTitle: "해제",
+                positiveBtnAction: { [weak self] in
+                    self?.applyAttendanceToggle(to: false)
+                },
+                negativeBtnTitle: "취소",
+                isPositiveBtnDestructive: true
+            )
+            return
+        }
+        applyAttendanceToggle(to: newValue)
+    }
+
+    /// 출석 필수 토글을 실제 적용합니다.
     ///
     /// OFF -> ON 전환은 사용자가 새로 정책을 부여하려는 명확한 의도이므로
     /// 이전 dirty 상태를 무효화하고 일정 시각 기준 기본값으로 채웁니다.
     @MainActor
-    func attendanceToggleChanged(to newValue: Bool) {
+    func applyAttendanceToggle(to newValue: Bool) {
+        isAttendanceRequired = newValue
         if newValue {
             isAttendancePolicyDirty = false
             prefillAttendancePolicyIfNeeded()
@@ -554,6 +581,21 @@ class ScheduleRegistrationViewModel {
             memberIds.append(myMemberId)
         }
         return memberIds
+    }
+
+    /// 대면/비대면 토글 변경 시 호출합니다.
+    ///
+    /// - Parameter isInPerson: `true` 이면 대면(`isOnline = false`), `false` 이면 비대면(`isOnline = true`).
+    ///   비대면으로 전환할 때는 `place` 를 빈 값으로 초기화합니다.
+    func inPersonModeToggleChanged(to isInPerson: Bool) {
+        isOnline = !isInPerson
+        if !isInPerson {
+            place = PlaceSearchInfo(
+                name: "",
+                address: "",
+                coordinate: Coordinate(latitude: 0.0, longitude: 0.0)
+            )
+        }
     }
 
     /// 송신용 location DTO — 비대면이면 `nil`, 그 외엔 현재 장소 좌표

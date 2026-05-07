@@ -44,7 +44,7 @@ struct AttendanceStatusBadge: View, Equatable {
                 Image(systemName: "questionmark.circle")
                     .font(.system(size: Constants.unknownIconSize, weight: .semibold))
             }
-            Text(status.displayText)
+            Text(status.badgeText)
                 .lineLimit(1)
         }
         .appFont(.caption1, color: foregroundColor)
@@ -54,6 +54,8 @@ struct AttendanceStatusBadge: View, Equatable {
             .clear.tint(tintColor.opacity(Constants.backgroundOpacity)),
             in: Capsule()
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(status.displayText)
     }
 
     // MARK: - Style

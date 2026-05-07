@@ -64,6 +64,9 @@ enum AttendanceStatusV2: String, Codable, Sendable, CaseIterable, Equatable, Has
     // MARK: - Display
 
     /// 배지/필터 칩에 표시할 한국어 텍스트
+    ///
+    /// `.unknown` 은 "상태 미지정" — 접근성 라벨 및 필터 옵션에 사용합니다.
+    /// 폭 제약이 있는 뱃지 UI 에는 ``badgeText`` 를 사용하세요.
     var displayText: String {
         switch self {
         case .presentPending:   return "출석 승인 대기"
@@ -76,6 +79,14 @@ enum AttendanceStatusV2: String, Codable, Sendable, CaseIterable, Equatable, Has
         case .pending:          return "출석 전"
         case .unknown:          return "상태 미지정"
         }
+    }
+
+    /// 뱃지 컴포넌트에 렌더링할 짧은 텍스트
+    ///
+    /// `.unknown` 은 폭 제약 때문에 `"알 수 없음"` 으로 단축합니다.
+    /// VoiceOver 에는 ``displayText`` 가 읽히므로 접근성이 유지됩니다.
+    var badgeText: String {
+        self == .unknown ? "알 수 없음" : displayText
     }
 
     /// 서버 쿼리 파라미터로 보낼 raw 값
