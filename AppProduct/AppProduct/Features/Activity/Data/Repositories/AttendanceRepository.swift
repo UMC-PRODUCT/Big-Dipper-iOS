@@ -33,17 +33,24 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
 
     // MARK: - 조회
 
-    func getAttendanceDetail(
-        recordId: Int
-    ) async throws -> AttendanceRecord {
+    func fetchMySchedulesForAttendance(
+        from: Date,
+        to: Date
+    ) async throws -> [ScheduleDetailData] {
         let response = try await adapter.request(
-            AttendanceRouter.getDetail(recordId: recordId)
+            ScheduleV2Router.getMySchedules(
+                query: MySchedulesQuery(
+                    from: from,
+                    to: to,
+                    isAttendanceRequired: true
+                )
+            )
         )
         let apiResponse = try decoder.decode(
-            APIResponse<AttendanceDetailDTO>.self,
+            APIResponse<[ScheduleDetailDTO]>.self,
             from: response.data
         )
-        return try apiResponse.unwrap().toDomain()
+        return try apiResponse.unwrap().map { $0.toScheduleDetailData() }
     }
 
     func getPendingAttendances(
@@ -75,44 +82,6 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
             result[scheduleId] = records
         }
         return result
-    }
-
-    func getMyHistory() async throws -> [AttendanceHistoryItem] {
-        let response = try await adapter.request(
-            AttendanceRouter.getMyHistory
-        )
-        let apiResponse = try decoder.decode(
-            APIResponse<[AttendanceHistoryItemDTO]>.self,
-            from: response.data
-        )
-        return try apiResponse.unwrap().map { $0.toDomain() }
-    }
-
-    func getChallengerHistory(
-        challengerId: Int
-    ) async throws -> [AttendanceHistoryItem] {
-        let response = try await adapter.request(
-            AttendanceRouter.getChallengerHistory(
-                challengerId: challengerId
-            )
-        )
-        let apiResponse = try decoder.decode(
-            APIResponse<[AttendanceHistoryItemDTO]>.self,
-            from: response.data
-        )
-        return try apiResponse.unwrap().map { $0.toDomain() }
-    }
-
-    func getAvailableSchedules(
-    ) async throws -> [AvailableAttendanceSchedule] {
-        let response = try await adapter.request(
-            AttendanceRouter.getAvailable
-        )
-        let apiResponse = try decoder.decode(
-            APIResponse<[AvailableScheduleDTO]>.self,
-            from: response.data
-        )
-        return try apiResponse.unwrap().map { $0.toDomain() }
     }
 
     func getScheduleStats(
@@ -169,26 +138,81 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
 
     // MARK: - 액션
 
-    func approveAttendance(recordId: Int) async throws {
+    func decideAttendances(
+        scheduleId: Int,
+        decisions: [AttendanceDecisionInput]
+    ) async throws -> [AttendanceDecisionResult] {
+        let body = decisions.map {
+            DecideAttendanceItemDTO(
+                isApproved: $0.isApproved,
+                participantMemberId: $0.participantMemberId,
+                reason: $0.reason
+            )
+        }
         let response = try await adapter.request(
-            AttendanceRouter.approve(recordId: recordId)
+            ScheduleV2Router.decideAttendances(scheduleId: scheduleId, body: body)
         )
         let apiResponse = try decoder.decode(
-            APIResponse<EmptyResult>.self,
+            APIResponse<[AttendanceDecisionResponseDTO]>.self,
             from: response.data
         )
-        try apiResponse.validateSuccess()
+        return try apiResponse.unwrap().map { $0.toDomain() }
     }
 
-    func rejectAttendance(recordId: Int) async throws {
+    func requestAttendance(
+        scheduleId: Int,
+        latitude: Double,
+        longitude: Double,
+        locationVerified: Bool
+    ) async throws -> AttendanceDecisionResult {
         let response = try await adapter.request(
-            AttendanceRouter.reject(recordId: recordId)
+            ScheduleV2Router.requestAttendance(
+                scheduleId: scheduleId,
+                body: RequestAttendanceRequestDTO(
+                    latitude: latitude,
+                    locationVerified: locationVerified,
+                    longitude: longitude
+                )
+            )
         )
-        let apiResponse = try decoder.decode(
-            APIResponse<EmptyResult>.self,
-            from: response.data
+        do {
+            let apiResponse = try decoder.decode(
+                APIResponse<AttendanceDecisionResponseDTO>.self,
+                from: response.data
+            )
+            return try apiResponse.unwrap().toDomain()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
+    }
+
+    func submitExcuse(
+        scheduleId: Int,
+        excuseReason: String,
+        isVerified: Bool,
+        latitude: Double,
+        longitude: Double
+    ) async throws -> AttendanceDecisionResult {
+        let response = try await adapter.request(
+            ScheduleV2Router.excuseAttendance(
+                scheduleId: scheduleId,
+                body: ExcuseAttendanceRequestDTO(
+                    excuseReason: excuseReason,
+                    isVerified: isVerified,
+                    latitude: latitude,
+                    longitude: longitude
+                )
+            )
         )
-        try apiResponse.validateSuccess()
+        do {
+            let apiResponse = try decoder.decode(
+                APIResponse<AttendanceDecisionResponseDTO>.self,
+                from: response.data
+            )
+            return try apiResponse.unwrap().toDomain()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
     }
 
     func updateScheduleLocation(
@@ -197,36 +221,24 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         latitude: Double,
         longitude: Double
     ) async throws {
-        #if DEBUG
-        let payload: [String: Any] = [
-            "locationName": locationName,
-            "latitude": latitude,
-            "longitude": longitude
-        ]
-        print("===== UPDATE SCHEDULE LOCATION REQUEST =====")
-        print("scheduleId:", scheduleId)
-        print("locationName:", locationName)
-        print("latitude:", latitude, "isFinite:", latitude.isFinite)
-        print("longitude:", longitude, "isFinite:", longitude.isFinite)
-        print("isValidJSONObject:", JSONSerialization.isValidJSONObject(payload))
-        if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted]),
-           let json = String(data: data, encoding: .utf8) {
-            print("payload JSON:\n\(json)")
-        } else {
-            print("payload JSON serialization failed before request")
-        }
-        print("===========================================")
-        #endif
-
+        let request = UpdateScheduleRequestDTO(
+            name: nil,
+            description: nil,
+            startsAt: nil,
+            endsAt: nil,
+            location: V2LocationDTO(
+                latitude: latitude,
+                longitude: longitude,
+                locationName: locationName
+            ),
+            participantMemberIds: nil,
+            tags: nil,
+            attendancePolicy: nil,
+            isOnline: nil,
+            isAttendanceRequired: nil
+        )
         let response = try await adapter.request(
-            AttendanceRouter.patchScheduleLocation(
-                scheduleId: scheduleId,
-                body: ScheduleLocationUpdateRequestDTO(
-                    locationName: locationName,
-                    latitude: latitude,
-                    longitude: longitude
-                )
-            )
+            ScheduleV2Router.patchSchedule(scheduleId: scheduleId, request: request)
         )
         let apiResponse = try decoder.decode(
             APIResponse<EmptyResult>.self,
@@ -235,84 +247,7 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         try apiResponse.validateSuccess()
     }
 
-    func checkAttendance(
-        request: AttendanceCheckRequestDTO
-    ) async throws -> Int {
-        do {
-            let response = try await adapter.request(
-                AttendanceRouter.check(body: request)
-            )
-            let apiResponse = try decoder.decode(
-                APIResponse<String>.self,
-                from: response.data
-            )
-            let result = try apiResponse.unwrap()
-            guard let id = Int(result) else {
-                throw Self.parseErrorResponse(
-                    from: response.data
-                ) ?? RepositoryError.serverError(
-                    code: nil, message: result
-                )
-            }
-            return id
-        } catch let error as NetworkError {
-            throw Self.parseServerError(from: error) ?? error
-        }
-    }
-
-    func submitReason(
-        request: AttendanceReasonRequestDTO
-    ) async throws -> Int {
-        do {
-            let response = try await adapter.request(
-                AttendanceRouter.submitReason(body: request)
-            )
-            let apiResponse = try decoder.decode(
-                APIResponse<String>.self,
-                from: response.data
-            )
-            let result = try apiResponse.unwrap()
-            guard let id = Int(result) else {
-                throw Self.parseErrorResponse(
-                    from: response.data
-                ) ?? RepositoryError.serverError(
-                    code: nil, message: result
-                )
-            }
-            return id
-        } catch let error as NetworkError {
-            throw Self.parseServerError(from: error) ?? error
-        }
-    }
-
     // MARK: - Private Helper
-
-    /// success: false + result: String 형태의 에러 응답 파싱
-    ///
-    /// 서버가 `APIResponse<Int>` 대신 `result: "이미 출석 체크가 완료되었습니다"`
-    /// 같은 String을 반환하는 경우 DomainError로 매핑합니다.
-    private static func parseErrorResponse(
-        from data: Data
-    ) -> Error? {
-        guard let json = try? JSONSerialization.jsonObject(
-                  with: data
-              ) as? [String: Any],
-              json["success"] as? Bool == false
-        else { return nil }
-
-        let result = json["result"] as? String ?? ""
-        let message = json["message"] as? String
-
-        // 서버 에러 메시지 → DomainError 매핑
-        if result.contains("이미 출석") {
-            return DomainError.attendanceAlreadySubmitted
-        }
-
-        return RepositoryError.serverError(
-            code: json["code"] as? String,
-            message: result.isEmpty ? message : result
-        )
-    }
 
     /// NetworkError 응답 body에서 서버 에러 메시지 추출
     private static func parseServerError(
@@ -322,7 +257,6 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
               let data
         else { return nil }
 
-        // DomainError 매핑 먼저 시도
         if let domainError = parseErrorResponse(from: data) {
             return domainError
         }
@@ -335,6 +269,29 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         let code = json["code"] as? String
         return RepositoryError.serverError(
             code: code, message: message
+        )
+    }
+
+    /// success: false + result: String 형태의 에러 응답 파싱
+    private static func parseErrorResponse(
+        from data: Data
+    ) -> Error? {
+        guard let json = try? JSONSerialization.jsonObject(
+                  with: data
+              ) as? [String: Any],
+              json["success"] as? Bool == false
+        else { return nil }
+
+        let result = json["result"] as? String ?? ""
+        let message = json["message"] as? String
+
+        if result.contains("이미 출석") {
+            return DomainError.attendanceAlreadySubmitted
+        }
+
+        return RepositoryError.serverError(
+            code: json["code"] as? String,
+            message: result.isEmpty ? message : result
         )
     }
 }

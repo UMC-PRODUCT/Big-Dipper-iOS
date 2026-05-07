@@ -15,10 +15,12 @@ protocol OperatorAttendanceUseCaseProtocol {
     /// 전체 승인 대기 멤버 일괄 조회
     /// - Returns: scheduleId별로 그룹핑된 Dictionary
     func fetchAllPendingAttendances() async throws -> [Int: [PendingAttendanceRecord]]
-    /// 개별 출석 승인
-    func approveAttendance(recordId: Int) async throws
-    /// 개별 출석 반려
-    func rejectAttendance(recordId: Int) async throws
+
+    /// 출석 일괄 승인/반려 (V2)
+    func decideAttendances(
+        scheduleId: Int,
+        decisions: [AttendanceDecisionInput]
+    ) async throws -> [AttendanceDecisionResult]
 
     /// 세션 출석 위치 변경
     func updateScheduleLocation(

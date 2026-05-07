@@ -258,7 +258,12 @@ final class OperatorAttendanceViewModel {
             positiveBtnTitle: "승인",
             positiveBtnAction: { [weak self] in
                 Task {
-                    await self?.approveAttendance(memberId: member.id, sessionId: sessionId)
+                    await self?.decideAttendance(
+                        memberId: member.id,
+                        participantMemberId: member.participantMemberId,
+                        sessionId: sessionId,
+                        isApproved: true
+                    )
                 }
             },
             negativeBtnTitle: "취소",
@@ -276,7 +281,12 @@ final class OperatorAttendanceViewModel {
             positiveBtnTitle: "반려",
             positiveBtnAction: { [weak self] in
                 Task {
-                    await self?.rejectAttendance(memberId: member.id, sessionId: sessionId)
+                    await self?.decideAttendance(
+                        memberId: member.id,
+                        participantMemberId: member.participantMemberId,
+                        sessionId: sessionId,
+                        isApproved: false
+                    )
                 }
             },
             negativeBtnTitle: "취소",
@@ -295,7 +305,7 @@ final class OperatorAttendanceViewModel {
             positiveBtnTitle: "전체 승인",
             positiveBtnAction: { [weak self] in
                 Task {
-                    await self?.approveAllAttendances(sessionId: sessionId)
+                    await self?.decideAllAttendances(sessionId: sessionId, isApproved: true)
                 }
             },
             negativeBtnTitle: "취소",
@@ -313,7 +323,7 @@ final class OperatorAttendanceViewModel {
             positiveBtnTitle: "전체 거절",
             positiveBtnAction: { [weak self] in
                 Task {
-                    await self?.rejectAllAttendances(sessionId: sessionId)
+                    await self?.decideAllAttendances(sessionId: sessionId, isApproved: false)
                 }
             },
             negativeBtnTitle: "취소",
@@ -334,7 +344,11 @@ final class OperatorAttendanceViewModel {
             positiveBtnTitle: "승인",
             positiveBtnAction: { [weak self] in
                 Task {
-                    await self?.approveSelectedAttendances(members: members, sessionId: sessionId)
+                    await self?.decideSelectedAttendances(
+                        members: members,
+                        sessionId: sessionId,
+                        isApproved: true
+                    )
                 }
             },
             negativeBtnTitle: "취소",
@@ -354,7 +368,11 @@ final class OperatorAttendanceViewModel {
             positiveBtnTitle: "거절",
             positiveBtnAction: { [weak self] in
                 Task {
-                    await self?.rejectSelectedAttendances(members: members, sessionId: sessionId)
+                    await self?.decideSelectedAttendances(
+                        members: members,
+                        sessionId: sessionId,
+                        isApproved: false
+                    )
                 }
             },
             negativeBtnTitle: "취소",
@@ -368,14 +386,24 @@ final class OperatorAttendanceViewModel {
     /// 확인 없이 즉시 출석 승인 (사유 확인 AlertPrompt에서 호출)
     func approveDirectly(member: OperatorPendingMember, sessionId: UUID) {
         Task {
-            await approveAttendance(memberId: member.id, sessionId: sessionId)
+            await decideAttendance(
+                memberId: member.id,
+                participantMemberId: member.participantMemberId,
+                sessionId: sessionId,
+                isApproved: true
+            )
         }
     }
 
     /// 확인 없이 즉시 출석 반려 (사유 확인 AlertPrompt에서 호출)
     func rejectDirectly(member: OperatorPendingMember, sessionId: UUID) {
         Task {
-            await rejectAttendance(memberId: member.id, sessionId: sessionId)
+            await decideAttendance(
+                memberId: member.id,
+                participantMemberId: member.participantMemberId,
+                sessionId: sessionId,
+                isApproved: false
+            )
         }
     }
 
@@ -449,162 +477,120 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Private Action
 
+    /// 단건 출석 승인/반려 (V2 일괄 API 단건 호출로 래핑)
     @MainActor
-    private func approveAttendance(
+    private func decideAttendance(
         memberId: UUID,
-        sessionId: UUID
+        participantMemberId: Int,
+        sessionId: UUID,
+        isApproved: Bool
     ) async {
         alertPrompt = nil
         guard case .loaded(let sessions) = sessionsState,
-              let session = sessions.first(where: {
-                  $0.id == sessionId
-              }),
-              let member = session.pendingMembers.first(where: {
-                  $0.id == memberId
-              }),
-              let recordId = Int(member.serverID ?? "")
+              let session = sessions.first(where: { $0.id == sessionId }),
+              let scheduleId = Int(session.serverID ?? "")
         else { return }
 
         processingMemberIds.insert(memberId)
         defer { processingMemberIds.remove(memberId) }
 
+        let decision = AttendanceDecisionInput(
+            isApproved: isApproved,
+            participantMemberId: participantMemberId,
+            reason: ""
+        )
+
         do {
-            try await useCase.approveAttendance(
-                recordId: recordId
+            _ = try await useCase.decideAttendances(
+                scheduleId: scheduleId,
+                decisions: [decision]
             )
             updateSessionByRemovingMember(
                 memberId: memberId,
                 sessionId: sessionId,
-                isApproval: true
+                isApproval: isApproved
             )
         } catch {
             errorHandler.handle(error, context: .init(
                 feature: "Activity",
-                action: "approveAttendance"
+                action: isApproved ? "approveAttendance" : "rejectAttendance"
             ))
         }
     }
 
+    /// 전체 출석 일괄 승인/반려 (V2 단일 호출)
     @MainActor
-    private func rejectAttendance(
-        memberId: UUID,
-        sessionId: UUID
-    ) async {
+    private func decideAllAttendances(sessionId: UUID, isApproved: Bool) async {
         alertPrompt = nil
         guard case .loaded(let sessions) = sessionsState,
-              let session = sessions.first(where: {
-                  $0.id == sessionId
-              }),
-              let member = session.pendingMembers.first(where: {
-                  $0.id == memberId
-              }),
-              let recordId = Int(member.serverID ?? "")
+              let session = sessions.first(where: { $0.id == sessionId }),
+              let scheduleId = Int(session.serverID ?? "")
         else { return }
 
-        processingMemberIds.insert(memberId)
-        defer { processingMemberIds.remove(memberId) }
+        let decisions = session.pendingMembers.map {
+            AttendanceDecisionInput(
+                isApproved: isApproved,
+                participantMemberId: $0.participantMemberId,
+                reason: ""
+            )
+        }
+
+        guard !decisions.isEmpty else { return }
 
         do {
-            try await useCase.rejectAttendance(
-                recordId: recordId
+            _ = try await useCase.decideAttendances(
+                scheduleId: scheduleId,
+                decisions: decisions
             )
-            updateSessionByRemovingMember(
-                memberId: memberId,
+            updateSessionByRemovingAllMembers(
                 sessionId: sessionId,
-                isApproval: false
+                isApproval: isApproved
             )
         } catch {
             errorHandler.handle(error, context: .init(
                 feature: "Activity",
-                action: "rejectAttendance"
+                action: isApproved ? "approveAllAttendances" : "rejectAllAttendances"
             ))
         }
     }
 
+    /// 선택 출석 일괄 승인/반려 (V2 단일 호출)
     @MainActor
-    private func approveAllAttendances(sessionId: UUID) async {
-        alertPrompt = nil
-        guard case .loaded(let sessions) = sessionsState,
-              let session = sessions.first(where: {
-                  $0.id == sessionId
-              })
-        else { return }
-
-        for member in session.pendingMembers {
-            guard let recordId = Int(member.serverID ?? "")
-            else { continue }
-            try? await useCase.approveAttendance(
-                recordId: recordId
-            )
-        }
-        updateSessionByRemovingAllMembers(
-            sessionId: sessionId,
-            isApproval: true
-        )
-    }
-
-    @MainActor
-    private func rejectAllAttendances(sessionId: UUID) async {
-        alertPrompt = nil
-        guard case .loaded(let sessions) = sessionsState,
-              let session = sessions.first(where: {
-                  $0.id == sessionId
-              })
-        else { return }
-
-        for member in session.pendingMembers {
-            guard let recordId = Int(member.serverID ?? "")
-            else { continue }
-            try? await useCase.rejectAttendance(
-                recordId: recordId
-            )
-        }
-        updateSessionByRemovingAllMembers(
-            sessionId: sessionId,
-            isApproval: false
-        )
-    }
-
-    @MainActor
-    private func approveSelectedAttendances(
+    private func decideSelectedAttendances(
         members: [OperatorPendingMember],
-        sessionId: UUID
+        sessionId: UUID,
+        isApproved: Bool
     ) async {
         alertPrompt = nil
+        guard case .loaded(let sessions) = sessionsState,
+              let session = sessions.first(where: { $0.id == sessionId }),
+              let scheduleId = Int(session.serverID ?? "")
+        else { return }
 
-        for member in members {
-            guard let recordId = Int(member.serverID ?? "")
-            else { continue }
-            try? await useCase.approveAttendance(
-                recordId: recordId
+        let decisions = members.map {
+            AttendanceDecisionInput(
+                isApproved: isApproved,
+                participantMemberId: $0.participantMemberId,
+                reason: ""
             )
         }
-        updateSessionByRemovingSelectedMembers(
-            memberIds: members.map(\.id),
-            sessionId: sessionId,
-            isApproval: true
-        )
-    }
 
-    @MainActor
-    private func rejectSelectedAttendances(
-        members: [OperatorPendingMember],
-        sessionId: UUID
-    ) async {
-        alertPrompt = nil
-
-        for member in members {
-            guard let recordId = Int(member.serverID ?? "")
-            else { continue }
-            try? await useCase.rejectAttendance(
-                recordId: recordId
+        do {
+            _ = try await useCase.decideAttendances(
+                scheduleId: scheduleId,
+                decisions: decisions
             )
+            updateSessionByRemovingSelectedMembers(
+                memberIds: members.map(\.id),
+                sessionId: sessionId,
+                isApproval: isApproved
+            )
+        } catch {
+            errorHandler.handle(error, context: .init(
+                feature: "Activity",
+                action: isApproved ? "approveSelectedAttendances" : "rejectSelectedAttendances"
+            ))
         }
-        updateSessionByRemovingSelectedMembers(
-            memberIds: members.map(\.id),
-            sessionId: sessionId,
-            isApproval: false
-        )
     }
 
     // MARK: - Helper

@@ -32,12 +32,14 @@ final class OperatorAttendanceUseCase: OperatorAttendanceUseCaseProtocol {
         try await repository.getAllPendingAttendances()
     }
 
-    func approveAttendance(recordId: Int) async throws {
-        try await repository.approveAttendance(recordId: recordId)
-    }
-
-    func rejectAttendance(recordId: Int) async throws {
-        try await repository.rejectAttendance(recordId: recordId)
+    func decideAttendances(
+        scheduleId: Int,
+        decisions: [AttendanceDecisionInput]
+    ) async throws -> [AttendanceDecisionResult] {
+        try await repository.decideAttendances(
+            scheduleId: scheduleId,
+            decisions: decisions
+        )
     }
 
     func updateScheduleLocation(

@@ -13,6 +13,8 @@ import Foundation
 struct OperatorPendingMember: Identifiable, Equatable {
     let id: UUID = .init()
     let serverID: String?
+    /// V2 decideAttendances 에 사용되는 서버 멤버 ID
+    let participantMemberId: Int
     let name: String
     let nickname: String?
     let university: String
@@ -41,6 +43,7 @@ extension OperatorPendingMember {
     init(from record: PendingAttendanceRecord) {
         self.init(
             serverID: String(record.attendanceId),
+            participantMemberId: record.memberId,
             name: record.memberName,
             nickname: record.nickname,
             university: record.schoolName,

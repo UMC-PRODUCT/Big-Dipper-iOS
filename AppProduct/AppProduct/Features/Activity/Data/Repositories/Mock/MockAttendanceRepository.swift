@@ -15,16 +15,13 @@ final class MockAttendanceRepository: ChallengerAttendanceRepositoryProtocol,
 
     // MARK: - 조회
 
-    func getAttendanceDetail(
-        recordId: Int
-    ) async throws -> AttendanceRecord {
-        AttendanceRecord(
-            id: recordId,
-            attendanceSheetId: 1,
-            memberId: 1,
-            status: .present,
-            memo: nil
-        )
+    func fetchMySchedulesForAttendance(
+        from: Date,
+        to: Date
+    ) async throws -> [ScheduleDetailData] {
+        _ = from
+        _ = to
+        return []
     }
 
     func getPendingAttendances(
@@ -62,28 +59,6 @@ final class MockAttendanceRepository: ChallengerAttendanceRepositoryProtocol,
                 )
             ]
         ]
-    }
-
-    func getMyHistory() async throws -> [AttendanceHistoryItem] {
-        [
-            AttendanceHistoryItem(
-                attendanceId: 1,
-                scheduleId: 1,
-                scheduleName: "9기 OT",
-                tags: ["SEMINAR", "ALL"],
-                scheduledDate: "2024-01-15",
-                startTime: "14:30",
-                endTime: "16:00",
-                status: .present,
-                statusDisplay: "출석"
-            )
-        ]
-    }
-
-    func getChallengerHistory(
-        challengerId: Int
-    ) async throws -> [AttendanceHistoryItem] {
-        try await getMyHistory()
     }
 
     func getScheduleStats(
@@ -181,29 +156,65 @@ final class MockAttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         )
     }
 
-    func getAvailableSchedules(
-    ) async throws -> [AvailableAttendanceSchedule] {
-        [
-            AvailableAttendanceSchedule(
-                scheduleId: 1,
-                scheduleName: "9기 OT",
-                tags: ["STUDY", "PROJECT"],
-                startTime: "10:00:00",
-                endTime: "12:00:00",
-                sheetId: 1,
-                recordId: 1,
-                status: .beforeAttendance,
-                statusDisplay: "출석 전",
-                locationVerified: true
-            )
-        ]
-    }
-
     // MARK: - 액션
 
-    func approveAttendance(recordId: Int) async throws {}
+    func decideAttendances(
+        scheduleId: Int,
+        decisions: [AttendanceDecisionInput]
+    ) async throws -> [AttendanceDecisionResult] {
+        decisions.map { _ in
+            AttendanceDecisionResult(
+                status: .present,
+                decidedAt: .now,
+                decisionReason: nil,
+                excuseReason: nil,
+                latitude: nil,
+                longitude: nil,
+                decisionMakerMemberInfo: nil,
+                hasDecisionMakerMember: false,
+                isPendingDecision: false
+            )
+        }
+    }
 
-    func rejectAttendance(recordId: Int) async throws {}
+    func requestAttendance(
+        scheduleId: Int,
+        latitude: Double,
+        longitude: Double,
+        locationVerified: Bool
+    ) async throws -> AttendanceDecisionResult {
+        AttendanceDecisionResult(
+            status: .presentPending,
+            decidedAt: nil,
+            decisionReason: nil,
+            excuseReason: nil,
+            latitude: latitude,
+            longitude: longitude,
+            decisionMakerMemberInfo: nil,
+            hasDecisionMakerMember: false,
+            isPendingDecision: true
+        )
+    }
+
+    func submitExcuse(
+        scheduleId: Int,
+        excuseReason: String,
+        isVerified: Bool,
+        latitude: Double,
+        longitude: Double
+    ) async throws -> AttendanceDecisionResult {
+        AttendanceDecisionResult(
+            status: .excusedPending,
+            decidedAt: nil,
+            decisionReason: nil,
+            excuseReason: excuseReason,
+            latitude: latitude,
+            longitude: longitude,
+            decisionMakerMemberInfo: nil,
+            hasDecisionMakerMember: false,
+            isPendingDecision: true
+        )
+    }
 
     func updateScheduleLocation(
         scheduleId: Int,
@@ -215,17 +226,5 @@ final class MockAttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         _ = locationName
         _ = latitude
         _ = longitude
-    }
-
-    func checkAttendance(
-        request: AttendanceCheckRequestDTO
-    ) async throws -> Int {
-        1
-    }
-
-    func submitReason(
-        request: AttendanceReasonRequestDTO
-    ) async throws -> Int {
-        1
     }
 }

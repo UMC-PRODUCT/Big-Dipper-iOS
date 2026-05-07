@@ -56,62 +56,24 @@ extension MyAttendanceItemModel {
     }
 }
 
-// MARK: - AttendanceHistoryItem Conversion
+// MARK: - ScheduleDetailData Conversion
 
 extension MyAttendanceItemModel {
-    /// AttendanceHistoryItem에서 변환
-    /// - Note: beforeAttendance 상태는 nil 반환
-    init?(from item: AttendanceHistoryItem) {
-        guard let itemStatus = MyAttendanceItemStatus(
-            from: item.status
-        ) else {
+    /// ScheduleDetailData (V2)에서 변환
+    /// - Note: attendanceStatus가 nil(beforeAttendance)인 일정은 nil 반환
+    init?(from data: ScheduleDetailData) {
+        let status = data.attendanceStatus ?? .beforeAttendance
+        guard let itemStatus = MyAttendanceItemStatus(from: status) else {
             return nil
         }
 
-        self.id = item.id
+        self.id = data.id
         self.week = 0
-        self.title = item.scheduleName
-        self.startTime = Self.parseTimeString(item.startTime)
-        var parsedEnd = Self.parseTimeString(item.endTime)
-        // FIXME: 자정 넘김 휴리스틱 — 서버가 ISO 8601 datetime 반환 시 제거 (#304) - [25.02.18] 이재원
-        if parsedEnd < self.startTime {
-            parsedEnd = Calendar.current.date(
-                byAdding: .day, value: 1, to: parsedEnd
-            ) ?? parsedEnd
-        }
-        self.endTime = parsedEnd
+        self.title = data.name
+        self.startTime = data.startsAt
+        self.endTime = data.endsAt
         self.status = itemStatus
         self.category = .general
-    }
-
-    /// "HH:mm:ss" 또는 "HH:mm" → 오늘 Date 변환
-    private static func parseTimeString(_ timeString: String) -> Date {
-        if let isoDate = ServerDateTimeConverter.parseUTCDateTime(timeString) {
-            return isoDate
-        }
-
-        let calendar = Calendar.current
-        let now = Date()
-        for format in ["HH:mm:ss", "HH:mm"] {
-            let formatter = DateFormatter()
-            formatter.dateFormat = format
-            formatter.locale = Locale(identifier: "ko_KR")
-            if let time = formatter.date(from: timeString) {
-                var components = calendar.dateComponents(
-                    [.year, .month, .day], from: now
-                )
-                let timeComponents = calendar.dateComponents(
-                    [.hour, .minute, .second], from: time
-                )
-                components.hour = timeComponents.hour
-                components.minute = timeComponents.minute
-                components.second = timeComponents.second
-                if let date = calendar.date(from: components) {
-                    return date
-                }
-            }
-        }
-        return now
     }
 }
 

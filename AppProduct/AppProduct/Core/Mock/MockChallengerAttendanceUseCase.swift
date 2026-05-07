@@ -39,7 +39,7 @@ final class MockChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol
 
     // MARK: - Protocol Methods
 
-    func requestGPSAttendance(sessionId: SessionID, userId: UserID, sheetId: Int) async throws -> Attendance {
+    func requestGPSAttendance(sessionId: SessionID, userId: UserID, scheduleId: Int) async throws -> Attendance {
         try await Task.sleep(for: .seconds(responseDelay))
 
         if let error = mockError {
@@ -61,7 +61,7 @@ final class MockChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol
         )
     }
 
-    func submitLateReason(sessionId: SessionID, userId: UserID, reason: String, sheetId: Int) async throws -> Attendance {
+    func submitLateReason(sessionId: SessionID, userId: UserID, reason: String, scheduleId: Int) async throws -> Attendance {
         try await Task.sleep(for: .seconds(responseDelay))
 
         if let error = mockError {
@@ -78,7 +78,7 @@ final class MockChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol
         )
     }
 
-    func submitAbsentReason(sessionId: SessionID, userId: UserID, reason: String, sheetId: Int) async throws -> Attendance {
+    func submitAbsentReason(sessionId: SessionID, userId: UserID, reason: String, scheduleId: Int) async throws -> Attendance {
         try await Task.sleep(for: .seconds(responseDelay))
 
         return Attendance(
@@ -91,13 +91,13 @@ final class MockChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol
         )
     }
 
-    func fetchAvailableSchedules() async throws -> [AvailableAttendanceSchedule] {
+    func fetchAvailableSchedules() async throws -> [ScheduleDetailData] {
         try await Task.sleep(for: .seconds(responseDelay))
         if let error = mockError { throw error }
         return []
     }
 
-    func fetchMyHistory() async throws -> [AttendanceHistoryItem] {
+    func fetchMyHistory() async throws -> [ScheduleDetailData] {
         try await Task.sleep(for: .seconds(responseDelay))
         if let error = mockError { throw error }
         return []

@@ -33,11 +33,8 @@ struct ChallengerMemberDetailSheetView: View {
         static let profileSize: CGSize = .init(width: 60, height: 60)
 
         static let baseHeight: CGFloat = 360
-        static let emptyRecordHeight: CGFloat = 150
-        static let recordRowHeight: CGFloat = 50
-        static let maxVisibleRecords: Int = 5
-        static let minSheetHeight: CGFloat = 420
-        static let maxSheetHeight: CGFloat = 700
+        static let pendingRecordHeight: CGFloat = 150
+        static let sheetHeight: CGFloat = 560
 
         static let summaryRowVerticalPadding: CGFloat = 12
         static let partTagOpacity: Double = 0.14
@@ -81,31 +78,6 @@ struct ChallengerMemberDetailSheetView: View {
         selectedSummary?.penalty ?? member.penalty
     }
 
-    /// 출석 기록 수에 따라 동적으로 계산된 시트 높이
-    private var dynamicSheetHeight: CGFloat {
-        let recordCount = member.attendanceRecords.count
-
-        if recordCount == 0 {
-            return Constants.baseHeight + Constants.emptyRecordHeight
-        }
-
-        let visibleRecords = min(recordCount, Constants.maxVisibleRecords)
-        let recordsHeight = CGFloat(visibleRecords) * Constants.recordRowHeight
-            + CGFloat(max(0, visibleRecords - 1)) * DefaultSpacing.spacing8
-        let calculatedHeight = Constants.baseHeight + recordsHeight
-
-        return max(Constants.minSheetHeight, min(calculatedHeight, Constants.maxSheetHeight))
-    }
-
-    /// 출석 기록 리스트 영역의 높이
-    private var scrollViewHeight: CGFloat {
-        let recordCount = member.attendanceRecords.count
-        guard recordCount > 0 else { return Constants.emptyRecordHeight }
-
-        let visibleRecords = min(recordCount, Constants.maxVisibleRecords)
-        return CGFloat(visibleRecords) * Constants.recordRowHeight
-            + CGFloat(max(0, visibleRecords - 1)) * DefaultSpacing.spacing8
-    }
 
     // MARK: - Body
 
@@ -118,7 +90,7 @@ struct ChallengerMemberDetailSheetView: View {
             }
             .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
             .scrollContentBackground(.hidden)
-            .presentationDetents([.height(dynamicSheetHeight)])
+            .presentationDetents([.height(Constants.sheetHeight)])
         }
     }
 
@@ -248,38 +220,23 @@ struct ChallengerMemberDetailSheetView: View {
             )
             .appFont(.title3Emphasis)
 
-            if member.attendanceRecords.isEmpty {
-                emptyRecordView
-            } else {
-                recordListView
-            }
+            attendancePendingView
         }
     }
 
-    /// 출석 기록이 없을 때 표시되는 빈 상태 뷰
-    private var emptyRecordView: some View {
+    /// 출석 이력 준비 중 안내 카드
+    private var attendancePendingView: some View {
         VStack(spacing: DefaultSpacing.spacing8) {
-            Image(systemName: "calendar.badge.exclamationmark")
+            Image(systemName: "clock.badge.exclamationmark")
                 .appFont(.title1, color: .grey500)
-            Text("아직 출석 기록이 없습니다")
-                .appFont(.subheadline, color: .grey500)
+            Text("출석 이력 준비 중")
+                .appFont(.subheadlineEmphasis, color: .grey500)
+            Text("V2 출석 도메인 마이그레이션 후 다시 제공될 예정입니다.")
+                .appFont(.footnote, color: .grey500)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: Constants.emptyRecordHeight)
-        .background(.white, in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
-        .glass()
-    }
-
-    /// 출석 기록 리스트 뷰
-    private var recordListView: some View {
-        List(member.attendanceRecords) { record in
-            attendanceRecordRow(record)
-                .listRowBackground(Color.clear)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .scrollIndicators(.hidden)
-        .frame(height: scrollViewHeight)
+        .frame(height: Constants.pendingRecordHeight)
         .background(.white, in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
         .glass()
     }
@@ -324,21 +281,6 @@ struct ChallengerMemberDetailSheetView: View {
         .padding(.vertical, Constants.summaryRowVerticalPadding)
     }
 
-    /// 출석 기록 개별 행 (상태 태그 + 세션 제목)
-    private func attendanceRecordRow(_ record: MemberAttendanceRecord) -> some View {
-        HStack(spacing: DefaultSpacing.spacing16) {
-            Text(record.status.displayText)
-                .appFont(.subheadlineEmphasis, color: record.status.fontColor)
-                .padding(Constants.tagPadding)
-                .background(record.status.backgroundColor, in: Capsule())
-
-            Text(record.sessionTitle)
-                .appFont(.subheadline)
-                .lineLimit(1)
-
-            Spacer()
-        }
-    }
 }
 
 // MARK: - Preview
@@ -359,23 +301,7 @@ struct ChallengerMemberDetailSheetView: View {
                     rewardPoints: 3,
                     badge: false,
                     managementTeam: .schoolPartLeader,
-                    attendanceRecords: [
-                        MemberAttendanceRecord(
-                            sessionTitle: "OT 및 Git 기초",
-                            week: 1,
-                            status: .present
-                        ),
-                        MemberAttendanceRecord(
-                            sessionTitle: "iOS SwiftUI 기초",
-                            week: 2,
-                            status: .absent
-                        ),
-                        MemberAttendanceRecord(
-                            sessionTitle: "네비게이션 & 데이터 플로우",
-                            week: 3,
-                            status: .late
-                        ),
-                    ],
+                    attendanceRecords: [],
                     penaltyHistory: [],
                     generationPoints: [
                         GenerationPointSummary(gisu: 7, reward: 1, penalty: 0),

@@ -131,11 +131,11 @@ struct ChallengerAttendanceView: View, Equatable {
         MainButton(attendanceViewModel.buttonStyle(for: session)) {
             triggerHaptic()
             Task {
-                guard let sheetId = attendanceViewModel
-                    .sheetId(for: session.info.sessionId)
+                guard let scheduleId = attendanceViewModel
+                    .scheduleId(for: session.info.sessionId)
                 else {
                     #if DEBUG
-                    print("[Attendance] sheetId not found for sessionId: \(session.info.sessionId.value)")
+                    print("[Attendance] scheduleId not found for sessionId: \(session.info.sessionId.value)")
                     print("[Attendance] availableSchedules: \(attendanceViewModel.availableSchedules)")
                     #endif
                     return
@@ -143,7 +143,7 @@ struct ChallengerAttendanceView: View, Equatable {
                 await attendanceViewModel.attendanceBtnTapped(
                     userId: userId,
                     session: session,
-                    sheetId: sheetId
+                    scheduleId: scheduleId
                 )
                 triggerSuccessHaptic()
             }
@@ -169,9 +169,9 @@ struct ChallengerAttendanceView: View, Equatable {
         )
         .sheet(isPresented: $showReasonSheet) {
             ChallengerAttendanceReasonSheet { reason in
-                guard let sheetId = attendanceViewModel.sheetId(for: session.info.sessionId) else {
+                guard let scheduleId = attendanceViewModel.scheduleId(for: session.info.sessionId) else {
                     #if DEBUG
-                    print("[Attendance] sheetId not found for reason submit")
+                    print("[Attendance] scheduleId not found for reason submit")
                     #endif
                     return
                 }
@@ -179,7 +179,7 @@ struct ChallengerAttendanceView: View, Equatable {
                     userId: userId,
                     session: session,
                     reason: reason,
-                    sheetId: sheetId
+                    scheduleId: scheduleId
                 )
             }
         }
