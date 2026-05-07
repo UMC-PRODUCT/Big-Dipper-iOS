@@ -97,12 +97,33 @@ struct ScheduleRegistrationView: View {
     private var formContent: some View {
         Form {
             inlineErrorSection
-            section(.title, .place)
+            section(.title)
+            placeSection
             section(.allDay, .date)
             AttendancePolicySection(viewModel: viewModel)
             section(.participation)
             section(.tag)
             section(.memo)
+        }
+        .alertPrompt(item: $viewModel.alertPrompt)
+    }
+
+    /// 대면/비대면 토글과 장소 선택을 묶은 섹션입니다.
+    private var placeSection: some View {
+        Section {
+            InPersonToggle(
+                isInPerson: Binding(
+                    get: { !viewModel.isOnline },
+                    set: { viewModel.inPersonModeToggleChanged(to: $0) }
+                )
+            )
+
+            if !viewModel.isOnline {
+                PlaceSelectView(place: $viewModel.place)
+            } else {
+                Text("비대면 일정은 장소가 자동으로 비워집니다")
+                    .appFont(.footnote, color: .grey500)
+            }
         }
     }
 
@@ -312,7 +333,13 @@ struct ScheduleRegistrationView: View {
             Memo(memo: $viewModel.memo)
                 .equatable()
         case .participation:
-            ParticipantSection(challenger: $viewModel.participatn)
+            ParticipantSection(
+                challenger: $viewModel.participatn,
+                maxParticipantCount: {
+                    guard case .loaded(let caps) = viewModel.capabilitiesState else { return nil }
+                    return caps.maxParticipantCount
+                }()
+            )
         case .tag:
             TagSection(
                 tag: Binding(
@@ -351,6 +378,28 @@ fileprivate struct TitleView: View, Equatable {
         Text(ScheduleGenerationType.title.placeholder ?? "")
             .font(ScheduleGenerationType.title.placeholderFont)
             .foregroundStyle(ScheduleGenerationType.title.placeholderColor)
+    }
+}
+
+// MARK: - In-Person Toggle
+
+/// "대면 일정" 설정 토글 뷰
+///
+/// `isInPerson == true` 이면 대면(장소 입력 필수), `false` 이면 비대면.
+/// ViewModel의 `isOnline` 과 의미가 반전되어 있으므로 inverse binding 으로 연결합니다.
+fileprivate struct InPersonToggle: View, Equatable {
+    @Binding var isInPerson: Bool
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.isInPerson == rhs.isInPerson
+    }
+
+    var body: some View {
+        Toggle(isOn: $isInPerson) {
+            Text("대면 일정")
+                .appFont(.body, color: .black)
+        }
+        .tint(.indigo500)
     }
 }
 
@@ -574,48 +623,66 @@ fileprivate struct TagSection: View {
 
 /// 참여자(챌린저) 선택 및 관리 섹션
 fileprivate struct ParticipantSection: View {
-    
+
     /// 선택된 참여자 리스트 바인딩
     @Binding var challenger: [ChallengerInfo]
-    
+
+    /// 최대 초대 가능 인원 (`nil` = 제한 없음)
+    let maxParticipantCount: Int?
+
     /// 참여자 선택 시트 표시 여부
     @State private var showParticipantSheet: Bool = false
-    
+
     private enum Constants {
         static let challengerText: String = "초대받은 챌린저"
         static let chevronImage: String = "chevron.right"
     }
-    
+
+    private var isAtCapacity: Bool {
+        guard let max = maxParticipantCount else { return false }
+        return challenger.count >= max
+    }
+
     var body: some View {
-        Button {
-            showParticipantSheet.toggle()
-        } label: {
-            HStack {
-                Text(Constants.challengerText)
-                    .foregroundStyle(.black)
-                Spacer()
-                participant
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
+            Button {
+                showParticipantSheet.toggle()
+            } label: {
+                HStack {
+                    Text(Constants.challengerText)
+                        .foregroundStyle(.black)
+                    Spacer()
+                    participant
+                }
+            }
+            .disabled(isAtCapacity)
+            .sheet(isPresented: $showParticipantSheet) {
+                SelectedChallengerView(challenger: $challenger)
+                    .interactiveDismissDisabled()
+            }
+
+            if let max = maxParticipantCount, isAtCapacity {
+                Text("최대 \(max)명까지 추가할 수 있습니다")
+                    .appFont(.caption1, color: .grey500)
             }
         }
-        .sheet(isPresented: $showParticipantSheet) {
-            SelectedChallengerView(challenger: $challenger)
-                .interactiveDismissDisabled()
-        }
     }
-    
-    /// 선택된 참여자 수 표시
+
+    /// 선택된 참여자 수 (및 상한 도달 시 카운터) 표시
     private var participant: some View {
-        HStack(spacing: DefaultSpacing.spacing8, content: {
-            if !challenger.isEmpty {
+        HStack(spacing: DefaultSpacing.spacing8) {
+            if let max = maxParticipantCount {
+                Text("\(challenger.count) / \(max)")
+                    .appFont(.footnote, color: isAtCapacity ? .red : .grey600)
+            } else if !challenger.isEmpty {
                 Text("\(challenger.count)명")
                     .appFont(.callout, color: .grey500)
             }
-            
+
             Image(systemName: Constants.chevronImage)
-                .foregroundStyle(.grey500)
-        })
+                .foregroundStyle(isAtCapacity ? Color.grey400 : Color.grey500)
+        }
     }
-    
 }
 
 // MARK: - Keyboard Dismiss On Picker Toggle

@@ -10,7 +10,7 @@ import SwiftUI
 /// 운영진 출석 현황 목록 화면 (Schedule V2 #658)
 ///
 /// `GET /api/v2/schedules/attendance` 의 응답을 카드 리스트로 표시하고,
-/// 상태 필터 칩을 통해 클라이언트가 서버 측 필터링을 트리거합니다.
+/// 상태 필터 칩 + 기간 필터(AC#7)를 통해 서버 측 필터링을 트리거합니다.
 ///
 /// 행 탭 시 `Activity.attendanceDetail(scheduleId:)` 로 stack push.
 struct AttendanceListView: View {
@@ -41,6 +41,11 @@ struct AttendanceListView: View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
             filterChipRow
 
+            if viewModel.isFilterExpanded {
+                periodFilterExpandedRow
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             switch viewModel.listState {
             case .idle, .loading:
                 loadingView
@@ -54,6 +59,7 @@ struct AttendanceListView: View {
                 errorView(error: error)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isFilterExpanded)
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
         .padding(.top, DefaultConstant.defaultSafeTop)
         .navigationTitle("출석 현황")
@@ -86,9 +92,80 @@ struct AttendanceListView: View {
                         Task { await viewModel.filterButtonTapped(status) }
                     }
                     .buttonSize(.small)
+                    .accessibilityAddTraits(viewModel.selectedFilter == status ? .isSelected : [])
                 }
+
+                periodFilterToggleButton
             }
         }
+    }
+
+    private var periodFilterToggleButton: some View {
+        ChipButton(
+            viewModel.periodPreset.label,
+            isSelected: viewModel.isFilterExpanded,
+            trailingIcon: true,
+            action: { viewModel.isFilterExpanded.toggle() }
+        )
+        .buttonSize(.small)
+        .accessibilityLabel("기간 필터")
+        .accessibilityHint(viewModel.isFilterExpanded ? "필터 접기" : "필터 펼치기")
+    }
+
+    private var periodFilterExpandedRow: some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DefaultSpacing.spacing8) {
+                    ForEach(AttendancePeriodPreset.allCases) { preset in
+                        ChipButton(
+                            preset.label,
+                            isSelected: viewModel.periodPreset == preset
+                        ) {
+                            Task { await viewModel.presetSelected(preset) }
+                        }
+                        .buttonSize(.small)
+                        .accessibilityAddTraits(viewModel.periodPreset == preset ? .isSelected : [])
+                    }
+                }
+            }
+
+            if viewModel.periodPreset == .custom {
+                customDatePickerRow
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .animation(.easeInOut(duration: 0.2), value: viewModel.periodPreset == .custom)
+            }
+        }
+    }
+
+    private var customDatePickerRow: some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
+            DatePicker(
+                "시작",
+                selection: $viewModel.fromDate,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.compact)
+            .font(.app(.footnote))
+            .onChange(of: viewModel.fromDate) {
+                if viewModel.toDate < viewModel.fromDate {
+                    viewModel.toDate = viewModel.fromDate.addingTimeInterval(24 * 60 * 60)
+                }
+                Task { await viewModel.fetch() }
+            }
+
+            DatePicker(
+                "종료",
+                selection: $viewModel.toDate,
+                in: viewModel.fromDate...,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.compact)
+            .font(.app(.footnote))
+            .onChange(of: viewModel.toDate) {
+                Task { await viewModel.fetch() }
+            }
+        }
+        .padding(.horizontal, DefaultSpacing.spacing4)
     }
 
     private var loadingView: some View {
@@ -230,18 +307,27 @@ private struct AttendanceListRow: View, Equatable {
     }
 
     private var dateRangeText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M월 d일 (E) HH:mm"
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        let start = formatter.string(from: info.startsAt)
-
-        let endFormatter = DateFormatter()
-        endFormatter.dateFormat = "HH:mm"
-        endFormatter.locale = Locale(identifier: "ko_KR")
-        endFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        let end = endFormatter.string(from: info.endsAt)
-
+        guard info.startsAt <= info.endsAt else {
+            return AttendanceListRow.kstDetailFormatter.string(from: info.startsAt)
+        }
+        let start = AttendanceListRow.kstDetailFormatter.string(from: info.startsAt)
+        let end = AttendanceListRow.kstHourMinuteFormatter.string(from: info.endsAt)
         return "\(start) ~ \(end)"
     }
+
+    private static let kstDetailFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "M월 d일 (E) HH:mm"
+        f.locale = Locale(identifier: "ko_KR")
+        f.timeZone = .kst
+        return f
+    }()
+
+    private static let kstHourMinuteFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        f.locale = Locale(identifier: "ko_KR")
+        f.timeZone = .kst
+        return f
+    }()
 }

@@ -36,6 +36,12 @@ class ScheduleDetailViewModel {
     /// 일정 삭제 진행 중 여부
     var isDeleting: Bool = false
 
+    /// 일정이 이미 시작되었는지 여부 (상세 화면 수정 버튼 사전 차단용)
+    var isScheduleStarted: Bool {
+        guard case .loaded(let data) = self.data else { return false }
+        return Date() >= data.startsAt
+    }
+
     // MARK: - Init
     init(scheduleId: Int) {
         self.scheduleId = scheduleId
