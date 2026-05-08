@@ -5,6 +5,7 @@ let project = coreProject(
     name: "UMCFoundation",
     bundleIdSuffix: "foundation",
     destinations: [.iPhone, .appleWatch],
-    deploymentTargets: .multiplatform(iOS: "26.3", watchOS: "26.3")
+    deploymentTargets: .multiplatform(iOS: "26.3", watchOS: "26.3"),
+    includesTests: true
 )
 

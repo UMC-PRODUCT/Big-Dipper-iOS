@@ -7,5 +7,6 @@ let project = featureProject(
     domainDeploymentTargets: .multiplatform(iOS: "26.3", watchOS: "26.3"),
     presentationExtraDependencies: [
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
-    ]
+    ],
+    includesDomainTests: true
 )
