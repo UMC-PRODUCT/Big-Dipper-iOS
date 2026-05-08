@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum AttendanceStatus: String, CaseIterable {
+public enum AttendanceStatus: String, CaseIterable, Sendable {
     case beforeAttendance = "pending"
     case pendingApproval
     case present
