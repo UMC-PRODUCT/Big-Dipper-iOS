@@ -6,6 +6,7 @@ let project = coreProject(
     bundleIdSuffix: "uicomponents",
     dependencies: [
         .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .external(name: "Kingfisher"),
     ]
 )
