@@ -16,7 +16,7 @@ public final class FetchTermsUseCase: FetchTermsUseCaseProtocol {
     
     // MARK: - Init
     
-    init(repository: MyPageRepositoryProtocol) {
+    public init(repository: MyPageRepositoryProtocol) {
         self.repository = repository
     }
     
