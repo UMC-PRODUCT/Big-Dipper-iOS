@@ -3,7 +3,13 @@ import ProjectDescriptionHelpers
 
 let project = Project(
     name: "UMCApp",
-    settings: recommendedProjectSettings,
+    settings: .settings(
+        base: recommendedSettings,
+        configurations: [
+            .debug(name: "Debug", xcconfig: "Secrets/Secrets.xcconfig"),
+            .release(name: "Release", xcconfig: "Secrets/Secrets.xcconfig"),
+        ]
+    ),
     targets: [
         .target(
             name: "UMCApp",
@@ -21,6 +27,7 @@ let project = Project(
                     "NSBluetoothPeripheralUsageDescription": "주변 명함을 교환하기 위해 블루투스를 사용합니다.",
                     "NFCReaderUsageDescription": "NFC로 명함 정보를 주고받습니다.",
                     "NSNearbyInteractionUsageDescription": "근거리에서 정확한 명함 교환을 위해 위치를 사용합니다.",
+                    "BASE_URL": "$(BASE_URL)",
                 ]
             ),
             buildableFolders: [
