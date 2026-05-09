@@ -77,7 +77,7 @@ import CoreNetwork
 /// }
 /// ```
 @Observable
-public final class DIContatiner {
+public final class DIContainer {
     
     // MARK: - Storage
     /// @ObservationIgnored: resolve() 시 cachedInstances 쓰기가 @Observable 변경 알림을 발생시켜
@@ -159,12 +159,12 @@ public final class DIContatiner {
 }
 
 // MARK: - 앱 의존성 구성
-extension DIContatiner {
+extension DIContainer {
     
     /// 앱에서 사용하는 모든 의존성을 등록한 DIContainer를 반환합니다.
     /// - Parameter modelContext: SwiftData ModelContext (CloudKit 저장소용)
-    public static func configured(modelContext: ModelContext) -> DIContatiner {
-        let container = DIContatiner()
+    public static func configured(modelContext: ModelContext) -> DIContainer {
+        let container = DIContainer()
         
         // MARK: - Network Infrastructure
         container.register(NetworkClient.self) {
