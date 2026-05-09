@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// 공지 확인 상태 모델
 public struct NoticeReadStatusItemModel: Equatable, Identifiable {
     public let id = UUID()
     public let profileImageURL: String?
