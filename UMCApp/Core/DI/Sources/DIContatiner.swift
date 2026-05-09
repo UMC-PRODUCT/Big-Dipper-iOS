@@ -166,6 +166,11 @@ extension DIContainer {
     public static func configured(modelContext: ModelContext) -> DIContainer {
         let container = DIContainer()
         
+        // MARK: - Token Store
+          container.register(TokenStore.self) {
+              KeychainTokenStore()
+          }
+        
         // MARK: - Network Infrastructure
         container.register(NetworkClient.self) {
             AuthSystemFactory.makeNetworkClient(baseURL: NetworkConfig.baseURL, tokenStore: container.resolve(TokenStore.self)
