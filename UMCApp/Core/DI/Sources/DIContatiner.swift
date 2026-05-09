@@ -177,6 +177,12 @@ extension DIContainer {
             )
         }
         
+        // MARK: - Network Infrastructure
+        container.register(NetworkClient.self) {
+            AuthSystemFactory.makeNetworkClient(baseURL: NetworkConfig.baseURL, tokenStore: container.resolve(TokenStore.self)
+            )
+        }
+        
         return container
     }
 }
