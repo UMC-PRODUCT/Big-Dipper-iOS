@@ -9,6 +9,7 @@ import Foundation
 import Moya
 import CoreNetwork
 import UMCFoundation
+import MyPageDomain
 
 /// MyPage Repository 구현체
 ///

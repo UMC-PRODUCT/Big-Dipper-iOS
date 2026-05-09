@@ -12,4 +12,10 @@ public struct MyPageTerms {
     let id: String
     let link: String
     let isMandatory: Bool
+    
+    public init(id: String, link: String, isMandatory: Bool) {
+        self.id = id
+        self.link = link
+        self.isMandatory = isMandatory
+    }
 }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import MyPageDomain
 
 
 public struct MyPageTermsResponseDTO: Codable {
