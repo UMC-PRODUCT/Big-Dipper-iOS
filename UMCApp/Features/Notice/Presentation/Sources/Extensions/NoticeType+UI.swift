@@ -10,6 +10,7 @@ import NoticeDomain
 import CoreDesignSystem
 
 extension NoticeType {
+    /// 필독 유형의 공지 칩
     public var textColor: Color {
         switch self {
         case .essential:
