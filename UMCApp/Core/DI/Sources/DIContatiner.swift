@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import CoreNetwork
 
 // MARK: - DIContainer 사용 예시
 /// DIContainer는 의존성 주입(Dependency Injection)을 관리하는 컨테이너입니다.
@@ -94,7 +95,7 @@ public final class DIContatiner {
     /// - Parameters:
     ///   - type: 등록할 프로토콜/타입 (예: `UserRepositoryProtocol.self`)
     ///   - factory: 인스턴스를 생성하는 클로저
-    public func registe<T>(_ type: T.Type, factory: @escaping () -> T) {
+    public func register<T>(_ type: T.Type, factory: @escaping () -> T) {
         let key = ObjectIdentifier(type)
         factories[key] = factory
     }
@@ -164,6 +165,12 @@ extension DIContatiner {
     /// - Parameter modelContext: SwiftData ModelContext (CloudKit 저장소용)
     public static func configured(modelContext: ModelContext) -> DIContatiner {
         let container = DIContatiner()
+        
+        // MARK: - Network Infrastructure
+        container.register(NetworkClient.self) {
+            AuthSystemFactory.makeNetworkClient(baseURL: NetworkConfig.baseURL, tokenStore: container.resolve(TokenStore.self)
+            )
+        }
         
         return container
     }
