@@ -6,5 +6,11 @@ let project = featureProject(
     presentationExtraDependencies: [
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "BadgeDomain", path: .relativeToRoot("Features/Badge")),
+    ],
+    includesDataTests: true,
+    dataTestDependencies: [
+        .target(name: "MyPageDomain"),
+        .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation"))
     ]
 )
