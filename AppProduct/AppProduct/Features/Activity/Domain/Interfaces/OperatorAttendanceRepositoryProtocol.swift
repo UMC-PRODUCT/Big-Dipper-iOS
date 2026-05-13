@@ -23,15 +23,6 @@ protocol OperatorAttendanceRepositoryProtocol {
 
     // MARK: - 조회
 
-    /// 승인 대기 출석 목록 조회 (관리자)
-    func getPendingAttendances(
-        scheduleId: Int
-    ) async throws -> [PendingAttendanceRecord]
-
-    /// 전체 승인 대기 출석 목록 일괄 조회 (관리자)
-    /// - Returns: scheduleId별로 그룹핑된 Dictionary
-    func getAllPendingAttendances() async throws -> [Int: [PendingAttendanceRecord]]
-
     /// 일정 출석 현황 목록 조회 (V2, 관리자)
     ///
     /// `GET /api/v2/schedules/attendance` 호출. 직책별 조회 범위는 서버에서 자동 분기.

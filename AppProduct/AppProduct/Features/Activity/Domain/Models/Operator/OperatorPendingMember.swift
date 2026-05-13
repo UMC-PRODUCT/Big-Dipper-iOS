@@ -36,20 +36,3 @@ struct OperatorPendingMember: Identifiable, Equatable {
     }
 }
 
-// MARK: - Domain → Presentation 변환
-
-extension OperatorPendingMember {
-    /// PendingAttendanceRecord(Domain) → OperatorPendingMember(Presentation) 변환
-    init(from record: PendingAttendanceRecord) {
-        self.init(
-            serverID: String(record.attendanceId),
-            participantMemberId: record.memberId,
-            name: record.memberName,
-            nickname: record.nickname,
-            university: record.schoolName,
-            requestTime: record.requestedAt,
-            reason: record.reason,
-            profileImageURL: record.profileImageLink?.absoluteString
-        )
-    }
-}

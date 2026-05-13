@@ -24,43 +24,6 @@ final class MockAttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         return []
     }
 
-    func getPendingAttendances(
-        scheduleId: Int
-    ) async throws -> [PendingAttendanceRecord] {
-        [
-            PendingAttendanceRecord(
-                attendanceId: 1,
-                memberId: 1,
-                memberName: "일일일",
-                nickname: "길동이",
-                profileImageLink: nil,
-                schoolName: "중앙대학교",
-                status: .pendingApproval,
-                reason: "병원 방문으로 인한 지각",
-                requestedAt: .now
-            )
-        ]
-    }
-
-    func getAllPendingAttendances(
-    ) async throws -> [Int: [PendingAttendanceRecord]] {
-        [
-            1: [
-                PendingAttendanceRecord(
-                    attendanceId: 1,
-                    memberId: 1,
-                    memberName: "일일일",
-                    nickname: "길동이",
-                    profileImageLink: nil,
-                    schoolName: "중앙대학교",
-                    status: .pendingApproval,
-                    reason: "병원 방문으로 인한 지각",
-                    requestedAt: .now
-                )
-            ]
-        ]
-    }
-
     func fetchAttendanceList(
         from: Date?,
         to: Date?,

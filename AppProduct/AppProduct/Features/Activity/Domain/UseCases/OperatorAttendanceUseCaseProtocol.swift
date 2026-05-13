@@ -10,12 +10,6 @@ import Foundation
 // MARK: - Protocol
 
 protocol OperatorAttendanceUseCaseProtocol {
-    /// 승인 대기 멤버 목록 조회
-    func fetchPendingAttendances(scheduleId: Int) async throws -> [PendingAttendanceRecord]
-    /// 전체 승인 대기 멤버 일괄 조회
-    /// - Returns: scheduleId별로 그룹핑된 Dictionary
-    func fetchAllPendingAttendances() async throws -> [Int: [PendingAttendanceRecord]]
-
     /// 출석 일괄 승인/반려 (V2)
     func decideAttendances(
         scheduleId: Int,
