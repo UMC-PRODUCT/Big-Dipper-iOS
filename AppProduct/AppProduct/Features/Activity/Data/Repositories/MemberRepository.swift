@@ -310,6 +310,7 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
 private extension MemberRepository {
     enum Constants {
         static let searchPageSize = 200
+        static let managedStudyGroupsPageSize = 100
     }
 
     struct GroupMemberDescriptor: Hashable {
@@ -449,24 +450,61 @@ private extension MemberRepository {
         return statusCode == 404 || statusCode == 405
     }
 
+    /// 로그인 사용자가 접근 가능한 스터디 그룹의 (id, name) 목록을 `/study-groups/managed` 페이지를
+    /// 전부 순회하여 수집합니다.
+    ///
+    /// 서버가 역할(회장단/일반)에 따라 적절한 범위를 반환합니다.
     func fetchStudyGroupNames() async throws -> [StudyGroupNameItemDTO]? {
+        var cursor: Int? = nil
+        var hasNext = true
+        var aggregated: [StudyGroupNameItemDTO] = []
+
+        while hasNext {
+            guard let page = try await fetchManagedStudyGroupsPage(
+                cursor: cursor,
+                size: Constants.managedStudyGroupsPageSize
+            ) else {
+                if aggregated.isEmpty { return nil }
+                break
+            }
+
+            aggregated.append(contentsOf: page.studyGroups)
+            hasNext = page.hasNext
+            cursor = page.nextCursor
+            if hasNext && cursor == nil {
+                break
+            }
+        }
+
+        var deduplicatedByGroupID: [Int: StudyGroupNameItemDTO] = [:]
+        for item in aggregated where item.groupId > 0 {
+            deduplicatedByGroupID[item.groupId] = item
+        }
+
+        return deduplicatedByGroupID.values.sorted { $0.groupId < $1.groupId }
+    }
+
+    private func fetchManagedStudyGroupsPage(
+        cursor: Int?,
+        size: Int
+    ) async throws -> MyStudyGroupsPageDTO? {
         let response = try await adapter.request(
-            StudyRouter.getStudyGroupNames
+            StudyRouter.getMyStudyGroups(cursor: cursor, size: size)
         )
 
         if let apiResponse = try? decoder.decode(
-            APIResponse<StudyGroupNamesDTO>.self,
+            APIResponse<MyStudyGroupsPageDTO>.self,
             from: response.data
         ),
            let wrapped = try? apiResponse.unwrap() {
-            return wrapped.studyGroups
+            return wrapped
         }
 
         if let plain = try? decoder.decode(
-            StudyGroupNamesDTO.self,
+            MyStudyGroupsPageDTO.self,
             from: response.data
         ) {
-            return plain.studyGroups
+            return plain
         }
 
         return nil
