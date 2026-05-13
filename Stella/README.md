@@ -81,6 +81,16 @@ open "dist/Stella.app"
 
 각 파일은 `*.example` 템플릿을 복사해 사용하면 됩니다.
 
+### 외부 API(Third-party) 처리
+
+UMC OpenAPI 스펙에 포함되지 않는 외부 서비스 API(예: SK TMap, KakaoMap, FCM 등)는 scan 시 `unmatchedRouterCases`로 잡혀 노이즈가 됩니다. 해당 Router case를 `Fixtures/overrides.yml`에 `ignore: true`로 등록하면 coverage 리포트에서 제외됩니다.
+
+```yaml
+- routerCase: TMapGeocodingRouter.geocode
+  ignore: true
+  reason: external API (SK TMap), not part of UMC OpenAPI
+```
+
 스냅샷 JSON 스키마는 `Sources/StellaCore/Snapshot/CoverageSnapshot.swift` 를 기준으로 합니다.
 
 ## CI / GitHub Pages
