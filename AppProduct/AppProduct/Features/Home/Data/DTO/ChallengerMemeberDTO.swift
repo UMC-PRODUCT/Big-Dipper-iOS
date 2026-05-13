@@ -178,7 +178,8 @@ struct ChallengerPointDTO: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIntFlexibleIfPresent(forKey: .id) ?? 0
-        pointType = try container.decodeIfPresent(PointType.self, forKey: .pointType) ?? .warning
+        let rawPointType = try container.decodeIfPresent(String.self, forKey: .pointType)
+        pointType = rawPointType.flatMap { PointType(rawValue: $0) } ?? .warning
         if let pointValue = try? container.decode(Double.self, forKey: .point) {
             point = pointValue
         } else if let intValue = try? container.decode(Int.self, forKey: .point) {
@@ -208,7 +209,9 @@ enum PointType: String, Codable {
     case bestWorkbook = "BEST_WORKBOOK"
     case warning = "WARNING"
     case out = "OUT"
+    case custom = "CUSTOM"
     case blogChallenge = "BLOG_CHALLENGE"
+    case bestWorkbookV2 = "BEST_WORKBOOK_V2"
     case umcEventReview = "UMC_EVENT_REVIEW"
     case peerReviewSubmission = "PEER_REVIEW_SUBMISSION"
     case noWorkbookMission = "NO_WORKBOOK_MISSION"
@@ -221,11 +224,10 @@ enum PointType: String, Codable {
     case partLeadFeedbackLate = "PART_LEAD_FEEDBACK_LATE"
     case schoolCoreMeetingAbsent = "SCHOOL_CORE_MEETING_ABSENT"
     case schoolCoreTaskNotCompleted = "SCHOOL_CORE_TASK_NOT_COMPLETED"
-    case custom = "CUSTOM"
 
     var isPenalty: Bool {
         switch self {
-        case .bestWorkbook, .blogChallenge, .umcEventReview, .peerReviewSubmission:
+        case .bestWorkbook, .bestWorkbookV2, .blogChallenge, .umcEventReview, .peerReviewSubmission:
             return false
         default:
             return true

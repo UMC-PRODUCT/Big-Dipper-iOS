@@ -21,7 +21,9 @@ enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identifiable 
     case bestWorkbook = "BEST_WORKBOOK"
     case warning = "WARNING"
     case out = "OUT"
+    case custom = "CUSTOM"
     case blogChallenge = "BLOG_CHALLENGE"
+    case bestWorkbookV2 = "BEST_WORKBOOK_V2"
     case umcEventReview = "UMC_EVENT_REVIEW"
     case peerReviewSubmission = "PEER_REVIEW_SUBMISSION"
     case noWorkbookMission = "NO_WORKBOOK_MISSION"
@@ -34,7 +36,6 @@ enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identifiable 
     case partLeadFeedbackLate = "PART_LEAD_FEEDBACK_LATE"
     case schoolCoreMeetingAbsent = "SCHOOL_CORE_MEETING_ABSENT"
     case schoolCoreTaskNotCompleted = "SCHOOL_CORE_TASK_NOT_COMPLETED"
-    case custom = "CUSTOM"
 
     var id: String { rawValue }
 
@@ -43,7 +44,10 @@ enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identifiable 
         case .bestWorkbook: return "우수 워크북"
         case .warning: return "경고"
         case .out: return "아웃"
+        case .custom: return "기타"
         case .blogChallenge: return "블로그 챌린지"
+        // TODO: 백엔드/디자인팀 정식 표기 미확정 — 잠정 "우수 워크북 V2"
+        case .bestWorkbookV2: return "우수 워크북 V2"
         case .umcEventReview: return "UMC 행사 후기"
         case .peerReviewSubmission: return "동료 평가 제출"
         case .noWorkbookMission: return "워크북 미제출"
@@ -56,7 +60,6 @@ enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identifiable 
         case .partLeadFeedbackLate: return "파트장 피드백 지연"
         case .schoolCoreMeetingAbsent: return "회장단 회의 결석"
         case .schoolCoreTaskNotCompleted: return "회장단 업무 미완료"
-        case .custom: return "기타"
         }
     }
 
@@ -65,7 +68,9 @@ enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identifiable 
         case .bestWorkbook: return 2
         case .warning: return 1
         case .out: return 1
+        case .custom: return 0
         case .blogChallenge: return 3
+        case .bestWorkbookV2: return 2
         case .umcEventReview: return 1
         case .peerReviewSubmission: return 1
         case .noWorkbookMission: return -4
@@ -78,7 +83,6 @@ enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identifiable 
         case .partLeadFeedbackLate: return -4
         case .schoolCoreMeetingAbsent: return -4
         case .schoolCoreTaskNotCompleted: return -4
-        case .custom: return 0
         }
     }
 
@@ -93,7 +97,7 @@ enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identifiable 
 
     var minimumRequiredLevel: Int {
         switch self {
-        case .bestWorkbook, .blogChallenge, .umcEventReview, .peerReviewSubmission:
+        case .bestWorkbook, .bestWorkbookV2, .blogChallenge, .umcEventReview, .peerReviewSubmission:
             return 20
         case .noWorkbookMission, .studyLate, .studyAbsent,
              .eventLate, .eventEarlyLeave, .eventLateCancel, .eventNoShow:
