@@ -22,6 +22,26 @@ struct ScheduleCapabilitiesDTO: Codable {
 
     /// 직책별 최대 초대 가능 인원
     let maxParticipantCount: Int
+
+    private enum CodingKeys: String, CodingKey {
+        case canCreateSchedule
+        case canCreateAttendanceRequiredSchedule
+        case maxParticipantCount
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        canCreateSchedule = try container.decodeIfPresent(Bool.self, forKey: .canCreateSchedule) ?? false
+        canCreateAttendanceRequiredSchedule = try container.decodeIfPresent(Bool.self, forKey: .canCreateAttendanceRequiredSchedule) ?? false
+        maxParticipantCount = try container.decodeIntFlexibleIfPresent(forKey: .maxParticipantCount) ?? 0
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(canCreateSchedule, forKey: .canCreateSchedule)
+        try container.encode(canCreateAttendanceRequiredSchedule, forKey: .canCreateAttendanceRequiredSchedule)
+        try container.encode(maxParticipantCount, forKey: .maxParticipantCount)
+    }
 }
 
 // MARK: - Domain Mapping
@@ -35,5 +55,34 @@ extension ScheduleCapabilitiesDTO {
             canCreateAttendanceRequiredSchedule: canCreateAttendanceRequiredSchedule,
             maxParticipantCount: maxParticipantCount
         )
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeIntFlexible(forKey key: Key) throws -> Int {
+        if let value = try? decode(Int.self, forKey: key) {
+            return value
+        }
+        if let value = try? decode(String.self, forKey: key),
+           let intValue = Int(value) {
+            return intValue
+        }
+        if let value = try? decode(Double.self, forKey: key) {
+            return Int(value)
+        }
+        throw DecodingError.typeMismatch(
+            Int.self,
+            DecodingError.Context(
+                codingPath: codingPath + [key],
+                debugDescription: "Expected Int/String-number/Double for key '\(key.stringValue)'"
+            )
+        )
+    }
+
+    func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
+        if (try? decodeNil(forKey: key)) == true {
+            return nil
+        }
+        return try? decodeIntFlexible(forKey: key)
     }
 }
