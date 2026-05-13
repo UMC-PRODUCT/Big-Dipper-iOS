@@ -1,1 +1,10 @@
-overrides: []
+overrides:
+  # TMap은 SK에서 제공하는 외부 API로, UMC OpenAPI 스펙에 포함되지 않습니다.
+  # API coverage 스캔 시 unmatchedRouterCases 노이즈 제거를 위해 ignore 처리합니다.
+  - routerCase: TMapGeocodingRouter.geocode
+    ignore: true
+    reason: external API (SK TMap), not part of UMC OpenAPI
+
+  - routerCase: TMapGeocodingRouter.searchPoi
+    ignore: true
+    reason: external API (SK TMap), not part of UMC OpenAPI
