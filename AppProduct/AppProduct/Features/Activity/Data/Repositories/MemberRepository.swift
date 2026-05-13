@@ -210,6 +210,38 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
         return allGenerationsText(from: profile, fallback: "")
     }
 
+    /// V2 일정 출석 현황에서 특정 멤버의 출석 이력을 조회합니다.
+    ///
+    /// NOTE: [#690] 전체 일정 응답에서 클라이언트 필터링. 데이터 규모가 커지면 페이지네이션 또는 백엔드 멤버 필터 도입 검토.
+    func fetchAttendanceRecords(memberId: Int) async throws -> [MemberAttendanceRecord] {
+        guard memberId > 0 else { return [] }
+
+        let response = try await adapter.request(
+            ScheduleV2Router.getAttendanceList(query: AttendanceListQuery(from: nil, to: nil, attendanceStatus: nil))
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<[ScheduleAttendanceInfoDTO]>.self,
+            from: response.data
+        )
+        let schedules = (try? apiResponse.unwrap()) ?? []
+
+        let sorted = schedules.sorted {
+            ($0.startsAt) < ($1.startsAt)
+        }
+
+        return sorted.enumerated().compactMap { index, schedule in
+            guard let participant = schedule.participants.first(where: { $0.memberId == memberId }) else {
+                return nil
+            }
+            let rawStatus = participant.attendanceStatus ?? "PENDING"
+            return MemberAttendanceRecord(
+                sessionTitle: schedule.name,
+                week: index + 1,
+                status: AttendanceStatus(serverStatus: rawStatus)
+            )
+        }
+    }
+
     func fetchGenerationPointSummaries(
         memberId: Int
     ) async throws -> [GenerationPointSummary] {

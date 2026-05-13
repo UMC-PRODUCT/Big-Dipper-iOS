@@ -33,8 +33,9 @@ struct ChallengerMemberDetailSheetView: View {
         static let profileSize: CGSize = .init(width: 60, height: 60)
 
         static let baseHeight: CGFloat = 360
-        static let pendingRecordHeight: CGFloat = 150
-        static let sheetHeight: CGFloat = 560
+        static let emptyRecordHeight: CGFloat = 150
+        static let sheetHeight: CGFloat = 680
+        static let recordRowMinHeight: CGFloat = 44
 
         static let summaryRowVerticalPadding: CGFloat = 12
         static let partTagOpacity: Double = 0.14
@@ -83,14 +84,17 @@ struct ChallengerMemberDetailSheetView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: DefaultSpacing.spacing32) {
-                memberInfoView
-                summaryCardView
-                recordView
+            ScrollView {
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing32) {
+                    memberInfoView
+                    summaryCardView
+                    recordView
+                }
+                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                .safeAreaPadding(.bottom, DefaultConstant.defaultSafeBottom)
             }
-            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
             .scrollContentBackground(.hidden)
-            .presentationDetents([.height(Constants.sheetHeight)])
+            .presentationDetents([.height(Constants.sheetHeight), .large])
         }
     }
 
@@ -213,32 +217,79 @@ struct ChallengerMemberDetailSheetView: View {
 
     /// 출석/활동 기록 섹션
     private var recordView: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
             Label(
                 "출석/활동 기록",
                 systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
             )
             .appFont(.title3Emphasis)
 
-            attendancePendingView
+            attendanceRecordListView
         }
     }
 
-    /// 출석 이력 준비 중 안내 카드
-    private var attendancePendingView: some View {
+    /// 출석 이력 리스트 (기록 없으면 빈 상태 카드)
+    private var attendanceRecordListView: some View {
+        Group {
+            if member.attendanceRecords.isEmpty {
+                attendanceEmptyView
+            } else {
+                VStack(spacing: .zero) {
+                    ForEach(Array(member.attendanceRecords.enumerated()), id: \.element.id) { index, record in
+                        attendanceRecordRow(record: record)
+                        if index < member.attendanceRecords.count - 1 {
+                            Divider()
+                                .padding(.horizontal, Constants.listPadding.leading)
+                        }
+                    }
+                }
+                .background(
+                    .white,
+                    in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
+                )
+                .glass()
+            }
+        }
+    }
+
+    /// 출석 이력이 없을 때 빈 상태 카드
+    private var attendanceEmptyView: some View {
         VStack(spacing: DefaultSpacing.spacing8) {
-            Image(systemName: "clock.badge.exclamationmark")
+            Image(systemName: "calendar.badge.checkmark")
                 .appFont(.title1, color: .grey500)
-            Text("출석 이력 준비 중")
+            Text("출석 이력이 없습니다")
                 .appFont(.subheadlineEmphasis, color: .grey500)
-            Text("V2 출석 도메인 마이그레이션 후 다시 제공될 예정입니다.")
-                .appFont(.footnote, color: .grey500)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: Constants.pendingRecordHeight)
+        .frame(height: Constants.emptyRecordHeight)
         .background(.white, in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
         .glass()
+    }
+
+    /// 출석 이력 개별 행
+    private func attendanceRecordRow(record: MemberAttendanceRecord) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
+                Text("\(record.week)주차")
+                    .appFont(.footnote, color: .grey500)
+                Text(record.sessionTitle)
+                    .appFont(.subheadlineEmphasis)
+                    .lineLimit(1)
+            }
+            Spacer()
+            attendanceStatusBadge(status: record.status)
+        }
+        .padding(Constants.listPadding)
+        .frame(minHeight: Constants.recordRowMinHeight)
+    }
+
+    /// 출석 상태 배지
+    private func attendanceStatusBadge(status: AttendanceStatus) -> some View {
+        Text(status.displayText)
+            .appFont(.caption1Emphasis, color: .white)
+            .padding(.horizontal, DefaultSpacing.spacing8)
+            .padding(.vertical, DefaultSpacing.spacing4)
+            .background(status.backgroundColor, in: Capsule())
     }
 
     // MARK: - Function

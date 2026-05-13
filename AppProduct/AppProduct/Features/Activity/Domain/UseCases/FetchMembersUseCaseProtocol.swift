@@ -37,4 +37,7 @@ protocol FetchMembersUseCaseProtocol {
     func fetchGenerationPointSummaries(
         memberId: Int
     ) async throws -> [GenerationPointSummary]
+
+    /// V2 일정 출석 현황에서 특정 멤버의 출석 이력을 조회합니다.
+    func fetchAttendanceRecords(memberId: Int) async throws -> [MemberAttendanceRecord]
 }

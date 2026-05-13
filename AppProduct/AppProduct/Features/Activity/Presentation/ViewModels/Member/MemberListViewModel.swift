@@ -284,8 +284,10 @@ final class MemberListViewModel {
         )
         async let genPointsTask = try? fetchMembersUseCase
             .fetchGenerationPointSummaries(memberId: memberId)
+        async let recordsTask = try? fetchMembersUseCase
+            .fetchAttendanceRecords(memberId: memberId)
 
-        let records: [MemberAttendanceRecord] = []
+        let records = await recordsTask ?? member.attendanceRecords
         let pointHistory = await pointHistoryTask ?? member.penaltyHistory
         let generationPoints = await genPointsTask ?? []
 
