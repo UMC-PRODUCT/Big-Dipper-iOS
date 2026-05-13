@@ -24,7 +24,7 @@
 | **위치** | `AppProduct/AppleCreateML/ScheduleList/` |
 | **모델 크기** | 약 9KB |
 | **입력** | 일정 제목 (String) |
-| **출력** | 카테고리 레이블 (leadership, study, project, event, workshop, meeting, deadline) |
+| **출력** | 카테고리 레이블 (leadership, project, event, workshop, meeting, deadline 등) |
 | **목적** | 일정 카테고리 자동 태깅 및 필터링 |
 
 ### 모델 특징
@@ -64,31 +64,11 @@
 - 운영진 미팅
 - 조직 문화 활동
 
-### 2. study (스터디/학습)
+> **참고**: `study` (스터디) 카테고리는 분류기 학습 대상에서 제외되었습니다.
+> 스터디 회차 일정은 **스터디 관리 화면**에서 별도로 등록합니다.
+> 기존 STUDY 태그가 붙은 일정은 앱에서 정상적으로 표시됩니다 (icon/color/한글 명칭 유지).
 
-**설명**: 스터디 모임, 세미나, 학습 활동
-
-**UI 표현**:
-- 🔵 색상: `Color.blue`
-- 📚 아이콘: `book.fill`
-- 태그: "스터디"
-
-**학습 데이터 예시**:
-```
-📚 "알고리즘 스터디"
-📚 "React 기초 세미나"
-📚 "Swift 스터디 모임"
-📚 "데이터베이스 학습"
-📚 "코딩 테스트 준비"
-📚 "기술 스택 세미나"
-```
-
-**사용 시나리오**:
-- 정기 스터디 일정
-- 기술 세미나
-- 학습 모임
-
-### 3. project (프로젝트)
+### 2. project (프로젝트)
 
 **설명**: 프로젝트 관련 일정, 발표, 제출
 
@@ -288,7 +268,6 @@ import SwiftUI
 
 enum ScheduleCategory: String, CaseIterable, Codable {
     case leadership = "leadership"
-    case study = "study"
     case project = "project"
     case event = "event"
     case workshop = "workshop"
@@ -298,7 +277,6 @@ enum ScheduleCategory: String, CaseIterable, Codable {
     var color: Color {
         switch self {
         case .leadership: return .purple
-        case .study: return .blue
         case .project: return .green
         case .event: return .yellow
         case .workshop: return .orange
@@ -310,7 +288,6 @@ enum ScheduleCategory: String, CaseIterable, Codable {
     var icon: String {
         switch self {
         case .leadership: return "person.2.fill"
-        case .study: return "book.fill"
         case .project: return "briefcase.fill"
         case .event: return "party.popper.fill"
         case .workshop: return "hammer.fill"
@@ -322,7 +299,6 @@ enum ScheduleCategory: String, CaseIterable, Codable {
     var displayName: String {
         switch self {
         case .leadership: return "리더십"
-        case .study: return "스터디"
         case .project: return "프로젝트"
         case .event: return "이벤트"
         case .workshop: return "워크샵"
@@ -560,12 +536,13 @@ struct CreateScheduleView: View {
 | 카테고리 | 최소 예제 수 | 권장 예제 수 | 중요 키워드 |
 |---------|------------|------------|------------|
 | leadership | 30개 | 50개 | LT, 리더십, 운영진, 임원 |
-| study | 40개 | 70개 | 스터디, 세미나, 학습, 강의 |
 | project | 30개 | 50개 | 프로젝트, 발표, 데모, 킥오프 |
 | event | 30개 | 50개 | MT, 네트워킹, 행사, 파티 |
 | workshop | 25개 | 40개 | 워크샵, 실습, 부트캠프 |
 | meeting | 30개 | 50개 | 회의, 미팅, 논의 |
 | deadline | 30개 | 50개 | 마감, 제출, 납부, 신청 |
+
+> `study` 라벨은 학습 데이터에서 제외되었습니다. 스터디 회차 일정은 스터디 관리 화면에서 별도 등록합니다.
 
 ### 2. Create ML로 모델 학습
 
@@ -591,14 +568,13 @@ struct CreateScheduleView: View {
 
 ```
 leadership: 45개
-study: 68개
 project: 52개
 event: 48개
 workshop: 38개
 meeting: 50개
 deadline: 47개
 ──────────────────
-총 348개
+총 280개
 ```
 
 **균형 체크**:
@@ -644,15 +620,14 @@ deadline: 47개
 예시:
 ```
              예측
-실제    | lead study proj event work meet dead
-──────────────────────────────────────────────
-lead    |  42    1     0    1     0    1    0
-study   |  1    65     0    0     1    1    0
-project |  0    0     50    1     0    1    0
-event   |  2    0     0    44    1    1    0
-workshop|  0    2     0    1    34    1    0
-meeting |  1    1     1    0     0   46    1
-deadline|  0    0     1    0     0    1   45
+실제    | lead proj event work meet dead
+──────────────────────────────────────────
+lead    |  42    0    1     0    1    0
+project |  0    50    1     0    1    0
+event   |  2    0    44    1    1    0
+workshop|  0    0    1    34    1    0
+meeting |  1    1    0     0   46    1
+deadline|  0    1    0     0    1   45
 ```
 
 #### Step 7: 모델 테스트
@@ -695,14 +670,14 @@ deadline|  0    0     1    0     0    1   45
 
 예시:
 ```json
-// study와 workshop이 혼동되는 경우
-// study 데이터 강화
-{"text": "React 이론 세미나", "label": "study"},
-{"text": "알고리즘 개념 학습", "label": "study"},
+// leadership과 meeting이 혼동되는 경우
+// leadership 데이터 강화
+{"text": "운영진 리더십 교육", "label": "leadership"},
+{"text": "파트 리더 역량 강화", "label": "leadership"},
 
-// workshop 데이터 강화
-{"text": "React 실습 워크샵", "label": "workshop"},
-{"text": "알고리즘 코딩 실습", "label": "workshop"}
+// meeting 데이터 강화
+{"text": "정기 파트 회의", "label": "meeting"},
+{"text": "주간 전체 회의", "label": "meeting"}
 ```
 
 #### 문제: 전체 정확도 낮음 (80% 미만)
@@ -807,8 +782,8 @@ final class DIContainer {
 "프로젝트 중간 발표 회의"
 → project (프로젝트가 주요 키워드)
 
-"알고리즘 스터디 회의"
-→ study (스터디가 주요 키워드)
+"디자인 워크샵 발표"
+→ workshop (워크샵이 주요 키워드)
 ```
 
 ### Q3. 신뢰도가 낮은 경우 어떻게 처리하나요?

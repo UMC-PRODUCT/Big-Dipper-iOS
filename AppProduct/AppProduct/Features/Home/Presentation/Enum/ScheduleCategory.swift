@@ -43,13 +43,19 @@ enum ScheduleIconCategory: String, Codable, CaseIterable {
     case general = "GENERAL"
 
     /// 일정 등록 화면에서 노출할 카테고리 목록
+    ///
+    /// `.study` 는 스터디 관리 화면에서 별도 등록하므로 신규 입력 목록에서 제외합니다.
+    /// 기존 STUDY 일정의 icon/color/korean 표현은 enum case 가 유지되므로 그대로 동작합니다.
     static var selectableCases: [ScheduleIconCategory] {
-        allCases.filter { $0 != .testing }
+        allCases.filter { !$0.isDeprecated }
     }
 
     /// 더 이상 신규 입력에 사용하지 않는 레거시 카테고리 여부
+    ///
+    /// - `.testing`: 내부 테스트 전용
+    /// - `.study`: 스터디 회차 일정은 스터디 관리 화면에서 별도 등록
     var isDeprecated: Bool {
-        self == .testing
+        self == .testing || self == .study
     }
 
     /// 카테고리별 시스템 심볼 이미지 이름
