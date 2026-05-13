@@ -78,7 +78,8 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
                 body: LoginAppleRequestDTO(
                     authorizationCode: authorizationCode,
                     email: email,
-                    fullName: fullName
+                    fullName: fullName,
+                    clientType: "IOS"
                 )
             )
         )
