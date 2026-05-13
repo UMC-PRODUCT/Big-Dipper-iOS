@@ -61,24 +61,6 @@ final class MockAttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         ]
     }
 
-    func getScheduleStats(
-    ) async throws -> [ScheduleAttendanceStats] {
-        [
-            ScheduleAttendanceStats(
-                scheduleId: 1,
-                name: "9기 OT",
-                date: "2026-03-17",
-                startTime: "10:00:00",
-                endTime: "12:00:00",
-                locationName: "중앙대학교",
-                totalCount: 40,
-                presentCount: 34,
-                pendingCount: 6,
-                attendanceRate: 0.85
-            )
-        ]
-    }
-
     func fetchAttendanceList(
         from: Date?,
         to: Date?,
