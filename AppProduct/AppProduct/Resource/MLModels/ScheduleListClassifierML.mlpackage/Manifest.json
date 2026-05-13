@@ -1,0 +1,24 @@
+{
+    "fileFormatVersion": "1.0.0",
+    "itemInfoEntries": {
+        "563EE7BE-946B-4D69-AAF6-4DC9460B25EF": {
+            "author": "com.apple.CoreML",
+            "description": "CoreML Model Specification",
+            "name": "ScheduleListClassifierML.mlmodel",
+            "path": "com.apple.CoreML/ScheduleListClassifierML.mlmodel"
+        },
+        "56EF07DE-E183-4ACF-8692-83C5BEB8D615": {
+            "author": "com.apple.CoreML",
+            "description": "External FeatureDescription Overlay",
+            "name": "FeatureDescriptions.json",
+            "path": "com.apple.CoreML/FeatureDescriptions.json"
+        },
+        "B370D934-C369-409F-A74C-0D8F499C28AC": {
+            "author": "com.apple.CoreML",
+            "description": "External Metadata Overlay",
+            "name": "Metadata.json",
+            "path": "com.apple.CoreML/Metadata.json"
+        }
+    },
+    "rootModelIdentifier": "563EE7BE-946B-4D69-AAF6-4DC9460B25EF"
+}
