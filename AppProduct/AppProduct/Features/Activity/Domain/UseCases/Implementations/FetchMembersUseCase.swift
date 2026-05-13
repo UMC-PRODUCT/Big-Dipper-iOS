@@ -61,4 +61,8 @@ final class FetchMembersUseCase: FetchMembersUseCaseProtocol {
     ) async throws -> [GenerationPointSummary] {
         try await repository.fetchGenerationPointSummaries(memberId: memberId)
     }
+
+    func fetchAttendanceRecords(memberId: Int) async throws -> [MemberAttendanceRecord] {
+        try await repository.fetchAttendanceRecords(memberId: memberId)
+    }
 }

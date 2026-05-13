@@ -37,4 +37,10 @@ protocol MemberRepositoryProtocol {
     func fetchGenerationPointSummaries(
         memberId: Int
     ) async throws -> [GenerationPointSummary]
+
+    /// V2 일정 출석 현황에서 특정 멤버의 출석 이력을 조회합니다.
+    ///
+    /// - Parameter memberId: 조회 대상 멤버 ID
+    /// - Returns: 해당 멤버가 포함된 일정별 출석 기록. 결과 없으면 빈 배열 반환.
+    func fetchAttendanceRecords(memberId: Int) async throws -> [MemberAttendanceRecord]
 }

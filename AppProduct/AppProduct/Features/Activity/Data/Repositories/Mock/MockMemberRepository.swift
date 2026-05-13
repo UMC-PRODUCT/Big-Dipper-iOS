@@ -176,6 +176,11 @@ final class MockMemberRepository: MemberRepositoryProtocol {
             GenerationPointSummary(gisu: 9, reward: 1, penalty: 0)
         ]
     }
+
+    func fetchAttendanceRecords(memberId: Int) async throws -> [MemberAttendanceRecord] {
+        try await Task.sleep(for: .milliseconds(200))
+        return MockAttendanceRecords.good
+    }
 }
 
 // MARK: - Mock Attendance Records
