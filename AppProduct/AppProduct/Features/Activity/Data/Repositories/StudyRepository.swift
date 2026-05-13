@@ -331,8 +331,8 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         let status = isApproved ? "PASS" : "FAIL"
         let response = try await adapter.request(
             StudyRouter.reviewWorkbook(
-                challengerWorkbookId: challengerWorkbookId,
                 body: WorkbookReviewRequestDTO(
+                    challengerWorkbookId: challengerWorkbookId,
                     status: status,
                     feedback: feedback
                 )
@@ -356,7 +356,7 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
     ) async throws {
         let response = try await adapter.request(
             StudyRouter.selectBestWorkbook(
-                challengerWorkbookId: challengerWorkbookId,
+                weeklyBestWorkbookId: challengerWorkbookId,
                 body: BestWorkbookSelectionRequestDTO(bestReason: bestReason)
             )
         )

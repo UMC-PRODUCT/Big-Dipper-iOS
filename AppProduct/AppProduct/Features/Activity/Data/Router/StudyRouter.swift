@@ -25,8 +25,8 @@ enum StudyRouter {
         size: Int
     )
     case getWorkbookSubmission(challengerWorkbookId: Int)
-    case reviewWorkbook(challengerWorkbookId: Int, body: WorkbookReviewRequestDTO)
-    case selectBestWorkbook(challengerWorkbookId: Int, body: BestWorkbookSelectionRequestDTO)
+    case reviewWorkbook(body: WorkbookReviewRequestDTO)
+    case selectBestWorkbook(weeklyBestWorkbookId: Int, body: BestWorkbookSelectionRequestDTO)
     case createStudyGroup(body: StudyGroupCreateRequestDTO)
     case updateStudyGroup(groupId: Int, body: StudyGroupUpdateRequestDTO)
     case deleteStudyGroup(groupId: Int)
@@ -48,25 +48,28 @@ extension StudyRouter: BaseTargetType {
         case .getCurriculum:
             return "/api/v2/curriculums/overview"
         case .getCurriculumWeeks:
+            // TODO: [#687] 백엔드 V2 매핑 미확정 — 협의 후 마이그레이션 예정
             return "/api/v1/curriculums/weeks"
         case .linkStudyGroupSchedule:
             return "/api/v1/study-groups/schedules"
         case .getMyStudyGroups:
             return "/api/v1/study-groups/managed"
         case .getStudyGroupNames:
+            // TODO: [#687] 백엔드 V2 매핑 미확정 — 협의 후 마이그레이션 예정
             return "/api/v1/study-groups/names"
         case .getStudyGroupDetail(let groupId):
             return "/api/v1/study-groups/\(groupId)"
         case .getMemberProfile(let memberId):
             return "/api/v1/member/profile/\(memberId)"
         case .getWorkbookSubmissions:
+            // TODO: [#687] 백엔드 V2 매핑 미확정 — 협의 후 마이그레이션 예정
             return "/api/v1/curriculums/workbook-submissions"
         case .getWorkbookSubmission(let challengerWorkbookId):
-            return "/api/v1/workbooks/challenger/\(challengerWorkbookId)/submissions"
-        case .reviewWorkbook(let challengerWorkbookId, _):
-            return "/api/v1/workbooks/challenger/\(challengerWorkbookId)/review"
-        case .selectBestWorkbook(let challengerWorkbookId, _):
-            return "/api/v1/workbooks/challenger/\(challengerWorkbookId)/best"
+            return "/api/v2/curriculums/challenger-workbooks/\(challengerWorkbookId)"
+        case .reviewWorkbook:
+            return "/api/v2/curriculums/challenger-workbooks/missions/feedback"
+        case .selectBestWorkbook(let weeklyBestWorkbookId, _):
+            return "/api/v2/curriculums/challenger-workbooks/weekly-best/\(weeklyBestWorkbookId)"
         case .createStudyGroup:
             return "/api/v1/study-groups"
         case .updateStudyGroup(let groupId, _):
@@ -182,7 +185,7 @@ extension StudyRouter: BaseTargetType {
              .getMemberProfile,
              .getWorkbookSubmission:
             return .requestPlain
-        case .reviewWorkbook(_, let body):
+        case .reviewWorkbook(let body):
             return .requestJSONEncodable(body)
         case .selectBestWorkbook(_, let body):
             return .requestJSONEncodable(body)
