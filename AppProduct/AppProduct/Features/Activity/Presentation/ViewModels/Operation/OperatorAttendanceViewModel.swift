@@ -76,68 +76,11 @@ final class OperatorAttendanceViewModel {
 
     /// 일정 목록 + pending 출석 조회
     ///
-    /// `/api/v1/schedules` 응답을 기반으로 세션 목록을 구성합니다.
+    /// V1 `GET /api/v1/schedules` 제거로 인해 미구현 상태입니다.
+    /// V2 `fetchAttendanceList` 기반 재구현 예정 (#688).
     @MainActor
     func fetchSessions() async {
-        sessionsState = .loading
-        var updatedSessions: [OperatorSessionAttendance] = []
-
-        // 일정 목록 조회 (/api/v1/schedules)
-        let statsList: [ScheduleAttendanceStats]
-        do {
-            statsList = try await useCase.fetchScheduleStats()
-        } catch {
-            sessionsState = .failed(.unknown(
-                message: error.localizedDescription
-            ))
-            return
-        }
-
-        for stats in statsList {
-            let session = Self.makeSession(from: stats)
-
-            updatedSessions.append(OperatorSessionAttendance(
-                serverID: String(stats.scheduleId),
-                session: session,
-                attendanceRate: stats.attendanceRate,
-                attendedCount: stats.presentCount,
-                totalCount: stats.totalCount,
-                pendingCount: stats.pendingCount
-            ))
-        }
-
-        sessionsState = .loaded(updatedSessions)
-    }
-
-    /// ScheduleAttendanceStats → Session 변환
-    @MainActor
-    private static func makeSession(
-        from stats: ScheduleAttendanceStats
-    ) -> Session {
-        let startTime = ServerDateTimeConverter.parseUTCDateTimeOrTime(
-            stats.startTime, utcDate: stats.date
-        ) ?? Date()
-        var endTime = ServerDateTimeConverter.parseUTCDateTimeOrTime(
-            stats.endTime, utcDate: stats.date
-        ) ?? Date()
-
-        if endTime < startTime {
-            endTime = Calendar.current.date(
-                byAdding: .day, value: 1, to: endTime
-            ) ?? endTime
-        }
-
-        return Session(
-            info: SessionInfo(
-                sessionId: SessionID(value: String(stats.scheduleId)),
-                icon: .Activity.profile,
-                title: stats.name,
-                week: 0,
-                startTime: startTime,
-                endTime: endTime,
-                location: Coordinate(latitude: 0, longitude: 0)
-            )
-        )
+        sessionsState = .loaded([])
     }
 
     /// 승인 대기 명단 조회 (on-demand)
@@ -411,47 +354,10 @@ final class OperatorAttendanceViewModel {
 
     /// 세션 목록 배경 갱신 (로딩 상태 변경 없이)
     ///
-    /// 폴링 시 UI 깜빡임을 방지하기 위해
-    /// Loadable.loading 전환 없이 데이터를 갱신합니다.
+    /// V1 `GET /api/v1/schedules` 제거로 인해 미구현 상태입니다.
+    /// V2 `fetchAttendanceList` 기반 재구현 예정 (#688).
     @MainActor
-    func refreshSessions() async {
-        guard !sessionsState.isLoading else { return }
-
-        // 기존 pending members 보존용
-        let existingMembers: [String: [OperatorPendingMember]]
-        if case .loaded(let current) = sessionsState {
-            existingMembers = Dictionary(
-                uniqueKeysWithValues: current.compactMap {
-                    guard let id = $0.serverID else { return nil }
-                    return (id, $0.pendingMembers)
-                }
-            )
-        } else {
-            existingMembers = [:]
-        }
-
-        do {
-            let statsList = try await useCase
-                .fetchScheduleStats()
-            var updated: [OperatorSessionAttendance] = []
-            for stats in statsList {
-                let session = Self.makeSession(from: stats)
-                let key = String(stats.scheduleId)
-                updated.append(OperatorSessionAttendance(
-                    serverID: key,
-                    session: session,
-                    attendanceRate: stats.attendanceRate,
-                    attendedCount: stats.presentCount,
-                    totalCount: stats.totalCount,
-                    pendingCount: stats.pendingCount,
-                    pendingMembers: existingMembers[key] ?? []
-                ))
-            }
-            sessionsState = .loaded(updated)
-        } catch {
-            // 백그라운드 갱신 실패는 무시 (기존 데이터 유지)
-        }
-    }
+    func refreshSessions() async {}
 
     /// 세션 진행 중일 때 주기적으로 데이터를 갱신합니다.
     ///

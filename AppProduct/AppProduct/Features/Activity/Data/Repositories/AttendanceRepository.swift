@@ -84,18 +84,6 @@ final class AttendanceRepository: ChallengerAttendanceRepositoryProtocol,
         return result
     }
 
-    func getScheduleStats(
-    ) async throws -> [ScheduleAttendanceStats] {
-        let response = try await adapter.request(
-            ScheduleRouter.getScheduleList
-        )
-        let apiResponse = try decoder.decode(
-            APIResponse<[ScheduleListDTO]>.self,
-            from: response.data
-        )
-        return try apiResponse.unwrap().map { $0.toDomain() }
-    }
-
     func fetchAttendanceList(
         from: Date?,
         to: Date?,

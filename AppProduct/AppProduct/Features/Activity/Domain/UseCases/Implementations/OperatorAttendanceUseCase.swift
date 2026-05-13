@@ -56,12 +56,6 @@ final class OperatorAttendanceUseCase: OperatorAttendanceUseCaseProtocol {
         )
     }
 
-    func fetchScheduleStats() async throws
-        -> [ScheduleAttendanceStats]
-    {
-        try await repository.getScheduleStats()
-    }
-
     func fetchAttendanceList(
         from: Date?,
         to: Date?,
