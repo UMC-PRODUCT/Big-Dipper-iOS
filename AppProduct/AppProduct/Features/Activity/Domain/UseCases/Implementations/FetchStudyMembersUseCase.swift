@@ -29,20 +29,6 @@ final class FetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol {
 
     // MARK: - Function
 
-    func fetchMembers(
-        week: Int,
-        studyGroupId: Int?
-    ) async throws -> [StudyMemberItem] {
-        try await repository.fetchStudyMembers(
-            week: week,
-            studyGroupId: studyGroupId
-        )
-    }
-
-    func fetchStudyGroups() async throws -> [StudyGroupItem] {
-        try await repository.fetchStudyGroups()
-    }
-
     func fetchStudyGroupDetails() async throws -> [StudyGroupInfo] {
         try await repository.fetchStudyGroupDetails()
     }
@@ -57,10 +43,6 @@ final class FetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol {
         )
     }
 
-    func fetchWeeks() async throws -> [Int] {
-        try await repository.fetchWeeks()
-    }
-
     func fetchWeeklyCurriculumOptions() async throws -> [WeeklyCurriculumOption] {
         try await repository.fetchWeeklyCurriculumOptions()
     }
@@ -72,36 +54,6 @@ final class FetchStudyMembersUseCase: FetchStudyMembersUseCaseProtocol {
         try await repository.resolveChallengerId(
             memberId: memberId,
             preferredGeneration: preferredGeneration
-        )
-    }
-
-    func fetchWorkbookSubmissionURL(
-        challengerWorkbookId: Int
-    ) async throws -> String? {
-        try await repository.fetchWorkbookSubmissionURL(
-            challengerWorkbookId: challengerWorkbookId
-        )
-    }
-
-    func reviewWorkbook(
-        challengerWorkbookId: Int,
-        isApproved: Bool,
-        feedback: String
-    ) async throws {
-        try await repository.reviewWorkbook(
-            challengerWorkbookId: challengerWorkbookId,
-            isApproved: isApproved,
-            feedback: feedback
-        )
-    }
-
-    func selectBestWorkbook(
-        challengerWorkbookId: Int,
-        bestReason: String
-    ) async throws {
-        try await repository.selectBestWorkbook(
-            challengerWorkbookId: challengerWorkbookId,
-            bestReason: bestReason
         )
     }
 

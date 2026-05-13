@@ -9,7 +9,7 @@ import Foundation
 
 /// 스터디 관리 화면의 상태를 관리하는 ViewModel
 ///
-/// 제출 현황 조회, 스터디 그룹 CRUD, 리뷰/베스트 워크북 선정을 처리합니다.
+/// 스터디 그룹 CRUD(생성/수정/삭제) 및 멘토·멤버 변경을 처리합니다.
 @Observable
 final class OperatorStudyManagementViewModel {
     // MARK: - Property
@@ -22,23 +22,8 @@ final class OperatorStudyManagementViewModel {
     private var errorHandler: ErrorHandler
     private var useCase: FetchStudyMembersUseCaseProtocol
 
-    /// 스터디원 목록 로딩 상태
-    private(set) var membersState: Loadable<[StudyMemberItem]> = .idle
-
     /// 스터디 그룹 관리 로딩 상태
     private(set) var studyGroupDetailsState: Loadable<[StudyGroupInfo]> = .idle
-
-    /// 스터디 그룹 필터 목록
-    private(set) var studyGroups: [StudyGroupItem] = [.all]
-
-    /// 현재 선택된 스터디 그룹 필터
-    var selectedStudyGroup: StudyGroupItem = .all
-
-    /// 주차 목록
-    private(set) var weeks: [Int] = []
-
-    /// 현재 선택된 주차
-    var selectedWeek: Int = 1
 
     /// 스터디 그룹 관리 상태
     private(set) var studyGroupDetails: [StudyGroupInfo] = []
@@ -70,20 +55,8 @@ final class OperatorStudyManagementViewModel {
     /// 멘토 시트에서 선택된 챌린저 목록
     var selectedMentors: [ChallengerInfo] = []
 
-    /// 시트 표시 상태
-    var selectedMemberForReview: StudyMemberItem?
-
-    /// 베스트 워크북 선정 대상 멤버
-    var selectedMemberForBest: StudyMemberItem?
-
     /// 확인 다이얼로그
     var alertPrompt: AlertPrompt?
-
-    /// 시트 dismiss 후 표시할 대기 중인 AlertPrompt
-    private var pendingAlertPrompt: AlertPrompt?
-
-    /// 필터링 전 전체 멤버 목록
-    private var allMembers: [StudyMemberItem] = []
 
     /// 그룹 상세 목록 최초 로드 여부
     private var hasLoadedStudyGroupDetails = false
@@ -93,9 +66,6 @@ final class OperatorStudyManagementViewModel {
 
     /// 스터디 그룹 상세 목록 다음 페이지 존재 여부
     private var studyGroupDetailsHasNext = false
-
-    /// 제출 현황 탭 필터(그룹/주차) 최초 로드 여부
-    private var hasLoadedSubmissionFilters = false
 
     /// 현재 사용자 기수 ID (UserDefaults 기준)
     var currentGisuId: Int {
@@ -119,57 +89,6 @@ final class OperatorStudyManagementViewModel {
     }
 
     // MARK: - Function
-
-    /// 스터디 멤버(제출 현황) 조회
-    @MainActor
-    func fetchMembers() async {
-        await fetchSubmissionMembers()
-    }
-
-    /// 제출 현황 탭 진입/필터 변경 시 호출
-    @MainActor
-    func fetchSubmissionMembers() async {
-        membersState = .loading
-
-        do {
-            let shouldReloadSubmissionFilters = !hasLoadedSubmissionFilters
-            if shouldReloadSubmissionFilters {
-                let fetchedGroups = try await useCase.fetchStudyGroups()
-                studyGroups = normalizeStudyGroups(fetchedGroups)
-                weeks = try await useCase.fetchWeeks()
-                if !weeks.contains(selectedWeek), let firstWeek = weeks.first {
-                    selectedWeek = firstWeek
-                }
-
-                if !studyGroups.contains(selectedStudyGroup) {
-                    selectedStudyGroup = .all
-                }
-                hasLoadedSubmissionFilters = true
-            }
-
-            let selectedGroupId = selectedStudyGroup == .all
-            ? nil
-            : Int(selectedStudyGroup.serverID)
-            let members = try await useCase.fetchMembers(
-                week: selectedWeek,
-                studyGroupId: selectedGroupId
-            )
-            allMembers = members
-            filterMembers()
-        } catch let error as AppError {
-            membersState = .failed(error)
-        } catch let error as DomainError {
-            membersState = .failed(.domain(error))
-        } catch let error as NetworkError {
-            membersState = .failed(.network(error))
-        } catch let error as RepositoryError {
-            membersState = .failed(.repository(error))
-        } catch {
-            membersState = .failed(
-                .unknown(message: "제출 현황 데이터를 불러오지 못했습니다.")
-            )
-        }
-    }
 
     /// 스터디 그룹 관리 탭 진입 시 그룹 목록 및 상세 조회
     @MainActor
@@ -938,19 +857,6 @@ final class OperatorStudyManagementViewModel {
             }
         )
 
-        let localItem = StudyGroupItem(
-            serverID: localServerID,
-            name: name,
-            iconName: "person.2.fill",
-            part: nil
-        )
-
-        if !studyGroups.contains(localItem) {
-            var updatedGroups = studyGroups.filter { $0 != .all }
-            updatedGroups.insert(localItem, at: 0)
-            studyGroups = normalizeStudyGroups(updatedGroups)
-        }
-
         switch studyGroupDetailsState {
         case .loaded:
             studyGroupDetails.insert(localGroup, at: 0)
@@ -968,16 +874,6 @@ final class OperatorStudyManagementViewModel {
     private func refreshStudyGroupManagementDataInBackground() {
         Task { [weak self] in
             guard let self else { return }
-
-            if let updatedGroups = try? await self.useCase.fetchStudyGroups() {
-                await MainActor.run {
-                    self.studyGroups = self.normalizeStudyGroups(updatedGroups)
-                    if !self.studyGroups.contains(self.selectedStudyGroup) {
-                        self.selectedStudyGroup = .all
-                    }
-                    self.hasLoadedSubmissionFilters = false
-                }
-            }
 
             if let firstPage = try? await self.useCase.fetchStudyGroupDetailsPage(
                 cursor: nil,
@@ -1029,210 +925,7 @@ final class OperatorStudyManagementViewModel {
         }
     }
 
-    /// 주차 필터 변경 시 멤버 목록 갱신
-    func selectWeek(_ week: Int) {
-        Task { @MainActor [weak self] in
-            await self?.fetchMembers()
-        }
-    }
-
-    /// 스터디 그룹 필터 변경 시 멤버 목록 갱신
-    func selectStudyGroup(_ group: StudyGroupItem) {
-        Task { @MainActor [weak self] in
-            await self?.fetchMembers()
-        }
-    }
-
-    /// 시트 dismiss 후 대기 중인 AlertPrompt를 표시
-    func presentPendingAlert() {
-        guard let pending = pendingAlertPrompt else { return }
-        pendingAlertPrompt = nil
-        alertPrompt = pending
-    }
-
-    /// 검토 시트 표시를 위해 제출 URL을 조회한 뒤 멤버를 선택 상태로 설정
-    /// - Parameter member: 대상 멤버
-    func openReviewSheet(for member: StudyMemberItem) {
-        guard let challengerWorkbookId = member.challengerWorkbookId else {
-            selectedMemberForReview = member
-            return
-        }
-
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-
-            do {
-                let submissionURL = try await self.useCase.fetchWorkbookSubmissionURL(
-                    challengerWorkbookId: challengerWorkbookId
-                )
-                let resolvedMember = StudyMemberItem(
-                    id: member.id,
-                    serverID: member.serverID,
-                    challengerWorkbookId: member.challengerWorkbookId,
-                    studyGroupId: member.studyGroupId,
-                    name: member.name,
-                    nickname: member.nickname,
-                    part: member.part,
-                    university: member.university,
-                    studyTopic: member.studyTopic,
-                    week: member.week,
-                    profileImageURL: member.profileImageURL,
-                    submissionURL: submissionURL ?? member.submissionURL,
-                    isBestWorkbook: member.isBestWorkbook
-                )
-                self.selectedMemberForReview = resolvedMember
-            } catch {
-                self.selectedMemberForReview = member
-            }
-        }
-    }
-
-    /// 스터디 승인(PASS) 제출
-    /// - Parameters:
-    ///   - member: 대상 멤버
-    ///   - feedback: 피드백 내용
-    func submitReviewApproval(
-        member: StudyMemberItem,
-        feedback: String
-    ) async -> Bool {
-        await submitReview(
-            member: member,
-            feedback: feedback,
-            isApproved: true
-        )
-    }
-
-    /// 스터디 반려 확인 다이얼로그 준비
-    /// - Parameters:
-    ///   - member: 대상 멤버
-    ///   - feedback: 피드백 내용
-    func submitReviewRejection(
-        member: StudyMemberItem,
-        feedback: String
-    ) async -> Bool {
-        await submitReview(
-            member: member,
-            feedback: feedback,
-            isApproved: false
-        )
-    }
-
-    /// 베스트 워크북 선정 제출
-    /// - Parameters:
-    ///   - member: 대상 멤버
-    ///   - recommendation: 추천 사유
-    func submitBestWorkbookSelection(
-        member: StudyMemberItem,
-        recommendation: String
-    ) async -> Bool {
-        await submitBestWorkbook(
-            member: member,
-            recommendation: recommendation
-        )
-    }
-
-    /// 해당 멤버의 스터디 그룹에 이미 베스트 워크북이 선정되었는지 확인
-    /// - Parameter member: 확인 대상 멤버
-    /// - Returns: 같은 그룹에 이미 베스트 워크북이 있으면 true
-    func isBestSelectionDisabled(for member: StudyMemberItem) -> Bool {
-        guard let groupId = member.studyGroupId else { return false }
-        return allMembers.contains { other in
-            other.studyGroupId == groupId
-                && other.isBestWorkbook
-                && other.id != member.id
-        }
-    }
-
-    /// 베스트 워크북 선정 불가 안내 AlertPrompt 표시
-    func showBestSelectionDisabledAlert() {
-        alertPrompt = AlertPrompt(
-            title: "베스트 워크북 선정 불가",
-            message: "이 스터디 그룹에는 이미 베스트 워크북이 선정되었습니다.",
-            positiveBtnTitle: "확인"
-        )
-    }
-
-    private func submitReview(
-        member: StudyMemberItem,
-        feedback: String,
-        isApproved: Bool
-    ) async -> Bool {
-        guard let challengerWorkbookId = member.challengerWorkbookId else {
-            alertPrompt = AlertPrompt(
-                title: "검토 실패",
-                message: "워크북 식별자를 찾을 수 없습니다.",
-                positiveBtnTitle: "확인"
-            )
-            return false
-        }
-
-        do {
-            try await useCase.reviewWorkbook(
-                challengerWorkbookId: challengerWorkbookId,
-                isApproved: isApproved,
-                feedback: feedback
-            )
-            removeMember(member)
-            return true
-        } catch let error as DomainError {
-            alertPrompt = AlertPrompt(
-                title: "검토 실패",
-                message: error.userMessage,
-                positiveBtnTitle: "확인"
-            )
-            return false
-        } catch {
-            errorHandler.handle(error, context: ErrorContext(
-                feature: "Activity",
-                action: "reviewWorkbook"
-            ))
-            return false
-        }
-    }
-
-    private func submitBestWorkbook(
-        member: StudyMemberItem,
-        recommendation: String
-    ) async -> Bool {
-        guard let challengerWorkbookId = member.challengerWorkbookId else {
-            alertPrompt = AlertPrompt(
-                title: "선정 실패",
-                message: "워크북 식별자를 찾을 수 없습니다.",
-                positiveBtnTitle: "확인"
-            )
-            return false
-        }
-
-        do {
-            try await useCase.selectBestWorkbook(
-                challengerWorkbookId: challengerWorkbookId,
-                bestReason: recommendation
-            )
-            markAsBestWorkbook(member)
-            return true
-        } catch let error as DomainError {
-            alertPrompt = AlertPrompt(
-                title: "선정 실패",
-                message: error.userMessage,
-                positiveBtnTitle: "확인"
-            )
-            return false
-        } catch {
-            errorHandler.handle(error, context: ErrorContext(
-                feature: "Activity",
-                action: "selectBestWorkbook"
-            ))
-            return false
-        }
-    }
-
     // MARK: - Private
-
-    /// 서버 제출 완료된 멤버를 목록에서 제거
-    private func removeMember(_ member: StudyMemberItem) {
-        allMembers.removeAll { $0.id == member.id }
-        filterMembers()
-    }
 
     private func resolveChallengerIDs(
         from challengers: [ChallengerInfo]
@@ -1265,7 +958,6 @@ final class OperatorStudyManagementViewModel {
                 return resolvedID
             }
         } catch {
-            // 조회 실패 시 아래 fallback 규칙으로 처리
         }
 
         if memberIdInt <= 0, challenger.challengerId > 0 {
@@ -1275,44 +967,10 @@ final class OperatorStudyManagementViewModel {
         return nil
     }
 
-    /// 멤버를 베스트 워크북으로 표시
-    private func markAsBestWorkbook(_ member: StudyMemberItem) {
-        guard let index = allMembers.firstIndex(
-            where: { $0.id == member.id }
-        ) else { return }
-        allMembers[index].isBestWorkbook = true
-        filterMembers()
-    }
-
-    /// 선택된 스터디 그룹과 주차에 따라 멤버 필터링
-    private func filterMembers() {
-        membersState = .loaded(allMembers)
-    }
-
-    /// 툴바 메뉴에 항상 `전체 스터디 그룹`이 포함되도록 정규화
-    private func normalizeStudyGroups(
-        _ groups: [StudyGroupItem]
-    ) -> [StudyGroupItem] {
-        var normalized: [StudyGroupItem] = [.all]
-        for group in groups where group != .all {
-            if !normalized.contains(group) {
-                normalized.append(group)
-            }
-        }
-        return normalized
-    }
-
     /// 삭제 성공 후 로컬 상태에서 그룹 삭제 반영
     private func removeGroupFromLocalState(_ serverID: String) {
         studyGroupDetails.removeAll { $0.serverID == serverID }
-        studyGroups.removeAll {
-            $0.serverID == serverID && $0 != .all
-        }
         studyGroupDetailsState = .loaded(studyGroupDetails)
-
-        if selectedStudyGroup.serverID == serverID {
-            selectedStudyGroup = .all
-        }
     }
 
 }

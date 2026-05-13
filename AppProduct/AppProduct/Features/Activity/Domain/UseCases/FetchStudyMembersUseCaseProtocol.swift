@@ -10,15 +10,6 @@ import Foundation
 // MARK: - Protocol
 
 protocol FetchStudyMembersUseCaseProtocol {
-    /// 스터디원 목록 조회
-    func fetchMembers(
-        week: Int,
-        studyGroupId: Int?
-    ) async throws -> [StudyMemberItem]
-
-    /// 스터디 그룹 목록 조회
-    func fetchStudyGroups() async throws -> [StudyGroupItem]
-
     /// 스터디 그룹 상세 목록 조회
     func fetchStudyGroupDetails() async throws -> [StudyGroupInfo]
 
@@ -27,9 +18,6 @@ protocol FetchStudyMembersUseCaseProtocol {
         cursor: Int?,
         size: Int
     ) async throws -> StudyGroupDetailsPage
-
-    /// 스터디 주차 목록 조회
-    func fetchWeeks() async throws -> [Int]
 
     /// 주차 커리큘럼 옵션(weeklyCurriculumId · weekNo · title) 목록 조회
     ///
@@ -41,24 +29,6 @@ protocol FetchStudyMembersUseCaseProtocol {
         memberId: Int,
         preferredGeneration: Int?
     ) async throws -> Int?
-
-    /// 챌린저 워크북 제출 URL 조회
-    func fetchWorkbookSubmissionURL(
-        challengerWorkbookId: Int
-    ) async throws -> String?
-
-    /// 챌린저 워크북 검토
-    func reviewWorkbook(
-        challengerWorkbookId: Int,
-        isApproved: Bool,
-        feedback: String
-    ) async throws
-
-    /// 베스트 워크북 선정
-    func selectBestWorkbook(
-        challengerWorkbookId: Int,
-        bestReason: String
-    ) async throws
 
     /// 스터디 그룹 생성
     /// - Parameters:
