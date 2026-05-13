@@ -20,21 +20,29 @@ struct LoginAppleRequestDTO: Encodable {
     let email: String?
     /// Apple 계정 이름 (최초 로그인 시)
     let fullName: String?
+    /// 클라이언트 플랫폼 (`ANDROID` / `IOS` / `WEB`)
+    ///
+    /// Apple은 플랫폼별로 다른 `client_id`(iOS Bundle ID vs Web Services ID)를
+    /// 사용하기 때문에 서버가 토큰 교환 시 식별이 필요합니다.
+    let clientType: String
 
     init(
         authorizationCode: String,
         email: String?,
-        fullName: String?
+        fullName: String?,
+        clientType: String
     ) {
         self.authorizationCode = authorizationCode
         self.email = (email?.isEmpty == false) ? email : nil
         self.fullName = (fullName?.isEmpty == false) ? fullName : nil
+        self.clientType = clientType
     }
 
     private enum CodingKeys: String, CodingKey {
         case authorizationCode
         case email
         case fullName
+        case clientType
     }
 
     func encode(to encoder: Encoder) throws {
@@ -42,5 +50,6 @@ struct LoginAppleRequestDTO: Encodable {
         try container.encode(authorizationCode, forKey: .authorizationCode)
         try container.encodeIfPresent(email, forKey: .email)
         try container.encodeIfPresent(fullName, forKey: .fullName)
+        try container.encode(clientType, forKey: .clientType)
     }
 }
