@@ -51,6 +51,10 @@ enum NavigationDestination: Hashable {
     /// 인증(Auth) 관련 화면 목적지
     enum Auth: Hashable {
         case test
+        /// ID/PW 로그인 입력 화면
+        case loginByIdPw
+        /// ID/PW 회원가입 화면
+        case signUpByIdPw
     }
 
     /// 홈(Home) 관련 화면 목적지

@@ -11,27 +11,10 @@ import SwiftUI
 #Preview("로그인") {
     LoginView(
         loginUseCase: PreviewLoginUseCase(),
-        loginByIdPwUseCase: PreviewLoginByIdPwUseCase(),
         fetchMyProfileUseCase: PreviewFetchMyProfileUseCase(),
         tokenStore: KeychainTokenStore(),
         errorHandler: ErrorHandler()
     )
-}
-
-/// Preview 전용 ID/PW 로그인 UseCase
-private struct PreviewLoginByIdPwUseCase: LoginByIdPwUseCaseProtocol {
-    func execute(
-        loginId: String,
-        password: String
-    ) async throws -> LoginByIdPwResult {
-        LoginByIdPwResult(
-            memberId: "preview_member_id",
-            tokenPair: TokenPair(
-                accessToken: "preview",
-                refreshToken: "preview"
-            )
-        )
-    }
 }
 
 /// Preview 전용 LoginUseCase

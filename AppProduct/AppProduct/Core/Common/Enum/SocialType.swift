@@ -11,14 +11,16 @@ import SwiftUI
 /// 앱에서 지원하는 소셜 로그인 타입을 정의하는 열거형입니다.
 enum SocialType: String, CaseIterable, Hashable {
     /// 카카오 로그인
-    case kakao = "Kakao"
+    case kakao = "카카오로 계속하기"
     /// 애플 로그인
-    case apple = "Apple"
+    case apple = "Apple로 계속하기"
     /// 구글 로그인
-    case google = "Google"
+    case google = "Google로 계속하기"
+    /// 이메일로 계속하기
+    case email = "ID/PW로 계속하기"
 
     static var allCases: [SocialType] {
-        [.kakao, .apple, .google]
+        [.kakao, .apple, .google, .email]
     }
 
     /// 앱에서 직접 로그인/연동 추가를 지원하는 소셜 목록입니다.
@@ -35,6 +37,8 @@ enum SocialType: String, CaseIterable, Hashable {
             return .appleIcon
         case .google:
             return .kakaoIcon
+        case .email:
+            return .email
         }
     }
     
@@ -47,6 +51,8 @@ enum SocialType: String, CaseIterable, Hashable {
             return Image(.apple) // 애플 로고 에셋
         case .google:
             return Image(.kakao)
+        case .email:
+            return Image(.email)
         }
     }
     
@@ -59,6 +65,8 @@ enum SocialType: String, CaseIterable, Hashable {
             return Color.black // 애플 고유 검정색
         case .google:
             return Color(red: 0.26, green: 0.52, blue: 0.96)
+        case .email:
+            return Color.clear
         }
     }
     
@@ -71,6 +79,21 @@ enum SocialType: String, CaseIterable, Hashable {
             return .white // 검은 배경엔 흰 글씨
         case .google:
             return .white
+        case .email:
+            return .black
+        }
+    }
+    
+    var iconSize: CGFloat {
+        switch self {
+        case .kakao:
+            return 20
+        case .apple:
+            return 24
+        case .google:
+            return 24
+        case .email:
+            return 24
         }
     }
 

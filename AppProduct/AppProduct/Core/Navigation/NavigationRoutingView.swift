@@ -57,8 +57,24 @@ private extension NavigationRoutingView {
     func authView(_ route: NavigationDestination.Auth) -> some View {
         switch route {
         case .test:
-            // TODO: 실제 Auth Test View로 교체 필요
             Text("Auth Test View")
+        case .loginByIdPw:
+            LoginByIdPwView(
+                loginByIdPwUseCase: di.resolve(AuthUseCaseProviding.self).loginByIdPwUseCase,
+                fetchMyProfileUseCase: di.resolve(HomeUseCaseProviding.self).fetchMyProfileUseCase,
+                tokenStore: di.resolve(TokenStore.self),
+                errorHandler: errorHandler
+            )
+        case .signUpByIdPw:
+            let authProvider = di.resolve(AuthUseCaseProviding.self)
+            SignUpByIdPwView(
+                sendEmailVerificationUseCase: authProvider.sendEmailVerificationUseCase,
+                verifyEmailCodeUseCase: authProvider.verifyEmailCodeUseCase,
+                registerByIdPwUseCase: authProvider.registerByIdPwUseCase,
+                checkLoginIdAvailabilityUseCase: authProvider.checkLoginIdAvailabilityUseCase,
+                fetchSignUpDataUseCase: authProvider.fetchSignUpDataUseCase,
+                fetchMyProfileUseCase: di.resolve(HomeUseCaseProviding.self).fetchMyProfileUseCase
+            )
         }
     }
 

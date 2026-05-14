@@ -68,86 +68,84 @@ struct SignUpByIdPwView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            ScrollView(.vertical) {
-                VStack(spacing: Constants.spacerSize) {
-                    SignUpEmailSection(
-                        email: $viewModel.emailInput,
-                        onVerificationRequested: {
-                            try await viewModel.requestEmailVerification()
-                        },
-                        onVerificationComplete: { code in
-                            try await viewModel.verifyEmailCode(code)
-                        },
-                        onEmailChanged: handleEmailChange,
-                        onSubmit: { focusedField = .loginId }
-                    )
-
-                    SignUpLoginIdSection(
-                        loginId: $viewModel.loginIdInput,
-                        availability: viewModel.loginIdAvailability,
-                        focusBinding: $focusedField,
-                        onSubmit: { focusedField = .password }
-                    )
-
-                    SignUpPasswordSection(
-                        password: $viewModel.passwordInput,
-                        passwordConfirm: $viewModel.passwordConfirmInput,
-                        isPasswordValid: viewModel.isPasswordValid,
-                        isPasswordConfirmed: viewModel.isPasswordConfirmed,
-                        focusBinding: $focusedField,
-                        onConfirmSubmit: { focusedField = .name }
-                    )
-
-                    SignUpNameNicknameSection(
-                        name: $viewModel.nameInput,
-                        nickname: $viewModel.nicknameInput,
-                        focusBinding: $focusedField,
-                        onNicknameSubmit: { focusedField = nil }
-                    )
-
-                    SignUpSchoolSection(
-                        schoolsState: viewModel.schoolsState,
-                        selectedSchool: $viewModel.selectedSchool
-                    )
-
-                    SignUpTermsSection(
-                        termsState: viewModel.termsState,
-                        termsAgreements: viewModel.termsAgreements,
-                        isAllTermsAgreed: viewModel.isAllTermsAgreed,
-                        onToggleAll: { isAgreed in
-                            viewModel.toggleAllTerms(isAgreed)
-                        },
-                        onToggleRow: { id in
-                            viewModel.termsAgreements[id]?.toggle()
-                        },
-                        onOpenTerms: openTerms
-                    )
-                }
-                .safeAreaPadding(
-                    .vertical,
-                    DefaultConstant.defaultContentTopMargins
+        ScrollView(.vertical) {
+            VStack(spacing: Constants.spacerSize) {
+                SignUpEmailSection(
+                    email: $viewModel.emailInput,
+                    onVerificationRequested: {
+                        try await viewModel.requestEmailVerification()
+                    },
+                    onVerificationComplete: { code in
+                        try await viewModel.verifyEmailCode(code)
+                    },
+                    onEmailChanged: handleEmailChange,
+                    onSubmit: { focusedField = .loginId }
                 )
-                .safeAreaPadding(
-                    .horizontal,
-                    DefaultConstant.defaultSafeHorizon
+
+                SignUpLoginIdSection(
+                    loginId: $viewModel.loginIdInput,
+                    availability: viewModel.loginIdAvailability,
+                    focusBinding: $focusedField,
+                    onSubmit: { focusedField = .password }
                 )
-                .navigation(naviTitle: .signUp, displayMode: .large)
-                .navigationSubtitle(Constants.naviSubTitle)
+
+                SignUpPasswordSection(
+                    password: $viewModel.passwordInput,
+                    passwordConfirm: $viewModel.passwordConfirmInput,
+                    isPasswordValid: viewModel.isPasswordValid,
+                    isPasswordConfirmed: viewModel.isPasswordConfirmed,
+                    focusBinding: $focusedField,
+                    onConfirmSubmit: { focusedField = .name }
+                )
+
+                SignUpNameNicknameSection(
+                    name: $viewModel.nameInput,
+                    nickname: $viewModel.nicknameInput,
+                    focusBinding: $focusedField,
+                    onNicknameSubmit: { focusedField = nil }
+                )
+
+                SignUpSchoolSection(
+                    schoolsState: viewModel.schoolsState,
+                    selectedSchool: $viewModel.selectedSchool
+                )
+
+                SignUpTermsSection(
+                    termsState: viewModel.termsState,
+                    termsAgreements: viewModel.termsAgreements,
+                    isAllTermsAgreed: viewModel.isAllTermsAgreed,
+                    onToggleAll: { isAgreed in
+                        viewModel.toggleAllTerms(isAgreed)
+                    },
+                    onToggleRow: { id in
+                        viewModel.termsAgreements[id]?.toggle()
+                    },
+                    onOpenTerms: openTerms
+                )
             }
-            .keyboardToolbar(focusedField: $focusedField)
-            .alertPrompt(item: $alertPrompt)
-            .safeAreaInset(edge: .bottom) {
-                submitButton
-            }
-            .task {
-                await viewModel.fetchSchools()
-                await viewModel.fetchTerms()
-                lastEmailSnapshot = viewModel.emailInput
-            }
-            .onChange(of: viewModel.registerState) { _, newState in
-                handleRegisterStateChange(newState)
-            }
+            .safeAreaPadding(
+                .vertical,
+                DefaultConstant.defaultContentTopMargins
+            )
+            .safeAreaPadding(
+                .horizontal,
+                DefaultConstant.defaultSafeHorizon
+            )
+            .navigation(naviTitle: .signUp, displayMode: .large)
+            .navigationSubtitle(Constants.naviSubTitle)
+        }
+        .keyboardToolbar(focusedField: $focusedField)
+        .alertPrompt(item: $alertPrompt)
+        .safeAreaInset(edge: .bottom) {
+            submitButton
+        }
+        .task {
+            await viewModel.fetchSchools()
+            await viewModel.fetchTerms()
+            lastEmailSnapshot = viewModel.emailInput
+        }
+        .onChange(of: viewModel.registerState) { _, newState in
+            handleRegisterStateChange(newState)
         }
     }
 

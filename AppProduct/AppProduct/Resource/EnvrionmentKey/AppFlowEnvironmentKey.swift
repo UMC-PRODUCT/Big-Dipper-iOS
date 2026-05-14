@@ -15,8 +15,6 @@ struct AppFlow {
         String?,
         PostRegisterLoginContext?
     ) -> Void
-    /// ID/PW 회원가입 화면으로 전환합니다 (파라미터 없음 — 폼이 모든 입력을 받음).
-    let showSignUpByIdPw: () -> Void
     let showPendingApproval: () -> Void
     let logout: () -> Void
 
@@ -24,7 +22,6 @@ struct AppFlow {
         showLogin: {},
         showMain: {},
         showSignUp: { _, _, _, _ in },
-        showSignUpByIdPw: {},
         showPendingApproval: {},
         logout: {}
     )

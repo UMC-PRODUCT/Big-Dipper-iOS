@@ -221,6 +221,11 @@ class MyPageProfileViewModel: SinglePhotoPickerManageable {
                 provider: socialType.rawValue,
                 reason: "현재 앱에서는 Google 연동 해제를 지원하지 않습니다."
             )
+        case .email:
+            throw AuthError.socialLoginFailed(
+                provider: socialType.rawValue,
+                reason: "이메일 로그인은 OAuth 연동 해제 흐름의 대상이 아닙니다."
+            )
         }
     }
 

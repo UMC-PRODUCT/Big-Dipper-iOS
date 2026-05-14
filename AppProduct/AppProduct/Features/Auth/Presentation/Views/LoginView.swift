@@ -7,23 +7,27 @@
 
 import SwiftUI
 
-/// 로그인 화면
+/// 소셜 로그인 진입 화면
 ///
-/// UMC 앱의 진입점으로, 소셜 로그인 버튼을 제공합니다.
-/// 중앙에 로고와 설명을 배치하고, 하단에 소셜 로그인 옵션을 표시합니다.
+/// 앱의 최초 인증 진입점으로, 소셜 로그인 버튼(카카오/Apple)과
+/// "아이디 또는 휴대폰번호 로그인" 진입 버튼을 제공합니다.
+/// 내부 `NavigationStack`으로 `LoginByIdPwView`를 push합니다.
 struct LoginView: View {
 
     // MARK: - Property
 
-    /// 로그인 뷰 모델 (@Observable 패턴)
     @State private var viewModel: LoginViewModel
+    @State private var navPath: [NavigationDestination] = []
     @Environment(\.appFlow) private var appFlow
+    @Environment(ErrorHandler.self) private var errorHandler
+
+    /// 카카오톡 UMC 문의 채널 연동 매니저
+    private let kakaoPlusManager: KakaoPlusManager = .init()
 
     // MARK: - Init
 
     init(
         loginUseCase: LoginUseCaseProtocol,
-        loginByIdPwUseCase: LoginByIdPwUseCaseProtocol,
         fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol,
         tokenStore: TokenStore,
         errorHandler: ErrorHandler
@@ -31,7 +35,6 @@ struct LoginView: View {
         self._viewModel = .init(
             wrappedValue: LoginViewModel(
                 loginUseCase: loginUseCase,
-                loginByIdPwUseCase: loginByIdPwUseCase,
                 fetchMyProfileUseCase: fetchMyProfileUseCase,
                 tokenStore: tokenStore,
                 errorHandler: errorHandler
@@ -42,40 +45,11 @@ struct LoginView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: DefaultSpacing.spacing24)
-
-            TopLogo()
-                .padding(.bottom, DefaultSpacing.spacing32)
-
-            Spacer(minLength: DefaultSpacing.spacing24)
-
-            LoginByIdPwSection(
-                loginId: $viewModel.loginIdInput,
-                password: $viewModel.passwordInput,
-                isLoading: viewModel.loginByIdPwState.isLoading,
-                errorMessage: viewModel.loginByIdPwErrorMessage,
-                onLoginTapped: {
-                    Task { await viewModel.loginWithIdPw() }
+        NavigationStack(path: $navPath) {
+            content
+                .navigationDestination(for: NavigationDestination.self) { destination in
+                    NavigationRoutingView(destination: destination)
                 }
-            )
-            .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-            .padding(.bottom, DefaultSpacing.spacing24)
-        }
-        .safeAreaInset(edge: .bottom) {
-            BottomAuthSection(
-                isLoading: viewModel.loginState.isLoading,
-                onSignUpTapped: {
-                    appFlow.showSignUpByIdPw()
-                },
-                onKakaoTapped: {
-                    Task { await viewModel.loginWithKakao() }
-                },
-                onAppleTapped: {
-                    viewModel.loginWithApple()
-                }
-            )
-            .equatable()
         }
         .onChange(of: viewModel.destination) { _, newDestination in
             guard let newDestination else { return }
@@ -99,162 +73,203 @@ struct LoginView: View {
             }
         }
     }
+
+    // MARK: - Subviews
+
+    private var content: some View {
+        VStack(spacing: .zero) {
+            Spacer()
+
+            LogoSection()
+                .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+
+            Spacer()
+
+            actionSection
+                .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                .padding(.bottom, DefaultConstant.defaultSafeBottom)
+        }
+    }
+
+    private var actionSection: some View {
+        VStack(spacing: DefaultSpacing.spacing32) {
+            loginSection(content: {
+                kakaoLoginButton
+                appleLoginButton
+            })
+            
+            Divider()
+            
+            loginSection(content: {
+                idPwLoginButton
+                supportFooter
+            })
+        }
+    }
+    
+    private func loginSection<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: DefaultSpacing.spacing12) {
+            content()
+        }
+    }
+    
+    private var kakaoLoginButton: some View {
+        Button {
+            Task { await viewModel.loginWithKakao() }
+        } label: {
+            SocialLoginLabel(.kakao)
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.loginState.isLoading)
+        .accessibilityLabel(Text("카카오로 시작하기"))
+        .accessibilityHint(Text("카카오 계정으로 로그인합니다"))
+    }
+
+    private var appleLoginButton: some View {
+        Button {
+            viewModel.loginWithApple()
+        } label: {
+            SocialLoginLabel(.apple)
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.loginState.isLoading)
+        .accessibilityLabel(Text("Apple로 시작하기"))
+        .accessibilityHint(Text("Apple 계정으로 로그인합니다"))
+    }
+
+    private var idPwLoginButton: some View {
+        NavigationLink(value: NavigationDestination.auth(.loginByIdPw)) {
+            SocialLoginLabel(.email)
+        }
+        .buttonBorderShape(.capsule)
+        .disabled(viewModel.loginState.isLoading)
+        .accessibilityHint(Text("아이디와 비밀번호 입력 화면으로 이동합니다"))
+        .overlay {
+            Capsule()
+                .fill(.clear)
+                .strokeBorder(Color.grey500, style: .init(lineWidth: 0.5))
+        }
+    }
+
+    private var supportFooter: some View {
+        VStack(spacing: DefaultSpacing.spacing4) {
+            Text(Constants.supportInquiryPrompt)
+                .appFont(.footnote, color: .grey500)
+            HStack(spacing: .zero) {
+                Button {
+                    kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
+                } label: {
+                    Text(Constants.supportChannelLabel)
+                        .foregroundStyle(.indigo)
+                        .appFont(.footnote, color: .grey500)
+                        .underline()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("고객센터로 문의하기"))
+                .accessibilityHint(Text("카카오톡 UMC 문의 채널을 엽니다"))
+
+                Text(Constants.supportChannelSuffix)
+                    .appFont(.footnote, color: .grey500)
+            }
+        }
+        .multilineTextAlignment(.center)
+    }
 }
 
-// MARK: - TopLogo
+// MARK: - LogoSection
 
-/// 상단 로고 영역 (Presenter 패턴)
-///
-/// UMC 로고 이미지와 앱 슬로건("Focus on Growth, We Handle the Ops")을 세로로 배치합니다.
-/// Equatable 준수로 불필요한 렌더링을 방지합니다.
-fileprivate struct TopLogo: View, Equatable {
+/// 로고 + 슬로건 영역
+fileprivate struct LogoSection: View, Equatable {
 
-    // MARK: - Constant
-
-    /// 레이아웃 및 텍스트 상수
     private enum Constants {
-        /// 앱 슬로건 (UMC App Statement)
         static let appStatement: String = "Focus on Growth, We Handle the Ops"
-        /// 로고 이미지 너비
+        static let appSubtitle: String = "동아리 활동을 한 곳에서"
         static let logoImageWidth: CGFloat = 160
     }
 
-    // MARK: - Body
-
     var body: some View {
-        VStack(spacing: DefaultSpacing.spacing16) {
+        VStack(spacing: DefaultSpacing.spacing12) {
             Image(.logoLight)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: Constants.logoImageWidth)
                 .accessibilityHidden(true)
 
-            Text(Constants.appStatement)
-                .appFont(.subheadline, color: .grey600)
+            VStack(spacing: DefaultSpacing.spacing4) {
+                Text(Constants.appSubtitle)
+                    .appFont(.callout, color: .grey700)
+                Text(Constants.appStatement)
+                    .appFont(.subheadline, color: .grey500)
+            }
         }
     }
 }
 
-// MARK: - BottomAuthSection
+// MARK: - SocialLoginLabel
 
-/// 하단 인증 대안 그룹
+/// 소셜 로그인 버튼 라벨 (브랜드 컬러 캡슐)
 ///
-/// "또는" 디바이더, 회원가입 진입 링크, 소셜 로그인 아이콘을 하나의 시각적 클러스터로 묶어
-/// 화면 하단에 배치합니다. 폼 영역(`LoginByIdPwSection`)과 분리되어 인증 대안을 한눈에 인식할 수 있습니다.
-fileprivate struct BottomAuthSection: View, Equatable {
+/// 좌측 로고(20pt) + 중앙 정렬 텍스트로 구성된 풀-위드 캡슐 버튼 라벨.
+/// 디자인 시스템 토큰만 사용하며, 브랜드 색은 호출부에서 토큰으로 주입합니다.
+fileprivate struct SocialLoginLabel: View {
 
-    // MARK: - Property
-
-    let isLoading: Bool
-    var onSignUpTapped: () -> Void
-    var onKakaoTapped: () -> Void
-    var onAppleTapped: () -> Void
-
-    // MARK: - Constant
-
-    private enum Constants {
-        static let dividerText: String = "또는"
-        static let signUpPromptText: String = "아직 계정이 없으신가요?"
-        static let signUpButtonTitle: String = "회원가입"
-        static let socialButtonSize: CGFloat = 48
+    let loginType: SocialType
+    
+    init(_ loginType: SocialType) {
+        self.loginType = loginType
     }
 
-    // MARK: - Equatable
-
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.isLoading == rhs.isLoading
+    private enum LayoutConstants {
+        static let leadingPadding: CGFloat = 16
+        static let btnHeight: CGFloat = 48
     }
-
-    // MARK: - Body
 
     var body: some View {
-        VStack(spacing: DefaultSpacing.spacing16) {
-            dividerSection
-            signUpLink
-            socialButtons
-        }
-        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-        .padding(.bottom, DefaultConstant.defaultSafeBottom)
+        ZStack(alignment: .leading, content: {
+            Text(loginType.rawValue)
+                .appFont(.callout, color: loginType.fontColor)
+                .frame(maxWidth: .infinity)
+                .frame(height: LayoutConstants.btnHeight)
+                .background(loginType.color, in: .capsule)
+            
+            loginLogo
+        })
     }
 
-    // MARK: - Subviews
-
-    private var dividerSection: some View {
-        HStack(spacing: DefaultSpacing.spacing8) {
-            Rectangle()
-                .fill(.grey300)
-                .frame(height: 1)
-            Text(Constants.dividerText)
-                .appFont(.footnote, color: .grey500)
-            Rectangle()
-                .fill(.grey300)
-                .frame(height: 1)
-        }
+    @ViewBuilder
+    private var loginLogo: some View {
+        loginType.image
+            .renderingMode(.original)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: loginType.iconSize, height: loginType.iconSize)
+            .accessibilityHidden(true)
+            .padding(.leading, LayoutConstants.leadingPadding)
     }
+}
 
-    private var signUpLink: some View {
-        HStack(spacing: DefaultSpacing.spacing4) {
-            Text(Constants.signUpPromptText)
-                .appFont(.footnote, color: .grey600)
-            Button(Constants.signUpButtonTitle, action: onSignUpTapped)
-                .appFont(.footnoteEmphasis, color: .indigo500)
-                .buttonStyle(.plain)
-        }
-    }
+// MARK: - Constants
 
-    private var socialButtons: some View {
-        GlassEffectContainer {
-            HStack(spacing: DefaultSpacing.spacing24) {
-                ForEach(SocialType.appConnectableCases, id: \.self) { type in
-                    socialButton(for: type)
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-    }
-
-    private func socialButton(for type: SocialType) -> some View {
-        Button(action: { handleSocialTap(type) }) {
-            type.image
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: Constants.socialButtonSize, height: Constants.socialButtonSize)
-        }
-        .buttonStyle(.plain)
-        .glassEffect(.clear.interactive().tint(type.color), in: .circle)
-        .disabled(isLoading)
-        .accessibilityLabel(Text(accessibilityLabel(for: type)))
-        .accessibilityHint(Text("소셜 계정으로 로그인합니다"))
-    }
-
-    // MARK: - Function
-
-    private func handleSocialTap(_ type: SocialType) {
-        switch type {
-        case .kakao: onKakaoTapped()
-        case .apple: onAppleTapped()
-        default: break
-        }
-    }
-
-    private func accessibilityLabel(for type: SocialType) -> String {
-        switch type {
-        case .kakao: return "카카오로 로그인"
-        case .apple: return "Apple로 로그인"
-        default: return type.rawValue + "로 로그인"
-        }
-    }
+fileprivate enum Constants {
+    static let idPwLoginTitle: String = "아이디 로그인"
+    static let naverButtonTitle: String = "네이버로 시작하기"
+    static let kakaoButtonTitle: String = "카카오로 시작하기"
+    static let appleButtonTitle: String = "Apple로 시작하기"
+    static let supportInquiryPrompt: String = "로그인에 문제가 있으신가요?"
+    static let supportChannelLabel: String = "고객센터"
+    static let supportChannelSuffix: String = "로 문의해 주세요."
+    static let socialButtonHeight: CGFloat = 52
 }
 
 #if DEBUG
-#Preview("로그인 화면") {
+#Preview("소셜 로그인 진입 화면") {
     LoginView(
         loginUseCase: LoginViewPreviewLoginUseCase(),
-        loginByIdPwUseCase: LoginViewPreviewLoginByIdPwUseCase(),
         fetchMyProfileUseCase: LoginViewPreviewFetchMyProfileUseCase(),
         tokenStore: KeychainTokenStore(),
         errorHandler: ErrorHandler()
     )
+    .environment(ErrorHandler())
 }
 
 private struct LoginViewPreviewLoginUseCase: LoginUseCaseProtocol {
@@ -281,21 +296,6 @@ private struct LoginViewPreviewLoginUseCase: LoginUseCaseProtocol {
     }
 }
 
-private struct LoginViewPreviewLoginByIdPwUseCase: LoginByIdPwUseCaseProtocol {
-    func execute(
-        loginId: String,
-        password: String
-    ) async throws -> LoginByIdPwResult {
-        LoginByIdPwResult(
-            memberId: "preview_member_id",
-            tokenPair: TokenPair(
-                accessToken: "preview_access_token",
-                refreshToken: "preview_refresh_token"
-            )
-        )
-    }
-}
-
 private struct LoginViewPreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
     func execute() async throws -> HomeProfileResult {
         HomeProfileResult(
@@ -313,7 +313,14 @@ private struct LoginViewPreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProto
             ],
             roles: [],
             generations: [
-                GenerationData(gisuId: 1, gen: 1, penaltyPoint: 0, rewardPoint: 0, pointLogs: [], penaltyLogs: [])
+                GenerationData(
+                    gisuId: 1,
+                    gen: 1,
+                    penaltyPoint: 0,
+                    rewardPoint: 0,
+                    pointLogs: [],
+                    penaltyLogs: []
+                )
             ]
         )
     }
