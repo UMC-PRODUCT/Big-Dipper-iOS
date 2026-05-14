@@ -45,9 +45,8 @@ struct LoginByIdPwView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DefaultSpacing.spacing24) {
                 inputSection
-                autoLoginToggle
+                autoLoginRow
                 loginButton
-                bottomActions
             }
             .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
             .padding(.top, DefaultConstant.defaultSafeTop)
@@ -111,6 +110,14 @@ struct LoginByIdPwView: View {
         }
     }
 
+    private var autoLoginRow: some View {
+        HStack(spacing: DefaultSpacing.spacing8) {
+            autoLoginToggle
+            Spacer()
+            signUpLink
+        }
+    }
+
     private var autoLoginToggle: some View {
         Button {
             viewModel.isAutoLoginEnabled.toggle()
@@ -127,7 +134,6 @@ struct LoginByIdPwView: View {
                 .foregroundStyle(viewModel.isAutoLoginEnabled ? .indigo500 : .grey400)
                 Text(Constants.autoLoginLabel)
                     .appFont(.subheadline, color: .grey600)
-                Spacer()
             }
             .frame(minHeight: Constants.minTouchTarget)
             .contentShape(Rectangle())
@@ -141,6 +147,16 @@ struct LoginByIdPwView: View {
         .accessibilityAddTraits(.isButton)
     }
 
+    private var signUpLink: some View {
+        NavigationLink(value: NavigationDestination.auth(.signUpByIdPw)) {
+            Text(Constants.signUpTitle)
+                .appFont(.footnote, color: .grey500)
+        }
+        .buttonStyle(.plain)
+        .frame(minHeight: Constants.minTouchTarget)
+        .accessibilityHint(Text("회원가입 화면으로 이동합니다"))
+    }
+
     private var loginButton: some View {
         MainButton(Constants.loginButtonTitle) {
             loginIdFocused = false
@@ -150,16 +166,6 @@ struct LoginByIdPwView: View {
         .loading(.constant(viewModel.loginByIdPwState.isLoading))
         .disabled(viewModel.loginByIdPwState.isLoading)
         .buttonStyle(.gradientCapsule)
-    }
-
-    private var bottomActions: some View {
-        NavigationLink(value: NavigationDestination.auth(.signUpByIdPw)) {
-            Text(Constants.signUpTitle)
-                .appFont(.footnote, color: .grey500)
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, minHeight: Constants.minTouchTarget, alignment: .trailing)
-        .accessibilityHint(Text("회원가입 화면으로 이동합니다"))
     }
 }
 
