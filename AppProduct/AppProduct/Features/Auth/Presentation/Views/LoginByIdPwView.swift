@@ -47,9 +47,7 @@ struct LoginByIdPwView: View {
                 inputSection
                 autoLoginToggle
                 loginButton
-                Spacer(minLength: DefaultSpacing.spacing24)
                 bottomActions
-                supportFooter
             }
             .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
             .padding(.top, DefaultConstant.defaultSafeTop)
@@ -58,11 +56,6 @@ struct LoginByIdPwView: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(Constants.navTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                homeButton
-            }
-        }
         .onChange(of: viewModel.destination) { _, newDestination in
             guard let newDestination else { return }
             switch newDestination {
@@ -84,9 +77,13 @@ struct LoginByIdPwView: View {
                 text: $viewModel.loginIdInput,
                 submitLabel: .next,
                 onSubmit: { passwordFocused = true },
-                focusBinding: $loginIdFocused
+                focusBinding: $loginIdFocused,
+                guideMessage: viewModel.loginIdGuideMessage
             )
             .accessibilityLabel(Text("아이디 또는 휴대폰번호"))
+            .onChange(of: viewModel.loginIdInput) {
+                viewModel.clearLoginIdGuide()
+            }
 
             UnderlineTextField(
                 label: Constants.passwordLabel,
@@ -98,9 +95,13 @@ struct LoginByIdPwView: View {
                     passwordFocused = false
                     Task { await viewModel.loginWithIdPw() }
                 },
-                focusBinding: $passwordFocused
+                focusBinding: $passwordFocused,
+                guideMessage: viewModel.passwordGuideMessage
             )
             .accessibilityLabel(Text("비밀번호"))
+            .onChange(of: viewModel.passwordInput) {
+                viewModel.clearPasswordGuide()
+            }
 
             if let errorMessage = viewModel.loginByIdPwErrorMessage {
                 Text(errorMessage)
@@ -147,70 +148,18 @@ struct LoginByIdPwView: View {
             Task { await viewModel.loginWithIdPw() }
         }
         .loading(.constant(viewModel.loginByIdPwState.isLoading))
-        .disabled(
-            viewModel.loginIdInput.isEmpty
-            || viewModel.passwordInput.isEmpty
-            || viewModel.loginByIdPwState.isLoading
-        )
+        .disabled(viewModel.loginByIdPwState.isLoading)
         .buttonStyle(.gradientCapsule)
     }
 
     private var bottomActions: some View {
-        HStack(spacing: DefaultSpacing.spacing8) {
-            HStack(spacing: DefaultSpacing.spacing4) {
-                Button(Constants.findIdTitle) {
-                    #if DEBUG
-                    print("[Auth] 아이디 찾기 — 미구현 (준비 중)")
-                    #endif
-                }
-                .appFont(.caption1, color: .grey600)
-                .buttonStyle(.plain)
-
-                Text("/")
-                    .appFont(.caption1, color: .grey400)
-
-                Button(Constants.resetPasswordTitle) {
-                    #if DEBUG
-                    print("[Auth] 비밀번호 재설정 — 미구현 (준비 중)")
-                    #endif
-                }
-                .appFont(.caption1, color: .grey600)
-                .buttonStyle(.plain)
-            }
-            .frame(minHeight: Constants.minTouchTarget)
-
-            Spacer()
-
-            NavigationLink(value: NavigationDestination.auth(.signUpByIdPw)) {
-                Text(Constants.signUpTitle)
-                    .appFont(.caption1Emphasis, color: .indigo500)
-            }
-            .buttonStyle(.plain)
-            .frame(minHeight: Constants.minTouchTarget)
-            .accessibilityHint(Text("회원가입 화면으로 이동합니다"))
-        }
-    }
-
-    private var supportFooter: some View {
-        VStack(spacing: DefaultSpacing.spacing4) {
-            Text(Constants.supportInquiryPrompt)
-                .appFont(.caption1, color: .grey500)
-            Text(Constants.supportOperatingHours)
-                .appFont(.caption1, color: .grey500)
-        }
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var homeButton: some View {
-        Button {
-            appFlow.showMain()
-        } label: {
-            Image(systemName: "house")
-                .foregroundStyle(.grey700)
+        NavigationLink(value: NavigationDestination.auth(.signUpByIdPw)) {
+            Text(Constants.signUpTitle)
+                .appFont(.footnote, color: .grey500)
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, minHeight: Constants.minTouchTarget, alignment: .trailing)
+        .accessibilityHint(Text("회원가입 화면으로 이동합니다"))
     }
 }
 
@@ -219,13 +168,11 @@ struct LoginByIdPwView: View {
 fileprivate enum Constants {
     static let navTitle: String = "로그인"
     static let loginIdLabel: String = "아이디 또는 휴대폰번호"
-    static let loginIdPlaceholder: String = "아이디 또는 휴대폰번호를 입력하세요"
+    static let loginIdPlaceholder: String = "아이디를 입력하세요"
     static let passwordLabel: String = "비밀번호"
     static let passwordPlaceholder: String = "비밀번호를 입력하세요"
     static let autoLoginLabel: String = "자동로그인"
     static let loginButtonTitle: String = "로그인"
-    static let findIdTitle: String = "아이디 찾기"
-    static let resetPasswordTitle: String = "비밀번호 재설정"
     static let signUpTitle: String = "회원가입"
     static let supportInquiryPrompt: String = "이용 중 불편사항이 있으신가요?"
     static let supportOperatingHours: String = "고객센터 운영시간 09:00 - 18:00"

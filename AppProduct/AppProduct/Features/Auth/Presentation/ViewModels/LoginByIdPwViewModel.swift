@@ -22,6 +22,10 @@ final class LoginByIdPwViewModel {
     private(set) var loginByIdPwState: Loadable<LoginByIdPwResult> = .idle
     /// 인라인 에러 메시지 (도메인/유효성 오류)
     private(set) var loginByIdPwErrorMessage: String?
+    /// 아이디 필드 유효성 가이드 메시지
+    private(set) var loginIdGuideMessage: String?
+    /// 비밀번호 필드 유효성 가이드 메시지
+    private(set) var passwordGuideMessage: String?
     /// 로그인 완료 후 이동할 목적지
     private(set) var destination: IdPwLoginDestination?
 
@@ -48,19 +52,31 @@ final class LoginByIdPwViewModel {
 
     // MARK: - Function
 
+    func clearLoginIdGuide() {
+        loginIdGuideMessage = nil
+    }
+
+    func clearPasswordGuide() {
+        passwordGuideMessage = nil
+    }
+
     /// ID/PW 로그인 실행
     @MainActor
     func loginWithIdPw() async {
         let trimmedId = loginIdInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedPw = passwordInput
 
+        loginIdGuideMessage = trimmedId.isEmpty ? "아이디를 입력해 주세요." : nil
+        passwordGuideMessage = trimmedPw.isEmpty ? "비밀번호를 입력해 주세요." : nil
+
         guard !trimmedId.isEmpty, !trimmedPw.isEmpty else {
-            loginByIdPwErrorMessage = "아이디와 비밀번호를 입력해주세요."
             return
         }
 
         loginByIdPwState = .loading
         loginByIdPwErrorMessage = nil
+        loginIdGuideMessage = nil
+        passwordGuideMessage = nil
         destination = nil
 
         do {

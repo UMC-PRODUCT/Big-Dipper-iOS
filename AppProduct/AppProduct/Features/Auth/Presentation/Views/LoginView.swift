@@ -251,7 +251,7 @@ fileprivate struct SocialLoginLabel: View {
 // MARK: - Constants
 
 fileprivate enum Constants {
-    static let idPwLoginTitle: String = "아이디 또는 휴대폰번호 로그인"
+    static let idPwLoginTitle: String = "아이디 로그인"
     static let naverButtonTitle: String = "네이버로 시작하기"
     static let kakaoButtonTitle: String = "카카오로 시작하기"
     static let appleButtonTitle: String = "Apple로 시작하기"

@@ -130,7 +130,7 @@ struct GradientCapsuleButtonStyle: ButtonStyle {
         if isEnabled {
             return AnyShapeStyle(
                 LinearGradient(
-                    colors: [Color.indigo400, Color.indigo600],
+                    colors: [Color.indigo300, Color.indigo500, Color.indigo600],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
