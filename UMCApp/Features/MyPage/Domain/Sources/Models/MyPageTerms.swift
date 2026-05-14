@@ -9,9 +9,9 @@ import Foundation
 
 /// 마이페이지 약관 링크 정보
 public struct MyPageTerms {
-    let id: String
-    let link: String
-    let isMandatory: Bool
+    public let id: String
+    public let link: String
+    public let isMandatory: Bool
     
     public init(id: String, link: String, isMandatory: Bool) {
         self.id = id
