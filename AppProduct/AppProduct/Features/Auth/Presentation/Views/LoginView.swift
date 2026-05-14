@@ -73,7 +73,7 @@ struct LoginView: View {
     // MARK: - Subviews
 
     private var content: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: .zero) {
             Spacer()
 
             LogoSection()
@@ -85,60 +85,35 @@ struct LoginView: View {
                 .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
                 .padding(.bottom, DefaultConstant.defaultSafeBottom)
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                homeButton
-            }
-        }
     }
 
     private var actionSection: some View {
-        VStack(spacing: DefaultSpacing.spacing16) {
-            socialButtons
-            idPwLoginButton
-            supportFooter
+        VStack(spacing: DefaultSpacing.spacing32) {
+            loginSection(content: {
+                kakaoLoginButton
+                appleLoginButton
+            })
+            
+            Divider()
+            
+            loginSection(content: {
+                idPwLoginButton
+                supportFooter
+            })
         }
     }
-
-    private var socialButtons: some View {
+    
+    private func loginSection<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         VStack(spacing: DefaultSpacing.spacing12) {
-            naverLoginButton
-            kakaoLoginButton
-            appleLoginButton
+            content()
         }
-    }
-
-    private var naverLoginButton: some View {
-        Button {
-            #if DEBUG
-            print("[Auth] 네이버 로그인 — 미구현 (준비 중)")
-            #endif
-        } label: {
-            SocialLoginLabel(
-                title: Constants.naverButtonTitle,
-                icon: Image(systemName: "n.square.fill"),
-                useTemplate: true,
-                backgroundColor: .naver,
-                foregroundColor: .grey000
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(viewModel.loginState.isLoading)
-        .accessibilityLabel(Text("네이버로 시작하기 (준비 중)"))
-        .accessibilityHint(Text("네이버 계정으로 로그인합니다"))
     }
 
     private var kakaoLoginButton: some View {
         Button {
             Task { await viewModel.loginWithKakao() }
         } label: {
-            SocialLoginLabel(
-                title: Constants.kakaoButtonTitle,
-                icon: Image(.kakao),
-                useTemplate: false,
-                backgroundColor: .kakao,
-                foregroundColor: .grey900
-            )
+            SocialLoginLabel(.kakao)
         }
         .buttonStyle(.plain)
         .disabled(viewModel.loginState.isLoading)
@@ -150,13 +125,7 @@ struct LoginView: View {
         Button {
             viewModel.loginWithApple()
         } label: {
-            SocialLoginLabel(
-                title: Constants.appleButtonTitle,
-                icon: Image(.apple),
-                useTemplate: true,
-                backgroundColor: .grey900,
-                foregroundColor: .grey000
-            )
+            SocialLoginLabel(.apple)
         }
         .buttonStyle(.plain)
         .disabled(viewModel.loginState.isLoading)
@@ -166,34 +135,22 @@ struct LoginView: View {
 
     private var idPwLoginButton: some View {
         NavigationLink(value: NavigationDestination.auth(.loginByIdPw)) {
-            Text(Constants.idPwLoginTitle)
-                .appFont(.callout, color: .grey900)
-                .frame(maxWidth: .infinity)
-                .frame(height: Constants.socialButtonHeight)
-                .overlay(
-                    Capsule()
-                        .strokeBorder(.grey400, lineWidth: 1.5)
-                )
+            SocialLoginLabel(.email)
         }
-        .buttonStyle(.plain)
+        .buttonBorderShape(.capsule)
         .disabled(viewModel.loginState.isLoading)
         .accessibilityHint(Text("아이디와 비밀번호 입력 화면으로 이동합니다"))
+        .overlay {
+            Capsule()
+                .fill(.clear)
+                .strokeBorder(Color.grey500, style: .init(lineWidth: 0.5))
+        }
     }
 
     private var supportFooter: some View {
         Text(Constants.supportText)
-            .appFont(.footnote, color: .grey500)
+            .appFont(.subheadline, color: .grey500)
             .multilineTextAlignment(.center)
-    }
-
-    private var homeButton: some View {
-        Button {
-            appFlow.showMain()
-        } label: {
-            Image(systemName: "house")
-                .foregroundStyle(.grey700)
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -218,9 +175,9 @@ fileprivate struct LogoSection: View, Equatable {
 
             VStack(spacing: DefaultSpacing.spacing4) {
                 Text(Constants.appSubtitle)
-                    .appFont(.subheadline, color: .grey700)
+                    .appFont(.callout, color: .grey700)
                 Text(Constants.appStatement)
-                    .appFont(.footnote, color: .grey500)
+                    .appFont(.subheadline, color: .grey500)
             }
         }
     }
@@ -234,49 +191,38 @@ fileprivate struct LogoSection: View, Equatable {
 /// 디자인 시스템 토큰만 사용하며, 브랜드 색은 호출부에서 토큰으로 주입합니다.
 fileprivate struct SocialLoginLabel: View {
 
-    let title: String
-    let icon: Image
-    /// 아이콘을 `.template`로 렌더링할지 여부 (브랜드 단색 처리 시 true).
-    let useTemplate: Bool
-    let backgroundColor: Color
-    let foregroundColor: Color
+    let loginType: SocialType
+    
+    init(_ loginType: SocialType) {
+        self.loginType = loginType
+    }
 
     private enum LayoutConstants {
-        static let iconSize: CGFloat = 20
         static let leadingPadding: CGFloat = 16
+        static let btnHeight: CGFloat = 48
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            iconView
-                .padding(.leading, LayoutConstants.leadingPadding)
-            Text(title)
-                .appFont(.calloutEmphasis, color: foregroundColor)
+        ZStack(alignment: .leading, content: {
+            Text(loginType.rawValue)
+                .appFont(.callout, color: loginType.fontColor)
                 .frame(maxWidth: .infinity)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: Constants.socialButtonHeight)
-        .background(backgroundColor, in: .capsule)
+                .frame(height: LayoutConstants.btnHeight)
+                .background(loginType.color, in: .capsule)
+            
+            loginLogo
+        })
     }
 
     @ViewBuilder
-    private var iconView: some View {
-        if useTemplate {
-            icon
-                .renderingMode(.template)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: LayoutConstants.iconSize, height: LayoutConstants.iconSize)
-                .foregroundStyle(foregroundColor)
-                .accessibilityHidden(true)
-        } else {
-            icon
-                .renderingMode(.original)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: LayoutConstants.iconSize, height: LayoutConstants.iconSize)
-                .accessibilityHidden(true)
-        }
+    private var loginLogo: some View {
+        loginType.image
+            .renderingMode(.original)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: loginType.iconSize, height: loginType.iconSize)
+            .accessibilityHidden(true)
+            .padding(.leading, LayoutConstants.leadingPadding)
     }
 }
 
