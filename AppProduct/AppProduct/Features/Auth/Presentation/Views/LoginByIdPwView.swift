@@ -181,10 +181,10 @@ struct LoginByIdPwView: View {
 
             Spacer()
 
-            Button(Constants.signUpTitle) {
-                appFlow.showSignUpByIdPw()
+            NavigationLink(value: NavigationDestination.auth(.signUpByIdPw)) {
+                Text(Constants.signUpTitle)
+                    .appFont(.caption1Emphasis, color: .indigo500)
             }
-            .appFont(.caption1Emphasis, color: .indigo500)
             .buttonStyle(.plain)
             .frame(minHeight: Constants.minTouchTarget)
             .accessibilityHint(Text("회원가입 화면으로 이동합니다"))

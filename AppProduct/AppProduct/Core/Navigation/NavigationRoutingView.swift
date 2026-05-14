@@ -65,6 +65,16 @@ private extension NavigationRoutingView {
                 tokenStore: di.resolve(TokenStore.self),
                 errorHandler: errorHandler
             )
+        case .signUpByIdPw:
+            let authProvider = di.resolve(AuthUseCaseProviding.self)
+            SignUpByIdPwView(
+                sendEmailVerificationUseCase: authProvider.sendEmailVerificationUseCase,
+                verifyEmailCodeUseCase: authProvider.verifyEmailCodeUseCase,
+                registerByIdPwUseCase: authProvider.registerByIdPwUseCase,
+                checkLoginIdAvailabilityUseCase: authProvider.checkLoginIdAvailabilityUseCase,
+                fetchSignUpDataUseCase: authProvider.fetchSignUpDataUseCase,
+                fetchMyProfileUseCase: di.resolve(HomeUseCaseProviding.self).fetchMyProfileUseCase
+            )
         }
     }
 

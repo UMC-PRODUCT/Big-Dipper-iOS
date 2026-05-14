@@ -43,8 +43,6 @@ struct AppProductApp: App {
             fullName: String?,
             postRegisterLoginContext: PostRegisterLoginContext?
         )
-        /// ID/PW 회원가입 화면
-        case signUpByIdPw
         /// 승인 대기 화면
         case pendingApproval
         /// 메인 화면 (탭, 인증 세션)
@@ -134,24 +132,6 @@ extension AppProductApp {
                     registerUseCase: authProvider.registerUseCase,
                     loginUseCase: authProvider.loginUseCase,
                     fetchSignUpDataUseCase: authProvider.fetchSignUpDataUseCase
-                )
-                .transition(rootTransition)
-
-            case .signUpByIdPw:
-                SignUpByIdPwView(
-                    sendEmailVerificationUseCase: authProvider
-                        .sendEmailVerificationUseCase,
-                    verifyEmailCodeUseCase: authProvider
-                        .verifyEmailCodeUseCase,
-                    registerByIdPwUseCase: authProvider
-                        .registerByIdPwUseCase,
-                    checkLoginIdAvailabilityUseCase: authProvider
-                        .checkLoginIdAvailabilityUseCase,
-                    fetchSignUpDataUseCase: authProvider
-                        .fetchSignUpDataUseCase,
-                    fetchMyProfileUseCase: container.resolve(
-                        HomeUseCaseProviding.self
-                    ).fetchMyProfileUseCase
                 )
                 .transition(rootTransition)
 
@@ -258,7 +238,6 @@ extension AppProductApp {
                     )
                 )
             },
-            showSignUpByIdPw: { transition(to: .signUpByIdPw) },
             showPendingApproval: { transition(to: .pendingApproval) },
             logout: { handleAuthSessionExpired() }
         )
