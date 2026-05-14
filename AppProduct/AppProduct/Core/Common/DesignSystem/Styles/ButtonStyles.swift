@@ -112,6 +112,45 @@ struct TextButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - GradientCapsuleButtonStyle
+
+/// 그라데이션 캡슐 버튼 스타일
+///
+/// 로그인 등 Primary CTA에 사용. `indigo400 → indigo600` 수평 그라데이션.
+/// disabled 상태에서는 `grey400` 단색으로 폴백합니다.
+struct GradientCapsuleButtonStyle: ButtonStyle {
+
+    @Environment(\.isEnabled) private var isEnabled
+
+    private enum LayoutConstants {
+        static let height: CGFloat = 52
+    }
+
+    private var background: AnyShapeStyle {
+        if isEnabled {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [Color.indigo400, Color.indigo600],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+        } else {
+            return AnyShapeStyle(Color.grey400)
+        }
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .appFont(.calloutEmphasis, color: .grey000)
+            .frame(maxWidth: .infinity)
+            .frame(height: LayoutConstants.height)
+            .background(background, in: .capsule)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Button Extension
 
 extension ButtonStyle where Self == PrimaryButtonStyle {
@@ -128,4 +167,8 @@ extension ButtonStyle where Self == DestructiveButtonStyle {
 
 extension ButtonStyle where Self == TextButtonStyle {
     static var text: TextButtonStyle { TextButtonStyle() }
+}
+
+extension ButtonStyle where Self == GradientCapsuleButtonStyle {
+    static var gradientCapsule: GradientCapsuleButtonStyle { GradientCapsuleButtonStyle() }
 }

@@ -108,7 +108,6 @@ extension AppProductApp {
             case .login:
                 LoginView(
                     loginUseCase: authProvider.loginUseCase,
-                    loginByIdPwUseCase: authProvider.loginByIdPwUseCase,
                     fetchMyProfileUseCase: container.resolve(
                         HomeUseCaseProviding.self
                     ).fetchMyProfileUseCase,
