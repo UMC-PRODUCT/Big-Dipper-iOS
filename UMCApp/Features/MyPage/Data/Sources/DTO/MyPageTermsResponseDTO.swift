@@ -14,6 +14,12 @@ public struct MyPageTermsResponseDTO: Codable {
     let link: String
     let isMandatory: Bool
     
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case link
+        case isMandatory
+    }
+    
     public func toDomain() -> MyPageTerms {
         MyPageTerms(
             id: id,
