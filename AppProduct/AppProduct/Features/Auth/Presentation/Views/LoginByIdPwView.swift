@@ -193,9 +193,9 @@ struct LoginByIdPwView: View {
 
     private var supportFooter: some View {
         VStack(spacing: DefaultSpacing.spacing4) {
-            Text(Constants.supportText1)
+            Text(Constants.supportInquiryPrompt)
                 .appFont(.caption1, color: .grey500)
-            Text(Constants.supportText2)
+            Text(Constants.supportOperatingHours)
                 .appFont(.caption1, color: .grey500)
         }
         .multilineTextAlignment(.center)
@@ -227,8 +227,8 @@ fileprivate enum Constants {
     static let findIdTitle: String = "아이디 찾기"
     static let resetPasswordTitle: String = "비밀번호 재설정"
     static let signUpTitle: String = "회원가입"
-    static let supportText1: String = "이용 중 불편사항이 있으신가요?"
-    static let supportText2: String = "고객센터 운영시간 09:00 - 18:00"
+    static let supportInquiryPrompt: String = "이용 중 불편사항이 있으신가요?"
+    static let supportOperatingHours: String = "고객센터 운영시간 09:00 - 18:00"
 
     static let checkboxSize: CGFloat = 20
     static let minTouchTarget: CGFloat = 44
