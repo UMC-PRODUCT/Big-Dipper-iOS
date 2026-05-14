@@ -162,6 +162,11 @@ class MyPageViewModel {
                 provider: social.rawValue,
                 reason: "현재 앱에서는 Google 연동 추가를 지원하지 않습니다."
             )
+        case .email:
+            throw AuthError.socialLoginFailed(
+                provider: social.rawValue,
+                reason: "이메일 로그인은 OAuth 연동 추가 흐름의 대상이 아닙니다."
+            )
         }
 
         return try extractVerificationToken(
