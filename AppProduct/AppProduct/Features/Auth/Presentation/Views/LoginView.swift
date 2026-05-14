@@ -19,6 +19,10 @@ struct LoginView: View {
     @State private var viewModel: LoginViewModel
     @State private var navPath: [NavigationDestination] = []
     @Environment(\.appFlow) private var appFlow
+    @Environment(ErrorHandler.self) private var errorHandler
+
+    /// 카카오톡 UMC 문의 채널 연동 매니저
+    private let kakaoPlusManager: KakaoPlusManager = .init()
 
     // MARK: - Init
 
@@ -108,7 +112,7 @@ struct LoginView: View {
             content()
         }
     }
-
+    
     private var kakaoLoginButton: some View {
         Button {
             Task { await viewModel.loginWithKakao() }
@@ -148,9 +152,27 @@ struct LoginView: View {
     }
 
     private var supportFooter: some View {
-        Text(Constants.supportText)
-            .appFont(.subheadline, color: .grey500)
-            .multilineTextAlignment(.center)
+        VStack(spacing: DefaultSpacing.spacing4) {
+            Text(Constants.supportInquiryPrompt)
+                .appFont(.footnote, color: .grey500)
+            HStack(spacing: .zero) {
+                Button {
+                    kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
+                } label: {
+                    Text(Constants.supportChannelLabel)
+                        .foregroundStyle(.indigo)
+                        .appFont(.footnote, color: .grey500)
+                        .underline()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("고객센터로 문의하기"))
+                .accessibilityHint(Text("카카오톡 UMC 문의 채널을 엽니다"))
+
+                Text(Constants.supportChannelSuffix)
+                    .appFont(.footnote, color: .grey500)
+            }
+        }
+        .multilineTextAlignment(.center)
     }
 }
 
@@ -233,7 +255,9 @@ fileprivate enum Constants {
     static let naverButtonTitle: String = "네이버로 시작하기"
     static let kakaoButtonTitle: String = "카카오로 시작하기"
     static let appleButtonTitle: String = "Apple로 시작하기"
-    static let supportText: String = "로그인에 문제가 있으신가요?\n고객센터로 문의해 주세요."
+    static let supportInquiryPrompt: String = "로그인에 문제가 있으신가요?"
+    static let supportChannelLabel: String = "고객센터"
+    static let supportChannelSuffix: String = "로 문의해 주세요."
     static let socialButtonHeight: CGFloat = 52
 }
 
@@ -245,6 +269,7 @@ fileprivate enum Constants {
         tokenStore: KeychainTokenStore(),
         errorHandler: ErrorHandler()
     )
+    .environment(ErrorHandler())
 }
 
 private struct LoginViewPreviewLoginUseCase: LoginUseCaseProtocol {
