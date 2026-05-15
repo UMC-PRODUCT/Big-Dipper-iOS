@@ -34,7 +34,6 @@ struct NoticeDetailDTO: Codable {
     let links: [NoticeDetailLinkDTO]
     let scope: String?
     let category: String?
-    let isMustRead: Bool?
     let hasPermission: Bool?
 
     private enum CodingKeys: String, CodingKey {
@@ -56,7 +55,6 @@ struct NoticeDetailDTO: Codable {
         case links
         case scope
         case category
-        case isMustRead
         case hasPermission
     }
 
@@ -88,7 +86,6 @@ struct NoticeDetailDTO: Codable {
 
         scope = try? container.decodeStringOrNil(forKey: .scope)
         category = try? container.decodeStringOrNil(forKey: .category)
-        isMustRead = try? container.decodeIfPresent(Bool.self, forKey: .isMustRead)
         hasPermission = try? container.decodeIfPresent(Bool.self, forKey: .hasPermission)
     }
 }
@@ -144,7 +141,6 @@ extension NoticeDetailDTO {
             generation: generation,
             scope: noticeScope,
             category: noticeCategory,
-            isMustRead: isMustRead ?? false,
             title: title,
             content: content,
             authorID: authorChallengerId ?? "0",

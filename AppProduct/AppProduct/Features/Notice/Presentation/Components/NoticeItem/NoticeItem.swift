@@ -17,8 +17,6 @@ private enum Constant {
     // top
     static let topHSpacing: CGFloat = 4
     static let tagPadding: EdgeInsets = .init(top: 4, leading: 8, bottom: 4, trailing: 8)
-    static let mustReadIconSpacing: CGFloat = 4
-    static let mustReadIconSize: CGFloat = 12
     // content
     static let contentSpacing: CGFloat = 4
     // bottom
@@ -73,13 +71,13 @@ private struct NoticeItemPresenter: View, Equatable {
         .padding(Constant.mainPadding)
         .background {
             ConcentricRectangle(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true)
-                .fill(model.mustRead ? .indigo100 : .white)
+                .fill(.white)
                 .glass()
         }
     }
 }
 
-/// 태그 + 필독 + 알림 + 날짜
+/// 태그 + 알림 + 날짜
 private struct TopSection: View, Equatable {
     let model: NoticeItemModel
 
@@ -87,10 +85,6 @@ private struct TopSection: View, Equatable {
         HStack(spacing: Constant.topHSpacing) {
             ForEach(Array(model.tags.enumerated()), id: \.offset) { _, tagItem in
                 tag(tagItem.text, color: tagItem.backColor)
-            }
-            
-            if model.mustRead {
-                tag("필독", color: .red)
             }
 
             Spacer()
@@ -117,7 +111,7 @@ private struct ContentSection: View, Equatable {
     var body: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
             Text(model.title)
-                .appFont(.bodyEmphasis, color: model.mustRead ? Color.indigo900 : .grey900)
+                .appFont(.bodyEmphasis, color: .grey900)
                 .lineLimit(1)
 
             Text(MarkdownSerializer.plainText(from: model.content))
@@ -174,7 +168,6 @@ private struct BottomSection: View, Equatable {
             generation: 9,
             scope: .central,
             category: .general,
-            mustRead: true,
             isAlert: true,
             date: Date(),
             title: "[투표] 12기 중앙 해커톤 회식 메뉴 선정 안내",

@@ -18,7 +18,6 @@ struct NoticeItemModel: Equatable, Identifiable {
     let scope: NoticeScope
     // 공지 카테고리 (일반/파트별)
     let category: NoticeCategory
-    let mustRead: Bool
     let isAlert: Bool
     let date: Date
     let title: String
@@ -40,7 +39,6 @@ struct NoticeItemModel: Equatable, Identifiable {
         generation: Int,
         scope: NoticeScope,
         category: NoticeCategory,
-        mustRead: Bool,
         isAlert: Bool,
         date: Date,
         title: String,
@@ -61,7 +59,6 @@ struct NoticeItemModel: Equatable, Identifiable {
         self.generation = generation
         self.scope = scope
         self.category = category
-        self.mustRead = mustRead
         self.isAlert = isAlert
         self.date = date
         self.title = title
@@ -173,7 +170,6 @@ extension NoticeItemModel {
             generation: generation,
             scope: scope,
             category: category,
-            isMustRead: mustRead,
             title: title,
             content: content,
             authorID: "temp-\(id)",

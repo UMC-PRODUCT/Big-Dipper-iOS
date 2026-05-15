@@ -226,7 +226,6 @@ final class StaffNoticeViewModel {
                 generation: baseItem.generation,
                 scope: baseItem.scope,
                 category: baseItem.category,
-                mustRead: baseItem.mustRead,
                 isAlert: baseItem.isAlert,
                 date: baseItem.date,
                 title: baseItem.title,

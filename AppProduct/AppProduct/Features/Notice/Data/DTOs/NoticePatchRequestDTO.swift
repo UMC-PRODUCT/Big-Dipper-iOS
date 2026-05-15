@@ -11,7 +11,5 @@ import Foundation
 struct UpdateNoticeRequestDTO: Encodable {
     let title: String
     let content: String
-    /// 필독 공지 여부
-    let mustRead: Bool
 }
 

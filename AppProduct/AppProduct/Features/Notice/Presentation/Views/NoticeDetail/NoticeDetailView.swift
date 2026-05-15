@@ -137,7 +137,7 @@ struct NoticeDetailView: View {
         .padding(.horizontal, Constants.horizontalPadding)
     }
 
-    /// 필독 칩 + 공지 제목 영역
+    /// 공지 제목 영역
     private func mainInfo(_ data: NoticeDetail) -> some View {
         VStack(alignment: .leading, spacing: Constants.topSectionSpacing) {
             Text(data.title)
