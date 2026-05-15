@@ -101,11 +101,12 @@ enum ManagementTeam: String, CaseIterable, Codable, Comparable {
         level >= ManagementTeam.centralEducationTeamMember.level
             || self == .schoolPresident
             || self == .schoolVicePresident
+            || self == .schoolPartLeader
     }
 
     /// 학교 파트장 공지 작성 시, 본인 학교로 자동 바인딩되는 역할(학교 회장단)
     var bindsOwnSchoolForPartLeaderNotice: Bool {
-        self == .schoolPresident || self == .schoolVicePresident
+        self == .schoolPresident || self == .schoolVicePresident || self == .schoolPartLeader
     }
 
     /// 운영진 카테고리 중 하나라도 작성 가능한가
