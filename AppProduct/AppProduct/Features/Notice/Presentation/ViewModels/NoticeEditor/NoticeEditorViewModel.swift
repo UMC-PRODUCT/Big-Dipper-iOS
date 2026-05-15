@@ -230,13 +230,15 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
         container: DIContainer,
         mode: NoticeEditorMode = .create,
         selectedGisuId: Int? = nil,
-        initialCategory: EditorMainCategory? = nil
+        initialCategory: EditorMainCategory? = nil,
+        memberRoleRaw: String? = nil
     ) {
         self.container = container
         self.mode = mode
         self.userGisuId = selectedGisuId
 
-        let categories: [EditorMainCategory] = [.all, .central]
+        let role = memberRoleRaw.flatMap { ManagementTeam(rawValue: $0) }
+        let categories = Self.availableCategories(for: nil, memberRole: role)
         availableCategories = categories
         selectedCategory = initialCategory.flatMap { categories.contains($0) ? $0 : nil } ?? categories.first ?? .all
 
