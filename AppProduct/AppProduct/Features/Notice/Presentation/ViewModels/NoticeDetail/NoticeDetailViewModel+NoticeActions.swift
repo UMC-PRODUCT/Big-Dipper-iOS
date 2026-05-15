@@ -473,7 +473,8 @@ extension NoticeDetailViewModel {
             let updatedNotice = try await noticeUseCase.updateNotice(
                 noticeId: noticeID,
                 title: title,
-                content: content
+                content: content,
+                mustRead: false
             )
             let normalizedNotice = normalizeTargetGenerationIfNeeded(in: updatedNotice)
             noticeState = .loaded(normalizedNotice)

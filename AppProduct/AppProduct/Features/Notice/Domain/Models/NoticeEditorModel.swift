@@ -7,6 +7,47 @@
 
 import Foundation
 
+// MARK: - ManagementNoticeCategory
+
+/// 운영진 공지 시나리오
+enum ManagementNoticeCategory: Identifiable, Equatable, Hashable, CaseIterable {
+    case centralAll
+    case schoolCore
+    case schoolPartLeader
+
+    var id: String {
+        switch self {
+        case .centralAll: return "centralAll"
+        case .schoolCore: return "schoolCore"
+        case .schoolPartLeader: return "schoolPartLeader"
+        }
+    }
+
+    var labelText: String {
+        switch self {
+        case .centralAll: return "중앙운영진"
+        case .schoolCore: return "학교 회장단"
+        case .schoolPartLeader: return "학교 파트장"
+        }
+    }
+
+    var labelIcon: String {
+        switch self {
+        case .centralAll: return "person.3.sequence.fill"
+        case .schoolCore: return "person.2.badge.gearshape"
+        case .schoolPartLeader: return "person.crop.rectangle.stack"
+        }
+    }
+
+    var serverNoticeTab: String {
+        switch self {
+        case .centralAll: return "CENTRAL_MEMBER"
+        case .schoolCore: return "SCHOOL_CORE"
+        case .schoolPartLeader: return "SCHOOL_PART_LEADER"
+        }
+    }
+}
+
 // MARK: - EditorMainCategory
 /// 공지 에디터 메인 카테고리
 enum EditorMainCategory: Identifiable, Equatable, Hashable {
@@ -15,6 +56,7 @@ enum EditorMainCategory: Identifiable, Equatable, Hashable {
     case branch
     case school
     case part(UMCPartType)
+    case management(ManagementNoticeCategory)
 
     /// 고유 식별자
     var id: String {
@@ -24,6 +66,7 @@ enum EditorMainCategory: Identifiable, Equatable, Hashable {
         case .branch: return "branch"
         case .school: return "school"
         case .part(let part): return "part_\(part.apiValue)"
+        case .management(let category): return "management_\(category.id)"
         }
     }
 
@@ -35,6 +78,7 @@ enum EditorMainCategory: Identifiable, Equatable, Hashable {
         case .branch: return "지부"
         case .school: return "학교"
         case .part(let part): return NoticePart(umcPartType: part)?.displayName ?? part.name
+        case .management(let category): return category.labelText
         }
     }
 
@@ -46,6 +90,7 @@ enum EditorMainCategory: Identifiable, Equatable, Hashable {
         case .branch: return "mappin.and.ellipse"
         case .school: return "graduationcap"
         case .part: return "person.3.fill"
+        case .management(let category): return category.labelIcon
         }
     }
 
@@ -62,6 +107,11 @@ enum EditorMainCategory: Identifiable, Equatable, Hashable {
             return [.school, .part]
         case .part:
             return []
+        case .management(let category):
+            switch category {
+            case .centralAll, .schoolCore: return []
+            case .schoolPartLeader: return [.part]
+            }
         }
     }
 
