@@ -51,6 +51,9 @@ struct APIResponse<T: Codable>: Codable {
     /// 응답 데이터 (성공 시에만 존재)
     let result: T?
 
+    /// 실패 응답에서 result가 String일 때 캡처한 서버 상세 메시지
+    let resultMessage: String?
+
     // MARK: - CodingKeys
 
     /// Spring `@JsonProperty("success")` 매핑
@@ -59,6 +62,27 @@ struct APIResponse<T: Codable>: Codable {
         case code
         case message
         case result
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        isSuccess = try container.decode(Bool.self, forKey: .isSuccess)
+        code = try container.decodeIfPresent(String.self, forKey: .code)
+        message = try container.decodeIfPresent(String.self, forKey: .message)
+        result = try container.decodeIfPresent(T.self, forKey: .result)
+        if result == nil {
+            resultMessage = try? container.decodeIfPresent(String.self, forKey: .result)
+        } else {
+            resultMessage = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(isSuccess, forKey: .isSuccess)
+        try container.encodeIfPresent(code, forKey: .code)
+        try container.encodeIfPresent(message, forKey: .message)
+        try container.encodeIfPresent(result, forKey: .result)
     }
 }
 
@@ -72,7 +96,7 @@ extension APIResponse {
     /// - Returns: result 값
     func unwrap() throws -> T {
         guard isSuccess else {
-            throw RepositoryError.serverError(code: code, message: message)
+            throw RepositoryError.serverError(code: code, message: resultMessage ?? message)
         }
 
         if let result {
@@ -93,7 +117,7 @@ extension APIResponse {
     /// - Throws: `RepositoryError.serverError` (실패 시)
     func validateSuccess() throws {
         guard isSuccess else {
-            throw RepositoryError.serverError(code: code, message: message)
+            throw RepositoryError.serverError(code: code, message: resultMessage ?? message)
         }
     }
 

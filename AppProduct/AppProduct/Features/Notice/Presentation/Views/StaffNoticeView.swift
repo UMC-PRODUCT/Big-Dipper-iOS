@@ -130,8 +130,8 @@ struct StaffNoticeView: View {
             progressContent
         case .loaded(let items):
             noticeContent(items)
-        case .failed:
-            failedContent()
+        case .failed(let error):
+            failedContent(error: error)
         }
     }
 
@@ -174,11 +174,11 @@ struct StaffNoticeView: View {
         }
     }
 
-    private func failedContent() -> some View {
+    private func failedContent(error: AppError) -> some View {
         RetryContentUnavailableView(
             title: Constants.failedTitle,
             systemImage: Constants.failedSystemImage,
-            description: Constants.failedDescription,
+            description: error.userMessage,
             retryTitle: Constants.retryTitle,
             isRetrying: isRetryingNotices,
             minRetryButtonWidth: Constants.retryMinimumWidth,
