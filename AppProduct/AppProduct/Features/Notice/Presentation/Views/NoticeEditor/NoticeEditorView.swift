@@ -261,12 +261,32 @@ struct NoticeEditorView: View {
                 return normalizedName(from: schoolName, fallback: "학교")
             case .all, .central, .part:
                 return ""
+            case .management(let scenario):
+                return managementSubtitle(for: scenario)
             }
         }
 
         switch viewModel.selectedCategory {
         case .all, .central, .school, .branch, .part:
             return ""
+        case .management(let scenario):
+            return managementSubtitle(for: scenario)
+        }
+    }
+
+    /// 운영진 시나리오별 서브타이틀 — 자동 바인딩되는 대상 정보를 사용자에게 명시
+    private func managementSubtitle(for scenario: ManagementNoticeCategory) -> String {
+        switch scenario {
+        case .centralAll:
+            return "중앙운영진 전체"
+        case .schoolCore:
+            return "중앙 + 학교 회장단"
+        case .schoolPartLeader:
+            let role = ManagementTeam(rawValue: memberRoleRaw)
+            if role?.bindsOwnSchoolForPartLeaderNotice == true {
+                return normalizedName(from: schoolName, fallback: "본인 학교 파트장")
+            }
+            return "전체 학교 파트장"
         }
     }
 

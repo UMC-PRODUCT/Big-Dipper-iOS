@@ -39,13 +39,22 @@ extension NoticeEditorViewModel {
             let targetInfo = buildTargetInfo()
             let links = sanitizedLinksForRequest()
 
+            let resolvedNoticeTab: String = {
+                if case .management(let scenario) = selectedCategory {
+                    return scenario.serverNoticeTab
+                }
+                return "CHALLENGER"
+            }()
+
             let notice = try await noticeUseCase.createNotice(
                 title: title,
                 content: content,
                 shouldNotify: allowAlert,
                 targetInfo: targetInfo,
                 links: links,
-                imageIds: imageIds
+                imageIds: imageIds,
+                noticeTab: resolvedNoticeTab,
+                mustRead: false
             )
 
             if shouldSendVoteRequest, let noticeId = Int(notice.id) {
@@ -89,7 +98,8 @@ extension NoticeEditorViewModel {
                 latestNotice = try await noticeUseCase.updateNotice(
                     noticeId: noticeId,
                     title: title,
-                    content: content
+                    content: content,
+                    mustRead: false
                 )
                 didUpdateAnyField = true
             }
@@ -222,6 +232,31 @@ extension NoticeEditorViewModel {
                 targetSchoolId: nil,
                 targetParts: [part]
             )
+        case .management(let scenario):
+            let managementParts = subCategorySelection.selectedParts.isEmpty
+                ? nil
+                : Array(subCategorySelection.selectedParts)
+            let resolvedSchoolId: Int? = (memberRole?.bindsOwnSchoolForPartLeaderNotice ?? false)
+                ? (schoolId > 0 ? schoolId : nil)
+                : nil
+            switch scenario {
+            case .centralAll, .schoolCore:
+                return TargetInfoDTO(
+                    targetGisuId: 0,
+                    targetChapterId: nil,
+                    targetSchoolId: nil,
+                    targetParts: nil as [UMCPartType]?,
+                    targetNoticeTab: scenario.serverNoticeTab
+                )
+            case .schoolPartLeader:
+                return TargetInfoDTO(
+                    targetGisuId: 0,
+                    targetChapterId: nil,
+                    targetSchoolId: resolvedSchoolId,
+                    targetParts: managementParts,
+                    targetNoticeTab: scenario.serverNoticeTab
+                )
+            }
         }
     }
 

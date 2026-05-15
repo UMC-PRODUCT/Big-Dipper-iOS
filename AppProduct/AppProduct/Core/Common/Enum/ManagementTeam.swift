@@ -79,6 +79,35 @@ enum ManagementTeam: String, CaseIterable, Codable, Comparable {
         roles.max()
     }
 
+    // MARK: - Notice Write Permissions
+
+    /// 중앙운영진 전체(`CENTRAL_MEMBER`) 공지 작성 가능 여부 — 총괄단만
+    var canWriteCentralAllNotice: Bool {
+        self == .centralPresident || self == .centralVicePresident
+    }
+
+    /// 중앙+학교회장단(`SCHOOL_CORE`) 공지 작성 가능 여부 — 중앙운영진 이상
+    var canWriteSchoolCoreNotice: Bool {
+        level >= ManagementTeam.centralEducationTeamMember.level
+    }
+
+    /// 학교 파트장(`SCHOOL_PART_LEADER`) 공지 작성 가능 여부 — 중앙운영진 이상 + 학교 회장단
+    var canWriteSchoolPartLeaderNotice: Bool {
+        level >= ManagementTeam.centralEducationTeamMember.level
+            || self == .schoolPresident
+            || self == .schoolVicePresident
+    }
+
+    /// 학교 파트장 공지 작성 시, 본인 학교로 자동 바인딩되는 역할(학교 회장단)
+    var bindsOwnSchoolForPartLeaderNotice: Bool {
+        self == .schoolPresident || self == .schoolVicePresident
+    }
+
+    /// 운영진 카테고리 중 하나라도 작성 가능한가
+    var canWriteAnyManagementNotice: Bool {
+        canWriteCentralAllNotice || canWriteSchoolCoreNotice || canWriteSchoolPartLeaderNotice
+    }
+
     // MARK: - Display
 
     /// 한글 표시명

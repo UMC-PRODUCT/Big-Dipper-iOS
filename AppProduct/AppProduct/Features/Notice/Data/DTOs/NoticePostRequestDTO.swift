@@ -18,6 +18,8 @@ struct PostNoticeRequestDTO: Codable {
     let shouldNotify: Bool
     /// 공지 대상 정보
     let targetInfo: TargetInfoDTO
+    /// 필독 공지 여부
+    let mustRead: Bool
 }
 
 // MARK: - Create Notice Response

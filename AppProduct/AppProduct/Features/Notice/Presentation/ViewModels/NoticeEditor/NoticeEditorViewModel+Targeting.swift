@@ -129,6 +129,9 @@ extension NoticeEditorViewModel {
             case .part:
                 branchOptions = []
                 schoolOptions = []
+            case .management:
+                branchOptions = []
+                schoolOptions = []
             }
             targetOptionsState = .loaded(true)
         } catch let error as DomainError {
@@ -353,8 +356,23 @@ extension NoticeEditorViewModel {
         for _: OrganizationType?,
         memberRole: ManagementTeam?
     ) -> [EditorMainCategory] {
-        _ = memberRole
-        return [.all, .central]
+        var categories: [EditorMainCategory] = [.all, .central]
+
+        guard let role = memberRole, role.canWriteAnyManagementNotice else {
+            return categories
+        }
+
+        if role.canWriteCentralAllNotice {
+            categories.append(.management(.centralAll))
+        }
+        if role.canWriteSchoolCoreNotice {
+            categories.append(.management(.schoolCore))
+        }
+        if role.canWriteSchoolPartLeaderNotice {
+            categories.append(.management(.schoolPartLeader))
+        }
+
+        return categories
     }
 
     /// 레거시 시그니처 유지용 래퍼입니다.
@@ -398,6 +416,11 @@ private extension NoticeEditorViewModel {
             return [.school, .part]
         case .part:
             return []
+        case .management(let scenario):
+            switch scenario {
+            case .centralAll, .schoolCore: return []
+            case .schoolPartLeader: return [.part]
+            }
         }
     }
 

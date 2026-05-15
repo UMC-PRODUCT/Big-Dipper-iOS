@@ -72,7 +72,7 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
         return prepared.fileId
     }
     
-    // MARK: 공지 생성 (PATCH)
+    // MARK: 공지 생성 (POST)
     /// 공지 생성
     func createNotice(
         title: String,
@@ -80,21 +80,32 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
         shouldNotify: Bool,
         targetInfo: TargetInfoDTO,
         links: [String] = [],
-        imageIds: [String] = []
+        imageIds: [String] = [],
+        noticeTab: String,
+        mustRead: Bool
     ) async throws -> NoticeDetail {
         guard !title.isEmpty else {
             throw DomainError.custom(message: "제목을 입력해주세요")
         }
-        
+
         guard !content.isEmpty else {
             throw DomainError.custom(message: "내용을 입력해주세요")
         }
-        
+
+        let resolvedTargetInfo = TargetInfoDTO(
+            targetGisuId: targetInfo.targetGisuId,
+            targetChapterId: targetInfo.targetChapterId,
+            targetSchoolId: targetInfo.targetSchoolId,
+            targetParts: targetInfo.targetParts,
+            targetNoticeTab: noticeTab
+        )
+
         let requestDTO = PostNoticeRequestDTO(
             title: title,
             content: content,
             shouldNotify: shouldNotify,
-            targetInfo: targetInfo
+            targetInfo: resolvedTargetInfo,
+            mustRead: mustRead
         )
         return try await repository.createNotice(
             body: requestDTO,
@@ -203,19 +214,21 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
     func updateNotice(
         noticeId: Int,
         title: String,
-        content: String
+        content: String,
+        mustRead: Bool
     ) async throws -> NoticeDetail {
         guard !title.isEmpty else {
             throw DomainError.custom(message: "제목을 입력해주세요")
         }
-        
+
         guard !content.isEmpty else {
             throw DomainError.custom(message: "내용을 입력해주세요")
         }
-        
+
         let requestDTO = UpdateNoticeRequestDTO(
             title: title,
-            content: content
+            content: content,
+            mustRead: mustRead
         )
         return try await repository.updateNotice(noticeId: noticeId, body: requestDTO)
     }

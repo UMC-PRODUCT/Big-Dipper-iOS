@@ -29,6 +29,8 @@ protocol NoticeUseCaseProtocol {
     ///   - targetInfo: 수신 대상 정보
     ///   - links: 링크 목록
     ///   - imageIds: 이미지 ID 목록
+    ///   - noticeTab: 공지 탭 구분 (CHALLENGER/CENTRAL_MEMBER/SCHOOL_CORE/SCHOOL_PART_LEADER)
+    ///   - mustRead: 필독 공지 여부
     /// - Returns: 생성된 공지 상세 정보
     func createNotice(
         title: String,
@@ -36,7 +38,9 @@ protocol NoticeUseCaseProtocol {
         shouldNotify: Bool,
         targetInfo: TargetInfoDTO,
         links: [String],
-        imageIds: [String]
+        imageIds: [String],
+        noticeTab: String,
+        mustRead: Bool
     ) async throws -> NoticeDetail
     
     /// 공지사항 투표 추가 (POST)
@@ -106,11 +110,13 @@ protocol NoticeUseCaseProtocol {
     ///   - noticeId: 공지 ID
     ///   - title: 수정할 제목
     ///   - content: 수정할 본문
+    ///   - mustRead: 필독 공지 여부
     /// - Returns: 수정된 공지 상세 정보
     func updateNotice(
         noticeId: Int,
         title: String,
-        content: String
+        content: String,
+        mustRead: Bool
     ) async throws -> NoticeDetail
     
     /// 공지사항 링크 수정
