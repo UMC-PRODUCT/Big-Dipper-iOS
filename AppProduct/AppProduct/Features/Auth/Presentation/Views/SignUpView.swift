@@ -90,7 +90,6 @@ struct SignUpView: View {
                 .navigation(naviTitle: .signUp, displayMode: .large)
                 .navigationSubtitle(Constants.naviSubTitle)
             }
-            .keyboardToolbar(focusedField: $focusedField)
             .alertPrompt(item: $alertPrompt)
             .safeAreaInset(edge: .bottom, content: {
                 mainBtn

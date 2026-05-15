@@ -17,7 +17,8 @@ struct NoticeListRequestDTO {
     let schoolId: Int?
     /// 파트 (null이면 파트 구분 없이 조회)
     let part: UMCPartType?
-    /// 공지 탭 구분 (CHALLENGER / CENTRAL_MEMBER / SCHOOL_CORE / SCHOOL_PART_LEADER)
+    /// 대상 역할 하한선 (필수). 일반 챌린저 공지는 `CHALLENGER`,
+    /// 운영진 공지는 `CENTRAL_MEMBER` / `SCHOOL_CORE` / `SCHOOL_PART_LEADER`.
     let noticeTab: String
     /// 페이지 번호 (0부터 시작)
     let page: Int

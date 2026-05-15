@@ -79,7 +79,7 @@ struct LoginByIdPwView: View {
                 focusBinding: $loginIdFocused,
                 guideMessage: viewModel.loginIdGuideMessage
             )
-            .accessibilityLabel(Text("아이디 또는 휴대폰번호"))
+            .accessibilityLabel(Text("아이디"))
             .onChange(of: viewModel.loginIdInput) {
                 viewModel.clearLoginIdGuide()
             }
@@ -173,7 +173,7 @@ struct LoginByIdPwView: View {
 
 fileprivate enum Constants {
     static let navTitle: String = "로그인"
-    static let loginIdLabel: String = "아이디 또는 휴대폰번호"
+    static let loginIdLabel: String = "아이디"
     static let loginIdPlaceholder: String = "아이디를 입력하세요"
     static let passwordLabel: String = "비밀번호"
     static let passwordPlaceholder: String = "비밀번호를 입력하세요"
