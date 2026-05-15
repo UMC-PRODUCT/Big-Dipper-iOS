@@ -75,11 +75,11 @@ struct TargetSheetView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         case .loaded:
             sheetContent
-        case .failed(let error):
+        case .failed:
             RetryContentUnavailableView(
                 title: "대상 목록을 불러오지 못했습니다.",
                 systemImage: "exclamationmark.triangle",
-                description: error.userMessage,
+                description: "일시적인 오류가 발생했습니다. 다시 시도해주세요.",
                 retryTitle: "다시 시도",
                 isRetrying: isRetryingTargetOptions,
                 minRetryButtonWidth: Constants.retryButtonWidth,
