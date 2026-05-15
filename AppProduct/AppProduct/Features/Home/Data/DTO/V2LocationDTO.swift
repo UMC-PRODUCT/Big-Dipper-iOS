@@ -24,6 +24,32 @@ struct V2LocationDTO: Codable, Sendable, Equatable {
 
     /// 장소명
     let locationName: String
+
+    private enum CodingKeys: String, CodingKey {
+        case latitude
+        case longitude
+        case locationName
+    }
+
+    init(latitude: Double, longitude: Double, locationName: String) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.locationName = locationName
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        latitude = try container.decodeDoubleFlexibleIfPresent(forKey: .latitude) ?? 0
+        longitude = try container.decodeDoubleFlexibleIfPresent(forKey: .longitude) ?? 0
+        locationName = try container.decodeIfPresent(String.self, forKey: .locationName) ?? ""
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(latitude, forKey: .latitude)
+        try container.encode(longitude, forKey: .longitude)
+        try container.encode(locationName, forKey: .locationName)
+    }
 }
 
 // MARK: - Domain Mapping
@@ -44,5 +70,34 @@ extension V2LocationDTO {
         self.latitude = domain.latitude
         self.longitude = domain.longitude
         self.locationName = domain.locationName
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeDoubleFlexible(forKey key: Key) throws -> Double {
+        if let value = try? decode(Double.self, forKey: key) {
+            return value
+        }
+        if let value = try? decode(String.self, forKey: key),
+           let doubleValue = Double(value) {
+            return doubleValue
+        }
+        if let value = try? decode(Int.self, forKey: key) {
+            return Double(value)
+        }
+        throw DecodingError.typeMismatch(
+            Double.self,
+            DecodingError.Context(
+                codingPath: codingPath + [key],
+                debugDescription: "Expected Double/String-number/Int for key '\(key.stringValue)'"
+            )
+        )
+    }
+
+    func decodeDoubleFlexibleIfPresent(forKey key: Key) throws -> Double? {
+        if (try? decodeNil(forKey: key)) == true {
+            return nil
+        }
+        return try? decodeDoubleFlexible(forKey: key)
     }
 }
