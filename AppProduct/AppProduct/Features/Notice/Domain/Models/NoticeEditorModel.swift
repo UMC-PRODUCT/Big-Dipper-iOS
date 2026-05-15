@@ -346,6 +346,7 @@ struct VoteFormData: Equatable {
 }
 
 
+#if DEBUG
 // MARK: - EditorMockData
 /// 공지 에디터 프리뷰/디버그용 목 데이터
 enum EditorMockData {
@@ -395,6 +396,7 @@ enum EditorMockData {
         .init(id: 501, name: "중앙대"), .init(id: 502, name: "충남대"), .init(id: 503, name: "한양대")
     ]
 }
+#endif
 
 // MARK: - NoticeEditorMode
 

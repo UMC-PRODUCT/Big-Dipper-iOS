@@ -76,7 +76,8 @@ struct NoticeEditorView: View {
                 container: container,
                 mode: mode,
                 selectedGisuId: selectedGisuId,
-                initialCategory: initialCategory
+                initialCategory: initialCategory,
+                memberRoleRaw: UserDefaults.standard.string(forKey: AppStorageKey.memberRole)
             )
         )
     }

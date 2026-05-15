@@ -109,8 +109,8 @@ private extension NavigationRoutingView {
                 errorHandler: errorHandler,
                 model: detailItem
             )
-        case .editor(let mode, let selectedGisuId):
-            NoticeEditorView(container: di, mode: mode, selectedGisuId: selectedGisuId)
+        case .editor(let mode, let selectedGisuId, let initialCategory):
+            NoticeEditorView(container: di, mode: mode, selectedGisuId: selectedGisuId, initialCategory: initialCategory)
         case .staffNotice:
             StaffNoticeView(container: di, errorHandler: errorHandler)
         }

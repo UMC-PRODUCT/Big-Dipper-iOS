@@ -57,6 +57,7 @@ struct StaffNoticeView: View {
         static let noAccessSystemImage: String = "lock.shield"
         static let noAccessDescription: String = "운영진만 접근할 수 있는 공지 영역입니다"
         static let chipSpacing: CGFloat = DefaultSpacing.spacing8
+        static let defaultNavigationTitle: String = "운영진 공지"
     }
 
     // MARK: - Body
@@ -69,8 +70,9 @@ struct StaffNoticeView: View {
                 mainContent
             }
         }
-        .navigationTitle(viewModel.selectedTab?.labelText ?? "운영진 공지")
+        .navigationTitle(viewModel.selectedTab?.labelText ?? Constants.defaultNavigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { staffToolbarContent }
         .task {
             applyUserContext()
             await viewModel.fetchNotices()
@@ -216,6 +218,41 @@ struct StaffNoticeView: View {
         }
         .task(id: item.id) {
             await viewModel.loadNextPageIfNeeded(currentItem: item)
+        }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var staffToolbarContent: some ToolbarContent {
+        if let category = writableCategoryForSelectedTab {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    pathStore.noticePath.append(
+                        .notice(.editor(mode: .create, selectedGisuId: gisuId, initialCategory: category))
+                    )
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .imageScale(.medium)
+                }
+                .accessibilityLabel("운영진 공지 작성")
+            }
+        }
+    }
+
+    private var writableCategoryForSelectedTab: EditorMainCategory? {
+        guard let tab = viewModel.selectedTab,
+              let role = viewModel.memberRole else { return nil }
+
+        switch tab {
+        case .centralMember where role.canWriteCentralAllNotice:
+            return .management(.centralAll)
+        case .schoolCore where role.canWriteSchoolCoreNotice:
+            return .management(.schoolCore)
+        case .schoolPartLeader where role.canWriteSchoolPartLeaderNotice:
+            return .management(.schoolPartLeader)
+        default:
+            return nil
         }
     }
 
