@@ -20,6 +20,7 @@ struct StaffNoticeView: View {
     @Environment(ErrorHandler.self) private var errorHandler
     @AppStorage(AppStorageKey.memberRole) private var memberRoleRaw: String = ""
     @AppStorage(AppStorageKey.schoolId) private var schoolId: Int = 0
+    @AppStorage(AppStorageKey.gisuId) private var gisuId: Int = 0
     @State private var viewModel: StaffNoticeViewModel
     @State private var search: String = ""
     @State private var searchTask: Task<Void, Never>?
@@ -223,12 +224,13 @@ struct StaffNoticeView: View {
     private func applyUserContext() {
         viewModel.applyUserContext(
             memberRoleRawValue: memberRoleRaw,
-            schoolId: schoolId
+            schoolId: schoolId,
+            gisuId: gisuId
         )
     }
 
     private var staffContextSignature: String {
-        "\(memberRoleRaw)|\(schoolId)"
+        "\(memberRoleRaw)|\(schoolId)|\(gisuId)"
     }
 
     // MARK: - Retry / Reload

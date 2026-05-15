@@ -30,6 +30,7 @@ final class StaffNoticeViewModel {
 
     private(set) var memberRole: ManagementTeam?
     private(set) var schoolId: Int = 0
+    private(set) var gisuId: Int = 0
 
     private(set) var accessibleTabs: [StaffNoticeTab] = []
     var selectedTab: StaffNoticeTab?
@@ -64,10 +65,12 @@ final class StaffNoticeViewModel {
 
     func applyUserContext(
         memberRoleRawValue: String,
-        schoolId: Int
+        schoolId: Int,
+        gisuId: Int
     ) {
         self.memberRole = ManagementTeam(rawValue: memberRoleRawValue)
         self.schoolId = schoolId
+        self.gisuId = gisuId
         self.accessibleTabs = StaffNoticeTab.accessibleTabs(for: memberRole)
 
         if let selectedTab, !accessibleTabs.contains(selectedTab) {
@@ -203,7 +206,7 @@ final class StaffNoticeViewModel {
 
     private func buildRequest(tab: StaffNoticeTab, page: Int) -> NoticeListRequestDTO {
         NoticeListRequestDTO(
-            gisuId: 0,
+            gisuId: gisuId,
             schoolId: tab.requiresSchoolId ? (schoolId > 0 ? schoolId : nil) : nil,
             noticeTab: tab.rawValue,
             page: page,
