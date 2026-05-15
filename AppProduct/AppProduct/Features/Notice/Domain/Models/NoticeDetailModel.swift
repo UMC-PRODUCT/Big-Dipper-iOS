@@ -21,9 +21,6 @@ struct NoticeDetail: Equatable, Identifiable, Hashable {
     /// 공지 카테고리
     let category: NoticeCategory
 
-    /// 필독 여부
-    let isMustRead: Bool
-
     /// 공지 제목
     let title: String
     /// 공지 본문
@@ -127,7 +124,6 @@ struct NoticeDetail: Equatable, Identifiable, Hashable {
             generation: generation,
             scope: scope,
             category: category,
-            mustRead: isMustRead,
             isAlert: false,
             date: createdAt,
             title: title,
@@ -149,7 +145,6 @@ struct NoticeDetail: Equatable, Identifiable, Hashable {
         generation: Int,
         scope: NoticeScope,
         category: NoticeCategory,
-        isMustRead: Bool,
         title: String,
         content: String,
         authorID: String,
@@ -170,7 +165,6 @@ struct NoticeDetail: Equatable, Identifiable, Hashable {
         self.generation = generation
         self.scope = scope
         self.category = category
-        self.isMustRead = isMustRead
         self.title = title
         self.content = content
         self.authorID = authorID
@@ -235,7 +229,6 @@ struct TargetAudience: Equatable, Hashable {
             generation: generation,
             scope: scope,
             category: parts.first.map { .part($0) } ?? .general,
-            isMustRead: false,
             title: "",
             content: "",
             authorID: "",

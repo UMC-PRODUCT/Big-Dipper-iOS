@@ -73,7 +73,6 @@ extension NoticeDTO {
             generation: generation,
             scope: scope,
             category: category,
-            mustRead: false,
             isAlert: shouldSendNotification,
             date: createdAt.toISO8601Date(),
             title: title,

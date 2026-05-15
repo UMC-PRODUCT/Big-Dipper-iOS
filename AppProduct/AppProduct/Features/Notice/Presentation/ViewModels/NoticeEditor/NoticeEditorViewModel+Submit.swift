@@ -39,22 +39,13 @@ extension NoticeEditorViewModel {
             let targetInfo = buildTargetInfo()
             let links = sanitizedLinksForRequest()
 
-            let resolvedNoticeTab: String = {
-                if case .management(let scenario) = selectedCategory {
-                    return scenario.serverNoticeTab
-                }
-                return "CHALLENGER"
-            }()
-
             let notice = try await noticeUseCase.createNotice(
                 title: title,
                 content: content,
                 shouldNotify: allowAlert,
                 targetInfo: targetInfo,
                 links: links,
-                imageIds: imageIds,
-                noticeTab: resolvedNoticeTab,
-                mustRead: false
+                imageIds: imageIds
             )
 
             if shouldSendVoteRequest, let noticeId = Int(notice.id) {
@@ -98,8 +89,7 @@ extension NoticeEditorViewModel {
                 latestNotice = try await noticeUseCase.updateNotice(
                     noticeId: noticeId,
                     title: title,
-                    content: content,
-                    mustRead: false
+                    content: content
                 )
                 didUpdateAnyField = true
             }
@@ -245,16 +235,14 @@ extension NoticeEditorViewModel {
                     targetGisuId: 0,
                     targetChapterId: nil,
                     targetSchoolId: nil,
-                    targetParts: nil as [UMCPartType]?,
-                    targetNoticeTab: scenario.serverNoticeTab
+                    targetParts: nil as [UMCPartType]?
                 )
             case .schoolPartLeader:
                 return TargetInfoDTO(
                     targetGisuId: 0,
                     targetChapterId: nil,
                     targetSchoolId: resolvedSchoolId,
-                    targetParts: managementParts,
-                    targetNoticeTab: scenario.serverNoticeTab
+                    targetParts: managementParts
                 )
             }
         }

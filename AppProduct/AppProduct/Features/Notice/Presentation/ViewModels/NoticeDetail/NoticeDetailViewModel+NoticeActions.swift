@@ -135,7 +135,6 @@ extension NoticeDetailViewModel {
             generation: resolvedGeneration,
             scope: fetched.scope,
             category: fetched.category,
-            isMustRead: fetched.isMustRead,
             title: fetched.title,
             content: fetched.content,
             authorID: fetched.authorID,
@@ -473,8 +472,7 @@ extension NoticeDetailViewModel {
             let updatedNotice = try await noticeUseCase.updateNotice(
                 noticeId: noticeID,
                 title: title,
-                content: content,
-                mustRead: false
+                content: content
             )
             let normalizedNotice = normalizeTargetGenerationIfNeeded(in: updatedNotice)
             noticeState = .loaded(normalizedNotice)

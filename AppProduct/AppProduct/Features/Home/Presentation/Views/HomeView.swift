@@ -434,7 +434,6 @@ struct HomeView: View {
             generation: generation,
             scope: scope,
             category: .general,
-            isMustRead: false,
             title: data.title,
             content: "",
             authorID: "",

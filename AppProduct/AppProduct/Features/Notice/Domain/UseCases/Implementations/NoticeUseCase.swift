@@ -80,9 +80,7 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
         shouldNotify: Bool,
         targetInfo: TargetInfoDTO,
         links: [String] = [],
-        imageIds: [String] = [],
-        noticeTab: String,
-        mustRead: Bool
+        imageIds: [String] = []
     ) async throws -> NoticeDetail {
         guard !title.isEmpty else {
             throw DomainError.custom(message: "제목을 입력해주세요")
@@ -92,20 +90,11 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
             throw DomainError.custom(message: "내용을 입력해주세요")
         }
 
-        let resolvedTargetInfo = TargetInfoDTO(
-            targetGisuId: targetInfo.targetGisuId,
-            targetChapterId: targetInfo.targetChapterId,
-            targetSchoolId: targetInfo.targetSchoolId,
-            targetParts: targetInfo.targetParts,
-            targetNoticeTab: noticeTab
-        )
-
         let requestDTO = PostNoticeRequestDTO(
             title: title,
             content: content,
             shouldNotify: shouldNotify,
-            targetInfo: resolvedTargetInfo,
-            mustRead: mustRead
+            targetInfo: targetInfo
         )
         return try await repository.createNotice(
             body: requestDTO,
@@ -214,8 +203,7 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
     func updateNotice(
         noticeId: Int,
         title: String,
-        content: String,
-        mustRead: Bool
+        content: String
     ) async throws -> NoticeDetail {
         guard !title.isEmpty else {
             throw DomainError.custom(message: "제목을 입력해주세요")
@@ -227,8 +215,7 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
 
         let requestDTO = UpdateNoticeRequestDTO(
             title: title,
-            content: content,
-            mustRead: mustRead
+            content: content
         )
         return try await repository.updateNotice(noticeId: noticeId, body: requestDTO)
     }
