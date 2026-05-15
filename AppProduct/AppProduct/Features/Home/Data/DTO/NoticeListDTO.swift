@@ -17,6 +17,8 @@ struct NoticeListRequestDTO {
     let schoolId: Int?
     /// 파트 (null이면 파트 구분 없이 조회)
     let part: UMCPartType?
+    /// 공지 탭 구분 (CHALLENGER / CENTRAL_MEMBER / SCHOOL_CORE / SCHOOL_PART_LEADER)
+    let noticeTab: String
     /// 페이지 번호 (0부터 시작)
     let page: Int
     /// 페이지 크기
@@ -29,6 +31,7 @@ struct NoticeListRequestDTO {
         chapterId: Int? = nil,
         schoolId: Int? = nil,
         part: UMCPartType? = nil,
+        noticeTab: String = "CHALLENGER",
         page: Int = 0,
         size: Int = 10,
         sort: [String] = ["createdAt,DESC"]
@@ -37,6 +40,7 @@ struct NoticeListRequestDTO {
         self.chapterId = chapterId
         self.schoolId = schoolId
         self.part = part
+        self.noticeTab = noticeTab
         self.page = page
         self.size = size
         self.sort = sort
@@ -46,6 +50,7 @@ struct NoticeListRequestDTO {
     var toParameters: [String: Any] {
         var params: [String: Any] = [
             "gisuId": gisuId,
+            "noticeTab": noticeTab,
             "page": page,
             "size": size
         ]

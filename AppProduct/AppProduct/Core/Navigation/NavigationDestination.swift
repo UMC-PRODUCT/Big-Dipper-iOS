@@ -75,6 +75,8 @@ enum NavigationDestination: Hashable {
         case detail(detailItem: NoticeDetail)
         /// 공지 작성/편집
         case editor(mode: NoticeEditorMode, selectedGisuId: Int?)
+        /// 운영진 공지
+        case staffNotice
     }
 
     /// 커뮤니티(Community) 관련 화면 목적지

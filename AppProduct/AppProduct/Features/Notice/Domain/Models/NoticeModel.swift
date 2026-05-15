@@ -37,20 +37,16 @@ enum NoticeCategory: Equatable, Hashable {
 }
 
 // MARK: - NoticeSubFilterType
-/// 서브필터 타입 (전체, 운영진 공지, 파트)
+/// 서브필터 타입 (전체, 파트)
+///
+/// 운영진 공지는 `StaffNoticeTab` enum + `StaffNoticeView`로 분리되었습니다. (#723)
 enum NoticeSubFilterType: Identifiable, Equatable, Hashable {
-    // 전체
     case all
-    /// !!!: 추후 운영진 필터 가리기 해제할 것
-    // 운영진 공지
-    // case staff
-    // 파트
     case part
 
     var id: String {
         switch self {
         case .all: return "all"
-        //case .staff: return "management"
         case .part: return "part"
         }
     }
@@ -58,7 +54,6 @@ enum NoticeSubFilterType: Identifiable, Equatable, Hashable {
     var labelText: String {
         switch self {
         case .all: return "전체"
-        //case .staff: return "운영진 공지"
         case .part: return "파트"
         }
     }

@@ -63,6 +63,7 @@ enum NoticeRequestFactory {
             chapterId: requestChapterId,
             schoolId: requestSchoolId,
             part: requestPart,
+            noticeTab: "CHALLENGER",
             page: page,
             size: pageSize,
             sort: sort

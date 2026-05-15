@@ -69,6 +69,11 @@ enum ManagementTeam: String, CaseIterable, Codable, Comparable {
         self == .schoolPresident || self == .schoolVicePresident
     }
 
+    /// 운영진 공지 탭 접근 가능 여부 (교내 파트장 이상)
+    var canAccessStaffNotice: Bool {
+        level >= Self.schoolPartLeader.level
+    }
+
     // MARK: - Comparable
 
     static func < (lhs: ManagementTeam, rhs: ManagementTeam) -> Bool {
