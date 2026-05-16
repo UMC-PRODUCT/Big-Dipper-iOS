@@ -8,6 +8,12 @@
 import Foundation
 import NoticeDomain
 
+// MARK: - Vote DTO
+
+/// 공지 상세의 투표 정보 DTO
+///
+/// 투표 상태(`status`)는 서버가 제공하지 않을 경우
+/// `startsAt` / `endsAtExclusive`를 기준으로 클라이언트에서 추론합니다.
 public struct NoticeDetailVoteDTO: Codable {
     public let voteId: String
     public let title: String
@@ -47,6 +53,7 @@ public struct NoticeDetailVoteDTO: Codable {
         self.totalParticipants = try container.decodeIntFlexibleIfPresent(forKey: .totalParticipants)
     }
 
+    /// DTO → `NoticeVote` 도메인 모델 변환
     public func toDomain() -> NoticeVote {
         let startDate = parseISO8601(startsAt)
         let endDate = parseISO8601(endsAtExclusive)
@@ -69,6 +76,9 @@ public struct NoticeDetailVoteDTO: Codable {
     }
 }
 
+// MARK: - Vote Option DTO
+
+/// 투표 옵션 단건 DTO
 public struct NoticeDetailVoteOptionDTO: Codable {
     public let optionId: String
     public let content: String
@@ -92,7 +102,8 @@ public struct NoticeDetailVoteOptionDTO: Codable {
         self.selectedMemberIds = (try? container.decodeStringArrayFlexible(forKey: .selectedMemberIds)) ?? []
         self.voteRate = try container.decodeStringFlexibleIfPresent(forKey: .voteRate)
     }
-
+    
+    /// DTO → `VoteOption` 도메인 모델 변환
     public func toDomain() -> VoteOption {
         VoteOption(
             id: optionId,
@@ -104,6 +115,9 @@ public struct NoticeDetailVoteOptionDTO: Codable {
     }
 }
 
+// MARK: - Image DTO
+
+/// 공지 첨부 이미지 단건 DTO
 public struct NoticeDetailImageDTO: Codable {
     public let id: String
     public let url: String
@@ -123,6 +137,9 @@ public struct NoticeDetailImageDTO: Codable {
     }
 }
 
+// MARK: - Link DTO
+
+/// 공지 첨부 링크 단건 DTO
 public struct NoticeDetailLinkDTO: Codable {
     public let id: String
     public let url: String
@@ -142,7 +159,10 @@ public struct NoticeDetailLinkDTO: Codable {
     }
 }
 
+// MARK: - Decoding Helpers
+
 private extension KeyedDecodingContainer {
+    /// String / Int / Double 타입을 모두 String으로 디코딩
     func decodeStringFlexible(forKey key: Key) throws -> String {
         if let value = try? decode(String.self, forKey: key) {
             return value
@@ -162,6 +182,7 @@ private extension KeyedDecodingContainer {
         )
     }
 
+    /// String / Int 배열을 모두 [String]으로 디코딩
     func decodeStringArrayFlexible(forKey key: Key) throws -> [String] {
         if let values = try? decode([String].self, forKey: key) {
             return values
@@ -172,6 +193,7 @@ private extension KeyedDecodingContainer {
         return []
     }
 
+    /// Int / Double / String 중 하나로 디코딩하여 Int?를 반환
     func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
         if let value = try? decodeIfPresent(Int.self, forKey: key) {
             return value
@@ -185,6 +207,7 @@ private extension KeyedDecodingContainer {
         return nil
     }
 
+    /// String / Int / Double 중 하나로 디코딩하여 String?을 반환
     func decodeStringFlexibleIfPresent(forKey key: Key) throws -> String? {
         if let value = try? decodeIfPresent(String.self, forKey: key) {
             return value
