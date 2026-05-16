@@ -14,6 +14,7 @@ struct StudyGroupMemberTests {
 
     @Test("nickname 이 있으면 displayName 은 '닉네임/이름' 포맷이다")
     func displayNameWithNickname() {
+        // Given
         let member = StudyGroupMember(
             serverID: "m_1",
             name: "홍길동",
@@ -21,11 +22,16 @@ struct StudyGroupMemberTests {
             university: "한성대"
         )
 
-        #expect(member.displayName == "길동이/홍길동")
+        // When
+        let display = member.displayName
+
+        // Then
+        #expect(display == "길동이/홍길동")
     }
 
     @Test("nickname 이 nil 이면 displayName 은 이름만 노출한다")
     func displayNameWithoutNickname() {
+        // Given
         let member = StudyGroupMember(
             serverID: "m_1",
             name: "홍길동",
@@ -33,6 +39,10 @@ struct StudyGroupMemberTests {
             university: "한성대"
         )
 
-        #expect(member.displayName == "홍길동")
+        // When
+        let display = member.displayName
+
+        // Then
+        #expect(display == "홍길동")
     }
 }

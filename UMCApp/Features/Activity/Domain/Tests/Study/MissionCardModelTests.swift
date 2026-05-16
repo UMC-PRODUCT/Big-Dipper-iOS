@@ -35,37 +35,56 @@ struct MissionCardModelTests {
 
     // MARK: - status mutability
 
-    @Test("status 는 var 로 선언되어 inProgress → completed 같은 전이를 허용한다")
-    func statusCanMutate() {
-        var card = makeCard(status: .notStarted)
+    @Test(
+        "status 는 var 로 선언되어 자유 전이를 허용한다",
+        arguments: [
+            (MissionStatus.notStarted, MissionStatus.inProgress),
+            (MissionStatus.inProgress, MissionStatus.completed),
+            (MissionStatus.notStarted, MissionStatus.completed)
+        ]
+    )
+    func statusCanMutate(initial: MissionStatus, target: MissionStatus) {
+        // Given
+        var card = makeCard(status: initial)
 
-        card.status = .inProgress
-        #expect(card.status == .inProgress)
+        // When
+        card.status = target
 
-        card.status = .completed
-        #expect(card.status == .completed)
+        // Then
+        #expect(card.status == target)
     }
 
     // MARK: - isExtra default
 
     @Test("isExtra 의 기본값은 false 이다")
     func isExtraDefaultsToFalse() {
+        // Given
         let card = makeCard()
 
-        #expect(card.isExtra == false)
+        // When
+        let isExtra = card.isExtra
+
+        // Then
+        #expect(isExtra == false)
     }
 
     @Test("isExtra=true 로 지정하면 그 값이 그대로 노출된다")
     func isExtraReflectsInput() {
+        // Given
         let card = makeCard(isExtra: true)
 
-        #expect(card.isExtra == true)
+        // When
+        let isExtra = card.isExtra
+
+        // Then
+        #expect(isExtra == true)
     }
 
     // MARK: - missionType default
 
     @Test("missionType 의 기본값은 .link 이다")
     func missionTypeDefaultsToLink() {
+        // Given
         let card = MissionCardModel(
             week: 1,
             platform: "iOS",
@@ -74,6 +93,10 @@ struct MissionCardModelTests {
             status: .notStarted
         )
 
-        #expect(card.missionType == .link)
+        // When
+        let type = card.missionType
+
+        // Then
+        #expect(type == .link)
     }
 }

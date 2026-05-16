@@ -23,6 +23,7 @@ struct StudyManagementItemTests {
 
     @Test("state 를 생략하고 생성하면 .examine 이 기본값으로 적용된다")
     func defaultStateIsExamine() {
+        // Given
         let item = StudyManagementItem(
             name: "홍길동",
             school: "한성대",
@@ -30,6 +31,10 @@ struct StudyManagementItemTests {
             title: "1주차 워크북"
         )
 
-        #expect(item.state == .examine)
+        // When
+        let state = item.state
+
+        // Then
+        #expect(state == .examine)
     }
 }

@@ -35,9 +35,14 @@ struct CurriculumProgressModelTests {
 
     @Test("totalCount 가 0이면 progress 는 0을 반환한다 (분모 0 안전)")
     func progressIsZeroWhenTotalIsZero() {
+        // Given
         let model = makeProgress(completed: 0, total: 0)
 
-        #expect(model.progress == 0)
+        // When
+        let value = model.progress
+
+        // Then
+        #expect(value == 0)
     }
 
     @Test(
@@ -50,9 +55,14 @@ struct CurriculumProgressModelTests {
         ]
     )
     func progressRatio(completed: Int, total: Int, expected: Double) {
+        // Given
         let model = makeProgress(completed: completed, total: total)
 
-        #expect(abs(model.progress - expected) < 0.0001)
+        // When
+        let value = model.progress
+
+        // Then
+        #expect(abs(value - expected) < 0.0001)
     }
 
     // MARK: - progressPercentage
@@ -67,24 +77,39 @@ struct CurriculumProgressModelTests {
         ]
     )
     func progressPercentageTruncation(completed: Int, total: Int, expected: Int) {
+        // Given
         let model = makeProgress(completed: completed, total: total)
 
-        #expect(model.progressPercentage == expected)
+        // When
+        let percentage = model.progressPercentage
+
+        // Then
+        #expect(percentage == expected)
     }
 
     // MARK: - completionText
 
     @Test("completionText 포맷은 '{완료}/{전체} 완료' 이다")
     func completionTextFormat() {
+        // Given
         let model = makeProgress(completed: 2, total: 8)
 
-        #expect(model.completionText == "2/8 완료")
+        // When
+        let text = model.completionText
+
+        // Then
+        #expect(text == "2/8 완료")
     }
 
     @Test("completionText 는 0/0 같은 경계값도 그대로 노출한다")
     func completionTextZeroBoundary() {
+        // Given
         let model = makeProgress(completed: 0, total: 0)
 
-        #expect(model.completionText == "0/0 완료")
+        // When
+        let text = model.completionText
+
+        // Then
+        #expect(text == "0/0 완료")
     }
 }
