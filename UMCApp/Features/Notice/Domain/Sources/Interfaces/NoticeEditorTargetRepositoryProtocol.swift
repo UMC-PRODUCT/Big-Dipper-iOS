@@ -12,16 +12,16 @@ public protocol NoticeEditorTargetRepositoryProtocol {
     /// 전체 지부 목록을 조회합니다.
     func fetchAllBranches() async throws -> [NoticeTargetOption]
     /// 특정 기수에 속한 지부 목록을 조회합니다.
-    func fetchBranches(gisuId: Int) async throws -> [NoticeTargetOption]
+    func fetchBranches(gisuId: String) async throws -> [NoticeTargetOption]
     /// 지부 ID로 지부명을 조회합니다.
-    func fetchBranchName(chapterId: Int) async throws -> String
+    func fetchBranchName(chapterId: String) async throws -> String
     /// 전체 학교 목록을 조회합니다.
     func fetchAllSchools() async throws -> [NoticeTargetOption]
     /// 특정 기수에 속한 학교 목록을 조회합니다.
-    func fetchSchools(gisuId: Int) async throws -> [NoticeTargetOption]
+    func fetchSchools(gisuId: String) async throws -> [NoticeTargetOption]
     /// 특정 지부(챕터)에 속한 학교 목록을 조회합니다.
     /// - Parameters:
     ///   - chapterId: 지부 ID
     ///   - gisuId: 기수 ID
-    func fetchSchools(inChapterId chapterId: Int, gisuId: Int) async throws -> [NoticeTargetOption]
+    func fetchSchools(inChapterId chapterId: String, gisuId: String) async throws -> [NoticeTargetOption]
 }

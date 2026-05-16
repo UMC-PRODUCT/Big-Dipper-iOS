@@ -14,8 +14,8 @@ import Foundation
 public protocol NoticeReadRepositoryProtocol {
 
     /// 특정 멤버가 읽은 공지 ID 집합을 조회합니다.
-    func fetchReadNoticeIDs(memberId: Int) throws -> Set<String>
+    func fetchReadNoticeIDs(memberId: String) throws -> Set<String>
 
     /// 특정 멤버의 공지를 읽음 상태로 저장합니다.
-    func markAsRead(noticeId: String, memberId: Int) throws
+    func markAsRead(noticeId: String, memberId: String) throws
 }
