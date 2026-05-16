@@ -15,7 +15,7 @@ public struct NoticeDetail: Equatable, Identifiable, Hashable {
     /// 공지 고유 ID
     public let id: String
     /// 기수
-    public let generation: Int
+    public let generation: String
     /// 공지 범위 (중앙/지부/교내)
     public let scope: NoticeScope
     /// 공지 카테고리
@@ -80,25 +80,19 @@ public struct NoticeDetail: Equatable, Identifiable, Hashable {
     }
 
     private var generationOrdinalText: String {
-        guard generation > 0 else { return "" }
+        guard let gen = Int(generation), gen > 0 else { return "" }
         return "-\(generation)\(generationOrdinalSuffix)"
     }
 
     private var generationOrdinalSuffix: String {
-        let suffixBase = generation % 100
-        if (11...13).contains(suffixBase) {
-            return "th"
-        }
-
-        switch generation % 10 {
-        case 1:
-            return "st"
-        case 2:
-            return "nd"
-        case 3:
-            return "rd"
-        default:
-            return "th"
+        guard let gen = Int(generation) else { return "th" }
+        let suffixBase = gen % 100
+        if (11...13).contains(suffixBase) { return "th" }
+        switch gen % 10 {
+        case 1: return "st"
+        case 2: return "nd"
+        case 3: return "rd"
+        default: return "th"
         }
     }
 
@@ -122,7 +116,7 @@ public struct NoticeDetail: Equatable, Identifiable, Hashable {
     
     public init(
         id: String,
-        generation: Int,
+        generation: String,
         scope: NoticeScope,
         category: NoticeCategory,
         isMustRead: Bool,
@@ -169,26 +163,31 @@ public struct NoticeDetail: Equatable, Identifiable, Hashable {
 public struct NoticeAttachmentImage: Equatable, Hashable, Identifiable {
     public let id: String
     public let url: String
+    
+    public init(id: String, url: String) {
+        self.id = id
+        self.url = url
+    }
 }
 
 
 // MARK: - TargetAudienc
 /// 공지 수신 대상
 public struct TargetAudience: Equatable, Hashable {
-    public let generation: Int
+    public let generation: String
     public let scope: NoticeScope
     public let parts: [UMCPartType]
-    public let chapterId: Int?
-    public let schoolId: Int?
+    public let chapterId: String?
+    public let schoolId: String?
     public let branches: [String]
     public let schools: [String]
 
     public init(
-        generation: Int,
+        generation: String,
         scope: NoticeScope,
         parts: [UMCPartType],
-        chapterId: Int? = nil,
-        schoolId: Int? = nil,
+        chapterId: String? = nil,
+        schoolId: String? = nil,
         branches: [String],
         schools: [String]
     ) {
@@ -204,7 +203,7 @@ public struct TargetAudience: Equatable, Hashable {
 
 extension TargetAudience {
     /// 전체 대상 (기본값)
-    public static func all(generation: Int, scope: NoticeScope) -> TargetAudience {
+    public static func all(generation: String, scope: NoticeScope) -> TargetAudience {
         TargetAudience(
             generation: generation,
             scope: scope,
@@ -222,7 +221,7 @@ extension TargetAudience {
 /// fullScreenCover에서 Identifiable 사용을 위한 래퍼
 public struct ImageViewerItem: Identifiable {
     public let id = UUID()
-    public let index: Int
+    public let index: String
 }
 
 
@@ -244,7 +243,7 @@ public struct NoticeVote: Equatable, Identifiable, Hashable {
     /// 투표 상태 (서버 제공)
     public let status: VoteStatus
     /// 전체 참여자 수 (서버 제공) — 복수 선택 시 voteCount 합과 다를 수 있음
-    public let totalParticipants: Int
+    public let totalParticipants: String
 
     public init(
         id: String,
@@ -256,7 +255,7 @@ public struct NoticeVote: Equatable, Identifiable, Hashable {
         isAnonymous: Bool,
         userVotedOptionIds: [String],
         status: VoteStatus? = nil,
-        totalParticipants: Int? = nil
+        totalParticipants: String? = nil
     ) {
         self.id = id
         self.question = question
@@ -269,13 +268,13 @@ public struct NoticeVote: Equatable, Identifiable, Hashable {
         self.status = status
             ?? VoteStatus.fallback(now: .now, startsAt: startDate, endsAt: endDate)
         self.totalParticipants = totalParticipants
-            ?? options.reduce(0) { $0 + $1.voteCount }
+              ?? String(options.reduce(0) { $0 + (Int($1.voteCount) ?? 0) })
     }
 
     /// 옵션별 voteCount 합계 (복수 선택 시 totalParticipants와 다름)
     public var totalVotes: Int {
-        options.reduce(0) { $0 + $1.voteCount }
-    }
+          options.reduce(0) { $0 + (Int($1.voteCount) ?? 0) }
+      }
 
     /// 투표 종료 여부
     public var isEnded: Bool {
@@ -292,30 +291,30 @@ public struct NoticeVote: Equatable, Identifiable, Hashable {
 public struct VoteOption: Equatable, Identifiable, Hashable {
     public let id: String
     public let title: String
-    public let voteCount: Int
+    public let voteCount: String
     public let selectedMemberIds: [String]
     /// 옵션 득표율 (서버 계산값, 0.0 ~ 100.0)
-    public let voteRate: Double
+    public let voteRate: String?
 
     public init(
         id: String,
         title: String,
-        voteCount: Int,
+        voteCount: String,
         selectedMemberIds: [String] = [],
-        voteRate: Double? = nil
+        voteRate: String? = nil
     ) {
         self.id = id
         self.title = title
         self.voteCount = voteCount
         self.selectedMemberIds = selectedMemberIds
-        self.voteRate = voteRate ?? 0
+        self.voteRate = voteRate
     }
 
     /// 투표율 — 서버 voteRate 우선, 없으면 클라이언트 계산
     public func percentage(totalVotes: Int) -> Double {
-        if voteRate > 0 { return voteRate }
+        if let rate = voteRate, let r = Double(rate), r > 0 { return r }
         guard totalVotes > 0 else { return 0 }
-        return Double(voteCount) / Double(totalVotes) * 100
+        return Double(Int(voteCount) ?? 0) / Double(totalVotes) * 100
     }
 }
 
@@ -351,17 +350,17 @@ public struct NoticeReadStatus: Equatable {
     public let unconfirmedUsers: [ReadStatusUser]
     
     /// 확인한 사람 수
-    public var confirmedCount: Int {
-        confirmedUsers.count
+    public var confirmedCount: String {
+        String(confirmedUsers.count)
     }
     
     /// 미확인한 사람 수
-    public var unconfirmedCount: Int {
-        unconfirmedUsers.count
+    public var unconfirmedCount: String {
+        String(unconfirmedUsers.count)
     }
     
     /// 전체 대상자 수
-    public var totalCount: Int {
+    public var totalCount: String {
         confirmedCount + unconfirmedCount
     }
     

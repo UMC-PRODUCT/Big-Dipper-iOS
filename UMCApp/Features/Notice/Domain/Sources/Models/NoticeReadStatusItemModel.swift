@@ -27,4 +27,22 @@ public struct NoticeReadStatusItemModel: Equatable, Identifiable {
         }
         return !trimmedNickname.isEmpty ? trimmedNickname : trimmedName
     }
+    
+    public init(
+        profileImageURL: String?,
+        userName: String,
+        nickName: String,
+        part: String,
+        location: String,
+        campus: String,
+        isRead: Bool
+    ) {
+        self.profileImageURL = profileImageURL
+        self.userName = userName
+        self.nickName = nickName
+        self.part = part
+        self.location = location
+        self.campus = campus
+        self.isRead = isRead
+    }
 }

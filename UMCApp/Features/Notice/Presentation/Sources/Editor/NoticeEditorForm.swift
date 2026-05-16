@@ -174,5 +174,5 @@ public enum NoticeEditorMode: Equatable, Hashable {
     /// 새 공지 작성
     case create
     /// 기존 공지 수정
-    case edit(noticeId: Int, notice: NoticeDetail)
+    case edit(noticeId: String, notice: NoticeDetail)
 }
