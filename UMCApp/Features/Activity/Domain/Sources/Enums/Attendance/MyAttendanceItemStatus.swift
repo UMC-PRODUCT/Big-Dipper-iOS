@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum MyAttendanceItemStatus: Equatable {
+public enum MyAttendanceItemStatus: Equatable, Sendable {
     case pendingApproval
     case present
     case late
