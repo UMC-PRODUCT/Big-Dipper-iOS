@@ -99,11 +99,25 @@ extension NoticeEditorViewModel {
                 }
             case .branch:
                 if visibleSubCategories.contains(.branch) {
-                    branchOptions = try await (
-                        resolvedGisuId > 0
-                        ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
-                        : targetUseCase.fetchAllBranches()
-                    )
+                    if memberRole == .chapterPresident, let chapterId = userChapterId, chapterId > 0 {
+                        let allBranches = try await (
+                            resolvedGisuId > 0
+                            ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
+                            : targetUseCase.fetchAllBranches()
+                        )
+                        branchOptions = allBranches.filter { $0.id == chapterId }
+                        if subCategorySelection.selectedBranch == nil,
+                           let ownChapter = branchOptions.first {
+                            subCategorySelection.selectedBranch = ownChapter
+                            subCategorySelection.selectedSubCategories.insert(.branch)
+                        }
+                    } else {
+                        branchOptions = try await (
+                            resolvedGisuId > 0
+                            ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
+                            : targetUseCase.fetchAllBranches()
+                        )
+                    }
                 } else {
                     branchOptions = []
                 }

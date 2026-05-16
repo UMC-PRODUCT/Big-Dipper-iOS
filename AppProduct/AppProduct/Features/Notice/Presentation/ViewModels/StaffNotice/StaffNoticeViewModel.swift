@@ -205,9 +205,15 @@ final class StaffNoticeViewModel {
     }
 
     private func buildRequest(tab: StaffNoticeTab, page: Int) -> NoticeListRequestDTO {
-        NoticeListRequestDTO(
+        let resolvedSchoolId: Int? = if tab.requiresSchoolId, memberRole != .chapterPresident, schoolId > 0 {
+            schoolId
+        } else {
+            nil
+        }
+
+        return NoticeListRequestDTO(
             gisuId: gisuId,
-            schoolId: tab.requiresSchoolId ? (schoolId > 0 ? schoolId : nil) : nil,
+            schoolId: resolvedSchoolId,
             noticeTab: tab.rawValue,
             page: page,
             size: Pagination.pageSize,
