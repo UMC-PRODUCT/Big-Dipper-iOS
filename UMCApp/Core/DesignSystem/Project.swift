@@ -4,9 +4,7 @@ import ProjectDescriptionHelpers
 let project = coreProject(
     name: "CoreDesignSystem",
     bundleIdSuffix: "designsystem",
-    dependencies: [
-        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
-    ],
+    dependencies: [],
     resources: [
         "Resources/Fonts/**",
         "Resources/Colors.xcassets",

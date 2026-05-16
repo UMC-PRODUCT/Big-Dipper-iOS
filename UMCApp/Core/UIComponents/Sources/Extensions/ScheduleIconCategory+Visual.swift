@@ -1,17 +1,22 @@
 //
 //  ScheduleIconCategory+Visual.swift
-//  CoreDesignSystem
+//  CoreUIComponents
 //
 //  Created by jaewon Lee on 5/7/26.
 //
 
 import SwiftUI
+import CoreDesignSystem
 import UMCFoundation
 
 /// `ScheduleIconCategory` 에 대한 시각 표현(SF Symbol, 테마 색상) 매핑.
 ///
 /// raw 값 매핑은 `UMCFoundation` 의 enum 정의에 위치하고,
 /// SwiftUI 의존이 필요한 시각 토큰만 본 모듈에 분리합니다.
+///
+/// - Note: 도메인 enum → 시각 표현 매핑은 `CoreUIComponents/Extensions/` 에 둡니다.
+///   `CoreDesignSystem` 은 디자인 토큰(색상/타입/간격) 전용 레이어이므로
+///   도메인(UMCFoundation) 의존을 갖지 않습니다.
 public extension ScheduleIconCategory {
 
     /// 카테고리별 시스템 심볼 이미지 이름
