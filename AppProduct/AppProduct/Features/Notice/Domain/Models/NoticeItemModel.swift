@@ -13,7 +13,7 @@ import SwiftUI
 struct NoticeItemModel: Equatable, Identifiable {
     let id = UUID()
     let noticeId: String
-    let generation: Int
+    let generation: String
     // 공지 출처 (중앙/지부/교내)
     let scope: NoticeScope
     // 공지 카테고리 (일반/파트별)
@@ -29,7 +29,7 @@ struct NoticeItemModel: Equatable, Identifiable {
     let links: [String]
     let images: [String]
     let vote: NoticeVote?
-    let viewCount: Int
+    let viewCount: String
     let scopeDisplayName: String?
     let targetsAllGenerations: Bool
     let parts: [UMCPartType]
@@ -37,7 +37,7 @@ struct NoticeItemModel: Equatable, Identifiable {
 
     init(
         noticeId: String = UUID().uuidString,
-        generation: Int,
+        generation: String,
         scope: NoticeScope,
         category: NoticeCategory,
         mustRead: Bool,
@@ -51,7 +51,7 @@ struct NoticeItemModel: Equatable, Identifiable {
         links: [String],
         images: [String],
         vote: NoticeVote?,
-        viewCount: Int,
+        viewCount: String,
         scopeDisplayName: String? = nil,
         targetsAllGenerations: Bool = false,
         parts: [UMCPartType] = [],

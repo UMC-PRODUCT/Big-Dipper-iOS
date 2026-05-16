@@ -26,9 +26,9 @@ extension NoticeDetail {
             links: links,
             images: images,
             vote: vote,
-            viewCount: 0,
+            viewCount: "0",
             scopeDisplayName: targetAudience.branches.first,
-            targetsAllGenerations: targetAudience.generation <= 0,
+            targetsAllGenerations: (Int(targetAudience.generation) ?? 0) <= 0,
             parts: targetAudience.parts,
             isRead: false
         ).tags

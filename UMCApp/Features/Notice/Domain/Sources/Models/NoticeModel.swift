@@ -11,11 +11,11 @@ import UMCFoundation
 // MARK: - Generation
 /// 기수 모델
 public struct Generation: Identifiable, Equatable, Hashable {
-    public let value: Int
-    public var id: Int { value }
+    public let value: String
+    public var id: String { value }
     public var title: String { "\(value)기" }
     
-    public init(value: Int) {
+    public init(value: String) {
         self.value = value
     }
 }
