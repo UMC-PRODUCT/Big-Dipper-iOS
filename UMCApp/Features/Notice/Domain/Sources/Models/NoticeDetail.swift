@@ -1,5 +1,5 @@
 //
-//  NoticeDetailModel.swift
+//  NoticeDetail.swift
 //  NoticeDomain
 //
 //  Created by 이예지 on 5/8/26.
@@ -395,6 +395,26 @@ public struct ReadStatusUser: Equatable, Identifiable {
             campus: campus,
             isRead: isRead
         )
+    }
+    
+    public init(
+        id: String,
+        name: String,
+        nickName: String,
+        part: String,
+        branch: String,
+        campus: String,
+        profileImageURL: String?,
+        isRead: Bool
+    ) {
+        self.id = id
+        self.name = name
+        self.nickName = nickName
+        self.part = part
+        self.branch = branch
+        self.campus = campus
+        self.profileImageURL = profileImageURL
+        self.isRead = isRead
     }
 }
 
