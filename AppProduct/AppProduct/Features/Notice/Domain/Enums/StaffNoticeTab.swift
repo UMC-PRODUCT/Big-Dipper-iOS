@@ -53,8 +53,15 @@ enum StaffNoticeTab: String, CaseIterable, Identifiable, Equatable, Hashable {
     }
 
     /// 특정 역할이 접근 가능한 탭 목록을 반환합니다.
+    ///
+    /// 서버 스펙: 지부장은 SCHOOL_CORE 레벨로 매핑되어 SCHOOL_CORE/SCHOOL_PART_LEADER 열람 가능
     static func accessibleTabs(for role: ManagementTeam?) -> [StaffNoticeTab] {
         guard let role else { return [] }
+
+        if role == .chapterPresident {
+            return allCases.filter { $0.minimumLevel >= ManagementTeam.schoolPresident.level }
+        }
+
         return allCases.filter { role.level >= $0.minimumLevel }
     }
 }

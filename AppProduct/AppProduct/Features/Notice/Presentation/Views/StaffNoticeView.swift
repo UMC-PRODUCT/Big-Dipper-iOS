@@ -256,6 +256,11 @@ struct StaffNoticeView: View {
         }
     }
 
+    /// 지부장은 운영진 공지 작성 불가 (읽기 전용)
+    private var isReadOnlyStaffAccess: Bool {
+        viewModel.memberRole == .chapterPresident
+    }
+
     // MARK: - User Context
 
     private func applyUserContext() {

@@ -99,11 +99,25 @@ extension NoticeEditorViewModel {
                 }
             case .branch:
                 if visibleSubCategories.contains(.branch) {
-                    branchOptions = try await (
-                        resolvedGisuId > 0
-                        ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
-                        : targetUseCase.fetchAllBranches()
-                    )
+                    if memberRole == .chapterPresident, let chapterId = userChapterId, chapterId > 0 {
+                        let allBranches = try await (
+                            resolvedGisuId > 0
+                            ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
+                            : targetUseCase.fetchAllBranches()
+                        )
+                        branchOptions = allBranches.filter { $0.id == chapterId }
+                        if subCategorySelection.selectedBranch == nil,
+                           let ownChapter = branchOptions.first {
+                            subCategorySelection.selectedBranch = ownChapter
+                            subCategorySelection.selectedSubCategories.insert(.branch)
+                        }
+                    } else {
+                        branchOptions = try await (
+                            resolvedGisuId > 0
+                            ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
+                            : targetUseCase.fetchAllBranches()
+                        )
+                    }
                 } else {
                     branchOptions = []
                 }
@@ -352,14 +366,29 @@ extension NoticeEditorViewModel {
     // MARK: - Helper
 
     /// 조직 타입/역할에 따라 사용 가능한 메인 카테고리 목록을 반환합니다.
+    ///
+    /// 서버 권한 보고서 기준으로 각 역할이 실제로 작성 가능한 패턴만 노출합니다.
     static func availableCategories(
         for _: OrganizationType?,
         memberRole: ManagementTeam?
     ) -> [EditorMainCategory] {
-        var categories: [EditorMainCategory] = [.all, .central]
+        guard let role = memberRole else { return [] }
 
-        guard let role = memberRole, role.canWriteAnyManagementNotice else {
-            return categories
+        var categories: [EditorMainCategory] = []
+
+        switch role {
+        case .superAdmin, .centralPresident, .centralVicePresident:
+            categories = [.all, .central]
+        case .centralOperatingTeamMember, .centralEducationTeamMember:
+            categories = [.central]
+        case .chapterPresident:
+            categories = [.branch]
+        case .schoolPresident, .schoolVicePresident:
+            categories = [.school]
+        case .schoolPartLeader:
+            categories = [.school]
+        case .schoolEtcAdmin, .challenger:
+            return []
         }
 
         if role.canWriteCentralAllNotice {
