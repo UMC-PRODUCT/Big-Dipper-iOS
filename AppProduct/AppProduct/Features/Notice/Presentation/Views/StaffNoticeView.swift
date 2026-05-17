@@ -61,7 +61,7 @@ struct StaffNoticeView: View {
 
     var body: some View {
         Group {
-            if viewModel.accessibleTabs.isEmpty || viewModel.hasNoAccessFromServer {
+            if viewModel.accessibleTabs.isEmpty {
                 noAccessContent
             } else {
                 mainContent
@@ -124,13 +124,17 @@ struct StaffNoticeView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch viewModel.noticeItems {
-        case .idle, .loading:
-            progressContent
-        case .loaded(let items):
-            noticeContent(items)
-        case .failed:
-            failedContent()
+        if viewModel.hasNoAccessFromServer {
+            noAccessContent
+        } else {
+            switch viewModel.noticeItems {
+            case .idle, .loading:
+                progressContent
+            case .loaded(let items):
+                noticeContent(items)
+            case .failed:
+                failedContent()
+            }
         }
     }
 
