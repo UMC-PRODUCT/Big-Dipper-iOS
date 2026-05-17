@@ -113,19 +113,19 @@ enum ManagementTeam: String, CaseIterable, Codable, Comparable {
     /// - 학교 미지정: CENTRAL_MEMBER(교육/운영팀원) 이상
     /// - 학교 지정: SCHOOL_CORE(학교 회장/부회장) 이상
     /// - 파트 지정: CENTRAL_MEMBER 이상
+    ///
+    /// 학교 파트장(`SCHOOL_PART_LEADER`) 본인은 작성 권한이 없습니다.
     var canWriteSchoolPartLeaderNotice: Bool {
         self == .superAdmin
             || level >= ManagementTeam.centralEducationTeamMember.level
             || self == .schoolPresident
             || self == .schoolVicePresident
-            || self == .schoolPartLeader
     }
 
     /// 학교 파트장 공지 작성 시, 본인 학교로 자동 바인딩되는 역할
     var bindsOwnSchoolForPartLeaderNotice: Bool {
         self == .schoolPresident
             || self == .schoolVicePresident
-            || self == .schoolPartLeader
     }
 
     /// 학교 회장단 공지 작성 시, 본인 학교로 자동 바인딩되는 역할
