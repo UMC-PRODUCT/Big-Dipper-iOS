@@ -77,20 +77,16 @@ struct ChallengerMemberDetailSheetView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                GlassEffectContainer {
-                    VStack(alignment: .leading, spacing: DefaultSpacing.spacing32) {
-                        memberInfoView
-                        summaryCardView
-                    }
-                }
-                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-                .safeAreaPadding(.bottom, DefaultConstant.defaultSafeBottom)
-            }
-            .scrollContentBackground(.hidden)
-            .presentationDetents([.medium])
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing32) {
+            memberInfoView
+            summaryCardView
+            Spacer()
         }
+        .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        .safeAreaPadding(.top, DefaultSpacing.spacing16)
+        .presentationDetents([.fraction(0.4)])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.regularMaterial)
     }
 
     // MARK: - SubView
@@ -175,13 +171,13 @@ struct ChallengerMemberDetailSheetView: View {
             .padding(.vertical, Constants.summaryRowVerticalPadding)
         }
         .padding(.horizontal, Constants.listPadding.leading)
-        .background(
-            .regularMaterial,
-            in: ConcentricRectangle(
+        .clipShape(
+            ConcentricRectangle(
                 corners: .concentric(minimum: DefaultConstant.concentricRadius),
                 isUniform: true
             )
         )
+        .glassEffect(.regular)
         .animation(.smooth(duration: 0.3), value: selectedGisu)
     }
 
