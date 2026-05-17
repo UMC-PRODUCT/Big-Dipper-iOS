@@ -1,0 +1,16 @@
+//
+//  MemberStatus.swift
+//  CoreEnum
+//
+
+import Foundation
+
+/// 멤버 활동 상태
+public enum MemberStatus: String, Codable, Equatable, Hashable {
+    /// 활동 중
+    case active = "ACTIVE"
+    /// 비활성
+    case inactive = "INACTIVE"
+    /// 탈퇴
+    case withdrawn = "WITHDRAWN"
+}
