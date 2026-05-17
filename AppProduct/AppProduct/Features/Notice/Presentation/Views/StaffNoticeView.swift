@@ -198,15 +198,7 @@ struct StaffNoticeView: View {
     }
 
     private var noAccessContent: some View {
-        NoAccessContentView(
-            onGoBack: {
-                pathStore.noticePath.removeLast()
-            },
-            onRefresh: {
-                viewModel.hasNoAccessFromServer = false
-                await viewModel.fetchNotices()
-            }
-        )
+        NoAccessContentView()
     }
 
     // MARK: - Row
