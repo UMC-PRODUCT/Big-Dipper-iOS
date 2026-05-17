@@ -148,7 +148,7 @@ struct OperatorStudyManagementView: View {
             } description: {
                 Text("등록된 스터디 그룹이 없습니다")
             } actions: {
-                Text("스터디 그룹 생성은 교내 회장/부회장만 가능합니다")
+                Text("스터디 그룹 생성은\n교내 회장/부회장만 가능합니다")
                     .appFont(.footnote, color: .grey500)
                     .multilineTextAlignment(.center)
             }

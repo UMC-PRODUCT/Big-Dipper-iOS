@@ -67,13 +67,21 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Action
 
-    /// 일정 목록 + pending 출석 조회
-    ///
-    /// V1 `GET /api/v1/schedules` 제거로 인해 미구현 상태입니다.
-    /// V2 `fetchAttendanceList` 기반 재구현 예정 (#688).
     @MainActor
     func fetchSessions() async {
-        sessionsState = .loaded([])
+        sessionsState = .loading
+        do {
+            let infos = try await useCase.fetchAttendanceList(
+                from: nil, to: nil, attendanceStatus: nil
+            )
+            sessionsState = .loaded(infos.map { $0.toOperatorSessionAttendance() })
+        } catch let error as DomainError {
+            sessionsState = .failed(.domain(error))
+        } catch let error as NetworkError {
+            sessionsState = .failed(.network(error))
+        } catch {
+            sessionsState = .failed(.unknown(message: error.localizedDescription))
+        }
     }
 
     /// 위치 변경 버튼 탭
@@ -316,12 +324,18 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Polling
 
-    /// 세션 목록 배경 갱신 (로딩 상태 변경 없이)
-    ///
-    /// V1 `GET /api/v1/schedules` 제거로 인해 미구현 상태입니다.
-    /// V2 `fetchAttendanceList` 기반 재구현 예정 (#688).
     @MainActor
-    func refreshSessions() async {}
+    func refreshSessions() async {
+        guard sessionsState.isComplete else { return }
+        do {
+            let infos = try await useCase.fetchAttendanceList(
+                from: nil, to: nil, attendanceStatus: nil
+            )
+            sessionsState = .loaded(infos.map { $0.toOperatorSessionAttendance() })
+        } catch {
+            // 배경 갱신 실패는 무시 — 기존 데이터 유지
+        }
+    }
 
     /// 세션 진행 중일 때 주기적으로 데이터를 갱신합니다.
     ///
