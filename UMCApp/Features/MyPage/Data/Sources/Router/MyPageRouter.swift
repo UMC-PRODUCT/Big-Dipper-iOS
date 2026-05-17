@@ -16,6 +16,14 @@ import CoreNetwork
 public enum MyPageRouter {
     /// 내 프로필 조회 (`GET /api/v1/member/me`)
     case getMyProfile
+    /// 특정 멤버 프로필 조회 (`GET /api/v1/member/profile/{memberId}`)
+    case getMemberProfile(memberId: Int)
+    /// 내가 쓴 글 목록 (`GET /api/v1/posts/my`)
+    case getMyPosts(query: MyPagePostListQueryDTO)
+    /// 댓글 단 글 목록 (`GET /api/v1/posts/commented`)
+    case getCommentedPosts(query: MyPagePostListQueryDTO)
+    /// 스크랩한 글 목록 (`GET /api/v1/posts/scrapped`)
+    case getScrappedPosts(query: MyPagePostListQueryDTO)
     /// 약관 조회 (`GET /api/v1/terms/type/{termsType}`)
     case getTerms(termsType: String)
 }
@@ -27,6 +35,14 @@ extension MyPageRouter: BaseTargetType {
         switch self {
         case .getMyProfile:
             return "/api/v1/member/me"
+        case .getMemberProfile(let memberId):
+            return "/api/v1/member/profile/\(memberId)"
+        case .getMyPosts:
+            return "/api/v1/posts/my"
+        case .getCommentedPosts:
+            return "/api/v1/posts/commented"
+        case .getScrappedPosts:
+            return "/api/v1/posts/scrapped"
         case .getTerms(let termsType):
             return "/api/v1/terms/type/\(termsType)"
         }
@@ -34,15 +50,27 @@ extension MyPageRouter: BaseTargetType {
 
     public var method: Moya.Method {
         switch self {
-        case .getMyProfile, .getTerms:
+        case .getMyProfile,
+             .getMemberProfile,
+             .getMyPosts,
+             .getCommentedPosts,
+             .getScrappedPosts,
+             .getTerms:
             return .get
         }
     }
 
     public var task: Moya.Task {
         switch self {
-        case .getMyProfile, .getTerms:
+        case .getMyProfile, .getMemberProfile, .getTerms:
             return .requestPlain
+        case .getMyPosts(let query),
+             .getCommentedPosts(let query),
+             .getScrappedPosts(let query):
+            return .requestParameters(
+                parameters: query.toParameters,
+                encoding: URLEncoding.queryString
+            )
         }
     }
 }
