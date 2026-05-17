@@ -135,7 +135,6 @@ extension NoticeDetailViewModel {
             generation: resolvedGeneration,
             scope: fetched.scope,
             category: fetched.category,
-            isMustRead: fetched.isMustRead,
             title: fetched.title,
             content: fetched.content,
             authorID: fetched.authorID,

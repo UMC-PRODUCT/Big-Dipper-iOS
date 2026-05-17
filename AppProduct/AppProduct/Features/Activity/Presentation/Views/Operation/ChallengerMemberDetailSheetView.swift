@@ -9,7 +9,7 @@ import SwiftUI
 
 /// 챌린저 멤버 상세 정보를 표시하는 바텀 시트 뷰
 ///
-/// 프로필, 기수별 상벌점 요약, 출석/활동 기록을 표시합니다.
+/// 프로필과 기수별 상벌점 요약을 표시합니다.
 /// 복수 기수 사용자의 경우 `Picker`를 통해 기수를 전환할 수 있습니다.
 struct ChallengerMemberDetailSheetView: View {
 
@@ -32,10 +32,6 @@ struct ChallengerMemberDetailSheetView: View {
         static let listPadding: EdgeInsets = .init(top: 12, leading: 12, bottom: 12, trailing: 12)
         static let profileSize: CGSize = .init(width: 60, height: 60)
 
-        static let baseHeight: CGFloat = 360
-        static let pendingRecordHeight: CGFloat = 150
-        static let sheetHeight: CGFloat = 560
-
         static let summaryRowVerticalPadding: CGFloat = 12
         static let partTagOpacity: Double = 0.14
         static let partStrokeOpacity: Double = 0.4
@@ -45,10 +41,9 @@ struct ChallengerMemberDetailSheetView: View {
 
     // MARK: - Computed Property
 
-    /// 단일 기수 사용자의 기수 텍스트 (예: "9기")
     private var currentGeneration: String {
         if hasMultipleGenerations,
-           let lastGisu = member.generationPoints.map(\.gisu).max() {
+           let lastGisu = uniqueGenerationPoints.map(\.gisu).max() {
             return "\(lastGisu)기"
         }
         let gens = member.generation
@@ -58,45 +53,48 @@ struct ChallengerMemberDetailSheetView: View {
         return gens.last ?? member.generation
     }
 
-    /// 복수 기수 보유 여부
     private var hasMultipleGenerations: Bool {
-        member.generationPoints.count > 1
+        uniqueGenerationPoints.count > 1
     }
 
-    /// 현재 선택된 기수의 포인트 요약 데이터
+    private var uniqueGenerationPoints: [GenerationPointSummary] {
+        var seen = Set<Int>()
+        return member.generationPoints.filter { seen.insert($0.gisu).inserted }
+    }
+
     private var selectedSummary: GenerationPointSummary? {
         member.generationPoints.first { $0.gisu == selectedGisu }
     }
 
-    /// 표시할 상점 (선택된 기수 우선, 없으면 전체 합산)
     private var displayRewardPoints: Double {
         selectedSummary?.reward ?? member.rewardPoints
     }
 
-    /// 표시할 벌점 (선택된 기수 우선, 없으면 전체 합산)
     private var displayPenaltyPoints: Double {
         selectedSummary?.penalty ?? member.penalty
     }
-
 
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: DefaultSpacing.spacing32) {
-                memberInfoView
-                summaryCardView
-                recordView
+            ScrollView {
+                GlassEffectContainer {
+                    VStack(alignment: .leading, spacing: DefaultSpacing.spacing32) {
+                        memberInfoView
+                        summaryCardView
+                    }
+                }
+                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                .safeAreaPadding(.bottom, DefaultConstant.defaultSafeBottom)
             }
-            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
             .scrollContentBackground(.hidden)
-            .presentationDetents([.height(Constants.sheetHeight)])
+            .presentationDetents([.medium])
         }
     }
 
     // MARK: - SubView
 
-    /// 프로필 이미지, 닉네임/이름, 파트·학교·운영진 배지를 표시
     private var memberInfoView: some View {
         HStack(spacing: DefaultSpacing.spacing12) {
             RemoteImage(urlString: member.profile ?? "", size: Constants.profileSize)
@@ -116,7 +114,6 @@ struct ChallengerMemberDetailSheetView: View {
         }
     }
 
-    /// 파트 태그 (색상 배경 + 테두리)
     private var partTag: some View {
         Text(member.part.name)
             .appFont(.callout, color: member.part.color)
@@ -134,15 +131,13 @@ struct ChallengerMemberDetailSheetView: View {
             }
     }
 
-    /// 학교 태그
     private var schoolTag: some View {
         Text(member.school)
-            .appFont(.callout, color: .black)
+            .appFont(.callout, color: .grey700)
             .padding(Constants.tagPadding)
-            .background(.white, in: Capsule())
+            .background(.regularMaterial, in: Capsule())
     }
 
-    /// 활동 기수 · 상점 · 벌점 요약 카드
     private var summaryCardView: some View {
         VStack(spacing: .zero) {
             summaryRow(title: "활동 기수") {
@@ -180,70 +175,45 @@ struct ChallengerMemberDetailSheetView: View {
             .padding(.vertical, Constants.summaryRowVerticalPadding)
         }
         .padding(.horizontal, Constants.listPadding.leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
-        .glass()
+        .background(
+            .regularMaterial,
+            in: ConcentricRectangle(
+                corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                isUniform: true
+            )
+        )
         .animation(.smooth(duration: 0.3), value: selectedGisu)
     }
 
-    /// 복수 기수 전환 인라인 칩 셀렉터
     private var generationChips: some View {
         HStack(spacing: DefaultSpacing.spacing4) {
-            ForEach(member.generationPoints) { summary in
-                Text("\(summary.gisu)기")
-                    .appFont(
-                        selectedGisu == summary.gisu
-                            ? .subheadlineEmphasis : .subheadline,
-                        color: selectedGisu == summary.gisu
-                            ? .white : .grey700
-                    )
-                    .padding(Constants.tagPadding)
-                    .background(
-                        selectedGisu == summary.gisu
-                            ? Color.accentColor : Color.grey200,
-                        in: Capsule()
-                    )
-                    .onTapGesture {
-                        withAnimation(.smooth(duration: 0.3)) {
-                            selectedGisu = summary.gisu
-                        }
+            ForEach(uniqueGenerationPoints) { summary in
+                Button {
+                    withAnimation(.smooth(duration: 0.3)) {
+                        selectedGisu = summary.gisu
                     }
+                } label: {
+                    Text("\(summary.gisu)기")
+                        .appFont(
+                            selectedGisu == summary.gisu
+                                ? .subheadlineEmphasis : .subheadline,
+                            color: selectedGisu == summary.gisu
+                                ? .white : .grey700
+                        )
+                        .padding(Constants.tagPadding)
+                        .background(
+                            selectedGisu == summary.gisu
+                                ? Color.accentColor : Color.grey200,
+                            in: Capsule()
+                        )
+                }
+                .accessibilityLabel("\(summary.gisu)기 선택")
             }
         }
     }
 
-    /// 출석/활동 기록 섹션
-    private var recordView: some View {
-        VStack(alignment: .leading) {
-            Label(
-                "출석/활동 기록",
-                systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
-            )
-            .appFont(.title3Emphasis)
-
-            attendancePendingView
-        }
-    }
-
-    /// 출석 이력 준비 중 안내 카드
-    private var attendancePendingView: some View {
-        VStack(spacing: DefaultSpacing.spacing8) {
-            Image(systemName: "clock.badge.exclamationmark")
-                .appFont(.title1, color: .grey500)
-            Text("출석 이력 준비 중")
-                .appFont(.subheadlineEmphasis, color: .grey500)
-            Text("V2 출석 도메인 마이그레이션 후 다시 제공될 예정입니다.")
-                .appFont(.footnote, color: .grey500)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: Constants.pendingRecordHeight)
-        .background(.white, in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
-        .glass()
-    }
-
     // MARK: - Function
 
-    /// 상벌점 2열 레이아웃의 개별 컬럼
     private func pointColumn(
         icon: String,
         iconColor: Color,
@@ -267,7 +237,6 @@ struct ChallengerMemberDetailSheetView: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// 요약 카드의 개별 행 (타이틀 + 우측 값)
     private func summaryRow<Content: View>(
         title: String,
         @ViewBuilder value: () -> Content

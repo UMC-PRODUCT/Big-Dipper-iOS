@@ -7,14 +7,14 @@
 
 import SwiftUI
 
-/// ID/PW 회원가입 화면 (단일 ScrollView)
+/// 이메일 회원가입 화면 (단일 ScrollView)
 ///
-/// 이메일 인증, 로그인 ID, 비밀번호, 이름/닉네임, 학교, 약관 동의를 한 화면에서 입력받고
+/// 이메일 인증, 비밀번호, 이름/닉네임, 학교, 약관 동의를 한 화면에서 입력받고
 /// 모든 검증이 통과하면 가입 버튼이 활성화됩니다. 가입 성공 시 서버가 토큰을 즉시 발급하여
 /// `appFlow.showPendingApproval()` 또는 `showMain()`으로 전환합니다.
 ///
 /// ## 구조
-/// 본 화면은 ViewModel 상태를 6개 섹션 컴포넌트(`Components/SignUp*Section.swift`)에
+/// 본 화면은 ViewModel 상태를 섹션 컴포넌트(`Components/SignUp*Section.swift`)에
 /// 분배하고, 가입 완료/실패와 약관 링크 등 상태 변화 액션만 처리합니다. UI 세부 구현은 모두
 /// 섹션 컴포넌트가 담당합니다.
 struct SignUpByIdPwView: View {
@@ -48,8 +48,8 @@ struct SignUpByIdPwView: View {
     init(
         sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,
         verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol,
-        registerByIdPwUseCase: RegisterByIdPwUseCaseProtocol,
-        checkLoginIdAvailabilityUseCase: CheckLoginIdAvailabilityUseCaseProtocol,
+        registerByEmailUseCase: RegisterByEmailUseCaseProtocol,
+        checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol,
         fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol,
         fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     ) {
@@ -57,8 +57,8 @@ struct SignUpByIdPwView: View {
             wrappedValue: SignUpByIdPwViewModel(
                 sendEmailVerificationUseCase: sendEmailVerificationUseCase,
                 verifyEmailCodeUseCase: verifyEmailCodeUseCase,
-                registerByIdPwUseCase: registerByIdPwUseCase,
-                checkLoginIdAvailabilityUseCase: checkLoginIdAvailabilityUseCase,
+                registerByEmailUseCase: registerByEmailUseCase,
+                checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase,
                 fetchSignUpDataUseCase: fetchSignUpDataUseCase
             )
         )
@@ -68,90 +68,116 @@ struct SignUpByIdPwView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            ScrollView(.vertical) {
-                VStack(spacing: Constants.spacerSize) {
-                    SignUpEmailSection(
-                        email: $viewModel.emailInput,
-                        onVerificationRequested: {
-                            try await viewModel.requestEmailVerification()
-                        },
-                        onVerificationComplete: { code in
-                            try await viewModel.verifyEmailCode(code)
-                        },
-                        onEmailChanged: handleEmailChange,
-                        onSubmit: { focusedField = .loginId }
-                    )
+        ScrollView(.vertical) {
+            VStack(spacing: Constants.spacerSize) {
+                SignUpEmailSection(
+                    email: $viewModel.emailInput,
+                    onVerificationRequested: {
+                        try await viewModel.requestEmailVerification()
+                    },
+                    onVerificationComplete: { code in
+                        try await viewModel.verifyEmailCode(code)
+                    },
+                    onEmailChanged: handleEmailChange,
+                    onSubmit: { focusedField = .password }
+                )
 
-                    SignUpLoginIdSection(
-                        loginId: $viewModel.loginIdInput,
-                        availability: viewModel.loginIdAvailability,
-                        focusBinding: $focusedField,
-                        onSubmit: { focusedField = .password }
-                    )
-
-                    SignUpPasswordSection(
-                        password: $viewModel.passwordInput,
-                        passwordConfirm: $viewModel.passwordConfirmInput,
-                        isPasswordValid: viewModel.isPasswordValid,
-                        isPasswordConfirmed: viewModel.isPasswordConfirmed,
-                        focusBinding: $focusedField,
-                        onConfirmSubmit: { focusedField = .name }
-                    )
-
-                    SignUpNameNicknameSection(
-                        name: $viewModel.nameInput,
-                        nickname: $viewModel.nicknameInput,
-                        focusBinding: $focusedField,
-                        onNicknameSubmit: { focusedField = nil }
-                    )
-
-                    SignUpSchoolSection(
-                        schoolsState: viewModel.schoolsState,
-                        selectedSchool: $viewModel.selectedSchool
-                    )
-
-                    SignUpTermsSection(
-                        termsState: viewModel.termsState,
-                        termsAgreements: viewModel.termsAgreements,
-                        isAllTermsAgreed: viewModel.isAllTermsAgreed,
-                        onToggleAll: { isAgreed in
-                            viewModel.toggleAllTerms(isAgreed)
-                        },
-                        onToggleRow: { id in
-                            viewModel.termsAgreements[id]?.toggle()
-                        },
-                        onOpenTerms: openTerms
-                    )
+                if viewModel.isEmailVerified {
+                    emailAvailabilityStatusRow
                 }
-                .safeAreaPadding(
-                    .vertical,
-                    DefaultConstant.defaultContentTopMargins
+
+                SignUpPasswordSection(
+                    password: $viewModel.passwordInput,
+                    passwordConfirm: $viewModel.passwordConfirmInput,
+                    isPasswordValid: viewModel.isPasswordValid,
+                    isPasswordConfirmed: viewModel.isPasswordConfirmed,
+                    focusBinding: $focusedField,
+                    onConfirmSubmit: { focusedField = .name }
                 )
-                .safeAreaPadding(
-                    .horizontal,
-                    DefaultConstant.defaultSafeHorizon
+
+                SignUpNameNicknameSection(
+                    name: $viewModel.nameInput,
+                    nickname: $viewModel.nicknameInput,
+                    focusBinding: $focusedField,
+                    onNicknameSubmit: { focusedField = nil }
                 )
-                .navigation(naviTitle: .signUp, displayMode: .large)
-                .navigationSubtitle(Constants.naviSubTitle)
+
+                SignUpSchoolSection(
+                    schoolsState: viewModel.schoolsState,
+                    selectedSchool: $viewModel.selectedSchool
+                )
+
+                SignUpTermsSection(
+                    termsState: viewModel.termsState,
+                    termsAgreements: viewModel.termsAgreements,
+                    isAllTermsAgreed: viewModel.isAllTermsAgreed,
+                    onToggleAll: { isAgreed in
+                        viewModel.toggleAllTerms(isAgreed)
+                    },
+                    onToggleRow: { id in
+                        viewModel.termsAgreements[id]?.toggle()
+                    },
+                    onOpenTerms: openTerms
+                )
             }
-            .keyboardToolbar(focusedField: $focusedField)
-            .alertPrompt(item: $alertPrompt)
-            .safeAreaInset(edge: .bottom) {
-                submitButton
-            }
-            .task {
-                await viewModel.fetchSchools()
-                await viewModel.fetchTerms()
-                lastEmailSnapshot = viewModel.emailInput
-            }
-            .onChange(of: viewModel.registerState) { _, newState in
-                handleRegisterStateChange(newState)
-            }
+            .safeAreaPadding(
+                .vertical,
+                DefaultConstant.defaultContentTopMargins
+            )
+            .safeAreaPadding(
+                .horizontal,
+                DefaultConstant.defaultSafeHorizon
+            )
+            .navigation(naviTitle: .signUp, displayMode: .large)
+            .navigationSubtitle(Constants.naviSubTitle)
+        }
+        .alertPrompt(item: $alertPrompt)
+        .safeAreaInset(edge: .bottom) {
+            submitButton
+        }
+        .task {
+            await viewModel.fetchSchools()
+            await viewModel.fetchTerms()
+            lastEmailSnapshot = viewModel.emailInput
+        }
+        .onChange(of: viewModel.registerState) { _, newState in
+            handleRegisterStateChange(newState)
         }
     }
 
     // MARK: - Subviews
+
+    /// 이메일 중복 확인 결과 표시 행 (인증 완료 후에만 노출)
+    @ViewBuilder
+    private var emailAvailabilityStatusRow: some View {
+        HStack(spacing: DefaultSpacing.spacing8) {
+            switch viewModel.emailAvailability {
+            case .loading:
+                ProgressView()
+                    .frame(width: 20, height: 20)
+                Text("이메일 중복 확인 중...")
+                    .appFont(.footnote, color: .grey500)
+            case .loaded(true):
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("사용 가능한 이메일입니다.")
+                    .appFont(.footnote, color: .green)
+            case .loaded(false):
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.red500)
+                Text("이미 사용 중인 이메일입니다.")
+                    .appFont(.footnote, color: .red500)
+            case .failed(let error):
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.red500)
+                Text(error.userMessage)
+                    .appFont(.footnote, color: .red500)
+            case .idle:
+                EmptyView()
+            }
+            Spacer()
+        }
+    }
 
     /// 화면 하단 고정 가입 완료 버튼.
     /// `viewModel.canSubmit` 이 false 면 비활성, `isLoading` 이면 스피너 표시.
@@ -172,8 +198,6 @@ struct SignUpByIdPwView: View {
 private extension SignUpByIdPwView {
 
     /// 이메일 텍스트가 바뀌었을 때 인증 상태를 리셋합니다.
-    /// `FormEmailField` 가 자체 디바운스를 적용하므로 SwiftUI `onChange` 대신
-    /// 콜백 + 스냅샷 비교 방식을 사용해 불필요한 리셋을 방지합니다.
     func handleEmailChange() {
         if lastEmailSnapshot != viewModel.emailInput {
             Task { @MainActor in
@@ -194,7 +218,7 @@ private extension SignUpByIdPwView {
             )
 
             #if DEBUG
-            print("[Auth][IdPwSignUp] 권한 요청: \(results)")
+            print("[Auth][EmailSignUp] 권한 요청: \(results)")
             #endif
 
             await viewModel.register()
@@ -254,7 +278,7 @@ private extension SignUpByIdPwView {
             error,
             context: .init(
                 feature: "Auth",
-                action: "registerByIdPw",
+                action: "registerByEmail",
                 retryAction: { [viewModel] in
                     await viewModel.register()
                 }

@@ -101,7 +101,6 @@ final class MockNoticeRepository: NoticeRepositoryProtocol {
             generation: item.generation,
             scope: item.scope,
             category: item.category,
-            isMustRead: item.mustRead,
             title: item.title,
             content: item.content,
             authorID: "0",

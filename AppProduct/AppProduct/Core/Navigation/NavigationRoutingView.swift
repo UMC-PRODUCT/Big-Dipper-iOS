@@ -57,8 +57,24 @@ private extension NavigationRoutingView {
     func authView(_ route: NavigationDestination.Auth) -> some View {
         switch route {
         case .test:
-            // TODO: 실제 Auth Test View로 교체 필요
             Text("Auth Test View")
+        case .loginByIdPw:
+            LoginByIdPwView(
+                loginByEmailUseCase: di.resolve(AuthUseCaseProviding.self).loginByEmailUseCase,
+                fetchMyProfileUseCase: di.resolve(HomeUseCaseProviding.self).fetchMyProfileUseCase,
+                tokenStore: di.resolve(TokenStore.self),
+                errorHandler: errorHandler
+            )
+        case .signUpByIdPw:
+            let authProvider = di.resolve(AuthUseCaseProviding.self)
+            SignUpByIdPwView(
+                sendEmailVerificationUseCase: authProvider.sendEmailVerificationUseCase,
+                verifyEmailCodeUseCase: authProvider.verifyEmailCodeUseCase,
+                registerByEmailUseCase: authProvider.registerByEmailUseCase,
+                checkEmailAvailabilityUseCase: authProvider.checkEmailAvailabilityUseCase,
+                fetchSignUpDataUseCase: authProvider.fetchSignUpDataUseCase,
+                fetchMyProfileUseCase: di.resolve(HomeUseCaseProviding.self).fetchMyProfileUseCase
+            )
         }
     }
 
@@ -93,8 +109,10 @@ private extension NavigationRoutingView {
                 errorHandler: errorHandler,
                 model: detailItem
             )
-        case .editor(let mode, let selectedGisuId):
-            NoticeEditorView(container: di, mode: mode, selectedGisuId: selectedGisuId)
+        case .editor(let mode, let selectedGisuId, let initialCategory):
+            NoticeEditorView(container: di, mode: mode, selectedGisuId: selectedGisuId, initialCategory: initialCategory)
+        case .staffNotice:
+            StaffNoticeView(container: di, errorHandler: errorHandler)
         }
     }
     

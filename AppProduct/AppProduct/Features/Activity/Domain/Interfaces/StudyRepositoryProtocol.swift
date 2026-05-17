@@ -24,22 +24,6 @@ protocol StudyRepositoryProtocol {
 
     // MARK: - 운영진 스터디 관리
 
-    /// 스터디원 목록을 가져옵니다.
-    /// - Parameters:
-    ///   - week: 조회 주차
-    ///   - studyGroupId: 특정 그룹 ID (nil이면 전체 그룹)
-    /// - Returns: 스터디원 모델 배열
-    /// - Throws: 네트워크 오류 또는 파싱 오류
-    func fetchStudyMembers(
-        week: Int,
-        studyGroupId: Int?
-    ) async throws -> [StudyMemberItem]
-
-    /// 스터디 그룹 목록을 가져옵니다.
-    /// - Returns: 스터디 그룹 모델 배열
-    /// - Throws: 네트워크 오류 또는 파싱 오류
-    func fetchStudyGroups() async throws -> [StudyGroupItem]
-
     /// 스터디 그룹 상세 목록을 가져옵니다.
     /// - Returns: 스터디 그룹 상세 모델 배열
     /// - Throws: 네트워크 오류 또는 파싱 오류
@@ -55,11 +39,6 @@ protocol StudyRepositoryProtocol {
         cursor: Int?,
         size: Int
     ) async throws -> StudyGroupDetailsPage
-
-    /// 스터디 주차 목록을 가져옵니다.
-    /// - Returns: 주차 번호 배열
-    /// - Throws: 네트워크 오류 또는 파싱 오류
-    func fetchWeeks() async throws -> [Int]
 
     /// 주차 커리큘럼 옵션 목록을 가져옵니다.
     ///
@@ -80,36 +59,6 @@ protocol StudyRepositoryProtocol {
         memberId: Int,
         preferredGeneration: Int?
     ) async throws -> Int?
-
-    /// 챌린저 워크북 제출 URL을 조회합니다. (운영진 전용)
-    /// - Parameter challengerWorkbookId: 챌린저 워크북 ID
-    /// - Returns: 제출 URL 문자열 (없으면 nil)
-    /// - Throws: 네트워크 오류 또는 파싱 오류
-    func fetchWorkbookSubmissionURL(
-        challengerWorkbookId: Int
-    ) async throws -> String?
-
-    /// 챌린저 워크북을 검토합니다.
-    /// - Parameters:
-    ///   - challengerWorkbookId: 챌린저 워크북 ID
-    ///   - isApproved: 통과 여부 (true: PASS, false: FAIL)
-    ///   - feedback: 피드백 내용
-    /// - Throws: 네트워크 오류 또는 파싱 오류
-    func reviewWorkbook(
-        challengerWorkbookId: Int,
-        isApproved: Bool,
-        feedback: String
-    ) async throws
-
-    /// 베스트 워크북으로 선정합니다.
-    /// - Parameters:
-    ///   - challengerWorkbookId: 챌린저 워크북 ID
-    ///   - bestReason: 선정 사유
-    /// - Throws: 네트워크 오류 또는 파싱 오류
-    func selectBestWorkbook(
-        challengerWorkbookId: Int,
-        bestReason: String
-    ) async throws
 
     /// 스터디 그룹을 생성합니다.
     ///

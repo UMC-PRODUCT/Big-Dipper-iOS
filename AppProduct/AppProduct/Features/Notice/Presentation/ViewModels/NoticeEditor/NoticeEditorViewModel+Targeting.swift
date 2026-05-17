@@ -99,11 +99,25 @@ extension NoticeEditorViewModel {
                 }
             case .branch:
                 if visibleSubCategories.contains(.branch) {
-                    branchOptions = try await (
-                        resolvedGisuId > 0
-                        ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
-                        : targetUseCase.fetchAllBranches()
-                    )
+                    if memberRole == .chapterPresident, let chapterId = userChapterId, chapterId > 0 {
+                        let allBranches = try await (
+                            resolvedGisuId > 0
+                            ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
+                            : targetUseCase.fetchAllBranches()
+                        )
+                        branchOptions = allBranches.filter { $0.id == chapterId }
+                        if subCategorySelection.selectedBranch == nil,
+                           let ownChapter = branchOptions.first {
+                            subCategorySelection.selectedBranch = ownChapter
+                            subCategorySelection.selectedSubCategories.insert(.branch)
+                        }
+                    } else {
+                        branchOptions = try await (
+                            resolvedGisuId > 0
+                            ? targetUseCase.fetchBranches(gisuId: resolvedGisuId)
+                            : targetUseCase.fetchAllBranches()
+                        )
+                    }
                 } else {
                     branchOptions = []
                 }
@@ -127,6 +141,9 @@ extension NoticeEditorViewModel {
                     schoolOptions = []
                 }
             case .part:
+                branchOptions = []
+                schoolOptions = []
+            case .management:
                 branchOptions = []
                 schoolOptions = []
             }
@@ -349,12 +366,42 @@ extension NoticeEditorViewModel {
     // MARK: - Helper
 
     /// 조직 타입/역할에 따라 사용 가능한 메인 카테고리 목록을 반환합니다.
+    ///
+    /// 서버 권한 보고서 기준으로 각 역할이 실제로 작성 가능한 패턴만 노출합니다.
     static func availableCategories(
         for _: OrganizationType?,
         memberRole: ManagementTeam?
     ) -> [EditorMainCategory] {
-        _ = memberRole
-        return [.all, .central]
+        guard let role = memberRole else { return [] }
+
+        var categories: [EditorMainCategory] = []
+
+        switch role {
+        case .superAdmin, .centralPresident, .centralVicePresident:
+            categories = [.all, .central]
+        case .centralOperatingTeamMember, .centralEducationTeamMember:
+            categories = [.central]
+        case .chapterPresident:
+            categories = [.branch]
+        case .schoolPresident, .schoolVicePresident:
+            categories = [.school]
+        case .schoolPartLeader:
+            categories = [.school]
+        case .schoolEtcAdmin, .challenger:
+            return []
+        }
+
+        if role.canWriteCentralAllNotice {
+            categories.append(.management(.centralAll))
+        }
+        if role.canWriteSchoolCoreNotice {
+            categories.append(.management(.schoolCore))
+        }
+        if role.canWriteSchoolPartLeaderNotice {
+            categories.append(.management(.schoolPartLeader))
+        }
+
+        return categories
     }
 
     /// 레거시 시그니처 유지용 래퍼입니다.
@@ -382,22 +429,33 @@ extension NoticeEditorViewModel {
 private extension NoticeEditorViewModel {
 
     /// 메인 카테고리와 역할 조합에 따라 노출 가능한 서브카테고리를 반환합니다.
+    ///
+    /// 서버 권한 보고서 정렬:
+    /// - `.all`: ALL_GISU_ALL_TARGET 패턴 — 서브 타겟 없음
+    /// - `.school`: SCHOOL_CORE는 학교 단위, SCHOOL_PART_LEADER는 파트 지정 필요
     static func allowedSubCategories(
         for category: EditorMainCategory,
         memberRole: ManagementTeam?
     ) -> [EditorSubCategory] {
-        _ = memberRole
         switch category {
         case .all:
-            return [.school]
+            return []
         case .central:
             return [.branch, .school, .part]
         case .branch:
             return [.all, .part]
         case .school:
-            return [.school, .part]
+            if memberRole == .schoolPartLeader {
+                return [.school, .part]
+            }
+            return [.school]
         case .part:
             return []
+        case .management(let scenario):
+            switch scenario {
+            case .centralAll, .schoolCore: return []
+            case .schoolPartLeader: return [.part]
+            }
         }
     }
 

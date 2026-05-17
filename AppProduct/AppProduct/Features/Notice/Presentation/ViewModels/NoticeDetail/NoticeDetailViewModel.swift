@@ -351,7 +351,6 @@ final class NoticeDetailViewModel {
             generation: resolvedGeneration,
             scope: detail.scope,
             category: detail.category,
-            isMustRead: detail.isMustRead,
             title: detail.title,
             content: detail.content,
             authorID: detail.authorID,

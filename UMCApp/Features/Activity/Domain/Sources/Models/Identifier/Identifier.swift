@@ -14,7 +14,7 @@ import Foundation
 
 /// 세션(스터디/세미나) 식별자
 /// - 출석 요청, 세션 조회 등 서버 API 호출 시 사용
-public struct SessionID: Hashable, Codable {
+public struct SessionID: Hashable, Codable, Sendable {
     public let value: String
 
     public init(value: String) {
@@ -24,7 +24,7 @@ public struct SessionID: Hashable, Codable {
 
 /// 사용자 식별자
 /// - 출석 요청, 사용자 정보 조회 등 서버 API 호출 시 사용
-public struct UserID: Hashable, Codable {
+public struct UserID: Hashable, Codable, Sendable {
     public let value: String
 
     public init(value: String) {
@@ -34,7 +34,7 @@ public struct UserID: Hashable, Codable {
 
 /// 출석 기록 식별자
 /// - 출석 상태 변경, 출석 기록 조회 등 서버 API 호출 시 사용
-public struct AttendanceID: Hashable, Codable {
+public struct AttendanceID: Hashable, Codable, Sendable {
     public let value: String
 
     public init(value: String) {

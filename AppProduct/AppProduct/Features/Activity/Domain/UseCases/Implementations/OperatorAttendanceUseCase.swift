@@ -24,14 +24,6 @@ final class OperatorAttendanceUseCase: OperatorAttendanceUseCaseProtocol {
 
     // MARK: - Function
 
-    func fetchPendingAttendances(scheduleId: Int) async throws -> [PendingAttendanceRecord] {
-        try await repository.getPendingAttendances(scheduleId: scheduleId)
-    }
-
-    func fetchAllPendingAttendances() async throws -> [Int: [PendingAttendanceRecord]] {
-        try await repository.getAllPendingAttendances()
-    }
-
     func decideAttendances(
         scheduleId: Int,
         decisions: [AttendanceDecisionInput]
@@ -54,12 +46,6 @@ final class OperatorAttendanceUseCase: OperatorAttendanceUseCaseProtocol {
             latitude: latitude,
             longitude: longitude
         )
-    }
-
-    func fetchScheduleStats() async throws
-        -> [ScheduleAttendanceStats]
-    {
-        try await repository.getScheduleStats()
     }
 
     func fetchAttendanceList(

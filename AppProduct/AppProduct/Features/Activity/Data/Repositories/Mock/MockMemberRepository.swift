@@ -142,6 +142,15 @@ final class MockMemberRepository: MemberRepositoryProtocol {
         ]
     }
 
+    func fetchMembersPage(page: Int) async throws -> MemberPage {
+        let allMembers = try await fetchMembers()
+        return MemberPage(
+            members: allMembers,
+            hasNext: false,
+            currentPage: 0
+        )
+    }
+
     func grantPoint(
         challengerId: Int,
         pointType: ChallengerPointType,
@@ -175,6 +184,11 @@ final class MockMemberRepository: MemberRepositoryProtocol {
             GenerationPointSummary(gisu: 8, reward: 2, penalty: 1),
             GenerationPointSummary(gisu: 9, reward: 1, penalty: 0)
         ]
+    }
+
+    func fetchAttendanceRecords(memberId: Int) async throws -> [MemberAttendanceRecord] {
+        try await Task.sleep(for: .milliseconds(200))
+        return MockAttendanceRecords.good
     }
 }
 

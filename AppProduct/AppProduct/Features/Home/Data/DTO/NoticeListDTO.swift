@@ -17,6 +17,9 @@ struct NoticeListRequestDTO {
     let schoolId: Int?
     /// 파트 (null이면 파트 구분 없이 조회)
     let part: UMCPartType?
+    /// 대상 역할 하한선 (필수). 일반 챌린저 공지는 `CHALLENGER`,
+    /// 운영진 공지는 `CENTRAL_MEMBER` / `SCHOOL_CORE` / `SCHOOL_PART_LEADER`.
+    let noticeTab: String
     /// 페이지 번호 (0부터 시작)
     let page: Int
     /// 페이지 크기
@@ -29,6 +32,7 @@ struct NoticeListRequestDTO {
         chapterId: Int? = nil,
         schoolId: Int? = nil,
         part: UMCPartType? = nil,
+        noticeTab: String = "CHALLENGER",
         page: Int = 0,
         size: Int = 10,
         sort: [String] = ["createdAt,DESC"]
@@ -37,6 +41,7 @@ struct NoticeListRequestDTO {
         self.chapterId = chapterId
         self.schoolId = schoolId
         self.part = part
+        self.noticeTab = noticeTab
         self.page = page
         self.size = size
         self.sort = sort
@@ -46,6 +51,7 @@ struct NoticeListRequestDTO {
     var toParameters: [String: Any] {
         var params: [String: Any] = [
             "gisuId": gisuId,
+            "noticeTab": noticeTab,
             "page": page,
             "size": size
         ]
@@ -102,7 +108,12 @@ struct NoticeListResponseDTO: Codable {
         self.viewCount = try container.decodeStringFlexibleIfPresent(forKey: .viewCount) ?? "0"
         self.createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
         self.targetInfo = try container.decodeIfPresent(TargetInfoDTO.self, forKey: .targetInfo)
-            ?? TargetInfoDTO(targetGisuId: 0, targetChapterId: nil, targetSchoolId: nil, targetParts: nil as [UMCPartType]?)
+            ?? TargetInfoDTO(
+                targetGisuId: 0,
+                targetChapterId: nil,
+                targetSchoolId: nil,
+                targetParts: nil as [UMCPartType]?
+            )
         self.authorChallengerId = try container.decodeStringFlexibleIfPresent(forKey: .authorChallengerId) ?? "0"
         self.authorNickname = try container.decodeIfPresent(String.self, forKey: .authorNickname) ?? ""
         self.authorName = try container.decodeIfPresent(String.self, forKey: .authorName) ?? ""
@@ -141,36 +152,44 @@ struct TargetInfoDTO: Codable {
     let targetChapterId: Int?
     let targetSchoolId: Int?
     let targetParts: [UMCPartType]?
+    /// 운영진 공지 탭 식별자 (CENTRAL_MEMBER / SCHOOL_CORE / SCHOOL_PART_LEADER).
+    /// 챌린저 공지 작성 시 nil.
+    let targetNoticeTab: String?
 
     private enum CodingKeys: String, CodingKey {
         case targetGisuId
         case targetChapterId
         case targetSchoolId
         case targetParts
+        case targetNoticeTab
     }
 
     init(
         targetGisuId: Int,
         targetChapterId: Int?,
         targetSchoolId: Int?,
-        targetParts: UMCPartType?
+        targetParts: UMCPartType?,
+        targetNoticeTab: String? = nil
     ) {
         self.targetGisuId = targetGisuId
         self.targetChapterId = targetChapterId
         self.targetSchoolId = targetSchoolId
         self.targetParts = targetParts.map { [$0] }
+        self.targetNoticeTab = targetNoticeTab
     }
 
     init(
         targetGisuId: Int,
         targetChapterId: Int?,
         targetSchoolId: Int?,
-        targetParts: [UMCPartType]?
+        targetParts: [UMCPartType]?,
+        targetNoticeTab: String? = nil
     ) {
         self.targetGisuId = targetGisuId
         self.targetChapterId = targetChapterId
         self.targetSchoolId = targetSchoolId
         self.targetParts = targetParts
+        self.targetNoticeTab = targetNoticeTab
     }
 
     init(from decoder: Decoder) throws {
@@ -179,6 +198,7 @@ struct TargetInfoDTO: Codable {
         self.targetChapterId = try container.decodeIntFlexibleIfPresent(forKey: .targetChapterId)
         self.targetSchoolId = try container.decodeIntFlexibleIfPresent(forKey: .targetSchoolId)
         self.targetParts = try container.decodeIfPresent([UMCPartType].self, forKey: .targetParts)
+        self.targetNoticeTab = try container.decodeIfPresent(String.self, forKey: .targetNoticeTab)
     }
 
     /// 공지 생성/수정 요청 인코딩 시 null 규칙을 맞춥니다.
@@ -201,6 +221,8 @@ struct TargetInfoDTO: Codable {
         } else {
             try container.encodeNil(forKey: .targetParts)
         }
+
+        try container.encodeIfPresent(targetNoticeTab, forKey: .targetNoticeTab)
     }
 }
 

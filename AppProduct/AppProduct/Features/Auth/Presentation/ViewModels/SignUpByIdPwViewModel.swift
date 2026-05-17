@@ -9,9 +9,9 @@ import Foundation
 import UserNotifications
 import Photos
 
-/// ID/PW 회원가입 화면의 상태와 비즈니스 로직을 관리하는 ViewModel
+/// 이메일 회원가입 화면의 상태와 비즈니스 로직을 관리하는 ViewModel
 ///
-/// 이메일 인증, 로그인 ID 중복 확인(debounce), 비밀번호 검증, 약관 동의를 단일 화면에서
+/// 이메일 인증, 이메일 중복 확인(debounce), 비밀번호 검증, 약관 동의를 단일 화면에서
 /// 처리합니다. 가입 성공 시 서버가 토큰을 즉시 발급하므로 별도 로그인 단계는 없습니다.
 @Observable
 final class SignUpByIdPwViewModel {
@@ -20,8 +20,8 @@ final class SignUpByIdPwViewModel {
 
     private let sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol
     private let verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol
-    private let registerByIdPwUseCase: RegisterByIdPwUseCaseProtocol
-    private let checkLoginIdAvailabilityUseCase: CheckLoginIdAvailabilityUseCaseProtocol
+    private let registerByEmailUseCase: RegisterByEmailUseCaseProtocol
+    private let checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol
     private let fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol
 
     // 이메일 인증
@@ -31,16 +31,10 @@ final class SignUpByIdPwViewModel {
     private(set) var emailVerificationToken: String?
     var isEmailVerified: Bool = false
 
-    // 로그인 ID
-    var loginIdInput: String = "" {
-        didSet {
-            guard loginIdInput != oldValue else { return }
-            scheduleLoginIdAvailabilityCheck()
-        }
-    }
-    private(set) var loginIdAvailability: Loadable<Bool> = .idle
-    private var loginIdAvailabilityCache: [String: Bool] = [:]
-    private var loginIdAvailabilityTask: Task<Void, Never>?
+    // 이메일 중복 확인
+    private(set) var emailAvailability: Loadable<Bool> = .idle
+    private var emailAvailabilityCache: [String: Bool] = [:]
+    private var emailAvailabilityTask: Task<Void, Never>?
 
     // 비밀번호
     var passwordInput: String = ""
@@ -67,19 +61,19 @@ final class SignUpByIdPwViewModel {
     init(
         sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,
         verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol,
-        registerByIdPwUseCase: RegisterByIdPwUseCaseProtocol,
-        checkLoginIdAvailabilityUseCase: CheckLoginIdAvailabilityUseCaseProtocol,
+        registerByEmailUseCase: RegisterByEmailUseCaseProtocol,
+        checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol,
         fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol
     ) {
         self.sendEmailVerificationUseCase = sendEmailVerificationUseCase
         self.verifyEmailCodeUseCase = verifyEmailCodeUseCase
-        self.registerByIdPwUseCase = registerByIdPwUseCase
-        self.checkLoginIdAvailabilityUseCase = checkLoginIdAvailabilityUseCase
+        self.registerByEmailUseCase = registerByEmailUseCase
+        self.checkEmailAvailabilityUseCase = checkEmailAvailabilityUseCase
         self.fetchSignUpDataUseCase = fetchSignUpDataUseCase
     }
 
     deinit {
-        loginIdAvailabilityTask?.cancel()
+        emailAvailabilityTask?.cancel()
     }
 
     // MARK: - Validation
@@ -112,9 +106,9 @@ final class SignUpByIdPwViewModel {
         return trimmed.range(of: pattern, options: .regularExpression) != nil
     }
 
-    /// 로그인 ID 사용 가능 여부 (.loaded(true)만 OK)
-    var isLoginIdAvailable: Bool {
-        if case .loaded(true) = loginIdAvailability {
+    /// 이메일 사용 가능 여부 (.loaded(true)만 OK)
+    var isEmailAvailable: Bool {
+        if case .loaded(true) = emailAvailability {
             return true
         }
         return false
@@ -137,7 +131,7 @@ final class SignUpByIdPwViewModel {
     /// 가입 완료 버튼 활성 조건 (모든 검증 통과)
     var canSubmit: Bool {
         isEmailVerified &&
-        isLoginIdAvailable &&
+        isEmailAvailable &&
         isPasswordValid &&
         isPasswordConfirmed &&
         isNameValid &&
@@ -208,22 +202,25 @@ final class SignUpByIdPwViewModel {
         emailVerificationToken = token
         verificationCodeInput = code
         isEmailVerified = true
+
+        scheduleEmailAvailabilityCheck()
     }
 
-    /// 이메일 변경 시 인증 상태 초기화
+    /// 이메일 변경 시 인증 상태 및 중복확인 초기화
     @MainActor
     func resetEmailVerification() {
         isEmailVerified = false
         emailVerificationId = nil
         emailVerificationToken = nil
         verificationCodeInput = ""
+        emailAvailabilityTask?.cancel()
+        emailAvailability = .idle
+        emailAvailabilityCache.removeAll()
     }
 
     /// 전체 약관 동의/해제 토글
     func toggleAllTerms(_ agreed: Bool) {
-        for key in termsAgreements.keys {
-            termsAgreements[key] = agreed
-        }
+        termsAgreements = termsAgreements.mapValues { _ in agreed }
     }
 
     /// 회원가입 실행
@@ -237,25 +234,22 @@ final class SignUpByIdPwViewModel {
         registerState = .loading
 
         let agreements = termsAgreements.map { key, value in
-            RegisterByIdPwTermsAgreementDTO(termsId: key, agreed: value)
+            EmailRegisterTermsAgreementDTO(termsId: key, agreed: value)
         }
 
-        let request = RegisterByIdPwRequestDTO(
-            emailVerificationToken: emailVerificationToken,
-            loginId: loginIdInput.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            ),
+        let request = EmailRegisterRequestDTO(
+            rawPassword: passwordInput,
             name: nameInput.trimmingCharacters(in: .whitespacesAndNewlines),
             nickname: nicknameInput.trimmingCharacters(
                 in: .whitespacesAndNewlines
             ),
-            rawPassword: passwordInput,
+            emailVerificationToken: emailVerificationToken,
             schoolId: selectedSchool.id,
             termsAgreements: agreements
         )
 
         do {
-            let result = try await registerByIdPwUseCase.execute(
+            let result = try await registerByEmailUseCase.execute(
                 request: request
             )
             registerState = .loaded(result)
@@ -277,55 +271,59 @@ final class SignUpByIdPwViewModel {
     }
 }
 
-// MARK: - Login ID Availability (debounce)
+// MARK: - Email Availability (debounce)
 
 private extension SignUpByIdPwViewModel {
-    /// 입력 변경 시 500ms debounce 후 중복 검사 호출
-    func scheduleLoginIdAvailabilityCheck() {
-        loginIdAvailabilityTask?.cancel()
+    /// 이메일 인증 완료 시 중복 검사를 500ms debounce 후 호출
+    func scheduleEmailAvailabilityCheck() {
+        emailAvailabilityTask?.cancel()
 
-        let trimmed = loginIdInput.trimmingCharacters(
+        let trimmed = emailInput.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
 
         guard !trimmed.isEmpty else {
-            loginIdAvailability = .idle
+            emailAvailability = .idle
             return
         }
 
-        if let cached = loginIdAvailabilityCache[trimmed] {
-            loginIdAvailability = .loaded(cached)
+        if let cached = emailAvailabilityCache[trimmed] {
+            emailAvailability = .loaded(cached)
             return
         }
 
-        loginIdAvailability = .loading
-        loginIdAvailabilityTask = Task { [weak self] in
+        emailAvailability = .loading
+        emailAvailabilityTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled, let self else { return }
-            await self.performLoginIdAvailabilityCheck(loginId: trimmed)
+            await self.performEmailAvailabilityCheck(email: trimmed)
         }
     }
 
     @MainActor
-    func performLoginIdAvailabilityCheck(loginId: String) async {
-        guard loginIdInput.trimmingCharacters(
+    func performEmailAvailabilityCheck(email: String) async {
+        guard emailInput.trimmingCharacters(
             in: .whitespacesAndNewlines
-        ) == loginId else { return }
+        ) == email else { return }
 
         do {
-            let available = try await checkLoginIdAvailabilityUseCase
-                .execute(loginId: loginId)
-            loginIdAvailabilityCache[loginId] = available
-            guard loginIdInput.trimmingCharacters(
+            let available = try await checkEmailAvailabilityUseCase
+                .execute(email: email)
+            emailAvailabilityCache[email] = available
+            guard emailInput.trimmingCharacters(
                 in: .whitespacesAndNewlines
-            ) == loginId else { return }
-            loginIdAvailability = .loaded(available)
-        } catch let error as AppError {
-            loginIdAvailability = .failed(error)
+            ) == email else { return }
+            emailAvailability = .loaded(available)
         } catch let error as RepositoryError {
-            loginIdAvailability = .failed(.repository(error))
+            if case .serverError(let code, _) = error, code == "AUTHENTICATION-0026" {
+                emailAvailability = .loaded(false)
+            } else {
+                emailAvailability = .failed(.repository(error))
+            }
+        } catch let error as AppError {
+            emailAvailability = .failed(error)
         } catch {
-            loginIdAvailability = .failed(
+            emailAvailability = .failed(
                 .unknown(message: error.localizedDescription)
             )
         }

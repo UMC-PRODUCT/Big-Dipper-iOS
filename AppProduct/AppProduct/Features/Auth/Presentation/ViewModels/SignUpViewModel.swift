@@ -316,9 +316,7 @@ final class SignUpViewModel {
 
     /// 전체 약관 동의/해제 토글
     func toggleAllTerms(_ agreed: Bool) {
-        for key in termsAgreements.keys {
-            termsAgreements[key] = agreed
-        }
+        termsAgreements = termsAgreements.mapValues { _ in agreed }
     }
 
     /// 전체 약관 동의 여부

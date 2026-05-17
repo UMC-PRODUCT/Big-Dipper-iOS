@@ -43,9 +43,20 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
             throw DomainError.curriculumUnavailableForGeneration
         }
         let part = resolvedPartAPIValue
-        let response = try await adapter.request(
-            StudyRouter.getCurriculum(gisuId: gisuId, part: part, weekNo: weekNo)
-        )
+        let response: Moya.Response
+        do {
+            response = try await adapter.request(
+                StudyRouter.getCurriculum(gisuId: gisuId, part: part, weekNo: weekNo)
+            )
+        } catch let error as NetworkError {
+            if case .requestFailed(_, let data) = error,
+               let data,
+               let body = try? JSONDecoder().decode(APIResponse<EmptyResult>.self, from: data),
+               body.code == "CURRICULUM-0001" {
+                throw DomainError.curriculumNotRegistered
+            }
+            throw error
+        }
         let apiResponse = try decoder.decode(
             APIResponse<CurriculumDTO>.self,
             from: response.data
@@ -86,103 +97,7 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
             }
     }
 
-    // MARK: - 운영진 스터디 관리 (Fallback)
-
-    func fetchStudyMembers(
-        week: Int,
-        studyGroupId: Int?
-    ) async throws -> [StudyMemberItem] {
-        if let studyGroupId {
-            return try await fetchMembersByGroup(
-                week: week,
-                studyGroupId: studyGroupId
-            )
-        }
-
-        // `전체` 선택 시에도 접근 가능한 그룹 ID를 역할별 API에서 먼저 수집해
-        // 그룹별 제출 현황을 조회한 뒤 병합합니다.
-        let accessibleGroupIDs = try await fetchAccessibleStudyGroupIDsForSubmission()
-        guard !accessibleGroupIDs.isEmpty else {
-            // 그룹 ID를 구하지 못한 경우에만 레거시 동작으로 폴백
-            return try await fetchMembersByGroup(
-                week: week,
-                studyGroupId: nil
-            )
-        }
-
-        var aggregatedMembers: [StudyMemberItem] = []
-        for groupID in accessibleGroupIDs {
-            let members = try await fetchMembersByGroup(
-                week: week,
-                studyGroupId: groupID
-            )
-            aggregatedMembers.append(contentsOf: members)
-        }
-
-        return deduplicatedMembersPreservingOrder(aggregatedMembers)
-    }
-
-    func fetchStudyGroups() async throws -> [StudyGroupItem] {
-        var lastError: Error?
-
-        if isSchoolCoreRole {
-            do {
-                if let groups = try await fetchStudyGroupsByNames() {
-                    return groups
-                }
-            } catch {
-                lastError = error
-            }
-
-            do {
-                if let groups = try await fetchMyStudyGroups() {
-                    return groups
-                }
-            } catch {
-                if lastError == nil {
-                    lastError = error
-                }
-            }
-        } else {
-            do {
-                if let groups = try await fetchMyStudyGroups() {
-                    if groups.contains(where: { $0 != .all }) {
-                        return groups
-                    }
-
-                    // 멀티 역할 사용자에서 role 캐시가 단일값으로 저장된 경우 보정
-                    // (`/study-groups`가 비어있고 `/study-groups/names`는 조회 가능한 케이스)
-                    if let groupsByNames = try? await fetchStudyGroupsByNames(),
-                       groupsByNames.contains(where: { $0 != .all }) {
-                        return groupsByNames
-                    }
-
-                    return groups
-                }
-            } catch {
-                lastError = error
-            }
-
-            do {
-                if let groupsByNames = try await fetchStudyGroupsByNames(),
-                   groupsByNames.contains(where: { $0 != .all }) {
-                    return groupsByNames
-                }
-            } catch {
-                if lastError == nil {
-                    lastError = error
-                }
-            }
-        }
-
-        if let lastError {
-            throw lastError
-        }
-        throw RepositoryError.serverError(
-            code: nil,
-            message: "스터디 그룹 정보를 불러오지 못했습니다."
-        )
-    }
+    // MARK: - 운영진 스터디 관리
 
     func fetchStudyGroupDetails() async throws -> [StudyGroupInfo] {
         var allDetails: [StudyGroupInfo] = []
@@ -251,24 +166,6 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         )
     }
 
-    func fetchWeeks() async throws -> [Int] {
-        let part = resolvedPartAPIValue
-        let response = try await adapter.request(
-            StudyRouter.getCurriculumWeeks(part: part)
-        )
-        let apiResponse = try decoder.decode(
-            APIResponse<CurriculumWeeksDTO>.self,
-            from: response.data
-        )
-        let weeks = Array(Set(
-            try apiResponse.unwrap()
-                .weeks
-                .compactMap { Int($0.weekNo) }
-        )).sorted()
-
-        return weeks
-    }
-
     func resolveChallengerId(
         memberId: Int,
         preferredGeneration: Int?
@@ -291,85 +188,6 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         }
 
         return records.first?.challengerId
-    }
-
-    func fetchWorkbookSubmissionURL(
-        challengerWorkbookId: Int
-    ) async throws -> String? {
-        let response = try await adapter.request(
-            StudyRouter.getWorkbookSubmission(
-                challengerWorkbookId: challengerWorkbookId
-            )
-        )
-
-        let dto: WorkbookSubmissionDetailDTO
-        if let apiResponse = try? decoder.decode(
-            APIResponse<WorkbookSubmissionDetailDTO>.self,
-            from: response.data
-        ),
-           let wrapped = try? apiResponse.unwrap() {
-            dto = wrapped
-        } else {
-            dto = try decoder.decode(
-                WorkbookSubmissionDetailDTO.self,
-                from: response.data
-            )
-        }
-
-        guard let submission = dto.submission,
-              !submission.isEmpty else {
-            return nil
-        }
-        return submission
-    }
-
-    func reviewWorkbook(
-        challengerWorkbookId: Int,
-        isApproved: Bool,
-        feedback: String
-    ) async throws {
-        let status = isApproved ? "PASS" : "FAIL"
-        let response = try await adapter.request(
-            StudyRouter.reviewWorkbook(
-                challengerWorkbookId: challengerWorkbookId,
-                body: WorkbookReviewRequestDTO(
-                    status: status,
-                    feedback: feedback
-                )
-            )
-        )
-
-        if response.data.isEmpty {
-            return
-        }
-        if let apiResponse = try? decoder.decode(
-            APIResponse<EmptyResult>.self,
-            from: response.data
-        ) {
-            try apiResponse.validateSuccess()
-        }
-    }
-
-    func selectBestWorkbook(
-        challengerWorkbookId: Int,
-        bestReason: String
-    ) async throws {
-        let response = try await adapter.request(
-            StudyRouter.selectBestWorkbook(
-                challengerWorkbookId: challengerWorkbookId,
-                body: BestWorkbookSelectionRequestDTO(bestReason: bestReason)
-            )
-        )
-
-        if response.data.isEmpty {
-            return
-        }
-        if let apiResponse = try? decoder.decode(
-            APIResponse<EmptyResult>.self,
-            from: response.data
-        ) {
-            try apiResponse.validateSuccess()
-        }
     }
 
     func createStudyGroup(
@@ -571,203 +389,34 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Private Helper
 
-    /// 제출 현황 조회용 접근 가능 스터디 그룹 ID 목록을 역할별 정책에 맞춰 수집합니다.
-    ///
-    /// - 회장/부회장: `/study-groups/names` 우선
-    /// - 그 외: `/study-groups` 우선
-    private func fetchAccessibleStudyGroupIDsForSubmission() async throws -> [Int] {
-        if isSchoolCoreRole,
-           let groupsByNames = try? await fetchStudyGroupsByNames() {
-            let ids = studyGroupIDs(from: groupsByNames)
-            if !ids.isEmpty {
-                return ids
-            }
-        }
-
-        if let myGroups = try await fetchMyStudyGroups() {
-            let ids = studyGroupIDs(from: myGroups)
-            if !ids.isEmpty {
-                return ids
-            }
-        }
-
-        if let groupsByNames = try? await fetchStudyGroupsByNames() {
-            let ids = studyGroupIDs(from: groupsByNames)
-            if !ids.isEmpty {
-                return ids
-            }
-        }
-
-        return []
-    }
-
-    /// 그룹 목록에서 유효한 서버 그룹 ID만 추출하고 중복을 제거합니다.
-    private func studyGroupIDs(from groups: [StudyGroupItem]) -> [Int] {
-        var orderedUniqueIDs: [Int] = []
-        var seen: Set<Int> = []
-
-        for group in groups where group != .all {
-            guard let groupID = Int(group.serverID), groupID > 0 else { continue }
-            if seen.insert(groupID).inserted {
-                orderedUniqueIDs.append(groupID)
-            }
-        }
-
-        return orderedUniqueIDs
-    }
-
-    /// 여러 그룹 조회 결과를 순서를 유지한 채 중복 제거합니다.
-    private func deduplicatedMembersPreservingOrder(
-        _ members: [StudyMemberItem]
-    ) -> [StudyMemberItem] {
-        var seenKeys: Set<String> = []
-        var deduplicated: [StudyMemberItem] = []
-
-        for member in members {
-            let key: String
-            if let challengerWorkbookId = member.challengerWorkbookId {
-                key = "workbook:\(challengerWorkbookId)"
-            } else {
-                key = "member:\(member.serverID):\(member.studyTopic)"
-            }
-
-            if seenKeys.insert(key).inserted {
-                deduplicated.append(member)
-            }
-        }
-
-        return deduplicated
-    }
-
-    private func fetchMembersByGroup(
-        week: Int,
-        studyGroupId: Int?
-    ) async throws -> [StudyMemberItem] {
-        var cursor: Int? = nil
-        var hasNext = true
-        var members: [StudyMemberItem] = []
-
-        while hasNext {
-            let response = try await adapter.request(
-                StudyRouter.getWorkbookSubmissions(
-                    weekNo: week,
-                    studyGroupId: studyGroupId,
-                    cursor: cursor,
-                    size: 100
-                )
+    /// 스터디 그룹 목록 페이지를 `/study-groups/managed` 로 조회합니다.
+    /// - Parameters:
+    ///   - cursor: 페이지 커서 (첫 페이지 nil)
+    ///   - size: 페이지 크기
+    /// - Returns: 그룹 목록 페이지
+    private func fetchStudyGroupItemsPage(
+        cursor: Int?,
+        size: Int
+    ) async throws -> StudyGroupItemsPage {
+        guard let myGroupsPage = try await fetchMyStudyGroupsPage(
+            cursor: cursor,
+            size: size
+        ) else {
+            return StudyGroupItemsPage(
+                groups: [],
+                hasNext: false,
+                nextCursor: nil
             )
-            let page: WorkbookSubmissionPageDTO
-            if let apiResponse = try? decoder.decode(
-                APIResponse<WorkbookSubmissionPageDTO>.self,
-                from: response.data
-            ),
-               let wrapped = try? apiResponse.unwrap() {
-                page = wrapped
-            } else {
-                page = try decoder.decode(
-                    WorkbookSubmissionPageDTO.self,
-                    from: response.data
-                )
-            }
-
-            members.append(contentsOf: page.content.map {
-                $0.toDomain(week: week, studyGroupId: studyGroupId) })
-            hasNext = page.hasNext
-            cursor = page.nextCursor
         }
-        return members
+
+        return StudyGroupItemsPage(
+            groups: myGroupsPage.studyGroups.map(toStudyGroupItem),
+            hasNext: myGroupsPage.hasNext,
+            nextCursor: myGroupsPage.nextCursor
+        )
     }
 
-    /// 회장단(교내 회장/부회장) 권한 여부
-    private var isSchoolCoreRole: Bool {
-        let defaults = UserDefaults.standard
-
-        if let roleRawValues = defaults.stringArray(
-            forKey: AppStorageKey.memberRoles
-        ), !roleRawValues.isEmpty {
-            let roles = roleRawValues.compactMap {
-                ManagementTeam(rawValue: $0)
-            }
-            if roles.contains(.schoolPresident)
-                || roles.contains(.schoolVicePresident) {
-                return true
-            }
-        }
-
-        let roleRawValue = defaults.string(
-            forKey: AppStorageKey.memberRole
-        ) ?? ""
-        guard let role = ManagementTeam(rawValue: roleRawValue) else {
-            return false
-        }
-        return role == .schoolPresident
-            || role == .schoolVicePresident
-    }
-
-    /// 교내 회장단 전용 전체 그룹 목록 조회 (`/study-groups/names`)
-    private func fetchStudyGroupsByNames() async throws -> [StudyGroupItem]? {
-        let response = try await adapter.request(StudyRouter.getStudyGroupNames)
-
-        // 서버별 응답 포맷 차이를 흡수합니다.
-        if let apiResponse = try? decoder.decode(
-            APIResponse<StudyGroupNamesDTO>.self,
-            from: response.data
-        ),
-           let wrapped = try? apiResponse.unwrap() {
-            return wrapped.toDomain()
-        }
-
-        if let plain = try? decoder.decode(
-            StudyGroupNamesDTO.self,
-            from: response.data
-        ) {
-            return plain.toDomain()
-        }
-
-        return nil
-    }
-
-    /// 회장단 외 사용자 전용 그룹 목록 조회 (`/study-groups`, cursor 기반)
-    private func fetchMyStudyGroups() async throws -> [StudyGroupItem]? {
-        var cursor: Int? = nil
-        var hasNext = true
-        var aggregated: [StudyGroupNameItemDTO] = []
-
-        while hasNext {
-            guard let page = try await fetchMyStudyGroupsPage(
-                cursor: cursor,
-                size: Constants.myStudyGroupsPageSize
-            ) else {
-                return nil
-            }
-
-            aggregated.append(contentsOf: page.studyGroups)
-            hasNext = page.hasNext
-            cursor = page.nextCursor
-            if hasNext && cursor == nil {
-                break
-            }
-        }
-
-        guard !aggregated.isEmpty else {
-            return [.all]
-        }
-
-        var deduplicatedByGroupID: [Int: StudyGroupNameItemDTO] = [:]
-        aggregated.forEach { item in
-            deduplicatedByGroupID[item.groupId] = item
-        }
-
-        let sortedItems = deduplicatedByGroupID.values.sorted { lhs, rhs in
-            lhs.groupId < rhs.groupId
-        }
-
-        return [.all] + sortedItems.map {
-            toStudyGroupItem($0)
-        }
-    }
-
-    /// 회장단 외 사용자 전용 그룹 목록 단일 페이지 조회 (`/study-groups`, cursor 기반)
+    /// 로그인 사용자의 스터디 그룹 목록 페이지 단건 조회 (`/study-groups/managed`, cursor 기반)
     private func fetchMyStudyGroupsPage(
         cursor: Int?,
         size: Int
@@ -797,100 +446,12 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
         return nil
     }
 
-    /// 스터디 그룹 목록 페이지를 역할에 맞게 조회합니다.
-    /// - Parameters:
-    ///   - cursor: 페이지 커서 (첫 페이지 nil)
-    ///   - size: 페이지 크기
-    /// - Returns: 그룹 목록 페이지
-    private func fetchStudyGroupItemsPage(
-        cursor: Int?,
-        size: Int
-    ) async throws -> StudyGroupItemsPage {
-        if isSchoolCoreRole {
-            guard cursor == nil else {
-                return StudyGroupItemsPage(
-                    groups: [],
-                    hasNext: false,
-                    nextCursor: nil
-                )
-            }
-
-            if let groupsByNames = try? await fetchStudyGroupsByNames() {
-                let groups = groupsByNames.filter { $0 != .all }
-                return StudyGroupItemsPage(
-                    groups: groups,
-                    hasNext: false,
-                    nextCursor: nil
-                )
-            }
-
-            if let myGroupsPage = try await fetchMyStudyGroupsPage(
-                cursor: nil,
-                size: size
-            ) {
-                return StudyGroupItemsPage(
-                    groups: myGroupsPage.studyGroups.map(toStudyGroupItem),
-                    hasNext: myGroupsPage.hasNext,
-                    nextCursor: myGroupsPage.nextCursor
-                )
-            }
-
-            return StudyGroupItemsPage(
-                groups: [],
-                hasNext: false,
-                nextCursor: nil
-            )
-        }
-
-        if let myGroupsPage = try await fetchMyStudyGroupsPage(
-            cursor: cursor,
-            size: size
-        ) {
-            let myGroups = myGroupsPage.studyGroups.map(toStudyGroupItem)
-
-            // 멀티 역할 사용자에서 role 캐시가 단일값으로 저장된 경우 보정
-            // (`/study-groups`가 비어있고 `/study-groups/names`는 조회 가능한 케이스)
-            if myGroups.isEmpty, cursor == nil,
-               let groupsByNames = try? await fetchStudyGroupsByNames(),
-               groupsByNames.contains(where: { $0 != .all }) {
-                return StudyGroupItemsPage(
-                    groups: groupsByNames.filter { $0 != .all },
-                    hasNext: false,
-                    nextCursor: nil
-                )
-            }
-
-            return StudyGroupItemsPage(
-                groups: myGroups,
-                hasNext: myGroupsPage.hasNext,
-                nextCursor: myGroupsPage.nextCursor
-            )
-        }
-
-        if cursor == nil,
-           let groupsByNames = try? await fetchStudyGroupsByNames(),
-           groupsByNames.contains(where: { $0 != .all }) {
-            return StudyGroupItemsPage(
-                groups: groupsByNames.filter { $0 != .all },
-                hasNext: false,
-                nextCursor: nil
-            )
-        }
-
-        return StudyGroupItemsPage(
-            groups: [],
-            hasNext: false,
-            nextCursor: nil
-        )
-    }
-
     /// 단일 그룹 목록 항목 DTO를 도메인 모델로 변환합니다.
     private func toStudyGroupItem(_ dto: StudyGroupNameItemDTO) -> StudyGroupItem {
         StudyGroupItem(
             serverID: String(dto.groupId),
             name: dto.name,
-            iconName: "person.2.fill",
-            part: nil
+            iconName: "person.2.fill"
         )
     }
 
@@ -1029,4 +590,3 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
     }
 
 }
-

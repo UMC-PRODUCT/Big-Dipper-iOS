@@ -15,7 +15,7 @@ struct OperatorAttendanceSectionView: View {
 
     // MARK: - Property
 
-    @Environment(NavigationRouter.self) private var router
+    @Environment(\.di) private var di
     @State private var viewModel: OperatorAttendanceViewModel
     @State private var selectedPendingSessionId: UUID?
     @Environment(\.scenePhase) private var scenePhase
@@ -156,10 +156,12 @@ struct OperatorAttendanceSectionView: View {
     // MARK: - Empty View
 
     private var emptyView: some View {
+        // NOTE: [#688] V1 /api/v1/schedules 제거로 세션 목록이 임시 빈 상태입니다.
+        //              V2 fetchAttendanceList 기반 재구현 완료 시 일반 빈 상태 메시지로 복귀합니다.
         ContentUnavailableView {
-            Label("출석 관리", systemImage: "checkmark.circle.badge.questionmark")
+            Label("출석 관리 준비 중", systemImage: "wrench.and.screwdriver")
         } description: {
-            Text("관리할 세션이 없습니다")
+            Text("출석 세션 목록 V2 마이그레이션 진행 중입니다.\n곧 다시 제공될 예정이에요.")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
@@ -187,7 +189,7 @@ struct OperatorAttendanceSectionView: View {
 
     private var attendanceListEntryButton: some View {
         Button {
-            router.push(to: .activity(.attendanceList))
+            di.resolve(PathStore.self).activityPath.append(.activity(.attendanceList))
         } label: {
             HStack(spacing: DefaultSpacing.spacing12) {
                 Image(systemName: "checklist")
@@ -271,23 +273,7 @@ struct OperatorAttendanceSectionView: View {
         .init(
             onLocationTap: { viewModel.locationButtonTapped(session: sessionAttendance.session) },
             onPendingListTap: {
-                Task {
-                    let result = await viewModel.loadPendingMembers(
-                        for: sessionAttendance.id
-                    )
-                    switch result {
-                    case .loaded:
-                        selectedPendingSessionId = sessionAttendance.id
-                    case .empty:
-                        viewModel.alertPrompt = AlertPrompt(
-                            title: "승인 대기 명단",
-                            message: "승인 대기 중인 멤버가 없습니다.",
-                            positiveBtnTitle: "확인"
-                        )
-                    case .failed:
-                        break
-                    }
-                }
+                selectedPendingSessionId = sessionAttendance.id
             },
             onReasonTap: { viewModel.reasonButtonTapped(member: $0) },
             onRejectTap: { viewModel.rejectButtonTapped(member: $0, sessionId: sessionAttendance.id) },

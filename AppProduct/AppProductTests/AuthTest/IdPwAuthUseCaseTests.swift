@@ -9,9 +9,9 @@
 import Foundation
 import Testing
 
-// MARK: - LoginByIdPwUseCaseTests
+// MARK: - LoginByEmailUseCaseTests
 
-struct LoginByIdPwUseCaseTests {
+struct LoginByEmailUseCaseTests {
 
     @Test("로그인 성공 시 결과를 반환하고 TokenStore 에 토큰을 저장한다")
     func loginSuccessSavesTokens() async throws {
@@ -20,30 +20,30 @@ struct LoginByIdPwUseCaseTests {
         let expected = LoginByIdPwResult(
             memberId: "999",
             tokenPair: TokenPair(
-                accessToken: "id-pw-access",
-                refreshToken: "id-pw-refresh"
+                accessToken: "email-access",
+                refreshToken: "email-refresh"
             )
         )
-        await repository.setLoginByIdPwResult(.success(expected))
+        await repository.setLoginByEmailResult(.success(expected))
 
-        let useCase = LoginByIdPwUseCase(
+        let useCase = LoginByEmailUseCase(
             repository: repository,
             tokenStore: tokenStore
         )
 
         let result = try await useCase.execute(
-            loginId: "reviewer",
+            email: "reviewer@umc.dev",
             password: "umc12345!"
         )
 
         let saved = await tokenStore.snapshot()
-        let lastRequest = await repository.lastLoginByIdPwRequest
+        let lastRequest = await repository.lastLoginByEmailRequest
 
         #expect(result == expected)
-        #expect(saved.accessToken == "id-pw-access")
-        #expect(saved.refreshToken == "id-pw-refresh")
+        #expect(saved.accessToken == "email-access")
+        #expect(saved.refreshToken == "email-refresh")
         #expect(saved.saveCallCount == 1)
-        #expect(lastRequest?.loginId == "reviewer")
+        #expect(lastRequest?.email == "reviewer@umc.dev")
         #expect(lastRequest?.password == "umc12345!")
     }
 
@@ -52,19 +52,19 @@ struct LoginByIdPwUseCaseTests {
         let repository = StubAuthRepository()
         let tokenStore = InMemoryTokenStore()
         let serverError = RepositoryError.serverError(
-            code: "INVALID_CREDENTIALS",
-            message: "아이디 또는 비밀번호가 올바르지 않습니다."
+            code: "AUTHENTICATION-0022",
+            message: "이메일 또는 비밀번호가 올바르지 않습니다."
         )
-        await repository.setLoginByIdPwResult(.failure(serverError))
+        await repository.setLoginByEmailResult(.failure(serverError))
 
-        let useCase = LoginByIdPwUseCase(
+        let useCase = LoginByEmailUseCase(
             repository: repository,
             tokenStore: tokenStore
         )
 
         await #expect(throws: RepositoryError.self) {
             _ = try await useCase.execute(
-                loginId: "wrong",
+                email: "wrong@umc.dev",
                 password: "wrong"
             )
         }
@@ -76,9 +76,9 @@ struct LoginByIdPwUseCaseTests {
     }
 }
 
-// MARK: - RegisterByIdPwUseCaseTests
+// MARK: - RegisterByEmailUseCaseTests
 
-struct RegisterByIdPwUseCaseTests {
+struct RegisterByEmailUseCaseTests {
 
     @Test("회원가입 성공 시 결과를 반환하고 TokenStore 에 토큰을 즉시 저장한다")
     func registerSuccessSavesTokensImmediately() async throws {
@@ -91,9 +91,9 @@ struct RegisterByIdPwUseCaseTests {
                 refreshToken: "register-refresh"
             )
         )
-        await repository.setRegisterByIdPwResult(.success(expected))
+        await repository.setRegisterByEmailResult(.success(expected))
 
-        let useCase = RegisterByIdPwUseCase(
+        let useCase = RegisterByEmailUseCase(
             repository: repository,
             tokenStore: tokenStore
         )
@@ -102,13 +102,12 @@ struct RegisterByIdPwUseCaseTests {
         let result = try await useCase.execute(request: request)
 
         let saved = await tokenStore.snapshot()
-        let lastRequest = await repository.lastRegisterByIdPwRequest
+        let lastRequest = await repository.lastRegisterByEmailRequest
 
         #expect(result == expected)
         #expect(saved.accessToken == "register-access")
         #expect(saved.refreshToken == "register-refresh")
         #expect(saved.saveCallCount == 1)
-        #expect(lastRequest?.loginId == request.loginId)
         #expect(lastRequest?.emailVerificationToken == request.emailVerificationToken)
         #expect(lastRequest?.schoolId == request.schoolId)
         #expect(lastRequest?.termsAgreements.count == request.termsAgreements.count)
@@ -119,12 +118,12 @@ struct RegisterByIdPwUseCaseTests {
         let repository = StubAuthRepository()
         let tokenStore = InMemoryTokenStore()
         let serverError = RepositoryError.serverError(
-            code: "DUPLICATE_LOGIN_ID",
-            message: "이미 사용 중인 아이디입니다."
+            code: "AUTHENTICATION-0026",
+            message: "이미 사용 중인 이메일입니다."
         )
-        await repository.setRegisterByIdPwResult(.failure(serverError))
+        await repository.setRegisterByEmailResult(.failure(serverError))
 
-        let useCase = RegisterByIdPwUseCase(
+        let useCase = RegisterByEmailUseCase(
             repository: repository,
             tokenStore: tokenStore
         )
@@ -139,46 +138,45 @@ struct RegisterByIdPwUseCaseTests {
         #expect(saved.saveCallCount == 0)
     }
 
-    private func makeRegisterRequest() -> RegisterByIdPwRequestDTO {
-        RegisterByIdPwRequestDTO(
-            emailVerificationToken: "email-token",
-            loginId: "reviewer",
+    private func makeRegisterRequest() -> EmailRegisterRequestDTO {
+        EmailRegisterRequestDTO(
+            rawPassword: "umc12345!",
             name: "리뷰어",
             nickname: "리뷰",
-            rawPassword: "umc12345!",
+            emailVerificationToken: "email-token",
             schoolId: "1",
             termsAgreements: [
-                RegisterByIdPwTermsAgreementDTO(termsId: "1", agreed: true),
-                RegisterByIdPwTermsAgreementDTO(termsId: "2", agreed: true)
+                EmailRegisterTermsAgreementDTO(termsId: "1", agreed: true),
+                EmailRegisterTermsAgreementDTO(termsId: "2", agreed: true)
             ]
         )
     }
 }
 
-// MARK: - CheckLoginIdAvailabilityUseCaseTests
+// MARK: - CheckEmailAvailabilityUseCaseTests
 
-struct CheckLoginIdAvailabilityUseCaseTests {
+struct CheckEmailAvailabilityUseCaseTests {
 
     @Test("Repository 가 사용 가능을 반환하면 true 를 그대로 전달한다")
-    func availableLoginIdPassesThrough() async throws {
+    func availableEmailPassesThrough() async throws {
         let repository = StubAuthRepository()
-        await repository.setCheckLoginIdAvailabilityResult(.success(true))
-        let useCase = CheckLoginIdAvailabilityUseCase(repository: repository)
+        await repository.setCheckEmailAvailabilityResult(.success(true))
+        let useCase = CheckEmailAvailabilityUseCase(repository: repository)
 
-        let result = try await useCase.execute(loginId: "freshUser")
+        let result = try await useCase.execute(email: "new@umc.dev")
 
-        let lastQuery = await repository.lastCheckLoginIdAvailabilityQuery
+        let lastQuery = await repository.lastCheckEmailAvailabilityQuery
         #expect(result == true)
-        #expect(lastQuery == "freshUser")
+        #expect(lastQuery == "new@umc.dev")
     }
 
     @Test("Repository 가 사용 불가를 반환하면 false 를 그대로 전달한다")
-    func unavailableLoginIdPassesThrough() async throws {
+    func unavailableEmailPassesThrough() async throws {
         let repository = StubAuthRepository()
-        await repository.setCheckLoginIdAvailabilityResult(.success(false))
-        let useCase = CheckLoginIdAvailabilityUseCase(repository: repository)
+        await repository.setCheckEmailAvailabilityResult(.success(false))
+        let useCase = CheckEmailAvailabilityUseCase(repository: repository)
 
-        let result = try await useCase.execute(loginId: "reviewer")
+        let result = try await useCase.execute(email: "reviewer@umc.dev")
 
         #expect(result == false)
     }
@@ -190,11 +188,11 @@ struct CheckLoginIdAvailabilityUseCaseTests {
             code: "500",
             message: "서버 오류"
         )
-        await repository.setCheckLoginIdAvailabilityResult(.failure(networkError))
-        let useCase = CheckLoginIdAvailabilityUseCase(repository: repository)
+        await repository.setCheckEmailAvailabilityResult(.failure(networkError))
+        let useCase = CheckEmailAvailabilityUseCase(repository: repository)
 
         await #expect(throws: RepositoryError.self) {
-            _ = try await useCase.execute(loginId: "anyId")
+            _ = try await useCase.execute(email: "any@umc.dev")
         }
     }
 }
@@ -208,58 +206,58 @@ private actor StubAuthRepository: AuthRepositoryProtocol {
 
     // MARK: - Configurable Results
 
-    private var loginByIdPwResult: Result<LoginByIdPwResult, Error>?
-    private var registerByIdPwResult: Result<RegisterByIdPwResult, Error>?
-    private var checkLoginIdAvailabilityResult: Result<Bool, Error>?
+    private var loginByEmailResult: Result<LoginByIdPwResult, Error>?
+    private var registerByEmailResult: Result<RegisterByIdPwResult, Error>?
+    private var checkEmailAvailabilityResult: Result<Bool, Error>?
 
     // MARK: - Recorded Inputs
 
-    private(set) var lastLoginByIdPwRequest: LoginByIdPwRequestDTO?
-    private(set) var lastRegisterByIdPwRequest: RegisterByIdPwRequestDTO?
-    private(set) var lastCheckLoginIdAvailabilityQuery: String?
+    private(set) var lastLoginByEmailRequest: EmailLoginRequestDTO?
+    private(set) var lastRegisterByEmailRequest: EmailRegisterRequestDTO?
+    private(set) var lastCheckEmailAvailabilityQuery: String?
 
     // MARK: - Setup
 
-    func setLoginByIdPwResult(_ result: Result<LoginByIdPwResult, Error>) {
-        loginByIdPwResult = result
+    func setLoginByEmailResult(_ result: Result<LoginByIdPwResult, Error>) {
+        loginByEmailResult = result
     }
 
-    func setRegisterByIdPwResult(_ result: Result<RegisterByIdPwResult, Error>) {
-        registerByIdPwResult = result
+    func setRegisterByEmailResult(_ result: Result<RegisterByIdPwResult, Error>) {
+        registerByEmailResult = result
     }
 
-    func setCheckLoginIdAvailabilityResult(_ result: Result<Bool, Error>) {
-        checkLoginIdAvailabilityResult = result
+    func setCheckEmailAvailabilityResult(_ result: Result<Bool, Error>) {
+        checkEmailAvailabilityResult = result
     }
 
     // MARK: - AuthRepositoryProtocol (tested)
 
-    func loginByIdPw(
-        _ body: LoginByIdPwRequestDTO
+    func loginByEmail(
+        _ body: EmailLoginRequestDTO
     ) async throws -> LoginByIdPwResult {
-        lastLoginByIdPwRequest = body
-        guard let result = loginByIdPwResult else {
-            fatalError("loginByIdPwResult not configured")
+        lastLoginByEmailRequest = body
+        guard let result = loginByEmailResult else {
+            fatalError("loginByEmailResult not configured")
         }
         return try result.get()
     }
 
-    func registerByIdPw(
-        _ body: RegisterByIdPwRequestDTO
+    func registerByEmail(
+        _ body: EmailRegisterRequestDTO
     ) async throws -> RegisterByIdPwResult {
-        lastRegisterByIdPwRequest = body
-        guard let result = registerByIdPwResult else {
-            fatalError("registerByIdPwResult not configured")
+        lastRegisterByEmailRequest = body
+        guard let result = registerByEmailResult else {
+            fatalError("registerByEmailResult not configured")
         }
         return try result.get()
     }
 
-    func checkLoginIdAvailability(
-        loginId: String
+    func checkEmailAvailability(
+        email: String
     ) async throws -> Bool {
-        lastCheckLoginIdAvailabilityQuery = loginId
-        guard let result = checkLoginIdAvailabilityResult else {
-            fatalError("checkLoginIdAvailabilityResult not configured")
+        lastCheckEmailAvailabilityQuery = email
+        guard let result = checkEmailAvailabilityResult else {
+            fatalError("checkEmailAvailabilityResult not configured")
         }
         return try result.get()
     }

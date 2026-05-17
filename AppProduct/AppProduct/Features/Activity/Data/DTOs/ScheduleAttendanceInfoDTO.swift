@@ -66,14 +66,14 @@ struct ScheduleAttendanceInfoDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        scheduleId = try container.decodeIfPresent(Int.self, forKey: .scheduleId) ?? 0
+        scheduleId = try container.decodeIntFlexibleIfPresent(forKey: .scheduleId) ?? 0
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
         startsAt = try container.decodeIfPresent(String.self, forKey: .startsAt) ?? ""
         endsAt = try container.decodeIfPresent(String.self, forKey: .endsAt) ?? ""
         isOnline = try container.decodeIfPresent(Bool.self, forKey: .isOnline) ?? false
         location = try container.decodeIfPresent(V2LocationDTO.self, forKey: .location)
-        authorMemberId = try container.decodeIfPresent(Int.self, forKey: .authorMemberId) ?? 0
+        authorMemberId = try container.decodeIntFlexibleIfPresent(forKey: .authorMemberId) ?? 0
         attendancePolicy = try container.decodeIfPresent(V2AttendancePolicyDTO.self, forKey: .attendancePolicy)
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
         participants = try container.decodeIfPresent([V2AttendanceParticipantDTO].self, forKey: .participants) ?? []
@@ -116,5 +116,34 @@ extension ScheduleAttendanceInfoDTO {
             tags: tags,
             participants: participants.map { $0.toDomain() }
         )
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeIntFlexible(forKey key: Key) throws -> Int {
+        if let value = try? decode(Int.self, forKey: key) {
+            return value
+        }
+        if let value = try? decode(String.self, forKey: key),
+           let intValue = Int(value) {
+            return intValue
+        }
+        if let value = try? decode(Double.self, forKey: key) {
+            return Int(value)
+        }
+        throw DecodingError.typeMismatch(
+            Int.self,
+            DecodingError.Context(
+                codingPath: codingPath + [key],
+                debugDescription: "Expected Int/String-number/Double for key '\(key.stringValue)'"
+            )
+        )
+    }
+
+    func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
+        if (try? decodeNil(forKey: key)) == true {
+            return nil
+        }
+        return try? decodeIntFlexible(forKey: key)
     }
 }

@@ -11,9 +11,9 @@ import Moya
 /// Schedule Repository 구현체
 ///
 /// `ScheduleRepositoryProtocol`을 구현하며,
-/// `ScheduleRouter`를 통해 일정 관련 API를 호출합니다.
+/// `ScheduleV2Router`를 통해 일정 관련 API를 호출합니다.
 ///
-/// - SeeAlso: ``ScheduleRepositoryProtocol``, ``ScheduleRouter``
+/// - SeeAlso: ``ScheduleRepositoryProtocol``, ``ScheduleV2Router``
 final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Property
@@ -52,10 +52,17 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
             ScheduleV2Router.postSchedule(request: schedule)
         )
         let apiResponse = try decoder.decode(
-            APIResponse<Int>.self,
+            APIResponse<String>.self,
             from: response.data
         )
-        return try apiResponse.unwrap()
+        let resultString = try apiResponse.unwrap()
+        guard let scheduleId = Int(resultString) else {
+            throw RepositoryError.serverError(
+                code: apiResponse.code,
+                message: "Invalid schedule ID: \(resultString)"
+            )
+        }
+        return scheduleId
     }
 
     /// 일정을 단순 삭제합니다.
@@ -103,20 +110,13 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
 
     /// 일정과 연결된 출석부를 함께 삭제합니다.
     ///
+    /// V1 통합 삭제 엔드포인트 제거에 따라 V2 단순 삭제 엔드포인트로 통합되었습니다.
+    ///
     /// - Parameter scheduleId: 삭제할 일정 ID
     /// - Throws: 서버 에러 또는 네트워크 에러
     func deleteScheduleWithAttendance(
         scheduleId: Int
     ) async throws {
-        let response = try await adapter.request(
-            ScheduleRouter.deleteScheduleWithAttendance(
-                scheduleId: scheduleId
-            )
-        )
-        let apiResponse = try decoder.decode(
-            APIResponse<EmptyResult>.self,
-            from: response.data
-        )
-        try apiResponse.validateSuccess()
+        try await deleteSchedule(scheduleId: scheduleId)
     }
 }

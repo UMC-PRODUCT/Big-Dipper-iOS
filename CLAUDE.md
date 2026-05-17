@@ -454,6 +454,100 @@ case .addLink(_, let body):
 - **신규 라우터/엔드포인트**: 처음부터 DTO 분리.
 - **기존 라우터**: 별도 마이그레이션 작업으로 진행 (기능 작업과 분리해 PR을 따로 연다).
 
+## Response DTO Decoding
+
+서버는 **응답으로 내려주는 모든 정수 값을 String 으로 직렬화**합니다.
+JSON Number 가 아닌 String 으로 오므로, Response DTO 가 `Int` 로
+선언된 필드를 그대로 디코딩하면 런타임 `DecodingError.typeMismatch`
+가 발생합니다.
+
+### 원칙
+
+1. **Response DTO 의 모든 `Int` 필드는 String 폴백을 보장한다**
+2. **synthesized `Codable` 금지** — `Int` 필드가 있으면 반드시 custom
+   `init(from:)` + `encode(to:)` 를 작성
+3. **`decode(Int.self)` / `decodeIfPresent(Int.self)` 직접 호출 금지** —
+   `decodeIntFlexibleIfPresent` 헬퍼 사용
+4. **폴백 순서**: `Int` → `String("123")` → `Double(123.0)` → throw
+5. **Request DTO (Encodable, 우리가 보내는 쪽) 는 제외** — `Int` 그대로 OK
+
+### ❌ 안티패턴
+
+```swift
+struct UserDTO: Codable {
+    let userId: Int           // synthesized Codable — "123" String 응답에서 typeMismatch
+    let name: String
+}
+
+// 또는 custom init 안에서 직접 Int decode
+init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    userId = try container.decodeIfPresent(Int.self, forKey: .userId) ?? 0
+}
+```
+
+### ✅ 권장 패턴
+
+```swift
+struct UserDTO: Codable {
+    let userId: Int
+    let name: String
+
+    private enum CodingKeys: String, CodingKey {
+        case userId, name
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try container.decodeIntFlexibleIfPresent(forKey: .userId) ?? 0
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(userId, forKey: .userId)
+        try container.encode(name, forKey: .name)
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeIntFlexible(forKey key: Key) throws -> Int {
+        if let value = try? decode(Int.self, forKey: key) { return value }
+        if let value = try? decode(String.self, forKey: key),
+           let intValue = Int(value) { return intValue }
+        if let value = try? decode(Double.self, forKey: key) { return Int(value) }
+        throw DecodingError.typeMismatch(
+            Int.self,
+            DecodingError.Context(
+                codingPath: codingPath + [key],
+                debugDescription: "Expected Int/String-number/Double for key '\(key.stringValue)'"
+            )
+        )
+    }
+
+    func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
+        if (try? decodeNil(forKey: key)) == true { return nil }
+        return try? decodeIntFlexible(forKey: key)
+    }
+}
+```
+
+### 리뷰 체크리스트
+
+Response DTO 변경이 포함된 PR 리뷰 시 검증:
+
+- [ ] `Int` / `Int?` / `[Int]` / `Int64` 등 정수 타입 필드가 있는가
+- [ ] 정수 필드가 있다면 custom `init(from:)` 이 정의되어 있는가 (synthesized Codable 금지)
+- [ ] `init(from:)` 안에서 `decodeIntFlexibleIfPresent` (또는 동급) 사용 — `decode(Int.self)` 직접 호출 없음
+- [ ] 헬퍼가 파일 내 `private extension KeyedDecodingContainer` 로 정의되어 있는가
+- [ ] **Request/Encodable DTO 는 적용 제외 확인** — 보내는 쪽이라 무관
+
+### 적용 범위
+
+- **신규 Response DTO**: 처음부터 위 패턴 적용
+- **기존 Response DTO**: 별도 마이그레이션 PR 로 진행
+- **공용 헬퍼 통합**: 현재 파일별 중복 정의 — 추후 `Core/Common/Decoding/` 위치로 단일화 예정
+
 ## 디자인 시스템
 
 토큰 정의: `DefaultConstant.swift`, `DefaultSpacing.swift`
@@ -585,6 +679,53 @@ struct CardPresenter: View, Equatable {
 - **접근 제어자**: 외부 불필요 상태는 `private` 필수
 - **상수**: View 내부 전용은 `fileprivate enum Constants`
 
+### 네이밍 규칙
+
+식별자(상수·변수·프로퍼티·함수·case·타입)는 **무엇인지·왜 존재하는지**를 이름만으로 읽을 수 있어야 합니다.
+
+#### 원칙
+
+1. **의미 없는 숫자 접미사 금지** — `text1`, `text2`, `value1`, `item2`, `section3` 처럼 카운터로 구분된 이름 사용 금지.
+   같은 섹션 안의 여러 값이라도 각각 자기 역할을 드러내는 이름을 부여한다.
+2. **연속 인덱스가 본질인 경우만 예외** — 1부터 N까지의 순서 자체가 의미인 경우 (예: `step1`, `step2`, `phase1`). 이외에는 모두 도메인 어휘로 이름 짓는다.
+3. **컬렉션이면 컬렉션으로** — 여러 값이 *같은 종류의 데이터* 라면 `[Type]` 배열 또는 `enum` + 매핑을 쓰고, `xxx1`/`xxx2`로 펼치지 않는다.
+4. **약어 금지(도메인 표준 제외)** — `usr`, `cnt`, `tmp` 대신 `user`, `count`, `temporary`. 단 `id`, `URL`, `API` 등 도메인 표준 약어는 허용.
+5. **타입을 이름에 박지 않기** — `userArray`, `nameString` 대신 `users`, `name`. 단 의미 충돌이 있을 때만 한정사 부여 (예: `loginIdInput` vs `loginId`).
+
+#### ❌ 안티패턴
+
+```swift
+fileprivate enum Constants {
+    static let supportText1: String = "이용 중 불편사항이 있으신가요?"
+    static let supportText2: String = "고객센터 운영시간 09:00 - 18:00"
+
+    static let title1: String = "로그인"
+    static let title2: String = "회원가입"
+
+    static let btn1Color: Color = .indigo500
+    static let btn2Color: Color = .grey400
+}
+```
+
+> 카운터만으로는 어떤 값이 어떤 역할인지 알 수 없다. 리뷰어가 본문(`Text(Constants.supportText2)`)을 봐도 무엇이 표시되는지 파악하려면 정의로 점프해야 한다.
+
+#### ✅ 권장 패턴
+
+```swift
+fileprivate enum Constants {
+    static let supportInquiryPrompt: String = "이용 중 불편사항이 있으신가요?"
+    static let supportOperatingHours: String = "고객센터 운영시간 09:00 - 18:00"
+
+    static let loginScreenTitle: String = "로그인"
+    static let signUpScreenTitle: String = "회원가입"
+
+    static let primaryActionColor: Color = .indigo500
+    static let disabledActionColor: Color = .grey400
+}
+```
+
+> 호출부(`Text(Constants.supportInquiryPrompt)`)만 봐도 "지원 문의 안내 문구"가 표시된다는 것이 드러난다.
+
 ### MARK 구분
 
 ```swift
@@ -669,3 +810,78 @@ AppProduct/AppProduct/
     ├── Splash/             # 스플래시 화면
     └── Tab/                # 탭 네비게이션
 ```
+
+## PR 리뷰 규칙
+
+### 리뷰 핵심 원칙
+
+1. **서버 응답 숫자는 전 레이어 String 통일**
+   - 서버가 모든 정수를 String으로 직렬화 → Response DTO뿐 아니라 **Domain Model, Repository Protocol 파라미터까지 `String`**
+   - Int 변환은 연산이 필요한 시점에만 수행
+   - DTO에서 `decode(Int.self)` 직접 호출 금지 → `decodeIntFlexibleIfPresent` 사용
+   - Request DTO (우리가 보내는 쪽)는 Int 허용
+
+2. **Response DTO는 Synthesized Codable 금지**
+   - 반드시 custom `init(from:)` + `encode(to:)` 작성
+   - Int 필드가 없더라도 패턴 통일을 위해 custom init 권장
+
+3. **모듈 간 접근 제어자**
+   - Domain Model의 프로퍼티/이니셜라이저에 `public` 필수
+   - 다른 모듈(Data, Presentation)에서 접근 시 컴파일 에러 방지
+
+4. **Mock 데이터는 `#if DEBUG` 가드**
+   - 릴리스 빌드에 포함되지 않도록 감싸기
+
+5. **파일 배치 일관성**
+   - Color 확장 등 시각적 매핑의 배치 위치(CoreDesignSystem vs CoreUIComponents)를 팀 내 통일
+
+6. **머지 충돌 사전 감지**
+   - 동일 파일을 여러 PR이 수정할 경우 머지 순서 조율 필요 명시
+
+### 리뷰 작성 형식
+
+PR 리뷰는 **지적 사항이 있는 파일만** 아래 형식으로 작성한다. 이상 없는 파일은 생략.
+
+```
+## PR #{번호} — {제목} ({작성자})
+
+### {파일 경로}
+* {파일 설명 한 줄}
+
+> {지적 사항 / 개선 제안}
+
+---
+
+### {파일 경로}
+* {파일 설명 한 줄}
+
+> {지적 사항 / 개선 제안}
+```
+
+### 리뷰 시 체크리스트
+
+- [ ] 서버 응답 기반 숫자 필드가 `String`으로 선언되어 있는가
+- [ ] Response DTO에 custom `init(from:)` 이 정의되어 있는가
+- [ ] Domain Model에 `public init` / `public let`이 있는가
+- [ ] Mock 데이터가 `#if DEBUG`로 감싸져 있는가
+- [ ] 동일 파일 수정하는 다른 PR과의 충돌 가능성 확인
+- [ ] 타입 불일치 없는가 (같은 필드가 한 곳은 Int, 다른 곳은 String 등)
+- [ ] Network Router에 인라인 딕셔너리 없이 DTO로 분리되어 있는가
+- [ ] 테스트 코드가 포함된 PR은 테스트 품질도 함께 리뷰
+- [ ] **식별자에 의미 없는 숫자 접미사가 없는가** (`text1`, `value2`, `btn3Color` 등) — "Swift 코딩 스타일 > 네이밍 규칙" 참고
+- [ ] 약어가 도메인 표준(`id`, `URL`, `API` 등)을 제외하고 풀어 써졌는가
+- [ ] 같은 종류 데이터를 `xxx1`/`xxx2`로 펼치지 않고 컬렉션/enum으로 묶었는가
+
+### 테스트 코드 리뷰 기준
+
+PR에 테스트 파일이 포함되어 있으면 반드시 아래 항목을 함께 리뷰한다.
+
+1. **Swift Testing 프레임워크 사용**: `XCTest` 대신 `import Testing` + `@Suite` / `@Test` / `#expect` 사용
+2. **네이밍**: `@Suite` 설명은 "대상 — 검증 범주 (도메인 규칙)" 형식, `@Test` 설명은 한글로 입력-결과를 명시
+3. **파라미터화 테스트**: 동일 로직의 여러 입력은 `arguments:` 로 묶어 중복 제거
+4. **경계값 테스트**: 경계 조건(0, nil, 빈 문자열, 동일 시간 등)에 대한 테스트 존재 여부
+5. **Helper/Fixture 분리**: 테스트 전용 helper (`makeSession()`, `makeAttendance()` 등)가 `private`으로 격리되어 있는가
+6. **`@MainActor` 테스트**: `@Observable` / `@MainActor` 모델 테스트 시 Suite/Test에 `@MainActor` 어노테이션이 있는가
+7. **`.disabled` 사용**: Secret/인프라 미구축으로 실행 불가한 테스트는 `.disabled("사유")` 로 명시했는가
+8. **테스트 커버리지**: 핵심 도메인 로직(상태 전이, 매핑, computed property)에 대한 테스트가 누락되지 않았는가
+9. **파일명 컨벤션**: `{대상}Tests.swift` (복수형 Tests)

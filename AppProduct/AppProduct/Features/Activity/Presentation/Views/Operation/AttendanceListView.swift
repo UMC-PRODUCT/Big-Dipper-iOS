@@ -17,7 +17,7 @@ struct AttendanceListView: View {
 
     // MARK: - Property
 
-    @Environment(NavigationRouter.self) private var router
+    @Environment(\.di) private var di
     @State private var viewModel: AttendanceListViewModel
 
     // MARK: - Init
@@ -214,7 +214,7 @@ struct AttendanceListView: View {
             LazyVStack(spacing: DefaultSpacing.spacing12) {
                 ForEach(infos) { info in
                     Button {
-                        router.push(to: .activity(.attendanceDetail(scheduleId: info.scheduleId)))
+                        di.resolve(PathStore.self).activityPath.append(.activity(.attendanceDetail(scheduleId: info.scheduleId)))
                     } label: {
                         AttendanceListRow(info: info)
                     }

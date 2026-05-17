@@ -25,6 +25,9 @@ final class MemberListViewModel {
     private(set) var isSubmittingPoint: Bool = false
     private(set) var isDeletingPoint: Bool = false
     private(set) var isLoadingMemberDetail: Bool = false
+    private(set) var isLoadingNextPage: Bool = false
+    private(set) var hasMorePages: Bool = true
+    private var currentPage: Int = 0
 
     // MARK: - Init
 
@@ -75,13 +78,17 @@ final class MemberListViewModel {
 
     // MARK: - Action
 
-    /// 멤버 전체 목록을 조회합니다.
+    /// 멤버 첫 페이지를 조회합니다.
     @MainActor
     func fetchMembers() async {
         membersState = .loading
+        currentPage = 0
+        hasMorePages = true
         do {
-            let members = try await fetchMembersUseCase.execute()
-            membersState = .loaded(members)
+            let page = try await fetchMembersUseCase.executePage(page: 0)
+            membersState = .loaded(page.members)
+            hasMorePages = page.hasNext
+            currentPage = page.currentPage
         } catch let error as AppError {
             membersState = .failed(error)
         } catch let error as DomainError {
@@ -94,6 +101,31 @@ final class MemberListViewModel {
             membersState = .failed(
                 .unknown(message: error.localizedDescription)
             )
+        }
+    }
+
+    /// 다음 페이지를 조회하여 기존 목록에 추가합니다.
+    @MainActor
+    func fetchNextPage() async {
+        guard hasMorePages, !isLoadingNextPage else { return }
+        guard case .loaded(let existing) = membersState else { return }
+
+        isLoadingNextPage = true
+        defer { isLoadingNextPage = false }
+
+        do {
+            let nextPage = currentPage + 1
+            let page = try await fetchMembersUseCase.executePage(
+                page: nextPage
+            )
+            let deduplicatedMembers = page.members.filter { newMember in
+                !existing.contains { $0.memberID == newMember.memberID }
+            }
+            membersState = .loaded(existing + deduplicatedMembers)
+            hasMorePages = page.hasNext
+            currentPage = page.currentPage
+        } catch {
+            // 다음 페이지 실패 시 기존 데이터 유지
         }
     }
 
@@ -248,10 +280,17 @@ final class MemberListViewModel {
     private func reloadMembersAndReselect(
         member: MemberManagementItem
     ) async throws {
-        let updatedMembers = try await fetchMembersUseCase.execute()
-        membersState = .loaded(updatedMembers)
+        var allMembers: [MemberManagementItem] = []
+        var page = 0
+        while page <= currentPage {
+            let result = try await fetchMembersUseCase.executePage(page: page)
+            allMembers.append(contentsOf: result.members)
+            if !result.hasNext { break }
+            page += 1
+        }
+        membersState = .loaded(allMembers)
         guard let resolvedMember = resolveMember(
-            in: updatedMembers,
+            in: allMembers,
             from: member
         ) else {
             selectedMember = nil
@@ -284,8 +323,10 @@ final class MemberListViewModel {
         )
         async let genPointsTask = try? fetchMembersUseCase
             .fetchGenerationPointSummaries(memberId: memberId)
+        async let recordsTask = try? fetchMembersUseCase
+            .fetchAttendanceRecords(memberId: memberId)
 
-        let records: [MemberAttendanceRecord] = []
+        let records = await recordsTask ?? member.attendanceRecords
         let pointHistory = await pointHistoryTask ?? member.penaltyHistory
         let generationPoints = await genPointsTask ?? []
 

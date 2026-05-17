@@ -78,7 +78,8 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
                 body: LoginAppleRequestDTO(
                     authorizationCode: authorizationCode,
                     email: email,
-                    fullName: fullName
+                    fullName: fullName,
+                    clientType: "IOS"
                 )
             )
         )
@@ -94,20 +95,20 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         return try apiResponse.unwrap().toDomain()
     }
 
-    /// ID/PW 로그인을 수행합니다.
+    /// 이메일 로그인을 수행합니다.
     ///
-    /// - Parameter body: loginId / password
+    /// - Parameter body: email / password
     /// - Returns: 회원 ID + 토큰 쌍
-    func loginByIdPw(
-        _ body: LoginByIdPwRequestDTO
+    func loginByEmail(
+        _ body: EmailLoginRequestDTO
     ) async throws -> LoginByIdPwResult {
         do {
             let response = try await adapter.requestWithoutAuth(
-                AuthRouter.loginByIdPw(body: body)
+                AuthRouter.loginByEmail(body: body)
             )
             #if DEBUG
             if let json = String(data: response.data, encoding: .utf8) {
-                print("[Auth] ID/PW 로그인 응답: \(json)")
+                print("[Auth] 이메일 로그인 응답: \(json)")
             }
             #endif
             let apiResponse = try decoder.decode(
@@ -120,20 +121,20 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         }
     }
 
-    /// ID/PW 회원가입을 수행합니다.
+    /// 이메일 회원가입을 수행합니다.
     ///
     /// - Parameter body: 회원가입 요청 DTO
     /// - Returns: 생성된 회원 ID + 토큰 쌍 (가입과 동시에 발급)
-    func registerByIdPw(
-        _ body: RegisterByIdPwRequestDTO
+    func registerByEmail(
+        _ body: EmailRegisterRequestDTO
     ) async throws -> RegisterByIdPwResult {
         do {
             let response = try await adapter.requestWithoutAuth(
-                AuthRouter.registerByIdPw(body: body)
+                AuthRouter.registerByEmail(body: body)
             )
             #if DEBUG
             if let json = String(data: response.data, encoding: .utf8) {
-                print("[Auth] ID/PW 회원가입 응답: \(json)")
+                print("[Auth] 이메일 회원가입 응답: \(json)")
             }
             #endif
             let apiResponse = try decoder.decode(
@@ -146,21 +147,21 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         }
     }
 
-    /// 로그인 ID 중복 검사를 수행합니다.
+    /// 이메일 중복 검사를 수행합니다.
     ///
-    /// - Parameter loginId: 검사 대상 로그인 ID
+    /// - Parameter email: 검사 대상 이메일 주소
     /// - Returns: 사용 가능 여부 (true = 사용 가능)
-    func checkLoginIdAvailability(
-        loginId: String
+    func checkEmailAvailability(
+        email: String
     ) async throws -> Bool {
         do {
             let response = try await adapter.requestWithoutAuth(
-                AuthRouter.checkLoginIdAvailability(
-                    query: CheckLoginIdAvailabilityQuery(loginId: loginId)
+                AuthRouter.checkEmailAvailability(
+                    query: CheckEmailAvailabilityQuery(email: email)
                 )
             )
             let apiResponse = try decoder.decode(
-                APIResponse<CheckLoginIdAvailabilityResponseDTO>.self,
+                APIResponse<CheckEmailAvailabilityResponseDTO>.self,
                 from: response.data
             )
             return try apiResponse.unwrap().available
@@ -343,6 +344,22 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
             from: response.data
         )
         return try apiResponse.unwrap().schools.map { $0.toDomain() }
+    }
+
+    /// OAuth 회원 비밀번호를 추가 등록합니다.
+    ///
+    /// - Parameter rawPassword: 평문 비밀번호
+    func registerCredential(rawPassword: String) async throws {
+        let response = try await adapter.request(
+            AuthRouter.registerCredential(
+                body: RegisterCredentialRequestDTO(rawPassword: rawPassword)
+            )
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<EmptyResult>.self,
+            from: response.data
+        )
+        try apiResponse.validateSuccess()
     }
 
     /// 약관 정보를 조회합니다.

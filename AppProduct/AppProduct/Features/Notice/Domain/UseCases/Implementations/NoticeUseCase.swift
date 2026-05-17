@@ -72,7 +72,7 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
         return prepared.fileId
     }
     
-    // MARK: 공지 생성 (PATCH)
+    // MARK: 공지 생성 (POST)
     /// 공지 생성
     func createNotice(
         title: String,
@@ -85,11 +85,11 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
         guard !title.isEmpty else {
             throw DomainError.custom(message: "제목을 입력해주세요")
         }
-        
+
         guard !content.isEmpty else {
             throw DomainError.custom(message: "내용을 입력해주세요")
         }
-        
+
         let requestDTO = PostNoticeRequestDTO(
             title: title,
             content: content,
@@ -208,11 +208,11 @@ final class NoticeUseCase: NoticeUseCaseProtocol {
         guard !title.isEmpty else {
             throw DomainError.custom(message: "제목을 입력해주세요")
         }
-        
+
         guard !content.isEmpty else {
             throw DomainError.custom(message: "내용을 입력해주세요")
         }
-        
+
         let requestDTO = UpdateNoticeRequestDTO(
             title: title,
             content: content

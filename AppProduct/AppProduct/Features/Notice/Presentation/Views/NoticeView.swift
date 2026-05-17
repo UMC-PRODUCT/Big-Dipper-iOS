@@ -356,6 +356,18 @@ struct NoticeView: View {
             generations: viewModel.generations,
             selection: generationBinding
         )
+
+        if viewModel.memberRole?.canAccessStaffNotice == true {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    pathStore.noticePath.append(.notice(.staffNotice))
+                } label: {
+                    Image(systemName: "person.badge.shield.checkmark")
+                        .imageScale(.medium)
+                }
+                .accessibilityLabel("운영진 공지")
+            }
+        }
     }
     /// 메인 필터 타입에 따라 노출되는 서브필터 영역입니다.
     @ViewBuilder

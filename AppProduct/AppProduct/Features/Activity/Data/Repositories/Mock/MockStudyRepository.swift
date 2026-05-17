@@ -117,19 +117,6 @@ final class MockStudyRepository: StudyRepositoryProtocol {
 
     // MARK: - 운영진 스터디 관리
 
-    func fetchStudyMembers(
-        week: Int,
-        studyGroupId: Int?
-    ) async throws -> [StudyMemberItem] {
-        try await Task.sleep(for: .milliseconds(500))
-        return StudyMemberItem.preview.filter { $0.week == week }
-    }
-
-    func fetchStudyGroups() async throws -> [StudyGroupItem] {
-        try await Task.sleep(for: .milliseconds(300))
-        return StudyGroupItem.preview
-    }
-
     func fetchStudyGroupDetails() async throws -> [StudyGroupInfo] {
         try await Task.sleep(for: .milliseconds(300))
         return StudyGroupPreviewData.groups
@@ -163,11 +150,6 @@ final class MockStudyRepository: StudyRepositoryProtocol {
         )
     }
 
-    func fetchWeeks() async throws -> [Int] {
-        try await Task.sleep(for: .milliseconds(200))
-        return Array(1...10)
-    }
-
     func fetchWeeklyCurriculumOptions() async throws -> [WeeklyCurriculumOption] {
         try await Task.sleep(for: .milliseconds(200))
         return missions.map {
@@ -186,32 +168,6 @@ final class MockStudyRepository: StudyRepositoryProtocol {
         _ = preferredGeneration
         try await Task.sleep(for: .milliseconds(100))
         return memberId > 0 ? memberId : nil
-    }
-
-    func fetchWorkbookSubmissionURL(
-        challengerWorkbookId: Int
-    ) async throws -> String? {
-        try await Task.sleep(for: .milliseconds(150))
-        return "https://github.com/user/repo-\(challengerWorkbookId)"
-    }
-
-    func reviewWorkbook(
-        challengerWorkbookId: Int,
-        isApproved: Bool,
-        feedback: String
-    ) async throws {
-        _ = challengerWorkbookId
-        _ = isApproved
-        _ = feedback
-        try await Task.sleep(for: .milliseconds(200))
-    }
-
-    func selectBestWorkbook(
-        challengerWorkbookId: Int,
-        bestReason: String
-    ) async throws {
-        _ = bestReason
-        try await Task.sleep(for: .milliseconds(200))
     }
 
     func createStudyGroup(

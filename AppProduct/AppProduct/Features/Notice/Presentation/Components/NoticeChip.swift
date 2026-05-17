@@ -42,6 +42,5 @@ struct NoticeChip: View {
         NoticeChip(noticeType: .branch)
         NoticeChip(noticeType: .campus)
         NoticeChip(noticeType: .part)
-        NoticeChip(noticeType: .essential)
     }
 }

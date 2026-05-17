@@ -2,7 +2,7 @@
 //  AttendanceDetailView.swift
 //  AppProduct
 //
-//  Created by JEONG on 5/6/26.
+//  Created by euijjang97 on 5/6/26.
 //
 
 import SwiftUI
@@ -17,7 +17,7 @@ struct AttendanceDetailView: View {
 
     // MARK: - Property
 
-    @Environment(NavigationRouter.self) private var router
+    @Environment(\.di) private var di
     @State private var viewModel: AttendanceDetailViewModel
 
     // MARK: - Init
@@ -84,7 +84,7 @@ struct AttendanceDetailView: View {
 
             if viewModel.isScheduleDeleted {
                 Button("이전으로") {
-                    router.pop()
+                    di.resolve(PathStore.self).activityPath.removeLast()
                 }
                 .buttonStyle(.borderedProminent)
             } else {

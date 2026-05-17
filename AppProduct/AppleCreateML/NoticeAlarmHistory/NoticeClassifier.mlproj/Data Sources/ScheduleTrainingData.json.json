@@ -14,7 +14,7 @@
   "createdDate" : "2026-02-18T05:37:16Z",
   "dataPathRelativeToProjectURL" : "../../ScheduleList/ScheduleTrainingData.json/",
   "dataResult" : {
-    "classesCount" : 14,
+    "classesCount" : 12,
     "createdDate" : "2026-02-18T05:37:16Z",
     "dataAnalysis" : {
       "classifierAnalysis" : {
@@ -26,22 +26,20 @@
           "leadership" : 785,
           "meeting" : 785,
           "networking" : 788,
-          "orientation" : 1651,
+          "orientation" : 1652,
           "presentation" : 788,
-          "project" : 798,
+          "project" : 797,
           "review" : 785,
-          "study" : 800,
-          "testing" : 1800,
           "workshop" : 777
         }
       },
       "issues" : [
         {
-          "description" : "14 classes found, including testing, orientation, study",
+          "description" : "12 classes found, including orientation, workshop",
           "severity" : "debug"
         },
         {
-          "description" : "12892 texts found, automatically creating validation set",
+          "description" : "10292 texts found, automatically creating validation set",
           "severity" : "good"
         },
         {
@@ -49,7 +47,7 @@
           "severity" : "debug"
         },
         {
-          "description" : "Largest class is \"testing\" with 1800 text",
+          "description" : "Largest class is \"orientation\" with 1652 texts",
           "severity" : "debug"
         }
       ],
@@ -60,13 +58,13 @@
       },
       "summary" : {
         "canUseValidation" : 1,
-        "classCount" : 14,
-        "sampleCount" : 12892
+        "classCount" : 12,
+        "sampleCount" : 10292
       }
     },
     "dataSourceID" : "986AD1CA-067B-477D-98C7-732B352AC60A",
     "dataURL" : "file:///Users/mymac/Desktop/My_Work/Project/umc-product-iOS/AppProduct/AppleCreateML/ScheduleList/ScheduleTrainingData.json",
-    "itemsCount" : 12892
+    "itemsCount" : 10292
   },
   "dataURL" : "file:///Users/mymac/Desktop/My_Work/Project/umc-product-iOS/AppProduct/AppleCreateML/ScheduleList/ScheduleTrainingData.json",
   "experimentIDs" : [

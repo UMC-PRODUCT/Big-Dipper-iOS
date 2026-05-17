@@ -47,83 +47,62 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
         guard !descriptors.isEmpty else {
             return []
         }
+        return try await enrichDescriptors(descriptors)
+    }
 
-        let profileByMemberID = await fetchMemberProfiles(
-            memberIDs: descriptors.map(\.memberId)
-        )
-
-        let preferredGisuID = resolvedGisuID
-        let members = descriptors.map { descriptor in
-            let profile = profileByMemberID[descriptor.memberId]
-            let record = profile.flatMap {
-                resolveRecord(
-                    from: $0,
-                    memberId: descriptor.memberId,
-                    preferredGisuId: preferredGisuID
-                )
-            }
-            let allPoints = record?.resolvedPoints ?? []
-
-            let penaltyPoints = allPoints.filter {
-                let typeStr = $0.pointType.uppercased()
-                let resolved = ChallengerPointType(rawValue: typeStr)
-                return resolved == nil || !(resolved!.isReward)
-            }
-            let rewardPointsList = allPoints.filter {
-                let typeStr = $0.pointType.uppercased()
-                let resolved = ChallengerPointType(rawValue: typeStr)
-                return resolved?.isReward == true
-            }
-
-            let totalPenalty: Double
-            let penaltyHistories: [OperatorMemberPenaltyHistory]
-
-            if penaltyPoints.isEmpty {
-                totalPenalty = descriptor.fallbackPenalty
-                penaltyHistories = []
-            } else {
-                totalPenalty = penaltyPoints.reduce(0) { $0 + abs($1.point) }
-                penaltyHistories = makePenaltyHistories(from: penaltyPoints)
-            }
-
-            let totalReward = rewardPointsList.reduce(0) { $0 + abs($1.point) }
-
-            return MemberManagementItem(
-                memberID: descriptor.memberId,
-                challengerID: resolvedChallengerID(
-                    descriptor: descriptor,
-                    record: record
-                ),
-                profile: profile?.profileImageLink ?? descriptor.profileImageURL,
-                name: profile?.name.nonEmpty ?? descriptor.name,
-                nickname: profile?.nickname.nonEmpty ?? descriptor.name,
-                generation: allGenerationsText(
-                    from: profile,
-                    fallback: descriptor.generation
-                ),
-                school: profile?.schoolName.nonEmpty ?? descriptor.schoolName,
-                position: descriptor.position,
-                part: descriptor.part,
-                penalty: totalPenalty,
-                rewardPoints: totalReward,
-                badge: false,
-                managementTeam: resolvedManagementTeam(
-                    profile: profile,
-                    record: record,
-                    fallback: descriptor.managementTeam
-                ),
-                attendanceRecords: [],
-                penaltyHistory: penaltyHistories,
-                canViewPenaltyHistory: descriptor.memberId == currentMemberID
+    func fetchMembersPage(page: Int) async throws -> MemberPage {
+        guard let schoolId = resolvedSchoolID else {
+            let allMembers = try await fetchMembers()
+            return MemberPage(
+                members: allMembers,
+                hasNext: false,
+                currentPage: 0
             )
         }
 
-        return members.sorted { lhs, rhs in
-            if lhs.part.sortOrder == rhs.part.sortOrder {
-                return lhs.name < rhs.name
-            }
-            return lhs.part.sortOrder < rhs.part.sortOrder
+        let response = try await adapter.request(
+            StudyRouter.searchChallengersOffset(
+                page: page,
+                size: Constants.searchPageSize,
+                schoolId: schoolId
+            )
+        )
+        let searchResult = try decodeSearchOffsetResult(from: response.data)
+        let pageResult = searchResult.page
+
+        let descriptors = pageResult.content.compactMap { item
+            -> GroupMemberDescriptor? in
+            guard item.memberId > 0 else { return nil }
+            let part = UMCPartType(apiValue: item.part) ?? .pm
+            let managementTeam = ManagementTeam.highestPriority(
+                in: item.roleTypes
+            ) ?? .challenger
+            let generation = resolvedGeneration(
+                generation: item.generation,
+                gisu: item.gisu
+            )
+            return GroupMemberDescriptor(
+                memberId: item.memberId,
+                challengerId: item.challengerId > 0
+                    ? item.challengerId : nil,
+                name: item.name,
+                profileImageURL: item.profileImageLink,
+                schoolName: item.schoolName,
+                generation: generation,
+                part: part,
+                position: managementTeam.korean,
+                managementTeam: managementTeam,
+                fallbackPenalty: max(0, item.pointSum)
+            )
         }
+
+        let members = try await enrichDescriptors(descriptors)
+
+        return MemberPage(
+            members: members,
+            hasNext: pageResult.hasNext,
+            currentPage: pageResult.page
+        )
     }
 
     /// 챌린저에게 포인트를 부여합니다.
@@ -210,6 +189,38 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
         return allGenerationsText(from: profile, fallback: "")
     }
 
+    /// V2 일정 출석 현황에서 특정 멤버의 출석 이력을 조회합니다.
+    ///
+    /// NOTE: [#690] 전체 일정 응답에서 클라이언트 필터링. 데이터 규모가 커지면 페이지네이션 또는 백엔드 멤버 필터 도입 검토.
+    func fetchAttendanceRecords(memberId: Int) async throws -> [MemberAttendanceRecord] {
+        guard memberId > 0 else { return [] }
+
+        let response = try await adapter.request(
+            ScheduleV2Router.getAttendanceList(query: AttendanceListQuery(from: nil, to: nil, attendanceStatus: nil))
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<[ScheduleAttendanceInfoDTO]>.self,
+            from: response.data
+        )
+        let schedules = (try? apiResponse.unwrap()) ?? []
+
+        let sorted = schedules.sorted {
+            ($0.startsAt) < ($1.startsAt)
+        }
+
+        return sorted.enumerated().compactMap { index, schedule in
+            guard let participant = schedule.participants.first(where: { $0.memberId == memberId }) else {
+                return nil
+            }
+            let rawStatus = participant.attendanceStatus ?? "PENDING"
+            return MemberAttendanceRecord(
+                sessionTitle: schedule.name,
+                week: index + 1,
+                status: AttendanceStatus(serverStatus: rawStatus)
+            )
+        }
+    }
+
     func fetchGenerationPointSummaries(
         memberId: Int
     ) async throws -> [GenerationPointSummary] {
@@ -277,7 +288,8 @@ final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendable {
 
 private extension MemberRepository {
     enum Constants {
-        static let searchPageSize = 200
+        static let searchPageSize = 20
+        static let managedStudyGroupsPageSize = 100
     }
 
     struct GroupMemberDescriptor: Hashable {
@@ -291,6 +303,87 @@ private extension MemberRepository {
         let position: String
         let managementTeam: ManagementTeam
         let fallbackPenalty: Double
+    }
+
+    func enrichDescriptors(
+        _ descriptors: [GroupMemberDescriptor]
+    ) async throws -> [MemberManagementItem] {
+        let profileByMemberID = await fetchMemberProfiles(
+            memberIDs: descriptors.map(\.memberId)
+        )
+
+        let preferredGisuID = resolvedGisuID
+        let members = descriptors.map { descriptor in
+            let profile = profileByMemberID[descriptor.memberId]
+            let record = profile.flatMap {
+                resolveRecord(
+                    from: $0,
+                    memberId: descriptor.memberId,
+                    preferredGisuId: preferredGisuID
+                )
+            }
+            let allPoints = record?.resolvedPoints ?? []
+
+            let penaltyPoints = allPoints.filter {
+                let typeStr = $0.pointType.uppercased()
+                let resolved = ChallengerPointType(rawValue: typeStr)
+                return resolved == nil || !(resolved!.isReward)
+            }
+            let rewardPointsList = allPoints.filter {
+                let typeStr = $0.pointType.uppercased()
+                let resolved = ChallengerPointType(rawValue: typeStr)
+                return resolved?.isReward == true
+            }
+
+            let totalPenalty: Double
+            let penaltyHistories: [OperatorMemberPenaltyHistory]
+
+            if penaltyPoints.isEmpty {
+                totalPenalty = descriptor.fallbackPenalty
+                penaltyHistories = []
+            } else {
+                totalPenalty = penaltyPoints.reduce(0) { $0 + abs($1.point) }
+                penaltyHistories = makePenaltyHistories(from: penaltyPoints)
+            }
+
+            let totalReward = rewardPointsList.reduce(0) { $0 + abs($1.point) }
+
+            return MemberManagementItem(
+                memberID: descriptor.memberId,
+                challengerID: resolvedChallengerID(
+                    descriptor: descriptor,
+                    record: record
+                ),
+                profile: profile?.profileImageLink ?? descriptor.profileImageURL,
+                name: profile?.name.nonEmpty ?? descriptor.name,
+                nickname: profile?.nickname.nonEmpty ?? descriptor.name,
+                generation: allGenerationsText(
+                    from: profile,
+                    fallback: descriptor.generation
+                ),
+                school: profile?.schoolName.nonEmpty ?? descriptor.schoolName,
+                position: descriptor.position,
+                part: descriptor.part,
+                penalty: totalPenalty,
+                rewardPoints: totalReward,
+                badge: false,
+                managementTeam: resolvedManagementTeam(
+                    profile: profile,
+                    record: record,
+                    fallback: descriptor.managementTeam
+                ),
+                attendanceRecords: [],
+                penaltyHistory: penaltyHistories,
+                canViewPenaltyHistory: descriptor.memberId == currentMemberID
+            )
+        }
+
+        return members.sorted { lhs, rhs in
+            if lhs.part.sortOrder == rhs.part.sortOrder {
+                return lhs.name < rhs.name
+            }
+            return lhs.part.sortOrder < rhs.part.sortOrder
+        }
     }
 
     func fetchMemberDescriptors() async throws -> [GroupMemberDescriptor] {
@@ -417,24 +510,61 @@ private extension MemberRepository {
         return statusCode == 404 || statusCode == 405
     }
 
+    /// 로그인 사용자가 접근 가능한 스터디 그룹의 (id, name) 목록을 `/study-groups/managed` 페이지를
+    /// 전부 순회하여 수집합니다.
+    ///
+    /// 서버가 역할(회장단/일반)에 따라 적절한 범위를 반환합니다.
     func fetchStudyGroupNames() async throws -> [StudyGroupNameItemDTO]? {
+        var cursor: Int? = nil
+        var hasNext = true
+        var aggregated: [StudyGroupNameItemDTO] = []
+
+        while hasNext {
+            guard let page = try await fetchManagedStudyGroupsPage(
+                cursor: cursor,
+                size: Constants.managedStudyGroupsPageSize
+            ) else {
+                if aggregated.isEmpty { return nil }
+                break
+            }
+
+            aggregated.append(contentsOf: page.studyGroups)
+            hasNext = page.hasNext
+            cursor = page.nextCursor
+            if hasNext && cursor == nil {
+                break
+            }
+        }
+
+        var deduplicatedByGroupID: [Int: StudyGroupNameItemDTO] = [:]
+        for item in aggregated where item.groupId > 0 {
+            deduplicatedByGroupID[item.groupId] = item
+        }
+
+        return deduplicatedByGroupID.values.sorted { $0.groupId < $1.groupId }
+    }
+
+    private func fetchManagedStudyGroupsPage(
+        cursor: Int?,
+        size: Int
+    ) async throws -> MyStudyGroupsPageDTO? {
         let response = try await adapter.request(
-            StudyRouter.getStudyGroupNames
+            StudyRouter.getMyStudyGroups(cursor: cursor, size: size)
         )
 
         if let apiResponse = try? decoder.decode(
-            APIResponse<StudyGroupNamesDTO>.self,
+            APIResponse<MyStudyGroupsPageDTO>.self,
             from: response.data
         ),
            let wrapped = try? apiResponse.unwrap() {
-            return wrapped.studyGroups
+            return wrapped
         }
 
         if let plain = try? decoder.decode(
-            StudyGroupNamesDTO.self,
+            MyStudyGroupsPageDTO.self,
             from: response.data
         ) {
-            return plain.studyGroups
+            return plain
         }
 
         return nil

@@ -59,11 +59,11 @@ struct V2AttendanceParticipantDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        memberId = try container.decodeIfPresent(Int.self, forKey: .memberId) ?? 0
+        memberId = try container.decodeIntFlexibleIfPresent(forKey: .memberId) ?? 0
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         nickname = try container.decodeIfPresent(String.self, forKey: .nickname) ?? ""
         profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
-        schoolId = try container.decodeIfPresent(Int.self, forKey: .schoolId) ?? 0
+        schoolId = try container.decodeIntFlexibleIfPresent(forKey: .schoolId) ?? 0
         schoolName = try container.decodeIfPresent(String.self, forKey: .schoolName) ?? ""
         attendanceStatus = try container.decodeIfPresent(String.self, forKey: .attendanceStatus)
         isLocationVerified = try container.decodeIfPresent(Bool.self, forKey: .isLocationVerified) ?? false
@@ -114,5 +114,34 @@ extension V2AttendanceParticipantDTO {
             isLocationVerified: isLocationVerified,
             excuseReason: normalizedReason
         )
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeIntFlexible(forKey key: Key) throws -> Int {
+        if let value = try? decode(Int.self, forKey: key) {
+            return value
+        }
+        if let value = try? decode(String.self, forKey: key),
+           let intValue = Int(value) {
+            return intValue
+        }
+        if let value = try? decode(Double.self, forKey: key) {
+            return Int(value)
+        }
+        throw DecodingError.typeMismatch(
+            Int.self,
+            DecodingError.Context(
+                codingPath: codingPath + [key],
+                debugDescription: "Expected Int/String-number/Double for key '\(key.stringValue)'"
+            )
+        )
+    }
+
+    func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
+        if (try? decodeNil(forKey: key)) == true {
+            return nil
+        }
+        return try? decodeIntFlexible(forKey: key)
     }
 }
