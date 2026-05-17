@@ -9,7 +9,10 @@ import Foundation
 
 // MARK: - Profile Image
 
-/// 회원 정보 수정 요청 DTO (프로필 이미지 ID)
+/// 회원 프로필 이미지 ID 수정 요청 DTO
+///
+/// `PATCH /api/v1/member` 요청 바디로 사용됩니다.
+/// 업로드/confirm 단계에서 얻은 `profileImageId`를 회원 프로필에 반영합니다.
 public struct UpdateMemberProfileImageRequestDTO: Encodable {
     public let profileImageId: String
 

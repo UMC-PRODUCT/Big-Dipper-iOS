@@ -15,7 +15,13 @@ import MyPageDomain
 
 // MARK: - Main Response
 
-/// 마이페이지 내 프로필 조회/수정 응답 DTO
+/// 마이페이지 프로필 조회/수정 응답 DTO
+///
+/// 다음 엔드포인트의 `result` 본문을 매핑합니다.
+/// - `GET /api/v1/member/me` — 내 프로필 조회
+/// - `GET /api/v1/member/profile/{memberId}` — 특정 멤버 프로필 조회
+/// - `PATCH /api/v1/member` — 프로필 이미지 ID 수정 응답
+/// - `PATCH /api/v1/member/profile/links` — 외부 링크 수정 응답
 public struct MyPageProfileResponseDTO: Codable {
     let id: String
     let name: String
@@ -123,6 +129,10 @@ public struct MyPageProfileExternalLinksDTO: Codable {
 
 // MARK: - Role
 
+/// 프로필 응답의 `roles[]` 항목 DTO
+///
+/// 운영진 역할(중앙/지부/교내) 정보를 나타냅니다. `roleType`은 `ManagementTeam` enum에,
+/// `organizationType`은 `OrganizationType` enum에 매핑됩니다.
 public struct MyPageRoleDTO: Codable {
     let id: String
     let challengerId: String
@@ -171,6 +181,11 @@ public struct MyPageRoleDTO: Codable {
 
 // MARK: - Challenger Record
 
+/// 프로필 응답의 `challengerRecords[]` 항목 DTO
+///
+/// 한 멤버가 활동한 기수별 챌린저 기록을 나타냅니다.
+/// `gisu`(기수)와 `part`(파트 식별 문자열, `UMCPartType.apiValue`)로 구분되며,
+/// 같은 멤버라도 기수마다 별도 record로 누적됩니다.
 public struct MyPageChallengerRecordDTO: Codable {
     let challengerId: String
     let memberId: String
@@ -248,6 +263,10 @@ public struct MyPageChallengerRecordDTO: Codable {
 
 // MARK: - Challenger Point
 
+/// 챌린저 기록의 `challengerPoints[]` 항목 DTO
+///
+/// 활동 가점/감점 등 포인트 이력을 나타냅니다. 서버 응답이 `challengerPoints` 키
+/// 대신 `points` 키로 내려오는 fallback 케이스도 `MyPageChallengerRecordDTO` 디코더에서 처리됩니다.
 public struct MyPageChallengerPointDTO: Codable {
     let id: String
     let pointType: String

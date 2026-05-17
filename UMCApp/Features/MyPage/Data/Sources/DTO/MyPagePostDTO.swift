@@ -16,7 +16,9 @@ import MyPageDomain
 
 /// 마이페이지 게시글 목록 조회 쿼리 DTO
 ///
-/// Domain의 `MyPagePostListQuery`를 URL 쿼리 파라미터로 직렬화하는 책임을 갖습니다.
+/// Domain의 `MyPagePostListQuery`를 받아 URL 쿼리 파라미터(`toParameters`)로
+/// 직렬화하는 책임을 갖습니다. `GET /api/v1/posts/my|commented|scrapped` 의
+/// `?page=&size=&sort=` 쿼리스트링에 사용됩니다.
 public struct MyPagePostListQueryDTO: Encodable {
     public let page: Int
     public let size: Int
@@ -42,7 +44,14 @@ public struct MyPagePostListQueryDTO: Encodable {
 
 // MARK: - Response Item
 
-/// 마이페이지 게시글 응답 DTO (작성/좋아요/스크랩 공통)
+/// 마이페이지 게시글 항목 응답 DTO
+///
+/// 다음 엔드포인트가 동일한 페이지 응답 형태로 내려주는 `content[]` 항목입니다.
+/// - `GET /api/v1/posts/my` — 내가 쓴 글
+/// - `GET /api/v1/posts/commented` — 댓글 단 글
+/// - `GET /api/v1/posts/scrapped` — 스크랩한 글
+///
+/// `userNickname`/`scrapCount`는 응답에 포함되지 않아 도메인 변환 시 `nil` / `0`으로 채웁니다.
 public struct MyPagePostResponseDTO: Codable {
     let postId: String
     let title: String
@@ -141,7 +150,12 @@ public extension MyPagePostResponseDTO {
 
 // MARK: - Response Page
 
-/// 공통 페이지 응답 DTO (Spring Pageable 응답 매핑)
+/// Spring Pageable 형식의 공통 페이지 응답 DTO
+///
+/// `content` 배열을 제외한 페이지 메타(`page`/`size`/`totalElements`/`totalPages`)는
+/// 서버가 정수를 String으로 직렬화하므로 모두 `String`으로 보존합니다.
+///
+/// - Note: 마이페이지 게시글 페이지 응답은 `MyPagePostPageDTO<MyPagePostResponseDTO>` 로 사용합니다.
 public struct MyPagePostPageDTO<T: Codable>: Codable {
     let content: [T]
     let page: String
