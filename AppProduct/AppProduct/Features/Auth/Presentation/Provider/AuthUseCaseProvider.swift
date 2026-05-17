@@ -11,12 +11,12 @@ import Foundation
 protocol AuthUseCaseProviding {
     /// 소셜 로그인 UseCase
     var loginUseCase: LoginUseCaseProtocol { get }
-    /// ID/PW 로그인 UseCase
-    var loginByIdPwUseCase: LoginByIdPwUseCaseProtocol { get }
-    /// ID/PW 회원가입 UseCase
-    var registerByIdPwUseCase: RegisterByIdPwUseCaseProtocol { get }
-    /// 로그인 ID 중복 검사 UseCase
-    var checkLoginIdAvailabilityUseCase: CheckLoginIdAvailabilityUseCaseProtocol { get }
+    /// 이메일 로그인 UseCase
+    var loginByEmailUseCase: LoginByEmailUseCaseProtocol { get }
+    /// 이메일 회원가입 UseCase
+    var registerByEmailUseCase: RegisterByEmailUseCaseProtocol { get }
+    /// 이메일 중복 검사 UseCase
+    var checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol { get }
     /// 내 OAuth 정보 조회 UseCase
     var fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol { get }
     /// OAuth 수단 추가 연동 UseCase
@@ -33,6 +33,8 @@ protocol AuthUseCaseProviding {
     var registerExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol { get }
     /// 회원가입 데이터 조회 UseCase
     var fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol { get }
+    /// OAuth 회원 비밀번호 추가 등록 UseCase
+    var registerCredentialUseCase: RegisterCredentialUseCaseProtocol { get }
 }
 
 /// Auth UseCase Provider 구현
@@ -43,9 +45,9 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
     // MARK: - Property
 
     let loginUseCase: LoginUseCaseProtocol
-    let loginByIdPwUseCase: LoginByIdPwUseCaseProtocol
-    let registerByIdPwUseCase: RegisterByIdPwUseCaseProtocol
-    let checkLoginIdAvailabilityUseCase: CheckLoginIdAvailabilityUseCaseProtocol
+    let loginByEmailUseCase: LoginByEmailUseCaseProtocol
+    let registerByEmailUseCase: RegisterByEmailUseCaseProtocol
+    let checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol
     let fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol
     let addMemberOAuthUseCase: AddMemberOAuthUseCaseProtocol
     let deleteMemberOAuthUseCase: DeleteMemberOAuthUseCaseProtocol
@@ -54,6 +56,7 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
     let registerUseCase: RegisterUseCaseProtocol
     let registerExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol
     let fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol
+    let registerCredentialUseCase: RegisterCredentialUseCaseProtocol
 
     // MARK: - Init
 
@@ -67,15 +70,15 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
             repository: repository,
             tokenStore: tokenStore
         )
-        self.loginByIdPwUseCase = LoginByIdPwUseCase(
+        self.loginByEmailUseCase = LoginByEmailUseCase(
             repository: repository,
             tokenStore: tokenStore
         )
-        self.registerByIdPwUseCase = RegisterByIdPwUseCase(
+        self.registerByEmailUseCase = RegisterByEmailUseCase(
             repository: repository,
             tokenStore: tokenStore
         )
-        self.checkLoginIdAvailabilityUseCase = CheckLoginIdAvailabilityUseCase(
+        self.checkEmailAvailabilityUseCase = CheckEmailAvailabilityUseCase(
             repository: repository
         )
         self.fetchMyOAuthUseCase = FetchMyOAuthUseCase(
@@ -100,6 +103,9 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
             repository: repository
         )
         self.fetchSignUpDataUseCase = FetchSignUpDataUseCase(
+            repository: repository
+        )
+        self.registerCredentialUseCase = RegisterCredentialUseCase(
             repository: repository
         )
     }

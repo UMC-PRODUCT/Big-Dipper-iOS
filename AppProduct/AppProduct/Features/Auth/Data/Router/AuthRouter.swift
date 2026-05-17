@@ -18,12 +18,12 @@ enum AuthRouter: BaseTargetType {
     case loginKakao(body: LoginKakaoRequestDTO)
     /// Apple 소셜 로그인
     case loginApple(body: LoginAppleRequestDTO)
-    /// ID/PW 로그인 (App Store 리뷰어용)
-    case loginByIdPw(body: LoginByIdPwRequestDTO)
-    /// ID/PW 회원가입 (App Store 리뷰어용)
-    case registerByIdPw(body: RegisterByIdPwRequestDTO)
-    /// 로그인 ID 중복 검사
-    case checkLoginIdAvailability(query: CheckLoginIdAvailabilityQuery)
+    /// 이메일 로그인 (App Store 리뷰어용)
+    case loginByEmail(body: EmailLoginRequestDTO)
+    /// 이메일 회원가입 (App Store 리뷰어용)
+    case registerByEmail(body: EmailRegisterRequestDTO)
+    /// 이메일 중복 검사
+    case checkEmailAvailability(query: CheckEmailAvailabilityQuery)
     /// 액세스 토큰 재발급
     case renewToken(body: RenewTokenRequestDTO)
     /// 내 OAuth 연동 정보 조회
@@ -48,6 +48,8 @@ enum AuthRouter: BaseTargetType {
     case getSchools
     /// 약관 조회
     case getTerms(termsType: String)
+    /// OAuth 회원 비밀번호 추가 등록
+    case registerCredential(body: RegisterCredentialRequestDTO)
 
     // MARK: - Path
 
@@ -57,12 +59,12 @@ enum AuthRouter: BaseTargetType {
             return "/api/v1/auth/login/kakao"
         case .loginApple:
             return "/api/v1/auth/login/apple"
-        case .loginByIdPw:
-            return "/api/v1/auth/login/id-pw"
-        case .registerByIdPw:
-            return "/api/v1/member/register/id-pw"
-        case .checkLoginIdAvailability:
-            return "/api/v1/auth/login-id/availability"
+        case .loginByEmail:
+            return "/api/v1/auth/login/email"
+        case .registerByEmail:
+            return "/api/v1/member/register/email"
+        case .checkEmailAvailability:
+            return "/api/v1/auth/email/availability"
         case .renewToken:
             return "/api/v1/auth/token/renew"
         case .getMyOAuth:
@@ -83,6 +85,8 @@ enum AuthRouter: BaseTargetType {
             return "/api/v1/schools/all"
         case .getTerms(let termsType):
             return "/api/v1/terms/type/\(termsType)"
+        case .registerCredential:
+            return "/api/v1/auth/credentials"
         }
     }
 
@@ -90,7 +94,7 @@ enum AuthRouter: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .loginKakao, .loginApple, .loginByIdPw, .registerByIdPw,
+        case .loginKakao, .loginApple, .loginByEmail, .registerByEmail,
              .renewToken, .sendEmailVerification, .verifyEmailCode,
              .register, .registerExistingChallenger:
             return .post
@@ -99,8 +103,10 @@ enum AuthRouter: BaseTargetType {
         case .deleteMemberOAuth:
             return .delete
         case .getMyOAuth, .getSchools, .getTerms,
-             .checkLoginIdAvailability:
+             .checkEmailAvailability:
             return .get
+        case .registerCredential:
+            return .post
         }
     }
 
@@ -112,11 +118,11 @@ enum AuthRouter: BaseTargetType {
             return .requestJSONEncodable(body)
         case .loginApple(let body):
             return .requestJSONEncodable(body)
-        case .loginByIdPw(let body):
+        case .loginByEmail(let body):
             return .requestJSONEncodable(body)
-        case .registerByIdPw(let body):
+        case .registerByEmail(let body):
             return .requestJSONEncodable(body)
-        case .checkLoginIdAvailability(let query):
+        case .checkEmailAvailability(let query):
             return .requestParameters(
                 parameters: query.toParameters,
                 encoding: URLEncoding.queryString
@@ -154,6 +160,8 @@ enum AuthRouter: BaseTargetType {
             )
         case .getSchools, .getTerms:
             return .requestPlain
+        case .registerCredential(let body):
+            return .requestJSONEncodable(body)
         }
     }
 }

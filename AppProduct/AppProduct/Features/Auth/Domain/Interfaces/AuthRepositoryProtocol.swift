@@ -32,25 +32,25 @@ protocol AuthRepositoryProtocol: Sendable {
         fullName: String?
     ) async throws -> OAuthLoginResult
 
-    /// ID/PW 로그인 (App Store 리뷰어용 비-OAuth 진입)
-    /// - Parameter body: 로그인 요청 DTO (loginId, password)
+    /// 이메일 로그인 (App Store 리뷰어용 비-OAuth 진입)
+    /// - Parameter body: 로그인 요청 DTO (email, password)
     /// - Returns: 회원 ID + 토큰 쌍
-    func loginByIdPw(
-        _ body: LoginByIdPwRequestDTO
+    func loginByEmail(
+        _ body: EmailLoginRequestDTO
     ) async throws -> LoginByIdPwResult
 
-    /// ID/PW 회원가입 (App Store 리뷰어용 비-OAuth 진입)
-    /// - Parameter body: 회원가입 요청 DTO (이메일 인증 토큰, ID, 비밀번호 등)
+    /// 이메일 회원가입 (App Store 리뷰어용 비-OAuth 진입)
+    /// - Parameter body: 회원가입 요청 DTO (이메일 인증 토큰, 비밀번호 등)
     /// - Returns: 생성된 회원 ID + 토큰 쌍
-    func registerByIdPw(
-        _ body: RegisterByIdPwRequestDTO
+    func registerByEmail(
+        _ body: EmailRegisterRequestDTO
     ) async throws -> RegisterByIdPwResult
 
-    /// 로그인 ID 중복 검사
-    /// - Parameter loginId: 검사 대상 로그인 ID
+    /// 이메일 중복 검사
+    /// - Parameter email: 검사 대상 이메일 주소
     /// - Returns: 사용 가능 여부 (true = 사용 가능)
-    func checkLoginIdAvailability(
-        loginId: String
+    func checkEmailAvailability(
+        email: String
     ) async throws -> Bool
 
     /// 토큰 재발급
@@ -122,4 +122,8 @@ protocol AuthRepositoryProtocol: Sendable {
     func getTerms(
         termsType: String
     ) async throws -> Terms
+
+    /// OAuth 회원 비밀번호 추가 등록
+    /// - Parameter rawPassword: 평문 비밀번호
+    func registerCredential(rawPassword: String) async throws
 }
