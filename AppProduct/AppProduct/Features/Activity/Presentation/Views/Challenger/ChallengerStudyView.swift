@@ -72,7 +72,14 @@ struct ChallengerStudyView: View {
 
     @ViewBuilder
     private func errorView(error: AppError, viewModel: ChallengerStudyViewModel) -> some View {
-        if case .domain(.curriculumUnavailableForGeneration) = error {
+        if case .domain(.curriculumNotRegistered) = error {
+            ContentUnavailableView {
+                Label("커리큘럼 준비 중", systemImage: "clock.badge.questionmark")
+            } description: {
+                Text(error.userMessage)
+                    .multilineTextAlignment(.center)
+            }
+        } else if case .domain(.curriculumUnavailableForGeneration) = error {
             ContentUnavailableView {
                 Label("커리큘럼 조회 불가", systemImage: "info.circle")
             } description: {

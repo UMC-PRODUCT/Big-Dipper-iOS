@@ -100,6 +100,9 @@ enum DomainError: Error, LocalizedError, Equatable {
     /// 현재 운영 중이 아닌 기수라 커리큘럼 조회 불가
     case curriculumUnavailableForGeneration
 
+    /// 서버에 커리큘럼이 아직 등록되지 않음 (CURRICULUM-0001)
+    case curriculumNotRegistered
+
     // MARK: - 커뮤니티
 
     /// 게시글을 찾을 수 없음
@@ -144,6 +147,8 @@ enum DomainError: Error, LocalizedError, Equatable {
             return "링크를 입력해주세요."
         case .curriculumUnavailableForGeneration:
             return "현재 운영중인 기수가 아니어서 커리큘럼을 조회할 수 없습니다."
+        case .curriculumNotRegistered:
+            return "아직 커리큘럼이 등록되지 않았어요. 조금만 기다려주세요!"
         case .postNotFound:
             return "게시글을 찾을 수 없습니다."
         case .cannotDeletePost:
