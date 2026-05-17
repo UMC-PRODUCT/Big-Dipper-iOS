@@ -88,7 +88,10 @@ final class StaffNoticeViewModel {
         selectedTab = tab
         isSearchMode = false
         searchQuery = ""
-        hasNoAccessFromServer = false
+        if hasNoAccessFromServer {
+            hasNoAccessFromServer = false
+            noticeItems = .loading
+        }
         Task {
             await fetchNotices()
         }
@@ -100,8 +103,9 @@ final class StaffNoticeViewModel {
     func fetchNotices(page: Int = 0) async {
         guard let selectedTab else { return }
 
-        if page == 0 {
+        if page == 0, hasNoAccessFromServer {
             hasNoAccessFromServer = false
+            noticeItems = .loading
         }
 
         await performPagedFetch(page: page, tab: selectedTab) { request in
