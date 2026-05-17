@@ -22,6 +22,10 @@ final class FetchMembersUseCase: FetchMembersUseCaseProtocol {
         try await repository.fetchMembers()
     }
 
+    func executePage(page: Int) async throws -> MemberPage {
+        try await repository.fetchMembersPage(page: page)
+    }
+
     func grantPoint(
         challengerId: Int,
         pointType: ChallengerPointType,
