@@ -233,10 +233,11 @@ extension NoticeEditorViewModel {
             let managementParts = subCategorySelection.selectedParts.isEmpty
                 ? nil
                 : Array(subCategorySelection.selectedParts)
+            // 서버 스펙: 운영진 공지는 기수 필수. 작성자의 현재 기수를 사용.
             switch scenario {
             case .centralAll:
                 return TargetInfoDTO(
-                    targetGisuId: 0,
+                    targetGisuId: currentGeneration,
                     targetChapterId: nil,
                     targetSchoolId: nil,
                     targetParts: nil as [UMCPartType]?
@@ -246,7 +247,7 @@ extension NoticeEditorViewModel {
                     ? (schoolId > 0 ? schoolId : nil)
                     : nil
                 return TargetInfoDTO(
-                    targetGisuId: 0,
+                    targetGisuId: currentGeneration,
                     targetChapterId: nil,
                     targetSchoolId: schoolCoreSchoolId,
                     targetParts: nil as [UMCPartType]?
@@ -256,7 +257,7 @@ extension NoticeEditorViewModel {
                     ? (schoolId > 0 ? schoolId : nil)
                     : nil
                 return TargetInfoDTO(
-                    targetGisuId: 0,
+                    targetGisuId: currentGeneration,
                     targetChapterId: nil,
                     targetSchoolId: partLeaderSchoolId,
                     targetParts: managementParts

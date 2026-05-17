@@ -209,7 +209,7 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
 
     /// 저장 가능 여부
     ///
-    /// 생성: 제목/내용 필수
+    /// 생성: 제목/내용 필수 (+ 운영진 공지는 기수 필수)
     /// 수정: 제목/내용 필수 + 실제 변경사항 존재
     var canSubmit: Bool {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -218,6 +218,10 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
 
         switch mode {
         case .create:
+            // 서버 스펙: 운영진 공지는 기수 필수
+            if case .management = selectedCategory, resolvedGisuId <= 0 {
+                return false
+            }
             return hasRequiredFields
         case .edit:
             return hasRequiredFields && hasEditableChanges
