@@ -281,7 +281,11 @@ struct NoticeEditorView: View {
         case .centralAll:
             return "중앙운영진 전체"
         case .schoolCore:
-            return "중앙 + 학교 회장단"
+            let role = ManagementTeam(rawValue: memberRoleRaw)
+            if role?.bindsOwnSchoolForSchoolCoreNotice == true {
+                return normalizedName(from: schoolName, fallback: "본인 학교 회장단")
+            }
+            return "전체 학교 회장단"
         case .schoolPartLeader:
             let role = ManagementTeam(rawValue: memberRoleRaw)
             if role?.bindsOwnSchoolForPartLeaderNotice == true {

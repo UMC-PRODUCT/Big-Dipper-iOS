@@ -202,9 +202,16 @@ extension NoticeEditorViewModel {
                 targetParts: selectedParts
             )
         case .branch:
+            let resolvedChapterId: Int? = if memberRole?.canWriteChallengerChapterNotice == true,
+                                             selectedBranchId == nil,
+                                             let chapterId = userChapterId, chapterId > 0 {
+                chapterId
+            } else {
+                selectedBranchId
+            }
             return TargetInfoDTO(
                 targetGisuId: currentGeneration,
-                targetChapterId: selectedBranchId,
+                targetChapterId: resolvedChapterId,
                 targetSchoolId: nil,
                 targetParts: selectedParts
             )
@@ -226,23 +233,37 @@ extension NoticeEditorViewModel {
             let managementParts = subCategorySelection.selectedParts.isEmpty
                 ? nil
                 : Array(subCategorySelection.selectedParts)
-            let resolvedSchoolId: Int? = (memberRole?.bindsOwnSchoolForPartLeaderNotice ?? false)
-                ? (schoolId > 0 ? schoolId : nil)
-                : nil
+            // 서버 스펙: 운영진 공지는 기수 필수. 작성자의 현재 기수를 사용.
             switch scenario {
-            case .centralAll, .schoolCore:
+            case .centralAll:
                 return TargetInfoDTO(
-                    targetGisuId: 0,
+                    targetGisuId: currentGeneration,
                     targetChapterId: nil,
                     targetSchoolId: nil,
-                    targetParts: nil as [UMCPartType]?
+                    targetParts: nil as [UMCPartType]?,
+                    targetNoticeTab: StaffNoticeTab.centralMember.rawValue
+                )
+            case .schoolCore:
+                let schoolCoreSchoolId: Int? = (memberRole?.bindsOwnSchoolForSchoolCoreNotice ?? false)
+                    ? (schoolId > 0 ? schoolId : nil)
+                    : nil
+                return TargetInfoDTO(
+                    targetGisuId: currentGeneration,
+                    targetChapterId: nil,
+                    targetSchoolId: schoolCoreSchoolId,
+                    targetParts: nil as [UMCPartType]?,
+                    targetNoticeTab: StaffNoticeTab.schoolCore.rawValue
                 )
             case .schoolPartLeader:
+                let partLeaderSchoolId: Int? = (memberRole?.bindsOwnSchoolForPartLeaderNotice ?? false)
+                    ? (schoolId > 0 ? schoolId : nil)
+                    : nil
                 return TargetInfoDTO(
-                    targetGisuId: 0,
+                    targetGisuId: currentGeneration,
                     targetChapterId: nil,
-                    targetSchoolId: resolvedSchoolId,
-                    targetParts: managementParts
+                    targetSchoolId: partLeaderSchoolId,
+                    targetParts: managementParts,
+                    targetNoticeTab: StaffNoticeTab.schoolPartLeader.rawValue
                 )
             }
         }

@@ -142,6 +142,15 @@ final class MockMemberRepository: MemberRepositoryProtocol {
         ]
     }
 
+    func fetchMembersPage(page: Int) async throws -> MemberPage {
+        let allMembers = try await fetchMembers()
+        return MemberPage(
+            members: allMembers,
+            hasNext: false,
+            currentPage: 0
+        )
+    }
+
     func grantPoint(
         challengerId: Int,
         pointType: ChallengerPointType,

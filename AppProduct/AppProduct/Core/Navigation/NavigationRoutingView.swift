@@ -60,7 +60,7 @@ private extension NavigationRoutingView {
             Text("Auth Test View")
         case .loginByIdPw:
             LoginByIdPwView(
-                loginByIdPwUseCase: di.resolve(AuthUseCaseProviding.self).loginByIdPwUseCase,
+                loginByEmailUseCase: di.resolve(AuthUseCaseProviding.self).loginByEmailUseCase,
                 fetchMyProfileUseCase: di.resolve(HomeUseCaseProviding.self).fetchMyProfileUseCase,
                 tokenStore: di.resolve(TokenStore.self),
                 errorHandler: errorHandler
@@ -70,8 +70,8 @@ private extension NavigationRoutingView {
             SignUpByIdPwView(
                 sendEmailVerificationUseCase: authProvider.sendEmailVerificationUseCase,
                 verifyEmailCodeUseCase: authProvider.verifyEmailCodeUseCase,
-                registerByIdPwUseCase: authProvider.registerByIdPwUseCase,
-                checkLoginIdAvailabilityUseCase: authProvider.checkLoginIdAvailabilityUseCase,
+                registerByEmailUseCase: authProvider.registerByEmailUseCase,
+                checkEmailAvailabilityUseCase: authProvider.checkEmailAvailabilityUseCase,
                 fetchSignUpDataUseCase: authProvider.fetchSignUpDataUseCase,
                 fetchMyProfileUseCase: di.resolve(HomeUseCaseProviding.self).fetchMyProfileUseCase
             )

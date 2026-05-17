@@ -53,9 +53,6 @@ struct StaffNoticeView: View {
         static let retryMinimumWidth: CGFloat = 72
         static let retryMinimumHeight: CGFloat = 20
         static let loadingMoreBottomPadding: CGFloat = DefaultSpacing.spacing16
-        static let noAccessTitle: String = "접근 권한이 없어요"
-        static let noAccessSystemImage: String = "lock.shield"
-        static let noAccessDescription: String = "운영진만 접근할 수 있는 공지 영역입니다"
         static let chipSpacing: CGFloat = DefaultSpacing.spacing8
         static let defaultNavigationTitle: String = "운영진 공지"
     }
@@ -127,13 +124,17 @@ struct StaffNoticeView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch viewModel.noticeItems {
-        case .idle, .loading:
-            progressContent
-        case .loaded(let items):
-            noticeContent(items)
-        case .failed:
-            failedContent()
+        if viewModel.hasNoAccessFromServer {
+            noAccessContent
+        } else {
+            switch viewModel.noticeItems {
+            case .idle, .loading:
+                progressContent
+            case .loaded(let items):
+                noticeContent(items)
+            case .failed:
+                failedContent()
+            }
         }
     }
 
@@ -201,12 +202,7 @@ struct StaffNoticeView: View {
     }
 
     private var noAccessContent: some View {
-        ContentUnavailableView(
-            Constants.noAccessTitle,
-            systemImage: Constants.noAccessSystemImage,
-            description: Text(Constants.noAccessDescription)
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        NoAccessContentView()
     }
 
     // MARK: - Row
@@ -254,6 +250,11 @@ struct StaffNoticeView: View {
         default:
             return nil
         }
+    }
+
+    /// 지부장은 운영진 공지 작성 불가 (읽기 전용)
+    private var isReadOnlyStaffAccess: Bool {
+        viewModel.memberRole == .chapterPresident
     }
 
     // MARK: - User Context

@@ -43,9 +43,20 @@ final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
             throw DomainError.curriculumUnavailableForGeneration
         }
         let part = resolvedPartAPIValue
-        let response = try await adapter.request(
-            StudyRouter.getCurriculum(gisuId: gisuId, part: part, weekNo: weekNo)
-        )
+        let response: Moya.Response
+        do {
+            response = try await adapter.request(
+                StudyRouter.getCurriculum(gisuId: gisuId, part: part, weekNo: weekNo)
+            )
+        } catch let error as NetworkError {
+            if case .requestFailed(_, let data) = error,
+               let data,
+               let body = try? JSONDecoder().decode(APIResponse<EmptyResult>.self, from: data),
+               body.code == "CURRICULUM-0001" {
+                throw DomainError.curriculumNotRegistered
+            }
+            throw error
+        }
         let apiResponse = try decoder.decode(
             APIResponse<CurriculumDTO>.self,
             from: response.data

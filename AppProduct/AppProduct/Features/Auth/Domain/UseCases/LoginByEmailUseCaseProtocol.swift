@@ -1,23 +1,23 @@
 //
-//  LoginByIdPwUseCaseProtocol.swift
+//  LoginByEmailUseCaseProtocol.swift
 //  AppProduct
 //
-//  Created by euijjang97 on 4/29/26.
+//  Created by euijjang97 on 5/17/26.
 //
 
 import Foundation
 
 // MARK: - Protocol
 
-/// ID/PW 로그인 UseCase Protocol
-protocol LoginByIdPwUseCaseProtocol {
-    /// ID/PW 로그인 실행
+/// 이메일 로그인 UseCase Protocol
+protocol LoginByEmailUseCaseProtocol {
+    /// 이메일 로그인 실행
     /// - Parameters:
-    ///   - loginId: 로그인 ID
+    ///   - email: 이메일 주소
     ///   - password: 평문 비밀번호 (TLS 구간 서버 해싱 위임)
     /// - Returns: 회원 ID + 토큰 쌍
     func execute(
-        loginId: String,
+        email: String,
         password: String
     ) async throws -> LoginByIdPwResult
 }

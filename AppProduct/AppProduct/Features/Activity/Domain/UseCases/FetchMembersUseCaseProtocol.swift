@@ -12,6 +12,9 @@ protocol FetchMembersUseCaseProtocol {
     /// 멤버 목록 조회
     func execute() async throws -> [MemberManagementItem]
 
+    /// 멤버 목록 페이지 단위 조회
+    func executePage(page: Int) async throws -> MemberPage
+
     /// 챌린저에게 포인트를 부여합니다.
     func grantPoint(
         challengerId: Int,

@@ -20,10 +20,6 @@ struct ScheduleRegistrationView: View {
 
     @Environment(\.dismiss) var dismiss
 
-    /// 현재 로그인 사용자의 역할입니다.
-    @AppStorage(AppStorageKey.memberRole) private var memberRole: ManagementTeam = .challenger
-    /// 운영진 생성 플로우에서 출석부 생성 여부 확인 다이얼로그 표시 상태입니다.
-    @State private var showApprovalConfirmationDialog: Bool = false
     /// 화면이 생성 모드인지 수정 모드인지 구분합니다.
     private let mode: Mode
 
@@ -180,8 +176,7 @@ struct ScheduleRegistrationView: View {
 
     /// 생성 모드에서 노출되는 우측 상단 추가 버튼입니다.
     ///
-    /// 로딩 중에는 아이콘 대신 `ProgressView`를 노출하고, 운영진인 경우
-    /// 탭 시 출석부 생성 여부를 확인하는 `confirmationDialog`를 띄웁니다.
+    /// 로딩 중에는 아이콘 대신 `ProgressView`를 노출합니다.
     private var createToolbarButton: some View {
         Button {
             guard !isActionDisabled, !isSubmitting else { return }
@@ -200,44 +195,6 @@ struct ScheduleRegistrationView: View {
         }
         .tint((isActionDisabled || isSubmitting) ? .grey300 : .indigo500)
         .disabled(isActionDisabled || isSubmitting)
-        .confirmationDialog(
-            "일정 생성",
-            isPresented: $showApprovalConfirmationDialog,
-            titleVisibility: .visible
-        ) {
-            approvalConfirmationActions()
-        } message: {
-            approvalConfirmationMessage()
-        }
-    }
-
-    /// 운영진 생성 플로우에서 표시할 확인 다이얼로그 액션 목록입니다.
-    ///
-    /// V2 마이그레이션 이후 출석 정책 입력 UI 가 분리될 때까지 두 선택지 모두
-    /// 동일하게 출석 정책 없이 일정을 생성합니다.
-    @ViewBuilder
-    private func approvalConfirmationActions() -> some View {
-        if memberRole != .challenger {
-            Button("출석부 생성합니다", role: .destructive) {
-                Task {
-                    await viewModel.submitSchedule()
-                }
-            }
-
-            Button("일정만 생성할게요") {
-                Task {
-                    await viewModel.submitSchedule()
-                }
-            }
-        }
-    }
-
-    /// 출석부 생성 여부를 묻는 확인 다이얼로그 안내 문구입니다.
-    @ViewBuilder
-    private func approvalConfirmationMessage() -> some View {
-        if memberRole != .challenger {
-            Text("출석을 체크하시겠습니까?")
-        }
     }
 
     /// 일정 생성 또는 수정 요청이 진행 중인지 여부입니다.
@@ -274,16 +231,9 @@ struct ScheduleRegistrationView: View {
 
     // MARK: - Function
 
-    /// 생성 모드의 추가 버튼 탭 동작을 처리합니다.
-    ///
-    /// 챌린저는 출석부 없이 바로 일정을 생성하고, 운영진은 출석부 동시 생성 여부를 먼저 확인합니다.
     private func submitCreateAction() {
-        if memberRole == .challenger {
-            Task {
-                await viewModel.submitSchedule()
-            }
-        } else {
-            showApprovalConfirmationDialog = true
+        Task {
+            await viewModel.submitSchedule()
         }
     }
 
@@ -736,8 +686,6 @@ fileprivate struct AttendancePolicySection: View {
                             .appFont(.footnote, color: .red500)
                     }
                 }
-            } header: {
-                Text("출석 체크")
             }
         }
     }

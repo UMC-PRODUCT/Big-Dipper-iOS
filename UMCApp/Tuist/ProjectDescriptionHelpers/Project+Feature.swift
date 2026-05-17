@@ -9,8 +9,8 @@ private let bundleIdBase = "dev.umc.feature"
 /// - Data: {Name}Domain + CoreNetwork + UMCFoundation 의존
 /// - Presentation: {Name}Domain + CoreDesignSystem + CoreUIComponents + UMCFoundation 의존
 ///
-/// `includes{Layer}Tests: true`인 경우 `{Name}{Layer}Tests` unitTests 타겟이 함께 생성됩니다.
-/// 메인 타겟은 자동으로 의존성에 포함되며, `{layer}TestDependencies`로 추가 의존성을 주입할 수 있습니다.
+/// 테스트 타겟은 레이어별로 옵션 활성화 시 생성됩니다 (`{Name}DomainTests`, `{Name}DataTests`, `{Name}PresentationTests`).
+/// 메인 타겟은 자동으로 의존성에 포함됩니다.
 ///
 /// - Parameters:
 ///   - name: Feature 이름 (예: "Auth", "Home"). 타겟명 및 bundleId 생성에 사용됩니다.
@@ -19,12 +19,12 @@ private let bundleIdBase = "dev.umc.feature"
 ///   - domainExtraDependencies: Domain 타겟에 추가할 의존성
 ///   - dataExtraDependencies: Data 타겟에 추가할 의존성
 ///   - presentationExtraDependencies: Presentation 타겟에 추가할 의존성
-///   - includesDomainTests: `true`이면 `Domain/Tests/**` 소스를 사용하는 unitTests 타겟을 함께 생성
-///   - includesDataTests: `true`이면 `Data/Tests/**` 소스를 사용하는 unitTests 타겟을 함께 생성
-///   - includesPresentationTests: `true`이면 `Presentation/Tests/**` 소스를 사용하는 unitTests 타겟을 함께 생성
-///   - domainTestDependencies: Domain 테스트 타겟에 추가로 주입할 의존성 (메인 타겟은 자동 포함)
-///   - dataTestDependencies: Data 테스트 타겟에 추가로 주입할 의존성 (메인 타겟은 자동 포함)
-///   - presentationTestDependencies: Presentation 테스트 타겟에 추가로 주입할 의존성 (메인 타겟은 자동 포함)
+///   - includesDomainTests: `true`이면 `Domain/Tests/**` 소스를 사용하는 unitTests 타겟 생성
+///   - domainTestDependencies: Domain 테스트 타겟에 추가로 주입할 의존성 (메인 Domain은 자동 포함)
+///   - includesDataTests: `true`이면 `Data/Tests/**` 소스를 사용하는 unitTests 타겟 생성
+///   - dataTestDependencies: Data 테스트 타겟에 추가로 주입할 의존성 (메인 Data는 자동 포함)
+///   - includesPresentationTests: `true`이면 `Presentation/Tests/**` 소스를 사용하는 unitTests 타겟 생성
+///   - presentationTestDependencies: Presentation 테스트 타겟에 추가로 주입할 의존성 (메인 Presentation은 자동 포함)
 public func featureProject(
     name: String,
     domainDestinations: Destinations = .iOS,
@@ -33,10 +33,10 @@ public func featureProject(
     dataExtraDependencies: [TargetDependency] = [],
     presentationExtraDependencies: [TargetDependency] = [],
     includesDomainTests: Bool = false,
-    includesDataTests: Bool = false,
-    includesPresentationTests: Bool = false,
     domainTestDependencies: [TargetDependency] = [],
+    includesDataTests: Bool = false,
     dataTestDependencies: [TargetDependency] = [],
+    includesPresentationTests: Bool = false,
     presentationTestDependencies: [TargetDependency] = []
 ) -> Project {
     let nameLowered = name.lowercased()
@@ -86,10 +86,10 @@ public func featureProject(
         targets.append(
             .target(
                 name: "\(name)DomainTests",
-                destinations: .iOS,
+                destinations: domainDestinations,
                 product: .unitTests,
                 bundleId: "\(bundleIdBase).\(nameLowered).domain.tests",
-                deploymentTargets: .iOS("26.3"),
+                deploymentTargets: domainDeploymentTargets,
                 sources: ["Domain/Tests/**"],
                 dependencies: [.target(name: "\(name)Domain")] + domainTestDependencies
             )

@@ -37,6 +37,7 @@ final class StaffNoticeViewModel {
 
     var noticeItems: Loadable<[NoticeItemModel]> = .idle
     var pagingState = NoticePagingState()
+    var hasNoAccessFromServer: Bool = false
 
     var isSearchMode: Bool = false
     var searchQuery: String = ""
@@ -87,6 +88,10 @@ final class StaffNoticeViewModel {
         selectedTab = tab
         isSearchMode = false
         searchQuery = ""
+        if hasNoAccessFromServer {
+            hasNoAccessFromServer = false
+            noticeItems = .loading
+        }
         Task {
             await fetchNotices()
         }
@@ -97,6 +102,11 @@ final class StaffNoticeViewModel {
     @MainActor
     func fetchNotices(page: Int = 0) async {
         guard let selectedTab else { return }
+
+        if page == 0, hasNoAccessFromServer {
+            hasNoAccessFromServer = false
+            noticeItems = .loading
+        }
 
         await performPagedFetch(page: page, tab: selectedTab) { request in
             try await self.noticeUseCase.getAllNotices(request: request)
@@ -205,9 +215,15 @@ final class StaffNoticeViewModel {
     }
 
     private func buildRequest(tab: StaffNoticeTab, page: Int) -> NoticeListRequestDTO {
-        NoticeListRequestDTO(
+        let resolvedSchoolId: Int? = if tab.requiresSchoolId, memberRole != .chapterPresident, schoolId > 0 {
+            schoolId
+        } else {
+            nil
+        }
+
+        return NoticeListRequestDTO(
             gisuId: gisuId,
-            schoolId: tab.requiresSchoolId ? (schoolId > 0 ? schoolId : nil) : nil,
+            schoolId: resolvedSchoolId,
             noticeTab: tab.rawValue,
             page: page,
             size: Pagination.pageSize,
@@ -261,6 +277,15 @@ final class StaffNoticeViewModel {
 
     @MainActor
     private func handleFetchError(_ error: AppError, page: Int, action: String, failure: Error) {
+        if case .network(.requestFailed(let statusCode, _)) = error, statusCode == 403 {
+            hasNoAccessFromServer = true
+            if page == 0 {
+                noticeItems = .loaded([])
+            }
+            pagingState.applyFailure()
+            return
+        }
+
         if page == 0 {
             noticeItems = .failed(error)
         }
