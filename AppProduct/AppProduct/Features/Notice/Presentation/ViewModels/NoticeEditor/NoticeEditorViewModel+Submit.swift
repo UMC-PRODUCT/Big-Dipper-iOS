@@ -239,7 +239,8 @@ extension NoticeEditorViewModel {
                     targetGisuId: 0,
                     targetChapterId: nil,
                     targetSchoolId: nil,
-                    targetParts: nil as [UMCPartType]?
+                    targetParts: nil as [UMCPartType]?,
+                    targetNoticeTab: StaffNoticeTab.centralMember.rawValue
                 )
             case .schoolCore:
                 let schoolCoreSchoolId: Int? = (memberRole?.bindsOwnSchoolForSchoolCoreNotice ?? false)
@@ -249,7 +250,8 @@ extension NoticeEditorViewModel {
                     targetGisuId: 0,
                     targetChapterId: nil,
                     targetSchoolId: schoolCoreSchoolId,
-                    targetParts: nil as [UMCPartType]?
+                    targetParts: nil as [UMCPartType]?,
+                    targetNoticeTab: StaffNoticeTab.schoolCore.rawValue
                 )
             case .schoolPartLeader:
                 let partLeaderSchoolId: Int? = (memberRole?.bindsOwnSchoolForPartLeaderNotice ?? false)
@@ -259,7 +261,8 @@ extension NoticeEditorViewModel {
                     targetGisuId: 0,
                     targetChapterId: nil,
                     targetSchoolId: partLeaderSchoolId,
-                    targetParts: managementParts
+                    targetParts: managementParts,
+                    targetNoticeTab: StaffNoticeTab.schoolPartLeader.rawValue
                 )
             }
         }
