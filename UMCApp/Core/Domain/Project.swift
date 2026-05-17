@@ -2,10 +2,10 @@ import ProjectDescription
 import ProjectDescriptionHelpers
 
 let project = coreProject(
-    name: "CoreDI",
-    bundleIdSuffix: "di",
+    name: "CoreDomain",
+    bundleIdSuffix: "domain",
     dependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
-    ],
-    includesTests: true
+        .project(target: "CoreEnum", path: .relativeToRoot("Core/Enum")),
+    ]
 )
