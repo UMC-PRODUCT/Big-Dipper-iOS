@@ -7,31 +7,31 @@
 
 import SwiftUI
 
-/// ID/PW 로그인 입력 화면
+/// 이메일 로그인 입력 화면
 ///
 /// `LoginView`의 NavigationStack에서 push되는 화면입니다.
-/// 아이디(또는 휴대폰번호)와 비밀번호를 입력받아 로그인하며,
+/// 이메일과 비밀번호를 입력받아 로그인하며,
 /// 자동로그인 체크박스와 인라인 에러 표시를 제공합니다.
 struct LoginByIdPwView: View {
 
     // MARK: - Property
 
     @State private var viewModel: LoginByIdPwViewModel
-    @FocusState private var loginIdFocused: Bool
+    @FocusState private var emailFocused: Bool
     @FocusState private var passwordFocused: Bool
     @Environment(\.appFlow) private var appFlow
 
     // MARK: - Init
 
     init(
-        loginByIdPwUseCase: LoginByIdPwUseCaseProtocol,
+        loginByEmailUseCase: LoginByEmailUseCaseProtocol,
         fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol,
         tokenStore: TokenStore,
         errorHandler: ErrorHandler
     ) {
         self._viewModel = .init(
             wrappedValue: LoginByIdPwViewModel(
-                loginByIdPwUseCase: loginByIdPwUseCase,
+                loginByEmailUseCase: loginByEmailUseCase,
                 fetchMyProfileUseCase: fetchMyProfileUseCase,
                 tokenStore: tokenStore,
                 errorHandler: errorHandler
@@ -71,17 +71,18 @@ struct LoginByIdPwView: View {
     private var inputSection: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing24) {
             UnderlineTextField(
-                label: Constants.loginIdLabel,
-                placeholder: Constants.loginIdPlaceholder,
-                text: $viewModel.loginIdInput,
+                label: Constants.emailLabel,
+                placeholder: Constants.emailPlaceholder,
+                text: $viewModel.emailInput,
                 submitLabel: .next,
+                keyboardType: .emailAddress,
                 onSubmit: { passwordFocused = true },
-                focusBinding: $loginIdFocused,
-                guideMessage: viewModel.loginIdGuideMessage
+                focusBinding: $emailFocused,
+                guideMessage: viewModel.emailGuideMessage
             )
-            .accessibilityLabel(Text("아이디"))
-            .onChange(of: viewModel.loginIdInput) {
-                viewModel.clearLoginIdGuide()
+            .accessibilityLabel(Text("이메일"))
+            .onChange(of: viewModel.emailInput) {
+                viewModel.clearEmailGuide()
             }
 
             UnderlineTextField(
@@ -92,7 +93,7 @@ struct LoginByIdPwView: View {
                 submitLabel: .done,
                 onSubmit: {
                     passwordFocused = false
-                    Task { await viewModel.loginWithIdPw() }
+                    Task { await viewModel.loginWithEmail() }
                 },
                 focusBinding: $passwordFocused,
                 guideMessage: viewModel.passwordGuideMessage
@@ -102,7 +103,7 @@ struct LoginByIdPwView: View {
                 viewModel.clearPasswordGuide()
             }
 
-            if let errorMessage = viewModel.loginByIdPwErrorMessage {
+            if let errorMessage = viewModel.loginErrorMessage {
                 Text(errorMessage)
                     .appFont(.footnote, color: .red500)
                     .transition(.opacity)
@@ -159,12 +160,12 @@ struct LoginByIdPwView: View {
 
     private var loginButton: some View {
         MainButton(Constants.loginButtonTitle) {
-            loginIdFocused = false
+            emailFocused = false
             passwordFocused = false
-            Task { await viewModel.loginWithIdPw() }
+            Task { await viewModel.loginWithEmail() }
         }
-        .loading(.constant(viewModel.loginByIdPwState.isLoading))
-        .disabled(viewModel.loginByIdPwState.isLoading)
+        .loading(.constant(viewModel.loginByEmailState.isLoading))
+        .disabled(viewModel.loginByEmailState.isLoading)
         .buttonStyle(.gradientCapsule)
     }
 }
@@ -173,25 +174,23 @@ struct LoginByIdPwView: View {
 
 fileprivate enum Constants {
     static let navTitle: String = "로그인"
-    static let loginIdLabel: String = "아이디"
-    static let loginIdPlaceholder: String = "아이디를 입력하세요"
+    static let emailLabel: String = "이메일"
+    static let emailPlaceholder: String = "이메일을 입력하세요"
     static let passwordLabel: String = "비밀번호"
     static let passwordPlaceholder: String = "비밀번호를 입력하세요"
     static let autoLoginLabel: String = "자동로그인"
     static let loginButtonTitle: String = "로그인"
     static let signUpTitle: String = "회원가입"
-    static let supportInquiryPrompt: String = "이용 중 불편사항이 있으신가요?"
-    static let supportOperatingHours: String = "고객센터 운영시간 09:00 - 18:00"
 
     static let checkboxSize: CGFloat = 20
     static let minTouchTarget: CGFloat = 44
 }
 
 #if DEBUG
-#Preview("ID/PW 로그인 화면") {
+#Preview("이메일 로그인 화면") {
     NavigationStack {
         LoginByIdPwView(
-            loginByIdPwUseCase: LoginByIdPwViewPreviewUseCase(),
+            loginByEmailUseCase: LoginByIdPwViewPreviewUseCase(),
             fetchMyProfileUseCase: LoginByIdPwViewPreviewProfileUseCase(),
             tokenStore: KeychainTokenStore(),
             errorHandler: ErrorHandler()
@@ -199,8 +198,8 @@ fileprivate enum Constants {
     }
 }
 
-private struct LoginByIdPwViewPreviewUseCase: LoginByIdPwUseCaseProtocol {
-    func execute(loginId: String, password: String) async throws -> LoginByIdPwResult {
+private struct LoginByIdPwViewPreviewUseCase: LoginByEmailUseCaseProtocol {
+    func execute(email: String, password: String) async throws -> LoginByIdPwResult {
         LoginByIdPwResult(
             memberId: "preview_member_id",
             tokenPair: TokenPair(

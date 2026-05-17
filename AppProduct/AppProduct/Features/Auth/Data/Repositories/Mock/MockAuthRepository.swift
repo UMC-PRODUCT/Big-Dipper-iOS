@@ -42,48 +42,51 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         )
     }
 
-    func loginByIdPw(
-        _ body: LoginByIdPwRequestDTO
+    func loginByEmail(
+        _ body: EmailLoginRequestDTO
     ) async throws -> LoginByIdPwResult {
         try await Task.sleep(for: .milliseconds(500))
 
-        guard body.loginId == "reviewer" && body.password == "umc12345!" else {
+        guard body.email == "reviewer@umc.dev" && body.password == "umc12345!" else {
             throw RepositoryError.serverError(
-                code: "INVALID_CREDENTIALS",
-                message: "아이디 또는 비밀번호가 올바르지 않습니다."
+                code: "AUTHENTICATION-0022",
+                message: "이메일 또는 비밀번호가 올바르지 않습니다."
             )
         }
 
         return LoginByIdPwResult(
             memberId: "999",
             tokenPair: TokenPair(
-                accessToken: "mock_id_pw_access_token",
-                refreshToken: "mock_id_pw_refresh_token"
+                accessToken: "mock_email_access_token",
+                refreshToken: "mock_email_refresh_token"
             )
         )
     }
 
-    func registerByIdPw(
-        _ body: RegisterByIdPwRequestDTO
+    func registerByEmail(
+        _ body: EmailRegisterRequestDTO
     ) async throws -> RegisterByIdPwResult {
         try await Task.sleep(for: .milliseconds(500))
 
         return RegisterByIdPwResult(
             memberId: "999",
             tokenPair: TokenPair(
-                accessToken: "mock_id_pw_access_token",
-                refreshToken: "mock_id_pw_refresh_token"
+                accessToken: "mock_email_access_token",
+                refreshToken: "mock_email_refresh_token"
             )
         )
     }
 
-    func checkLoginIdAvailability(
-        loginId: String
+    func checkEmailAvailability(
+        email: String
     ) async throws -> Bool {
         try await Task.sleep(for: .milliseconds(300))
-        // "reviewer" / "admin" / "test" 는 이미 사용 중인 ID 로 간주
-        let reservedIds: Set<String> = ["reviewer", "admin", "test"]
-        return !reservedIds.contains(loginId.lowercased())
+        let reservedEmails: Set<String> = [
+            "reviewer@umc.dev",
+            "admin@umc.dev",
+            "test@umc.dev"
+        ]
+        return !reservedEmails.contains(email.lowercased())
     }
 
     func renewToken(
@@ -177,6 +180,10 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
             School(id: "2", name: "서울대학교"),
             School(id: "3", name: "연세대학교")
         ]
+    }
+
+    func registerCredential(rawPassword: String) async throws {
+        try await Task.sleep(for: .milliseconds(300))
     }
 
     func getTerms(

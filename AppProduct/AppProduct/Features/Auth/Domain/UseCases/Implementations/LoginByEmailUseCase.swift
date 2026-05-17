@@ -1,18 +1,18 @@
 //
-//  LoginByIdPwUseCase.swift
+//  LoginByEmailUseCase.swift
 //  AppProduct
 //
-//  Created by euijjang97 on 4/29/26.
+//  Created by euijjang97 on 5/17/26.
 //
 
 import Foundation
 
-// MARK: - LoginByIdPwUseCase
+// MARK: - LoginByEmailUseCase
 
-/// ID/PW 로그인 UseCase 구현체
+/// 이메일 로그인 UseCase 구현체
 ///
 /// 로그인 성공 시 토큰을 즉시 저장합니다 (소셜 로그인 `LoginUseCase`와 동일 패턴).
-final class LoginByIdPwUseCase: LoginByIdPwUseCaseProtocol {
+final class LoginByEmailUseCase: LoginByEmailUseCaseProtocol {
 
     // MARK: - Property
 
@@ -32,12 +32,12 @@ final class LoginByIdPwUseCase: LoginByIdPwUseCaseProtocol {
     // MARK: - Function
 
     func execute(
-        loginId: String,
+        email: String,
         password: String
     ) async throws -> LoginByIdPwResult {
-        let result = try await repository.loginByIdPw(
-            LoginByIdPwRequestDTO(
-                loginId: loginId,
+        let result = try await repository.loginByEmail(
+            EmailLoginRequestDTO(
+                email: email,
                 password: password
             )
         )
