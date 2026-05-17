@@ -13,6 +13,8 @@ import CoreNetwork
 ///
 /// 프로필 조회/수정 및 활동 로그/약관 API를 정의합니다.
 public enum MyPageRouter {
+    /// 내 프로필 조회
+    case getMyProfile
     /// 약관 조회
     case getTerms(termsType: String)
 }
@@ -22,22 +24,24 @@ public enum MyPageRouter {
 extension MyPageRouter: BaseTargetType {
     public var path: String {
         switch self {
+        case .getMyProfile:
+            return "/api/v1/member/me"
         case .getTerms(let termsType):
             return "/api/v1/terms/type/\(termsType)"
         }
     }
-    
+
     public var method: Moya.Method {
         switch self {
-        case .getTerms:
+        case .getMyProfile, .getTerms:
             return .get
         }
     }
-    
+
     public var task: Moya.Task {
         switch self {
-        case .getTerms:
+        case .getMyProfile, .getTerms:
             return .requestPlain
         }
-    }   
+    }
 }
