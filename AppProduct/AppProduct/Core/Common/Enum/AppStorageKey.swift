@@ -58,6 +58,40 @@ enum AppStorageKey {
     static let organizationId: String = "organizationId"
     /// 공지 탭에서 현재 선택한 기수 ID (공지 작성 진입 시 사용)
     static let noticeSelectedGisuId: String = "noticeSelectedGisuId"
+
+    // MARK: - Session Lifecycle
+
+    /// 로그인 세션 단위로 보관되는 키 목록입니다.
+    ///
+    /// 로그아웃 시 일괄 삭제되어, 다른 계정으로 재로그인할 때 이전 계정의
+    /// 프로필/역할/조직 정보가 잔존하지 않도록 합니다.
+    ///
+    /// 디바이스 단위 정보(FCM 토큰, 최근 검색어 등)는 포함하지 않습니다.
+    static let sessionScopedKeys: [String] = [
+        canAutoLogin,
+        gisuId,
+        memberId,
+        challengerId,
+        schoolId,
+        schoolName,
+        chapterId,
+        chapterName,
+        responsiblePart,
+        memberRole,
+        memberRoles,
+        generationOrganizations,
+        organizationType,
+        organizationId,
+        noticeSelectedGisuId
+    ]
+
+    /// 세션 단위 AppStorage 값을 일괄 삭제합니다.
+    ///
+    /// 로그아웃 / 회원 탈퇴 / 세션 만료 처리 시 호출해야 합니다.
+    /// `UserDefaults` 접근은 thread-safe하므로 actor 격리 없이 호출 가능합니다.
+    nonisolated static func clearSessionScopedValues(in defaults: UserDefaults = .standard) {
+        sessionScopedKeys.forEach { defaults.removeObject(forKey: $0) }
+    }
 }
 
 // MARK: - Member ID 어댑터

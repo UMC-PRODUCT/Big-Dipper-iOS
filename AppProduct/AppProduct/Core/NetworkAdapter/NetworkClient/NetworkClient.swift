@@ -276,12 +276,15 @@ actor NetworkClient {
     ///
     /// 1. 진행 중인 토큰 갱신 Task 취소
     /// 2. 저장된 모든 토큰 삭제
+    /// 3. 세션 단위 `AppStorage` 값(역할/조직/기수 등) 일괄 삭제
     ///
     /// - Throws: TokenStore.clear() 실패 시 에러 발생
     ///
     /// - Important:
     ///   - 로그아웃 후 API 요청 시 인증 에러 발생
     ///   - 로그인 화면으로 이동 필요
+    ///   - `AppStorage` 의 역할/조직 정보를 함께 비워, 다른 계정으로
+    ///     재로그인할 때 이전 사용자의 권한이 잔존하지 않도록 보장
     ///
     /// - Usage:
     /// ```swift
@@ -299,6 +302,7 @@ actor NetworkClient {
         refreshTask?.cancel()
         refreshTask = nil
         try await tokenStore.clear()
+        AppStorageKey.clearSessionScopedValues()
 
         #if DEBUG
         print("로그아웃 완료")
