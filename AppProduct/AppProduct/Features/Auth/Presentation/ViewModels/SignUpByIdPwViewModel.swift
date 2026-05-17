@@ -220,9 +220,7 @@ final class SignUpByIdPwViewModel {
 
     /// 전체 약관 동의/해제 토글
     func toggleAllTerms(_ agreed: Bool) {
-        for key in termsAgreements.keys {
-            termsAgreements[key] = agreed
-        }
+        termsAgreements = termsAgreements.mapValues { _ in agreed }
     }
 
     /// 회원가입 실행

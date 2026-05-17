@@ -114,13 +114,16 @@ struct SignUpTermsSection: View {
     /// 전체 동의 버튼
     private var allAgreeButton: some View {
         Button(action: {
-            onToggleAll(!isAllTermsAgreed)
+            withAnimation(.easeInOut(duration: 0.2)) {
+                onToggleAll(!isAllTermsAgreed)
+            }
         }) {
             HStack(spacing: DefaultSpacing.spacing8) {
                 Image(
                     systemName: isAllTermsAgreed
                     ? "checkmark.circle.fill" : "circle"
                 )
+                .contentTransition(.symbolEffect(.replace))
                 .foregroundStyle(isAllTermsAgreed ? .indigo500 : .grey400)
                 Text(Constants.allAgreeTitle)
                     .appFont(.calloutEmphasis)
@@ -151,13 +154,16 @@ struct SignUpTermsSection: View {
     private func termsRow(_ row: SignUpByIdPwTermRow) -> some View {
         HStack(spacing: DefaultSpacing.spacing8) {
             Button(action: {
-                onToggleRow(row.id)
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    onToggleRow(row.id)
+                }
             }) {
                 HStack(spacing: DefaultSpacing.spacing8) {
                     Image(
                         systemName: row.isAgreed
                         ? "checkmark.circle.fill" : "circle"
                     )
+                    .contentTransition(.symbolEffect(.replace))
                     .foregroundStyle(row.isAgreed ? .indigo500 : .grey400)
                     Text(row.title)
                         .appFont(.subheadline)
