@@ -126,11 +126,26 @@ struct OperatorMemberManagementView: View {
                         }) {
                             CoreMemberManagementList(memberManagementItem: item, mode: .management)
                         }
+                        .onAppear {
+                            if item.id == group.members.last?.id,
+                               group.part == viewModel.groupedMembers.last?.part {
+                                Task { await viewModel.fetchNextPage() }
+                            }
+                        }
                     }
                 } header: {
                     Text(group.part.name)
                         .appFont(.title3Emphasis, color: .black)
                 }
+            }
+
+            if viewModel.isLoadingNextPage {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+                .listRowSeparator(.hidden)
             }
         }
     }
