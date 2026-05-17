@@ -15,7 +15,7 @@ struct OperatorAttendanceSectionView: View {
 
     // MARK: - Property
 
-    @Environment(NavigationRouter.self) private var router
+    @Environment(\.di) private var di
     @State private var viewModel: OperatorAttendanceViewModel
     @State private var selectedPendingSessionId: UUID?
     @Environment(\.scenePhase) private var scenePhase
@@ -189,7 +189,7 @@ struct OperatorAttendanceSectionView: View {
 
     private var attendanceListEntryButton: some View {
         Button {
-            router.push(to: .activity(.attendanceList))
+            di.resolve(PathStore.self).activityPath.append(.activity(.attendanceList))
         } label: {
             HStack(spacing: DefaultSpacing.spacing12) {
                 Image(systemName: "checklist")
