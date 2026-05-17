@@ -152,36 +152,44 @@ struct TargetInfoDTO: Codable {
     let targetChapterId: Int?
     let targetSchoolId: Int?
     let targetParts: [UMCPartType]?
+    /// 운영진 공지 탭 식별자 (CENTRAL_MEMBER / SCHOOL_CORE / SCHOOL_PART_LEADER).
+    /// 챌린저 공지 작성 시 nil.
+    let targetNoticeTab: String?
 
     private enum CodingKeys: String, CodingKey {
         case targetGisuId
         case targetChapterId
         case targetSchoolId
         case targetParts
+        case targetNoticeTab
     }
 
     init(
         targetGisuId: Int,
         targetChapterId: Int?,
         targetSchoolId: Int?,
-        targetParts: UMCPartType?
+        targetParts: UMCPartType?,
+        targetNoticeTab: String? = nil
     ) {
         self.targetGisuId = targetGisuId
         self.targetChapterId = targetChapterId
         self.targetSchoolId = targetSchoolId
         self.targetParts = targetParts.map { [$0] }
+        self.targetNoticeTab = targetNoticeTab
     }
 
     init(
         targetGisuId: Int,
         targetChapterId: Int?,
         targetSchoolId: Int?,
-        targetParts: [UMCPartType]?
+        targetParts: [UMCPartType]?,
+        targetNoticeTab: String? = nil
     ) {
         self.targetGisuId = targetGisuId
         self.targetChapterId = targetChapterId
         self.targetSchoolId = targetSchoolId
         self.targetParts = targetParts
+        self.targetNoticeTab = targetNoticeTab
     }
 
     init(from decoder: Decoder) throws {
@@ -190,6 +198,7 @@ struct TargetInfoDTO: Codable {
         self.targetChapterId = try container.decodeIntFlexibleIfPresent(forKey: .targetChapterId)
         self.targetSchoolId = try container.decodeIntFlexibleIfPresent(forKey: .targetSchoolId)
         self.targetParts = try container.decodeIfPresent([UMCPartType].self, forKey: .targetParts)
+        self.targetNoticeTab = try container.decodeIfPresent(String.self, forKey: .targetNoticeTab)
     }
 
     /// 공지 생성/수정 요청 인코딩 시 null 규칙을 맞춥니다.
@@ -212,6 +221,8 @@ struct TargetInfoDTO: Codable {
         } else {
             try container.encodeNil(forKey: .targetParts)
         }
+
+        try container.encodeIfPresent(targetNoticeTab, forKey: .targetNoticeTab)
     }
 }
 
