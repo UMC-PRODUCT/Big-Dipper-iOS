@@ -28,7 +28,11 @@ struct ChallengerMemberDetailSheetView: View {
 
     private enum Constants {
         static let tagPadding: EdgeInsets = .init(top: 4, leading: 8, bottom: 4, trailing: 8)
+        static let boxPadding: EdgeInsets = .init(top: 12, leading: 0, bottom: 12, trailing: 0)
+        static let listPadding: EdgeInsets = .init(top: 12, leading: 12, bottom: 12, trailing: 12)
         static let profileSize: CGSize = .init(width: 60, height: 60)
+
+        static let summaryRowVerticalPadding: CGFloat = 12
         static let partTagOpacity: Double = 0.14
         static let partStrokeOpacity: Double = 0.4
         static let partStrokeWidth: CGFloat = 1
@@ -73,14 +77,14 @@ struct ChallengerMemberDetailSheetView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing24) {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing32) {
             memberInfoView
             summaryCardView
+            Spacer()
         }
-        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-        .padding(.top, DefaultSpacing.spacing8)
-        .padding(.bottom, DefaultSpacing.spacing32)
-        .presentationDetents([.height(280)])
+        .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        .safeAreaPadding(.top, DefaultSpacing.spacing16)
+        .presentationDetents([.fraction(0.4)])
         .presentationDragIndicator(.visible)
         .presentationBackground(.regularMaterial)
     }
@@ -131,12 +135,8 @@ struct ChallengerMemberDetailSheetView: View {
     }
 
     private var summaryCardView: some View {
-        VStack(spacing: DefaultSpacing.spacing12) {
-            // 활동 기수
-            HStack {
-                Text("활동 기수")
-                    .appFont(.subheadline, color: .grey700)
-                Spacer()
+        VStack(spacing: .zero) {
+            summaryRow(title: "활동 기수") {
                 if hasMultipleGenerations {
                     generationChips
                 } else {
@@ -148,7 +148,6 @@ struct ChallengerMemberDetailSheetView: View {
 
             Divider()
 
-            // 상점 · 벌점
             HStack(spacing: .zero) {
                 pointColumn(
                     icon: "plus.circle.fill",
@@ -159,7 +158,7 @@ struct ChallengerMemberDetailSheetView: View {
                 )
 
                 Divider()
-                    .frame(height: 44)
+                    .frame(height: 48)
 
                 pointColumn(
                     icon: "minus.circle.fill",
@@ -169,12 +168,16 @@ struct ChallengerMemberDetailSheetView: View {
                     valueColor: .red
                 )
             }
+            .padding(.vertical, Constants.summaryRowVerticalPadding)
         }
-        .padding(DefaultSpacing.spacing16)
-        .background(
-            .ultraThinMaterial,
-            in: RoundedRectangle(cornerRadius: DefaultConstant.defaultCornerRadius)
+        .padding(.horizontal, Constants.listPadding.leading)
+        .clipShape(
+            ConcentricRectangle(
+                corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                isUniform: true
+            )
         )
+        .glassEffect(.regular)
         .animation(.smooth(duration: 0.3), value: selectedGisu)
     }
 
@@ -230,6 +233,18 @@ struct ChallengerMemberDetailSheetView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private func summaryRow<Content: View>(
+        title: String,
+        @ViewBuilder value: () -> Content
+    ) -> some View {
+        HStack {
+            Text(title)
+                .appFont(.subheadline, color: .grey700)
+            Spacer()
+            value()
+        }
+        .padding(.vertical, Constants.summaryRowVerticalPadding)
+    }
 
 }
 
