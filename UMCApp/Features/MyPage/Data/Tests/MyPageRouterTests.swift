@@ -14,6 +14,34 @@ import CoreNetwork
 @Suite("MyPageRouter")
 struct MyPageRouterTests {
 
+    // MARK: - getMyProfile case
+
+    @Suite("getMyProfile")
+    struct GetMyProfileTests {
+
+        @Test("path는 /api/v1/member/me 이다")
+        func path() {
+            let router = MyPageRouter.getMyProfile
+            #expect(router.path == "/api/v1/member/me")
+        }
+
+        @Test("method는 .get이다")
+        func method() {
+            let router = MyPageRouter.getMyProfile
+            #expect(router.method == .get)
+        }
+
+        @Test("task는 .requestPlain이다")
+        func task() {
+            let router = MyPageRouter.getMyProfile
+
+            guard case .requestPlain = router.task else {
+                Issue.record("Expected .requestPlain, got \(router.task)")
+                return
+            }
+        }
+    }
+
     // MARK: - getTerms case
 
     @Suite("getTerms")
