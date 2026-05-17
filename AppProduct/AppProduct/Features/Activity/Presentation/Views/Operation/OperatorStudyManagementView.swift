@@ -131,11 +131,31 @@ struct OperatorStudyManagementView: View {
         }
     }
 
+    @ViewBuilder
     private var groupManagementEmptyView: some View {
-        emptyContentView(
-            title: "스터디 그룹 관리",
-            message: "등록된 스터디 그룹이 없습니다"
-        )
+        if canCreateStudyGroup {
+            ContentUnavailableView {
+                Label("스터디 그룹 관리", systemImage: "person.3")
+            } description: {
+                Text("등록된 스터디 그룹이 없습니다\n상단의 + 버튼으로 새 그룹을 만들어 보세요")
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        } else {
+            ContentUnavailableView {
+                Label("스터디 그룹 관리", systemImage: "person.3")
+            } description: {
+                Text("등록된 스터디 그룹이 없습니다")
+            } actions: {
+                Text("스터디 그룹 생성은 교내 회장/부회장만 가능합니다")
+                    .appFont(.footnote, color: .grey500)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+            .accessibilityHint("스터디 그룹 생성 권한이 없습니다. 교내 회장 또는 부회장에게 문의하세요.")
+        }
     }
 
     private func groupManagementListView(groups: [StudyGroupInfo]) -> some View {
@@ -230,21 +250,6 @@ struct OperatorStudyManagementView: View {
 
             Text(message)
                 .appFont(.subheadline, color: .grey500)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-    }
-
-    // MARK: - Empty View
-
-    private func emptyContentView(
-        title: String,
-        message: String
-    ) -> some View {
-        ContentUnavailableView {
-            Label(title, systemImage: "person.3")
-        } description: {
-            Text(message)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)

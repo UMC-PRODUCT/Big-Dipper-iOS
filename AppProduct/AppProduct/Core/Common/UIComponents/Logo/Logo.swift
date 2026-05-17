@@ -18,7 +18,7 @@ struct Logo: View {
     
     private enum Constants {
         static let logoVspacing: CGFloat = 16
-        static let logoSubtitle: String = "University Makeus Challenge"
+        static let logoSubtitle: String = "University MakeUs Challenge"
     }
     
     // MARK: - Body
