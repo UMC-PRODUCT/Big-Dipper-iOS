@@ -61,7 +61,7 @@ struct StudyScheduleRegistrationView: View {
                 dateTimeSection
             }
 
-            Section("출석 체크") {
+            Section {
                 attendancePolicySection
             }
 

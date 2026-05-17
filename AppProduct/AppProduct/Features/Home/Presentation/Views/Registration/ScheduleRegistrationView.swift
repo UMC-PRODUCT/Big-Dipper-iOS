@@ -736,8 +736,6 @@ fileprivate struct AttendancePolicySection: View {
                             .appFont(.footnote, color: .red500)
                     }
                 }
-            } header: {
-                Text("출석 체크")
             }
         }
     }
