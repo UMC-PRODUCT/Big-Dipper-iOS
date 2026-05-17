@@ -52,10 +52,17 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
             ScheduleV2Router.postSchedule(request: schedule)
         )
         let apiResponse = try decoder.decode(
-            APIResponse<Int>.self,
+            APIResponse<String>.self,
             from: response.data
         )
-        return try apiResponse.unwrap()
+        let resultString = try apiResponse.unwrap()
+        guard let scheduleId = Int(resultString) else {
+            throw RepositoryError.serverError(
+                code: apiResponse.code,
+                message: "Invalid schedule ID: \(resultString)"
+            )
+        }
+        return scheduleId
     }
 
     /// 일정을 단순 삭제합니다.
