@@ -67,7 +67,7 @@ enum AppStorageKey {
     /// 프로필/역할/조직 정보가 잔존하지 않도록 합니다.
     ///
     /// 디바이스 단위 정보(FCM 토큰, 최근 검색어 등)는 포함하지 않습니다.
-    static let sessionScopedKeys: [String] = [
+    nonisolated static let sessionScopedKeys: [String] = [
         canAutoLogin,
         gisuId,
         memberId,
