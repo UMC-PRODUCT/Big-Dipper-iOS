@@ -11,11 +11,12 @@ import CoreNetwork
 
 /// 마이페이지 Feature API 라우터
 ///
-/// 프로필 조회/수정 및 활동 로그/약관 API를 정의합니다.
+/// `BaseTargetType`을 통해 baseURL/headers/validation 기본 동작을 상속받습니다.
+/// 각 case의 path/method/task는 본 extension에서 정의합니다.
 public enum MyPageRouter {
-    /// 내 프로필 조회
+    /// 내 프로필 조회 (`GET /api/v1/member/me`)
     case getMyProfile
-    /// 약관 조회
+    /// 약관 조회 (`GET /api/v1/terms/type/{termsType}`)
     case getTerms(termsType: String)
 }
 
