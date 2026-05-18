@@ -115,8 +115,21 @@ struct LoginByIdPwView: View {
         HStack(spacing: DefaultSpacing.spacing8) {
             autoLoginToggle
             Spacer()
+            resetPasswordLink
+            Text("|")
+                .appFont(.footnote, color: .grey400)
             signUpLink
         }
+    }
+
+    private var resetPasswordLink: some View {
+        NavigationLink(value: NavigationDestination.auth(.resetPassword)) {
+            Text(Constants.resetPasswordTitle)
+                .appFont(.footnote, color: .grey500)
+        }
+        .buttonStyle(.plain)
+        .frame(minHeight: Constants.minTouchTarget)
+        .accessibilityHint(Text("비밀번호 찾기 화면으로 이동합니다"))
     }
 
     private var autoLoginToggle: some View {
@@ -181,6 +194,7 @@ fileprivate enum Constants {
     static let autoLoginLabel: String = "자동로그인"
     static let loginButtonTitle: String = "로그인"
     static let signUpTitle: String = "회원가입"
+    static let resetPasswordTitle: String = "비밀번호 찾기"
 
     static let checkboxSize: CGFloat = 20
     static let minTouchTarget: CGFloat = 44

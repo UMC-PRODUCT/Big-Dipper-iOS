@@ -19,6 +19,7 @@ final class SignUpByIdPwViewModel {
     // MARK: - Property
 
     private let sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol
+    private let resendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol
     private let verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol
     private let registerByEmailUseCase: RegisterByEmailUseCaseProtocol
     private let checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol
@@ -60,12 +61,14 @@ final class SignUpByIdPwViewModel {
 
     init(
         sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,
+        resendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol,
         verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol,
         registerByEmailUseCase: RegisterByEmailUseCaseProtocol,
         checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol,
         fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol
     ) {
         self.sendEmailVerificationUseCase = sendEmailVerificationUseCase
+        self.resendEmailVerificationUseCase = resendEmailVerificationUseCase
         self.verifyEmailCodeUseCase = verifyEmailCodeUseCase
         self.registerByEmailUseCase = registerByEmailUseCase
         self.checkEmailAvailabilityUseCase = checkEmailAvailabilityUseCase
@@ -187,8 +190,20 @@ final class SignUpByIdPwViewModel {
     @MainActor
     func requestEmailVerification() async throws {
         let id = try await sendEmailVerificationUseCase
-            .execute(email: emailInput)
+            .execute(email: emailInput, purpose: .register)
         emailVerificationId = id
+    }
+
+    /// 이메일 인증번호 재전송
+    @MainActor
+    func resendEmailVerification() async throws {
+        guard let emailVerificationId else {
+            try await requestEmailVerification()
+            return
+        }
+        try await resendEmailVerificationUseCase.execute(
+            emailVerificationId: emailVerificationId
+        )
     }
 
     /// 이메일 인증번호 검증

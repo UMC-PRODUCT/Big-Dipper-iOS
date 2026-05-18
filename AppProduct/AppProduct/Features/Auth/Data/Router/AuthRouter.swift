@@ -38,8 +38,12 @@ enum AuthRouter: BaseTargetType {
     )
     /// 이메일 인증 발송
     case sendEmailVerification(body: SendEmailVerificationRequestDTO)
+    /// 이메일 인증코드 재전송
+    case resendEmailVerification(body: ResendEmailVerificationRequestDTO)
     /// 이메일 인증코드 검증
     case verifyEmailCode(body: VerifyEmailCodeRequestDTO)
+    /// 비밀번호 초기화
+    case resetPassword(body: ResetPasswordRequestDTO)
     /// 회원가입
     case register(body: RegisterRequestDTO)
     /// 기존 챌린저 코드 인증
@@ -75,8 +79,12 @@ enum AuthRouter: BaseTargetType {
             return "/api/v1/member-oauth/\(memberOAuthId)"
         case .sendEmailVerification:
             return "/api/v1/auth/email-verification"
+        case .resendEmailVerification:
+            return "/api/v1/auth/email-verification/resend"
         case .verifyEmailCode:
             return "/api/v1/auth/email-verification/code"
+        case .resetPassword:
+            return "/api/v1/auth/password/reset"
         case .register:
             return "/api/v1/member/register"
         case .registerExistingChallenger:
@@ -95,8 +103,8 @@ enum AuthRouter: BaseTargetType {
     var method: Moya.Method {
         switch self {
         case .loginKakao, .loginApple, .loginByEmail, .registerByEmail,
-             .renewToken, .sendEmailVerification, .verifyEmailCode,
-             .register, .registerExistingChallenger:
+             .renewToken, .sendEmailVerification, .resendEmailVerification,
+             .verifyEmailCode, .register, .registerExistingChallenger:
             return .post
         case .addMemberOAuth:
             return .post
@@ -107,6 +115,8 @@ enum AuthRouter: BaseTargetType {
             return .get
         case .registerCredential:
             return .post
+        case .resetPassword:
+            return .patch
         }
     }
 
@@ -150,7 +160,11 @@ enum AuthRouter: BaseTargetType {
             )
         case .sendEmailVerification(let body):
             return .requestJSONEncodable(body)
+        case .resendEmailVerification(let body):
+            return .requestJSONEncodable(body)
         case .verifyEmailCode(let body):
+            return .requestJSONEncodable(body)
+        case .resetPassword(let body):
             return .requestJSONEncodable(body)
         case .register(let body):
             return .requestJSONEncodable(body)

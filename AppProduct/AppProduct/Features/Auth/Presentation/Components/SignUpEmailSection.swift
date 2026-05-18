@@ -26,6 +26,9 @@ struct SignUpEmailSection: View {
     /// 인증번호 확인 요청 — 실패 시 `throw`
     let onVerificationComplete: (String) async throws -> Void
 
+    /// 인증번호 재전송 요청 — 실패 시 `throw`
+    let onResend: () async throws -> Void
+
     /// 이메일 값이 변경될 때 부모에게 알리는 콜백.
     /// 부모는 이 콜백 안에서 인증 상태 리셋 여부를 직접 판단합니다.
     let onEmailChanged: () -> Void
@@ -42,6 +45,7 @@ struct SignUpEmailSection: View {
             text: $email,
             onVerificationRequested: onVerificationRequested,
             onVerificationComplete: onVerificationComplete,
+            onResend: onResend,
             submitLabel: .next,
             onSubmit: onSubmit,
             onEmailChanged: onEmailChanged

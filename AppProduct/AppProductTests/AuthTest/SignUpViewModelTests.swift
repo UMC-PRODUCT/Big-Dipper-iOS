@@ -162,7 +162,7 @@ private struct MockRegisterUseCase: RegisterUseCaseProtocol {
 }
 
 private struct MockSendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol {
-    func execute(email: String) async throws -> String {
+    func execute(email: String, purpose: EmailVerificationPurpose) async throws -> String {
         "email-verification-id"
     }
 }

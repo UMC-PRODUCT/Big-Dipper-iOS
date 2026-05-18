@@ -13,4 +13,6 @@ import Foundation
 struct SendEmailVerificationRequestDTO: Encodable {
     /// 인증할 이메일 주소
     let email: String
+    /// 인증 목적 ("REGISTER" | "PASSWORD_RESET")
+    let purpose: String
 }
