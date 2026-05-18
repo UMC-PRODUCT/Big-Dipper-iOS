@@ -25,8 +25,12 @@ protocol AuthUseCaseProviding {
     var deleteMemberOAuthUseCase: DeleteMemberOAuthUseCaseProtocol { get }
     /// 이메일 인증 발송 UseCase
     var sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol { get }
+    /// 이메일 인증 코드 재전송 UseCase
+    var resendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol { get }
     /// 이메일 인증코드 검증 UseCase
     var verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol { get }
+    /// 비밀번호 초기화 UseCase
+    var resetPasswordUseCase: ResetPasswordUseCaseProtocol { get }
     /// 회원가입 UseCase
     var registerUseCase: RegisterUseCaseProtocol { get }
     /// 기존 챌린저 인증 코드 등록 UseCase
@@ -52,7 +56,9 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
     let addMemberOAuthUseCase: AddMemberOAuthUseCaseProtocol
     let deleteMemberOAuthUseCase: DeleteMemberOAuthUseCaseProtocol
     let sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol
+    let resendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol
     let verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol
+    let resetPasswordUseCase: ResetPasswordUseCaseProtocol
     let registerUseCase: RegisterUseCaseProtocol
     let registerExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol
     let fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol
@@ -93,7 +99,13 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
         self.sendEmailVerificationUseCase = SendEmailVerificationUseCase(
             repository: repository
         )
+        self.resendEmailVerificationUseCase = ResendEmailVerificationUseCase(
+            repository: repository
+        )
         self.verifyEmailCodeUseCase = VerifyEmailCodeUseCase(
+            repository: repository
+        )
+        self.resetPasswordUseCase = ResetPasswordUseCase(
             repository: repository
         )
         self.registerUseCase = RegisterUseCase(

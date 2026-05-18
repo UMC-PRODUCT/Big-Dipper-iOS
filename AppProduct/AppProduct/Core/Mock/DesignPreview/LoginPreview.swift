@@ -82,7 +82,7 @@ private struct PreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
 
 /// Preview 전용 UseCase들
 private struct PreviewSendEmailUseCase: SendEmailVerificationUseCaseProtocol {
-    func execute(email: String) async throws -> String {
+    func execute(email: String, purpose: EmailVerificationPurpose) async throws -> String {
         "preview_verification_id"
     }
 }

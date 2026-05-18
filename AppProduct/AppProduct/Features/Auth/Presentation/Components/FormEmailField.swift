@@ -50,6 +50,11 @@ struct FormEmailField: View {
     /// 인증번호 검증 시 실행될 비동기 클로저 (인증번호를 파라미터로 받음)
     let onVerificationComplete: (String) async throws -> Void
 
+    /// 인증번호 재전송 시 실행될 비동기 클로저
+    ///
+    /// nil이면 재전송 버튼을 표시하지 않습니다.
+    var onResend: (() async throws -> Void)? = nil
+
     /// 필수 입력 여부 (기본값: true)
     var isRequired: Bool = true
 
@@ -70,6 +75,12 @@ struct FormEmailField: View {
 
     /// 입력된 인증번호
     @State private var verificationCode: String = ""
+
+    /// 인증 발송/재전송 throttle 남은 초 (0이면 재전송 가능)
+    @State private var resendCooldownSeconds: Int = 0
+
+    /// 표시할 에러 메시지 (이메일 형식 외 서버 에러용)
+    @State private var customErrorMessage: String? = nil
 
     /// 애니메이션 네임스페이스
     @Namespace var namespace
@@ -129,6 +140,9 @@ struct FormEmailField: View {
 
         /// 성공 아이콘 SF Symbol 이름
         static let successImage: String = "checkmark.circle.fill"
+
+        /// 재전송 throttle 기본 초 (서버와 동일하게 60초)
+        static let resendCooldown: Int = 60
     }
     
     // MARK: - Body
@@ -144,6 +158,10 @@ struct FormEmailField: View {
             // 인증번호 입력 필드
             if verificationState == .codeRequested || verificationState == .verifying {
                 verificationCodeField
+
+                if onResend != nil {
+                    resendButton
+                }
             }
 
             // 성공 메시지
@@ -152,6 +170,22 @@ struct FormEmailField: View {
             }
         })
         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: verificationState)
+        .task(id: verificationState) {
+            // codeRequested 진입 시 60초 카운트다운 시작
+            guard verificationState == .codeRequested else { return }
+            if resendCooldownSeconds == 0 {
+                resendCooldownSeconds = Constants.resendCooldown
+            }
+            while resendCooldownSeconds > 0 {
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                } catch {
+                    return
+                }
+                if Task.isCancelled { return }
+                resendCooldownSeconds = max(0, resendCooldownSeconds - 1)
+            }
+        }
     }
     
     /// 이메일 입력 필드 및 인증 버튼
@@ -204,9 +238,31 @@ struct FormEmailField: View {
 
     /// 이메일 형식 오류 메시지
     private var erroMsg: some View {
-        Text(Constants.errorMsg)
+        Text(customErrorMessage ?? Constants.errorMsg)
             .appFont(.footnote, color: .red)
             .padding(.leading, Constants.errorPadding)
+    }
+
+    /// 인증번호 재전송 버튼
+    ///
+    /// 60초 throttle 동안 비활성화되며 남은 시간을 표시합니다.
+    private var resendButton: some View {
+        HStack(spacing: DefaultSpacing.spacing8) {
+            Spacer()
+            Button {
+                handleResendTap()
+            } label: {
+                Text(
+                    resendCooldownSeconds > 0
+                    ? "재전송 (\(resendCooldownSeconds)초)"
+                    : "인증번호 재전송"
+                )
+                .appFont(.footnote, color: resendCooldownSeconds > 0 ? .grey500 : .indigo500)
+            }
+            .buttonStyle(.plain)
+            .disabled(resendCooldownSeconds > 0 || verificationState == .verifying)
+        }
+        .padding(.horizontal, Constants.errorPadding)
     }
 
     /// 인증번호 입력 필드
@@ -282,11 +338,13 @@ extension FormEmailField {
     private func handleButtonTap() {
         // 이메일 형식 유효성 검증
         if !isValidEmail {
+            customErrorMessage = nil
             showError = true
             return
         }
 
         showError = false
+        customErrorMessage = nil
 
         switch verificationState {
         case .initial, .failed:
@@ -296,8 +354,10 @@ extension FormEmailField {
                     verificationCode = ""
                     verificationState = .verifying
                     try await onVerificationRequested()
+                    resendCooldownSeconds = Constants.resendCooldown
                     verificationState = .codeRequested
                 } catch {
+                    customErrorMessage = userMessage(for: error)
                     showError = true
                     verificationState = .initial
                 }
@@ -312,6 +372,7 @@ extension FormEmailField {
                     try await onVerificationComplete(verificationCode)
                     verificationState = .verified
                 } catch {
+                    customErrorMessage = userMessage(for: error)
                     verificationState = .failed
                     showError = true
                 }
@@ -325,6 +386,36 @@ extension FormEmailField {
         }
     }
 
+    /// 재전송 버튼 탭 핸들러
+    ///
+    /// 60초 카운트다운이 끝났을 때 호출되며, 성공 시 카운트다운을 재시작합니다.
+    private func handleResendTap() {
+        guard let onResend, resendCooldownSeconds == 0 else { return }
+        Task {
+            do {
+                customErrorMessage = nil
+                showError = false
+                try await onResend()
+                verificationCode = ""
+                resendCooldownSeconds = Constants.resendCooldown
+            } catch {
+                customErrorMessage = userMessage(for: error)
+                showError = true
+            }
+        }
+    }
+
+    /// 에러 → 사용자 표시 문구
+    private func userMessage(for error: Error) -> String {
+        if let appError = error as? AppError {
+            return appError.userMessage
+        }
+        if let authError = error as? AuthError {
+            return authError.userMessage
+        }
+        return Constants.errorMsg
+    }
+
     /// 이메일 변경 시 인증 상태를 초기화합니다.
     ///
     /// 인증 요청 이후 이메일이 수정되면 이전 인증번호/성공 상태는 더 이상 유효하지 않으므로
@@ -333,5 +424,7 @@ extension FormEmailField {
         guard verificationState != .initial else { return }
         verificationCode = ""
         verificationState = .initial
+        resendCooldownSeconds = 0
+        customErrorMessage = nil
     }
 }

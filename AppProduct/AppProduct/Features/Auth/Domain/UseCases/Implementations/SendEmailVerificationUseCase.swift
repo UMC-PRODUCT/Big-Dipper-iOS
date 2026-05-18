@@ -24,7 +24,13 @@ final class SendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol {
 
     // MARK: - Function
 
-    func execute(email: String) async throws -> String {
-        try await repository.sendEmailVerification(email: email)
+    func execute(
+        email: String,
+        purpose: EmailVerificationPurpose
+    ) async throws -> String {
+        try await repository.sendEmailVerification(
+            email: email,
+            purpose: purpose
+        )
     }
 }

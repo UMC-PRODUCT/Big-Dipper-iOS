@@ -47,6 +47,7 @@ struct SignUpByIdPwView: View {
 
     init(
         sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,
+        resendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol,
         verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol,
         registerByEmailUseCase: RegisterByEmailUseCaseProtocol,
         checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol,
@@ -56,6 +57,7 @@ struct SignUpByIdPwView: View {
         self._viewModel = .init(
             wrappedValue: SignUpByIdPwViewModel(
                 sendEmailVerificationUseCase: sendEmailVerificationUseCase,
+                resendEmailVerificationUseCase: resendEmailVerificationUseCase,
                 verifyEmailCodeUseCase: verifyEmailCodeUseCase,
                 registerByEmailUseCase: registerByEmailUseCase,
                 checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase,
@@ -77,6 +79,9 @@ struct SignUpByIdPwView: View {
                     },
                     onVerificationComplete: { code in
                         try await viewModel.verifyEmailCode(code)
+                    },
+                    onResend: {
+                        try await viewModel.resendEmailVerification()
                     },
                     onEmailChanged: handleEmailChange,
                     onSubmit: { focusedField = .password }
