@@ -53,4 +53,12 @@ protocol ScheduleRepositoryProtocol: Sendable {
     func deleteScheduleWithAttendance(
         scheduleId: Int
     ) async throws
+
+    /// 출석 기록이 있는 일정을 강제 삭제합니다 (일정 기수의 SUPER_ADMIN 전용).
+    ///
+    /// - Parameter scheduleId: 강제 삭제할 일정 ID
+    /// - Throws: 서버 에러(권한 부족 시 403) 또는 네트워크 에러
+    func forceDeleteSchedule(
+        scheduleId: Int
+    ) async throws
 }

@@ -25,6 +25,8 @@ protocol HomeUseCaseProviding {
     var updateScheduleUseCase: UpdateScheduleUseCaseProtocol { get }
     /// 일정 + 출석부 통합 삭제 UseCase
     var deleteScheduleUseCase: DeleteScheduleUseCaseProtocol { get }
+    /// 출석 기록 보유 일정 강제 삭제 UseCase (SUPER_ADMIN 전용)
+    var forceDeleteScheduleUseCase: ForceDeleteScheduleUseCaseProtocol { get }
     /// 일정 제목 기반 태그 분류 UseCase
     var classifyScheduleUseCase: ClassifyScheduleUseCase { get }
     /// 챌린저 검색 UseCase
@@ -49,6 +51,7 @@ final class HomeUseCaseProvider: HomeUseCaseProviding {
     let generateScheduleUseCase: GenerateScheduleUseCaseProtocol
     let updateScheduleUseCase: UpdateScheduleUseCaseProtocol
     let deleteScheduleUseCase: DeleteScheduleUseCaseProtocol
+    let forceDeleteScheduleUseCase: ForceDeleteScheduleUseCaseProtocol
     let classifyScheduleUseCase: ClassifyScheduleUseCase
     let searchChallengersUseCase: SearchChallengersUseCaseProtocol
     let fetchScheduleCapabilitiesUseCase: FetchScheduleCapabilitiesUseCaseProtocol
@@ -84,6 +87,9 @@ final class HomeUseCaseProvider: HomeUseCaseProviding {
             repository: scheduleRepository
         )
         self.deleteScheduleUseCase = DeleteScheduleUseCase(
+            repository: scheduleRepository
+        )
+        self.forceDeleteScheduleUseCase = ForceDeleteScheduleUseCase(
             repository: scheduleRepository
         )
         self.classifyScheduleUseCase = ClassifyScheduleUseCaseImpl(

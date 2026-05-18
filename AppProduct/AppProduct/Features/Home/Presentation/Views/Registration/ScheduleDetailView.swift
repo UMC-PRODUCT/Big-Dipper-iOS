@@ -195,6 +195,11 @@ struct ScheduleDetailView: View {
     }
 
     /// 일정과 출석부를 함께 삭제합니다.
+    ///
+    /// 서버가 출석 기록 존재로 인해 일반 삭제를 거부(``DomainError/scheduleHasAttendanceRecords``)하면,
+    /// FORCE_DELETE 권한 보유자(일정 기수의 SUPER_ADMIN)에게는 2차 확인 후 강제 삭제 플로우를 제공하고,
+    /// 그 외 사용자에게는 기존 에러 핸들러 경로를 그대로 사용합니다.
+    ///
     /// - Parameter scheduleId: 삭제할 일정 ID
     /// - Returns: 삭제 성공 여부
     @MainActor
@@ -209,6 +214,14 @@ struct ScheduleDetailView: View {
                 scheduleId: scheduleId
             )
             return true
+        } catch DomainError.scheduleHasAttendanceRecords where viewModel.canForceDeleteSchedule {
+            viewModel.forceDeleteAlertAction {
+                Task { @MainActor in
+                    let success = await forceDeleteSchedule(scheduleId: scheduleId)
+                    if success { dismiss() }
+                }
+            }
+            return false
         } catch {
             errorHandler.handle(error, context: ErrorContext(
                 feature: "Home",
@@ -217,6 +230,38 @@ struct ScheduleDetailView: View {
                     guard let di else { return }
                     let provider = di.resolve(HomeUseCaseProviding.self)
                     try? await provider.deleteScheduleUseCase.execute(
+                        scheduleId: scheduleId
+                    )
+                }
+            ))
+            return false
+        }
+    }
+
+    /// 출석 기록을 포함한 일정을 강제 삭제합니다 (SUPER_ADMIN 전용).
+    ///
+    /// - Parameter scheduleId: 강제 삭제할 일정 ID
+    /// - Returns: 삭제 성공 여부
+    @MainActor
+    @discardableResult
+    private func forceDeleteSchedule(scheduleId: Int) async -> Bool {
+        viewModel.isDeleting = true
+        defer { viewModel.isDeleting = false }
+
+        do {
+            let provider = di.resolve(HomeUseCaseProviding.self)
+            try await provider.forceDeleteScheduleUseCase.execute(
+                scheduleId: scheduleId
+            )
+            return true
+        } catch {
+            errorHandler.handle(error, context: ErrorContext(
+                feature: "Home",
+                action: "forceDeleteSchedule",
+                retryAction: { [weak di] in
+                    guard let di else { return }
+                    let provider = di.resolve(HomeUseCaseProviding.self)
+                    try? await provider.forceDeleteScheduleUseCase.execute(
                         scheduleId: scheduleId
                     )
                 }
