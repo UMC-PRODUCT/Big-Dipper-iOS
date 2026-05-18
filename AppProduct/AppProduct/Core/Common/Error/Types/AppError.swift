@@ -148,4 +148,16 @@ enum AppError: Error, LocalizedError, Equatable {
             return true
         }
     }
+
+    // MARK: - Permission
+
+    /// 권한 거부(HTTP 403) 에러 여부
+    ///
+    /// 재시도해도 해결되지 않는 서버 측 권한 문제임을 나타냅니다.
+    var isPermissionDenied: Bool {
+        guard case .network(let networkError) = self,
+              case .requestFailed(let statusCode, _) = networkError
+        else { return false }
+        return statusCode == 403
+    }
 }

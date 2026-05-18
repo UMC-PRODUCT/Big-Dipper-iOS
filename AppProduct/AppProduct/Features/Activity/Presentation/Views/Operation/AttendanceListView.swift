@@ -183,8 +183,11 @@ struct AttendanceListView: View {
             Image(systemName: "calendar.badge.exclamationmark")
                 .font(.system(size: 36))
                 .foregroundStyle(.grey400)
-            Text("표시할 일정이 없습니다")
-                .appFont(.subheadline, color: .grey500)
+            Text("출석 관리 일정이 아직 없어요")
+                .appFont(.calloutEmphasis, color: .grey700)
+            Text("출석이 필요한 일정을 생성하면\n이곳에 출석 현황이 모입니다.")
+                .appFont(.footnote, color: .grey500)
+                .multilineTextAlignment(.center)
             Spacer()
         }
         .frame(maxWidth: .infinity)

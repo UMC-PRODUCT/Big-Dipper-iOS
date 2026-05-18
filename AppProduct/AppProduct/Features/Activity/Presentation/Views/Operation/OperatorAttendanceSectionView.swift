@@ -156,12 +156,11 @@ struct OperatorAttendanceSectionView: View {
     // MARK: - Empty View
 
     private var emptyView: some View {
-        // NOTE: [#688] V1 /api/v1/schedules 제거로 세션 목록이 임시 빈 상태입니다.
-        //              V2 fetchAttendanceList 기반 재구현 완료 시 일반 빈 상태 메시지로 복귀합니다.
         ContentUnavailableView {
-            Label("출석 관리 준비 중", systemImage: "wrench.and.screwdriver")
+            Label("출석 관리 일정이 아직 없어요", systemImage: "calendar.badge.checkmark")
         } description: {
-            Text("출석 세션 목록 V2 마이그레이션 진행 중입니다.\n곧 다시 제공될 예정이에요.")
+            Text("출석이 필요한 일정을 생성하면\n승인 대기와 출석 현황이 이곳에 표시됩니다.")
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
@@ -283,15 +282,27 @@ struct OperatorAttendanceSectionView: View {
 
     // MARK: - Error View
 
+    @ViewBuilder
     private func errorView(error: AppError) -> some View {
-        RetryContentUnavailableView(
-            title: "불러오지 못했어요",
-            systemImage: "exclamationmark.triangle",
-            description: error.userMessage,
-            isRetrying: false,
-            topPadding: DefaultSpacing.spacing32
-        ) {
-            await viewModel.fetchSessions()
+        if error.isPermissionDenied {
+            ContentUnavailableView {
+                Label("접근 권한이 없어요", systemImage: "lock.fill")
+            } description: {
+                Text("운영진 활동 이력이 있는 사용자만\n출석 현황을 조회할 수 있어요")
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        } else {
+            RetryContentUnavailableView(
+                title: "불러오지 못했어요",
+                systemImage: "exclamationmark.triangle",
+                description: error.userMessage,
+                isRetrying: false,
+                topPadding: DefaultSpacing.spacing32
+            ) {
+                await viewModel.fetchSessions()
+            }
         }
     }
 
