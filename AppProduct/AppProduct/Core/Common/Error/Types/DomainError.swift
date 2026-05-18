@@ -81,6 +81,14 @@ enum DomainError: Error, LocalizedError, Equatable {
     /// 출석 사유 입력 필요
     case attendanceReasonRequired
 
+    // MARK: - 일정
+
+    /// 출석 기록이 존재하여 일정을 삭제할 수 없음 (최고 관리자만 강제 삭제 가능)
+    case scheduleHasAttendanceRecords
+
+    /// 이미 시작된 일정은 수정할 수 없음 (SCHEDULE-0028)
+    case scheduleAlreadyStarted
+
     // MARK: - 워크북/과제
 
     /// 제출 기한 초과
@@ -137,6 +145,10 @@ enum DomainError: Error, LocalizedError, Equatable {
             return "출석 시간이 지났습니다."
         case .attendanceReasonRequired:
             return "출석 사유를 입력해주세요."
+        case .scheduleHasAttendanceRecords:
+            return "출석 기록이 있는 일정은 삭제할 수 없습니다. 최고 관리자에게 강제 삭제를 요청하세요."
+        case .scheduleAlreadyStarted:
+            return "이미 시작된 일정은 수정할 수 없습니다."
         case .workbookDeadlinePassed:
             return "제출 기한이 지났습니다."
         case .workbookAlreadySubmitted:

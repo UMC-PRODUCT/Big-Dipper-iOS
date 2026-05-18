@@ -29,7 +29,7 @@ class ScheduleDetailViewModel {
     var alertPromprt: AlertPrompt?
     /// 수정 화면 표시 여부
     var isShowModify: Bool = false
-    /// 일정 수정 가능 여부 (WRITE/MANAGE)
+    /// 일정 수정 가능 여부 (EDIT/WRITE/MANAGE)
     var canEditSchedule: Bool = false
     /// 일정 삭제 가능 여부 (DELETE/MANAGE)
     var canDeleteSchedule: Bool = false
@@ -118,7 +118,7 @@ class ScheduleDetailViewModel {
                 resourceType: .schedule,
                 resourceId: scheduleId
             )
-            canEditSchedule = permission.hasAny([.write, .manage])
+            canEditSchedule = permission.hasAny([.edit, .write, .manage])
             canDeleteSchedule = permission.hasAny([.delete, .manage])
         } catch {
             canEditSchedule = false

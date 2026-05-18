@@ -157,9 +157,10 @@ struct OperatorAttendanceSectionView: View {
 
     private var emptyView: some View {
         ContentUnavailableView {
-            Label("출석 관리 일정이 없어요", systemImage: "calendar.badge.checkmark")
+            Label("출석 관리 일정이 아직 없어요", systemImage: "calendar.badge.checkmark")
         } description: {
-            Text("현재 관리할 출석 세션이 없습니다.")
+            Text("출석이 필요한 일정을 생성하면\n승인 대기와 출석 현황이 이곳에 표시됩니다.")
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
