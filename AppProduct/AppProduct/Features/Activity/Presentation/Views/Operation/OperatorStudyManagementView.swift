@@ -55,6 +55,21 @@ struct OperatorStudyManagementView: View {
         _viewModel = State(initialValue: studyManagementViewModel)
     }
 
+    // MARK: - Constants
+
+    private enum Constants {
+        static let permissionTitle: String = "스터디 그룹 관리"
+        static let permissionDescription: String = "등록된 스터디 그룹이 없습니다\n스터디 그룹 생성에는 별도 권한이 필요해요"
+        static let permissionGuideTitle: String = "스터디 관리가 가능한 역할"
+        static let roleChapterLeader: String = "지부장"
+        static let rolePresident: String = "회장 / 부회장"
+        static let roleOperator: String = "운영진"
+        static let roleChapterLeaderDescription: String = "지부 내 전체 학교의 스터디를 관리할 수 있어요"
+        static let rolePresidentDescription: String = "소속 학교의 스터디 그룹을 생성·관리할 수 있어요"
+        static let roleOperatorDescription: String = "담당 파트의 스터디를 조회할 수 있어요"
+        static let permissionGuideFooter: String = "권한이 필요하다면 지부장 또는 회장에게 역할 부여를 요청하세요"
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -143,18 +158,9 @@ struct OperatorStudyManagementView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
         } else {
-            ContentUnavailableView {
-                Label("스터디 그룹 관리", systemImage: "person.3")
-            } description: {
-                Text("등록된 스터디 그룹이 없습니다")
-            } actions: {
-                Text("스터디 그룹 생성은\n교내 회장/부회장만 가능합니다")
-                    .appFont(.footnote, color: .grey500)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-            .accessibilityHint("스터디 그룹 생성 권한이 없습니다. 교내 회장 또는 부회장에게 문의하세요.")
+            permissionDeniedView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
         }
     }
 
@@ -255,12 +261,81 @@ struct OperatorStudyManagementView: View {
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
 
+    // MARK: - Permission Denied View
+
+    private var permissionDeniedView: some View {
+        ScrollView {
+            VStack(spacing: DefaultSpacing.spacing32) {
+                ContentUnavailableView {
+                    Label(Constants.permissionTitle, systemImage: "person.3")
+                } description: {
+                    Text(Constants.permissionDescription)
+                        .multilineTextAlignment(.center)
+                }
+
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
+                    Text(Constants.permissionGuideTitle)
+                        .appFont(.calloutEmphasis)
+
+                    permissionRoleRow(
+                        icon: "building.columns.fill",
+                        role: Constants.roleChapterLeader,
+                        description: Constants.roleChapterLeaderDescription
+                    )
+
+                    permissionRoleRow(
+                        icon: "star.fill",
+                        role: Constants.rolePresident,
+                        description: Constants.rolePresidentDescription
+                    )
+
+                    permissionRoleRow(
+                        icon: "person.badge.key.fill",
+                        role: Constants.roleOperator,
+                        description: Constants.roleOperatorDescription
+                    )
+                }
+                .padding(DefaultSpacing.spacing16)
+                .background(.regularMaterial, in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius))
+
+                Text(Constants.permissionGuideFooter)
+                    .appFont(.footnote)
+                    .foregroundStyle(.grey500)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, DefaultSpacing.spacing32)
+        }
+    }
+
+    private func permissionRoleRow(icon: String, role: String, description: String) -> some View {
+        HStack(spacing: DefaultSpacing.spacing12) {
+            Image(systemName: icon)
+                .font(.app(.title3))
+                .foregroundStyle(.grey600)
+                .frame(width: 32, alignment: .center)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(role)
+                    .appFont(.subheadline)
+                Text(description)
+                    .appFont(.footnote)
+                    .foregroundStyle(.grey500)
+            }
+        }
+    }
+
     // MARK: - Error View
 
+    @ViewBuilder
     private func errorView(
         error: AppError,
         retryAction: @escaping () async -> Void
     ) -> some View {
+        if error.isPermissionDenied {
+            permissionDeniedView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        } else {
             RetryContentUnavailableView(
                 title: "불러오지 못했어요",
                 systemImage: "exclamationmark.triangle",
@@ -274,6 +349,7 @@ struct OperatorStudyManagementView: View {
                 .horizontal,
                 DefaultConstant.defaultSafeHorizon
             )
+        }
     }
 }
 
