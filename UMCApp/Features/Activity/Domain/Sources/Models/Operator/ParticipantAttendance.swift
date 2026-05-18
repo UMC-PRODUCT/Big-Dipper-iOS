@@ -1,0 +1,68 @@
+//
+//  ParticipantAttendance.swift
+//  ActivityDomain
+//
+//  Created by jaewon Lee on 5/17/26.
+//
+
+import Foundation
+
+/// 운영진 시점에서 본 일정 참여자 출석 정보
+///
+/// 참여자 식별 정보(`name`, `nickname` 등)에 더해, 출석 상태와 GPS 인증 여부,
+/// 사유 결석 사유까지 함께 보유하므로 운영진 현황 화면 구성
+///
+/// - SeeAlso: ``ScheduleAttendanceInfo``, ``ParticipantAttendanceStatus``
+public struct ParticipantAttendance: Equatable, Sendable, Identifiable {
+
+    /// 멤버 식별자
+    public let memberId: Int
+
+    /// 본명
+    public let name: String
+
+    /// 닉네임
+    public let nickname: String
+
+    /// 프로필 이미지 URL (없으면 빈 문자열)
+    public let profileImageUrl: String
+
+    /// 학교 식별자
+    public let schoolId: Int
+
+    /// 학교명
+    public let schoolName: String
+
+    /// 출석 상태 (참여자 시점)
+    public let attendanceStatus: ParticipantAttendanceStatus
+
+    /// GPS 위치 인증 완료 여부
+    public let isLocationVerified: Bool
+
+    /// 사유 결석 사유 (없으면 `nil`)
+    public let excuseReason: String?
+
+    public var id: Int { memberId }
+
+    public init(
+        memberId: Int,
+        name: String,
+        nickname: String,
+        profileImageUrl: String,
+        schoolId: Int,
+        schoolName: String,
+        attendanceStatus: ParticipantAttendanceStatus,
+        isLocationVerified: Bool,
+        excuseReason: String?
+    ) {
+        self.memberId = memberId
+        self.name = name
+        self.nickname = nickname
+        self.profileImageUrl = profileImageUrl
+        self.schoolId = schoolId
+        self.schoolName = schoolName
+        self.attendanceStatus = attendanceStatus
+        self.isLocationVerified = isLocationVerified
+        self.excuseReason = excuseReason
+    }
+}
