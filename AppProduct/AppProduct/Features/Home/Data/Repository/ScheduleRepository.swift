@@ -138,4 +138,26 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
     ) async throws {
         try await deleteSchedule(scheduleId: scheduleId)
     }
+
+    /// 출석 기록이 있는 일정을 강제 삭제합니다.
+    ///
+    /// 서버 권한 정책상 일정 기수의 SUPER_ADMIN 만 호출할 수 있으며, 그 외 사용자는 403 으로 반려됩니다.
+    ///
+    /// - Parameter scheduleId: 강제 삭제할 일정 ID
+    /// - Throws: 서버 에러 또는 네트워크 에러
+    func forceDeleteSchedule(
+        scheduleId: Int
+    ) async throws {
+        let response = try await adapter.request(
+            ScheduleV2Router.forceDeleteSchedule(scheduleId: scheduleId)
+        )
+        if response.data.isEmpty {
+            return
+        }
+        let apiResponse = try decoder.decode(
+            APIResponse<EmptyResult>.self,
+            from: response.data
+        )
+        try apiResponse.validateSuccess()
+    }
 }
