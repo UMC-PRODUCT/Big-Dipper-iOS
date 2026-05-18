@@ -49,6 +49,16 @@ struct OperatorAttendanceSectionView: View {
     
     private enum Constants {
         static let loadingMessage: String = "출석 관리 데이터를 불러오는 중..."
+        static let permissionTitle: String = "접근 권한이 없어요"
+        static let permissionDescription: String = "운영진 활동 이력이 있는 사용자만\n출석 현황을 조회할 수 있어요"
+        static let permissionGuideTitle: String = "출석 관리가 가능한 역할"
+        static let roleChapterLeader: String = "지부장"
+        static let roleSchoolLeader: String = "학교 대표"
+        static let roleOperator: String = "운영진"
+        static let roleChapterLeaderDescription: String = "지부 내 전체 학교의 출석을 관리할 수 있어요"
+        static let roleSchoolLeaderDescription: String = "소속 학교의 출석을 관리할 수 있어요"
+        static let roleOperatorDescription: String = "담당 파트의 출석을 관리할 수 있어요"
+        static let permissionGuideFooter: String = "권한이 필요하다면 지부장에게 역할 부여를 요청하세요"
     }
 
     // MARK: - Body
@@ -280,19 +290,77 @@ struct OperatorAttendanceSectionView: View {
         )
     }
 
+    // MARK: - Permission Denied View
+
+    private var permissionDeniedView: some View {
+        ScrollView {
+            VStack(spacing: DefaultSpacing.spacing32) {
+                ContentUnavailableView {
+                    Label(Constants.permissionTitle, systemImage: "lock.fill")
+                } description: {
+                    Text(Constants.permissionDescription)
+                        .multilineTextAlignment(.center)
+                }
+
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
+                    Text(Constants.permissionGuideTitle)
+                        .appFont(.calloutEmphasis)
+
+                    permissionRoleRow(
+                        icon: "building.columns.fill",
+                        role: Constants.roleChapterLeader,
+                        description: Constants.roleChapterLeaderDescription
+                    )
+
+                    permissionRoleRow(
+                        icon: "graduationcap.fill",
+                        role: Constants.roleSchoolLeader,
+                        description: Constants.roleSchoolLeaderDescription
+                    )
+
+                    permissionRoleRow(
+                        icon: "person.badge.key.fill",
+                        role: Constants.roleOperator,
+                        description: Constants.roleOperatorDescription
+                    )
+                }
+                .padding(DefaultSpacing.spacing16)
+                .background(.regularMaterial, in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius))
+
+                Text(Constants.permissionGuideFooter)
+                    .appFont(.footnote)
+                    .foregroundStyle(.grey500)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, DefaultSpacing.spacing32)
+        }
+    }
+
+    private func permissionRoleRow(icon: String, role: String, description: String) -> some View {
+        HStack(spacing: DefaultSpacing.spacing12) {
+            Image(systemName: icon)
+                .font(.app(.title3))
+                .foregroundStyle(.grey600)
+                .frame(width: 32, alignment: .center)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(role)
+                    .appFont(.subheadline)
+                Text(description)
+                    .appFont(.footnote)
+                    .foregroundStyle(.grey500)
+            }
+        }
+    }
+
     // MARK: - Error View
 
     @ViewBuilder
     private func errorView(error: AppError) -> some View {
         if error.isPermissionDenied {
-            ContentUnavailableView {
-                Label("접근 권한이 없어요", systemImage: "lock.fill")
-            } description: {
-                Text("운영진 활동 이력이 있는 사용자만\n출석 현황을 조회할 수 있어요")
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+            permissionDeniedView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
         } else {
             RetryContentUnavailableView(
                 title: "불러오지 못했어요",

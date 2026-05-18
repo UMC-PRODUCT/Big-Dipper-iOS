@@ -42,15 +42,14 @@ struct UmcBottonAccessoryView: View {
 /// 홈 탭 하단 액세서리 - 일정 생성 버튼
 fileprivate struct HomeBottonAccessoryView: View {
     @Environment(\.di) var di
-    @State private var canCreateSchedule: Bool = false
 
     private var pathStore: PathStore {
         di.resolve(PathStore.self)
     }
-
+//
     var body: some View {
         Group {
-            if pathStore.homePath.isEmpty && canCreateSchedule {
+            if pathStore.homePath.isEmpty {
                 Button(action: {
                     pathStore.homePath.append(.home(.registrationSchedule))
                 }, label: {
@@ -69,22 +68,6 @@ fileprivate struct HomeBottonAccessoryView: View {
             } else {
                 EmptyView()
             }
-        }
-        .task {
-            await loadCapabilities()
-        }
-    }
-
-    /// 서버에서 일정 생성 권한을 조회해 버튼 노출 여부를 결정합니다.
-    /// 실패 시 버튼을 숨겨 권한 없는 사용자가 시도하지 못하게 합니다.
-    private func loadCapabilities() async {
-        let useCase = di.resolve(HomeUseCaseProviding.self)
-            .fetchScheduleCapabilitiesUseCase
-        do {
-            let capabilities = try await useCase.execute()
-            canCreateSchedule = capabilities.canCreateSchedule
-        } catch {
-            canCreateSchedule = false
         }
     }
 }
