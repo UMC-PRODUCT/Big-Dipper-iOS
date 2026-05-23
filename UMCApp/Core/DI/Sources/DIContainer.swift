@@ -87,7 +87,11 @@ public final class DIContainer {
     private var factories: [ObjectIdentifier: Any] = [:]
     @ObservationIgnored
     private var cachedInstances: [ObjectIdentifier: Any] = [:]
-    
+
+    // MARK: - Init
+
+    public init() {}
+
     // MARK: - Registration
 
     /// 프로토콜 타입과 팩토리 클로저를 등록합니다.
