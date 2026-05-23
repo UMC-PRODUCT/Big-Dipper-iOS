@@ -15,6 +15,11 @@ let project = featureProject(
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "BadgeDomain", path: .relativeToRoot("Features/Badge")),
     ],
+    includesDomainTests: true,
+    domainTestDependencies: [
+        .project(target: "CoreEnum", path: .relativeToRoot("Core/Enum")),
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
+    ],
     includesDataTests: true,
     dataTestDependencies: [
         .target(name: "MyPageDomain"),
