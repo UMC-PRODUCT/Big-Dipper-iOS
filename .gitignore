@@ -133,3 +133,4 @@ GoogleService-Info.plist
 docs/superpowers/
 # Git worktrees
 .worktrees/
+.omc/
