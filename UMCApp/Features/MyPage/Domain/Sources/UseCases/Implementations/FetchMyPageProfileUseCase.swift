@@ -2,7 +2,7 @@
 //  FetchMyPageProfileUseCase.swift
 //  MyPageDomain
 //
-//  Created by Claude on 5/23/26.
+//  Created by One on 5/23/26.
 //
 
 import Foundation
