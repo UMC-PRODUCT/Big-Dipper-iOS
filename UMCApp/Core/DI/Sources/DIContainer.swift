@@ -81,7 +81,7 @@ import CoreNetwork
 public final class DIContainer {
     
     public init() {}
-    
+
     // MARK: - Storage
     /// @ObservationIgnored: resolve() 시 cachedInstances 쓰기가 @Observable 변경 알림을 발생시켜
     /// NavigationStack push 중 연쇄 뷰 무효화 → "tried to update multiple times per frame" 경고를 유발하므로
@@ -174,7 +174,7 @@ extension DIContainer {
         container.register(TokenStore.self) {
             KeychainTokenStore()
         }
-        
+
         // MARK: - Network Infrastructure
         container.register(NetworkClient.self) {
             AuthSystemFactory.makeNetworkClient(
@@ -195,7 +195,6 @@ extension DIContainer {
                 baseURL: NetworkConfig.baseURL
             )
         }
-        
         return container
     }
 
