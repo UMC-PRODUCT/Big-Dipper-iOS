@@ -8,11 +8,12 @@
 //
 //  ## 동작
 //
-//  - mount 직후 `refractiveCinematic` modifier 가 5-phase (정적 로고 → bloom → dwell → collapse
-//    → 정적 로고) 시퀀스를 2.0s 동안 재생한다.
+//  - mount 직후 `refractiveCinematic` modifier 가 4-phase (정적 로고 → bloom → dwell → collapse)
+//    시퀀스를 1.8s 동안 재생한다.
 //  - 동시에 `viewModel.checkAuthStatus()` 가 background 에서 토큰/프로필/버전 검사를 수행한다.
-//  - 시네마틱 최소 시간(2.0s) + 인증 완료 둘 다 만족하면 라우팅한다 — collapse 가 끝나고 정적
-//    로고가 잠시 보인 후 LoginView 의 동일한 로고로 매끄럽게 연결된다.
+//  - 시네마틱 최소 시간(1.65s) + 인증 완료 둘 다 만족하면 라우팅한다 — collapse 가 90% 진행된
+//    시점에서 routing 을 시작해, 마지막 lens 잔재가 사라지는 fade-out 과 LoginView 의 fade-in
+//    이 cross-fade 되도록 한다 (대기 buffer 가 만드는 "잠시 멈춤" 느낌을 제거).
 //
 
 import SwiftUI
@@ -26,9 +27,10 @@ struct AuthBootstrapView: View {
 
     private enum Constants {
         /// 시네마틱이 보이는 최소 시간. 인증이 더 빨리 끝나도 이 시간만큼은 시각 효과를 유지한다.
-        /// `RefractiveCinematic` 시퀀스 총 길이(1.8s) + postDelay buffer(0.2s) = 2.0s.
-        /// collapse 가 끝난 뒤 정적 로고가 잠시 보이고 LoginView 로 매끄럽게 연결되도록 보장.
-        static let minimumCinematicDuration: TimeInterval = 2.0
+        /// `RefractiveCinematic` 시퀀스 총 길이(1.8s) 의 약 90% 시점 — collapse 가 거의 끝났지만
+        /// 마지막 lens 잔재가 fade-out 중인 순간에 routing 을 시작해, 그 잔재와 LoginView 의
+        /// fade-in(rootTransition, 0.28s) 이 cross-fade 되도록 한다. 시각적 dead-time 제거.
+        static let minimumCinematicDuration: TimeInterval = 1.65
         /// 인증 최대 대기 시간. 초과 시 `.notLoggedIn` 가정 후 LoginView 진입.
         static let authTimeout: TimeInterval = 3.0
     }

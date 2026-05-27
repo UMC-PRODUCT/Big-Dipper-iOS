@@ -5,9 +5,9 @@
 //  AuthBootstrap 진입 시 한 번 자동 재생되는 chromaticLens 시네마틱.
 //
 //  사용자가 먼저 로고를 인지한 뒤 (preDelay) 화면 중앙에서 lens 가 자동으로 피어났다 (bloom)
-//  → 잠시 머물렀다 (dwell) → 다시 중앙으로 잦아드는 (collapse) → 정적 로고 복귀 (postDelay)
-//  5-phase 시퀀스. 굴곡(refraction) 과 무지개(dispersion + iridescence) 강도를 기본
-//  `chromaticLens()` 보다 강하게 잡아 시네마틱 느낌을 강조한다.
+//  → 잠시 머물렀다 (dwell) → 다시 중앙으로 잦아드는 (collapse) 4-phase 시퀀스.
+//  굴곡(refraction) 과 무지개(dispersion + iridescence) 강도를 기본 `chromaticLens()`
+//  보다 강하게 잡아 시네마틱 느낌을 강조한다.
 //
 //  ## Usage
 //
@@ -16,24 +16,25 @@
 //      .refractiveCinematic(maxRadius: 280)
 //  ```
 //
-//  ## Timeline (총 2.0초)
+//  ## Timeline (총 1.8초)
 //
 //  - **preDelay** (0.0s → 0.4s): 정적 로고. 사용자가 UMC 로고와 슬로건을 인지할 시간.
 //  - **bloom**    (0.4s → 1.0s): radius 0 → maxRadius. ease-out 으로 가운데에서 부풀어 오름.
 //  - **dwell**    (1.0s → 1.3s): radius 유지. 사용자가 효과(무지개 굴절) 를 인지할 시간.
 //  - **collapse** (1.3s → 1.8s): radius maxRadius → 0. ease-in 으로 가운데로 모임.
-//  - **postDelay**(1.8s → 2.0s): 정적 로고 복귀. LoginView 로 끊김 없이 연결되는 buffer.
 //
-//  `radius == 0` 상태에선 shader 가 모든 픽셀을 그대로 통과시켜 GPU 비용 0. preDelay/postDelay
-//  구간은 정적 로고가 그대로 보이며 사용자가 화면을 "원래대로" 인지하는 데 도움을 준다.
+//  `radius == 0` 상태에선 shader 가 모든 픽셀을 그대로 통과시켜 GPU 비용 0. preDelay 구간은
+//  정적 로고가 그대로 보인다. collapse 종료 후 호출부가 라우팅을 진행하는데, **collapse 가
+//  완전히 끝나길 기다리지 말고 마지막 10~20% 와 다음 화면 transition 을 cross-fade 시키면**
+//  "lens 가 다 사라지고 화면이 잠시 멈추는" dead-time 을 없앨 수 있다.
 //
 
 import SwiftUI
 
 /// 자동 재생 chromaticLens 시네마틱 ViewModifier.
 ///
-/// 정적 로고 → bloom → dwell → collapse → 정적 로고 5-phase 시퀀스를 한 번 재생한다.
-/// preDelay/postDelay 구간은 lens 가 비활성(radius=0) 이므로 호출 대상 view 의 원본 모습이
+/// 정적 로고(preDelay) → bloom → dwell → collapse 4-phase 시퀀스를 한 번 재생한다.
+/// preDelay 구간은 lens 가 비활성(radius=0) 이므로 호출 대상 view 의 원본 모습이
 /// 그대로 보인다 — LoginView 등 동일한 layout 의 화면으로 매끄럽게 연결되는 buffer 역할.
 private struct RefractiveCinematicModifier: ViewModifier {
 
@@ -98,9 +99,9 @@ extension View {
 
     /// View 에 자동 재생 chromaticLens 시네마틱을 입힌다.
     ///
-    /// 정적 로고 (preDelay) → 중앙 bloom → dwell → collapse → 정적 로고 (postDelay 는 호출부 책임)
-    /// 5-phase 시퀀스를 mount 직후 한 번 재생한다. 기본 굴곡/무지개 파라미터가 `chromaticLens()`
-    /// 보다 강하게 잡혀 있어, 짧은 시간 안에 lens 효과를 또렷이 인지시키는 시네마틱 용도.
+    /// 정적 로고 (preDelay) → 중앙 bloom → dwell → collapse 4-phase 시퀀스를 mount 직후 한 번
+    /// 재생한다. 기본 굴곡/무지개 파라미터가 `chromaticLens()` 보다 강하게 잡혀 있어, 짧은 시간
+    /// 안에 lens 효과를 또렷이 인지시키는 시네마틱 용도.
     ///
     /// - Parameters:
     ///   - center: Lens 중심의 상대 좌표(0~1). 기본 `.center` — 가운데에서 피어났다 모인다.
