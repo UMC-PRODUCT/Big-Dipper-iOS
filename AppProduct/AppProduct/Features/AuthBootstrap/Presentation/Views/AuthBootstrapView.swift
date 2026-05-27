@@ -8,10 +8,11 @@
 //
 //  ## 동작
 //
-//  - mount 직후 `refractiveCinematic` modifier 가 가운데에서 굴절·무지개 lens 를 자동으로 피우고
-//    다시 가운데로 잦아드는 단일 wave 를 1.9s 동안 재생한다.
+//  - mount 직후 `refractiveCinematic` modifier 가 5-phase (정적 로고 → bloom → dwell → collapse
+//    → 정적 로고) 시퀀스를 2.0s 동안 재생한다.
 //  - 동시에 `viewModel.checkAuthStatus()` 가 background 에서 토큰/프로필/버전 검사를 수행한다.
-//  - 시네마틱 최소 시간(1.5s) + 인증 완료 둘 다 만족하면 라우팅한다 — 너무 빨리 사라지지 않도록.
+//  - 시네마틱 최소 시간(2.0s) + 인증 완료 둘 다 만족하면 라우팅한다 — collapse 가 끝나고 정적
+//    로고가 잠시 보인 후 LoginView 의 동일한 로고로 매끄럽게 연결된다.
 //
 
 import SwiftUI
@@ -25,7 +26,9 @@ struct AuthBootstrapView: View {
 
     private enum Constants {
         /// 시네마틱이 보이는 최소 시간. 인증이 더 빨리 끝나도 이 시간만큼은 시각 효과를 유지한다.
-        static let minimumCinematicDuration: TimeInterval = 1.5
+        /// `RefractiveCinematic` 시퀀스 총 길이(1.8s) + postDelay buffer(0.2s) = 2.0s.
+        /// collapse 가 끝난 뒤 정적 로고가 잠시 보이고 LoginView 로 매끄럽게 연결되도록 보장.
+        static let minimumCinematicDuration: TimeInterval = 2.0
         /// 인증 최대 대기 시간. 초과 시 `.notLoggedIn` 가정 후 LoginView 진입.
         static let authTimeout: TimeInterval = 3.0
     }
