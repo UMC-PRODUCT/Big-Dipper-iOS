@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > **구조 안내**: 이 파일은 **핵심 요약 + 절대 규칙 + 레퍼런스 인덱스**만 담는 허브입니다.
-> 주제별 상세 내용은 `.claude/docs/` 로 분리되어 있으며, **필요할 때 해당 파일을 `Read` 로 열어** 참고합니다.
+> 주제별 상세 내용은 `docs/claude/` 로 분리되어 있으며, **필요할 때 해당 파일을 `Read` 로 열어** 참고합니다.
 > (컨텍스트 절약을 위해 `@import` 로 전체를 인라인하지 않습니다.)
 
 ## Project Overview
@@ -28,7 +28,7 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
 
 - **Presentation → Domain → Data** 단방향. 상위는 하위의 Protocol에만 의존 (DIP)
 - **Router**: AppRouter(모듈 간/딥링크) + Feature Router(내부 화면). Tab별 독립 `NavigationStack`
-- 상세: `.claude/docs/architecture.md`
+- 상세: `docs/claude/architecture.md`
 
 ## 절대 규칙 (항상 적용)
 
@@ -53,14 +53,14 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
 - View 내부 전용 상수는 `fileprivate enum Constants`
 - 약어 금지(`id`/`URL`/`API` 등 도메인 표준만 허용) · 타입명을 이름에 박지 않기
 - MARK: `// MARK: - Property` / `// MARK: - Body` / `// MARK: - Function`
-- 상세 + 안티패턴 예시: `.claude/docs/coding-style.md`
+- 상세 + 안티패턴 예시: `docs/claude/coding-style.md`
 
 ## 에러 처리 (요약)
 
 - **Loadable** (`.idle/.loading/.loaded/.failed`): 화면 내 인라인 상태 (리스트 로딩, 도메인 에러, 검증 실패)
 - **ErrorHandler**: 흐름 중단형 전역 Alert (세션 만료, 권한, 네트워크 오류)
 - **AlertPrompt**: 확인/취소 다이얼로그 (파괴적 작업, 분기점) — `.alertPrompt(item:)`
-- 상세: `.claude/docs/architecture.md`
+- 상세: `docs/claude/architecture.md`
 
 ## 빌드 명령 (요약)
 
@@ -75,7 +75,7 @@ cd UMCApp && make doctor    # 환경 진단
 ```
 
 - Tuist 버전은 `UMCApp/mise.toml`(`4.155.0`)로 고정 · Deployment Target iOS 26.3
-- 상세: `.claude/docs/build-and-modules.md`, `UMCApp/MAKEFILE_GUIDE.md`
+- 상세: `docs/claude/build-and-modules.md`, `UMCApp/MAKEFILE_GUIDE.md`
 
 ## 상세 레퍼런스 (필요 시 Read)
 
@@ -83,18 +83,18 @@ cd UMCApp && make doctor    # 환경 진단
 
 | 주제 | 문서 | 언제 읽나 |
 |------|------|----------|
-| 빌드 & Tuist 모듈 구조 | `.claude/docs/build-and-modules.md` | 모듈 추가, 빌드 설정, 의존성 |
-| 아키텍처 / Observation / 에러 | `.claude/docs/architecture.md` | ViewModel·UseCase·에러 처리 작업 |
-| Network Router (Moya) | `.claude/docs/network-router.md` | API 엔드포인트/DTO 추가 |
-| Response DTO 디코딩 | `.claude/docs/response-dto-decoding.md` | Response DTO 작성/수정 |
-| 디자인 시스템 & 성능 | `.claude/docs/design-system.md` | UI/토큰/Glass/렌더링 최적화 |
-| 코딩 스타일 & 네이밍 | `.claude/docs/coding-style.md` | 네이밍 판단이 필요할 때 |
-| Git Workflow | `.claude/docs/git-workflow.md` | 브랜치/커밋/PR/배포 |
-| 프로젝트 구조(AppProduct) | `.claude/docs/project-structure.md` | 레거시 디렉터리 탐색 |
-| PR 리뷰 규칙 & 체크리스트 | `.claude/docs/pr-review.md` | PR 리뷰 작성 시 |
+| 빌드 & Tuist 모듈 구조 | `docs/claude/build-and-modules.md` | 모듈 추가, 빌드 설정, 의존성 |
+| 아키텍처 / Observation / 에러 | `docs/claude/architecture.md` | ViewModel·UseCase·에러 처리 작업 |
+| Network Router (Moya) | `docs/claude/network-router.md` | API 엔드포인트/DTO 추가 |
+| Response DTO 디코딩 | `docs/claude/response-dto-decoding.md` | Response DTO 작성/수정 |
+| 디자인 시스템 & 성능 | `docs/claude/design-system.md` | UI/토큰/Glass/렌더링 최적화 |
+| 코딩 스타일 & 네이밍 | `docs/claude/coding-style.md` | 네이밍 판단이 필요할 때 |
+| Git Workflow | `docs/claude/git-workflow.md` | 브랜치/커밋/PR/배포 |
+| 프로젝트 구조(AppProduct) | `docs/claude/project-structure.md` | 레거시 디렉터리 탐색 |
+| PR 리뷰 규칙 & 체크리스트 | `docs/claude/pr-review.md` | PR 리뷰 작성 시 |
 
 iOS 26 프레임워크 API — 신규 Apple API를 다룰 때:
 
 | 모음 | 인덱스 | 언제 읽나 |
 |------|--------|----------|
-| iOS 26 프레임워크 가이드(20종) | `.claude/docs/ios26-frameworks/INDEX.md` | Liquid Glass, FoundationModels, SwiftData 상속, 신규 SwiftUI/Concurrency API 등 |
+| iOS 26 프레임워크 가이드(20종) | `docs/claude/ios26-frameworks/INDEX.md` | Liquid Glass, FoundationModels, SwiftData 상속, 신규 SwiftUI/Concurrency API 등 |
