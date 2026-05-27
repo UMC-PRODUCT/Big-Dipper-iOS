@@ -99,7 +99,9 @@ extension AppProductApp {
                     fetchMyProfileUseCase: container.resolve(
                         HomeUseCaseProviding.self
                     ).fetchMyProfileUseCase,
-                    tokenStore: container.resolve(TokenStore.self)
+                    tokenStore: container.resolve(TokenStore.self),
+                    loginUseCase: authProvider.loginUseCase,
+                    errorHandler: errorHandler
                 )
                 .transition(rootTransition)
 

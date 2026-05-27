@@ -5,9 +5,10 @@
 //  AuthBootstrap 진입 시 한 번 자동 재생되는 chromaticLens 시네마틱.
 //
 //  사용자가 먼저 로고를 인지한 뒤 (preDelay) 화면 중앙에서 lens 가 자동으로 피어났다 (bloom)
-//  → 잠시 머물렀다 (dwell) → 다시 중앙으로 잦아드는 (collapse) 4-phase 시퀀스.
-//  굴곡(refraction) 과 무지개(dispersion + iridescence) 강도를 기본 `chromaticLens()`
-//  보다 강하게 잡아 시네마틱 느낌을 강조한다.
+//  → 즉시 다시 중앙으로 잦아드는 (collapse) 3-phase 시퀀스. dwell(정지) 단계 없이 한 연속
+//  keyframe timeline 으로 처리해 "정점에서 멈춘 듯한" 느낌을 제거한다. 굴곡(refraction) 과
+//  무지개(dispersion + iridescence) 강도를 기본 `chromaticLens()` 보다 강하게 잡아 시네마틱
+//  느낌을 강조한다.
 //
 //  ## Usage
 //
@@ -16,26 +17,26 @@
 //      .refractiveCinematic(maxRadius: 280)
 //  ```
 //
-//  ## Timeline (총 1.8초)
+//  ## Timeline (총 1.5초)
 //
 //  - **preDelay** (0.0s → 0.4s): 정적 로고. 사용자가 UMC 로고와 슬로건을 인지할 시간.
-//  - **bloom**    (0.4s → 1.0s): radius 0 → maxRadius. ease-out 으로 가운데에서 부풀어 오름.
-//  - **dwell**    (1.0s → 1.3s): radius 유지. 사용자가 효과(무지개 굴절) 를 인지할 시간.
-//  - **collapse** (1.3s → 1.8s): radius maxRadius → 0. ease-in 으로 가운데로 모임.
+//  - **bloom**    (0.4s → 1.0s): radius 0 → maxRadius. cubic Hermite 보간으로 가속.
+//  - **collapse** (1.0s → 1.5s): radius maxRadius → 0. bloom 의 종료 속도(0이 아님)에서 자연
+//    스럽게 이어받아 가운데로 모임. dwell(정지) 단계 없음.
 //
 //  `radius == 0` 상태에선 shader 가 모든 픽셀을 그대로 통과시켜 GPU 비용 0. preDelay 구간은
-//  정적 로고가 그대로 보인다. collapse 종료 후 호출부가 라우팅을 진행하는데, **collapse 가
-//  완전히 끝나길 기다리지 말고 마지막 10~20% 와 다음 화면 transition 을 cross-fade 시키면**
-//  "lens 가 다 사라지고 화면이 잠시 멈추는" dead-time 을 없앨 수 있다.
+//  정적 로고가 그대로 보인다. 한 `keyframeAnimator` timeline 으로 처리하므로 bloom→collapse
+//  사이에 별도 정지 구간이 생기지 않는다 (분리된 `withAnimation` 호출은 사이에 속도 0 인
+//  순간이 생겨 사용자에게 "멈춤" 으로 인지됨).
 //
 
 import SwiftUI
 
 /// 자동 재생 chromaticLens 시네마틱 ViewModifier.
 ///
-/// 정적 로고(preDelay) → bloom → dwell → collapse 4-phase 시퀀스를 한 번 재생한다.
-/// preDelay 구간은 lens 가 비활성(radius=0) 이므로 호출 대상 view 의 원본 모습이
-/// 그대로 보인다 — LoginView 등 동일한 layout 의 화면으로 매끄럽게 연결되는 buffer 역할.
+/// 정적 로고(preDelay) → bloom → collapse 3-phase 시퀀스를 한 번 재생한다.
+/// preDelay 구간은 lens 가 비활성(radius=0) 이므로 호출 대상 view 의 원본 모습이 그대로
+/// 보인다 — LoginView 등 동일한 layout 의 화면으로 매끄럽게 연결되는 buffer 역할.
 private struct RefractiveCinematicModifier: ViewModifier {
 
     // MARK: - Property
@@ -48,48 +49,66 @@ private struct RefractiveCinematicModifier: ViewModifier {
     let iridescenceStrength: CGFloat
     let preDelay: TimeInterval
     let bloomDuration: TimeInterval
-    let dwellDuration: TimeInterval
     let collapseDuration: TimeInterval
 
-    @State private var displayRadius: CGFloat = 0
+    /// keyframeAnimator 트리거. mount 직후 한 번만 토글되어 시퀀스를 1회 재생한다.
+    ///
+    /// `.task` 가 view body re-evaluation(예: 인증 검사 완료로 인한 ViewModel 상태 변화)
+    /// 마다 다시 호출되더라도, `hasStarted` 가드로 trigger 가 추가로 토글되는 것을 막아
+    /// keyframe 이 재시작되며 lens 가 두 번 bloom 하는 현상을 방지한다.
+    @State private var trigger: Bool = false
+    @State private var hasStarted: Bool = false
 
     // MARK: - Body
 
     func body(content: Content) -> some View {
         content
-            .chromaticLens(
-                center: center,
-                radius: displayRadius,
-                refractionStrength: refractionStrength,
-                dispersionStrength: dispersionStrength,
-                edgeHighlight: edgeHighlight,
-                iridescenceStrength: iridescenceStrength
+            .keyframeAnimator(
+                initialValue: 0.0 as CGFloat,
+                trigger: trigger,
+                content: { view, radius in
+                    // keyframeAnimator 의 content closure 는 `@Sendable` (non-isolated) 시그니처라
+                    // `@MainActor` 격리된 `chromaticLens(...)` 을 직접 호출하면 Swift 6 isolation
+                    // 경고가 난다. SwiftUI body 평가는 런타임상 항상 MainActor 에서 일어나므로
+                    // `MainActor.assumeIsolated` 로 안전하게 격리 경계를 표명하고 호출한다.
+                    MainActor.assumeIsolated {
+                        view.chromaticLens(
+                            center: center,
+                            radius: radius,
+                            refractionStrength: refractionStrength,
+                            dispersionStrength: dispersionStrength,
+                            edgeHighlight: edgeHighlight,
+                            iridescenceStrength: iridescenceStrength
+                        )
+                    }
+                },
+                keyframes: { _ in
+                    // [0] PreDelay — radius 0 유지 (정적 로고 인지 구간)
+                    LinearKeyframe(0, duration: preDelay)
+                    // [1] Bloom — 0 → maxRadius (easeInOut 으로 가속/감속)
+                    //   CubicKeyframe 은 segment 간 velocity continuity 를 자동 계산하면서
+                    //   maxRadius 정점에서 overshoot 가 생겨 "정점에서 약간 부풀었다가 줄어드는
+                    //   잠시 멈춤" 으로 인지된다. SpringKeyframe(bounce: 0) 로 critically damped
+                    //   spring 을 만들어 overshoot 없이 자연스럽게 가속/감속한다.
+                    SpringKeyframe(
+                        maxRadius,
+                        duration: bloomDuration,
+                        spring: .init(duration: bloomDuration, bounce: 0)
+                    )
+                    // [2] Collapse — maxRadius → 0 (overshoot 없는 spring 으로 즉시 감속)
+                    SpringKeyframe(
+                        0,
+                        duration: collapseDuration,
+                        spring: .init(duration: collapseDuration, bounce: 0)
+                    )
+                }
             )
             .task {
-                await runCinematic()
+                // .task 는 view re-evaluation 마다 재호출될 수 있으므로 한 번만 발동.
+                guard !hasStarted else { return }
+                hasStarted = true
+                trigger.toggle()
             }
-    }
-
-    // MARK: - Private
-
-    /// 5-phase 시네마틱 시퀀스. mount 직후 한 번만 재생된다.
-    @MainActor
-    private func runCinematic() async {
-        // [0] PreDelay — 정적 로고 인지
-        if preDelay > 0 {
-            try? await Task.sleep(for: .seconds(preDelay))
-        }
-
-        // [1] Bloom — 중앙에서 부풀어 오름
-        withAnimation(.easeOut(duration: bloomDuration)) {
-            displayRadius = maxRadius
-        }
-        try? await Task.sleep(for: .seconds(bloomDuration + dwellDuration))
-
-        // [2] Collapse — 다시 중앙으로 모임
-        withAnimation(.easeIn(duration: collapseDuration)) {
-            displayRadius = 0
-        }
     }
 }
 
@@ -99,9 +118,10 @@ extension View {
 
     /// View 에 자동 재생 chromaticLens 시네마틱을 입힌다.
     ///
-    /// 정적 로고 (preDelay) → 중앙 bloom → dwell → collapse 4-phase 시퀀스를 mount 직후 한 번
-    /// 재생한다. 기본 굴곡/무지개 파라미터가 `chromaticLens()` 보다 강하게 잡혀 있어, 짧은 시간
-    /// 안에 lens 효과를 또렷이 인지시키는 시네마틱 용도.
+    /// 정적 로고 (preDelay) → 중앙 bloom → collapse 3-phase 시퀀스를 mount 직후 한 번 재생한다.
+    /// 단일 `keyframeAnimator` timeline 이라 bloom 과 collapse 사이에 정지 구간이 없다. 기본
+    /// 굴곡/무지개 파라미터가 `chromaticLens()` 보다 강하게 잡혀 있어, 짧은 시간 안에 lens
+    /// 효과를 또렷이 인지시키는 시네마틱 용도.
     ///
     /// - Parameters:
     ///   - center: Lens 중심의 상대 좌표(0~1). 기본 `.center` — 가운데에서 피어났다 모인다.
@@ -113,7 +133,6 @@ extension View {
     ///     뚜렷이 드러나도록 holographic 광택을 최대로.
     ///   - preDelay: 시네마틱 시작 전 정적 로고를 보여주는 시간. 기본 0.4s — 사용자가 로고 인지.
     ///   - bloomDuration: 0 → maxRadius 까지 부풀어 오르는 시간. 기본 0.6s.
-    ///   - dwellDuration: maxRadius 에서 머무르는 시간. 기본 0.3s.
     ///   - collapseDuration: maxRadius → 0 으로 모이는 시간. 기본 0.5s.
     func refractiveCinematic(
         center: UnitPoint = .center,
@@ -124,7 +143,6 @@ extension View {
         iridescenceStrength: CGFloat = 1.0,
         preDelay: TimeInterval = 0.4,
         bloomDuration: TimeInterval = 0.6,
-        dwellDuration: TimeInterval = 0.3,
         collapseDuration: TimeInterval = 0.5
     ) -> some View {
         modifier(
@@ -137,7 +155,6 @@ extension View {
                 iridescenceStrength: iridescenceStrength,
                 preDelay: preDelay,
                 bloomDuration: bloomDuration,
-                dwellDuration: dwellDuration,
                 collapseDuration: collapseDuration
             )
         )
