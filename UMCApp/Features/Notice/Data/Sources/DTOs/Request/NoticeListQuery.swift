@@ -61,3 +61,17 @@ public struct NoticeListQuery: Encodable {
         return params
     }
 }
+
+extension NoticeListQuery {
+    public init(from request: NoticeListRequest) {
+        self.init(
+            gisuId: request.gisuId,
+            chapterId: request.chapterId,
+            schoolId: request.schoolId,
+            part: request.part,
+            page: request.page,
+            size: request.size,
+            sort: request.sort
+        )
+    }
+}
