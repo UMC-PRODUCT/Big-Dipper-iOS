@@ -1,6 +1,6 @@
 //
 //  FetchTermsUseCaseProtocol.swift
-//  MyPageData
+//  MyPageDomain
 //
 //  Created by One on 5/6/26.
 //
