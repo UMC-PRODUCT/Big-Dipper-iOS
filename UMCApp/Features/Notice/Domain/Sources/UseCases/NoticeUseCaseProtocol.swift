@@ -50,7 +50,7 @@ public protocol NoticeUseCaseProtocol {
     ///   - options: 투표 옵션 목록
     /// - Returns: 생성된 투표 ID 정보
     func addVote(
-        noticeId: Int,
+        noticeId: String,
         title: String,
         isAnonymous: Bool,
         allowMultipleChoice: Bool,
@@ -64,32 +64,32 @@ public protocol NoticeUseCaseProtocol {
     ///   - noticeId: 공지 ID
     ///   - links: 추가할 링크 목록
     /// - Returns: 업데이트된 공지 정보
-    func addLink(noticeId: Int, links: [String]) async throws -> NoticeItemModel
+    func addLink(noticeId: String, links: [String]) async throws -> NoticeItemModel
     
     /// 공지사항 이미지 추가 (POST)
     /// - Parameters:
     ///   - noticeId: 공지 ID
     ///   - imageIds: 추가할 이미지 ID 목록
     /// - Returns: 업데이트된 공지 정보
-    func addImage(noticeId: Int, imageIds: [String]) async throws -> NoticeItemModel
+    func addImage(noticeId: String, imageIds: [String]) async throws -> NoticeItemModel
     
     // MARK: - 공지 읽음 처리 (POST)
     
     /// 공지사항 읽음 처리
     /// - Parameter noticeId: 공지 ID
-    func readNotice(noticeId: Int) async throws
+    func readNotice(noticeId: String) async throws
 
     /// 투표 응답(사용자 선택 전송)
     /// - Parameters:
     ///   - noticeId: 공지 ID
     ///   - optionIds: 선택한 옵션 ID 목록
-    func submitVoteResponse(noticeId: Int, optionIds: [Int]) async throws
+    func submitVoteResponse(noticeId: String, optionIds: [String]) async throws
 
     /// 투표 응답 수정
     /// - Parameters:
     ///   - noticeId: 공지 ID
     ///   - optionIds: 수정할 옵션 ID 목록 (빈 배열 전송 시 응답 취소)
-    func updateVoteResponse(noticeId: Int, optionIds: [Int]) async throws
+    func updateVoteResponse(noticeId: String, optionIds: [String]) async throws
     
     // MARK: - 리마인더 (POST)
     
@@ -97,7 +97,7 @@ public protocol NoticeUseCaseProtocol {
     /// - Parameters:
     ///   - noticeId: 공지 ID
     ///   - targetIds: 대상 사용자 ID 목록
-    func sendReminder(noticeId: Int, targetIds: [Int]) async throws
+    func sendReminder(noticeId: String, targetIds: [String]) async throws
     
     // MARK: - 공지 수정 (PATCH)
     
@@ -108,7 +108,7 @@ public protocol NoticeUseCaseProtocol {
     ///   - content: 수정할 본문
     /// - Returns: 수정된 공지 상세 정보
     func updateNotice(
-        noticeId: Int,
+        noticeId: String,
         title: String,
         content: String
     ) async throws -> NoticeDetail
@@ -119,7 +119,7 @@ public protocol NoticeUseCaseProtocol {
     ///   - links: 수정할 링크 목록 (전체 교체)
     /// - Returns: 수정된 공지 상세 정보
     func updateLinks(
-        noticeId: Int,
+        noticeId: String,
         links: [String]
     ) async throws -> NoticeDetail
     
@@ -129,7 +129,7 @@ public protocol NoticeUseCaseProtocol {
     ///   - imageIds: 수정할 이미지 ID 목록 (전체 교체)
     /// - Returns: 수정된 공지 상세 정보
     func updateImages(
-        noticeId: Int,
+        noticeId: String,
         imageIds: [String]
     ) async throws -> NoticeDetail
     
@@ -151,12 +151,12 @@ public protocol NoticeUseCaseProtocol {
     /// 공지사항 상세 조회
     /// - Parameter noticeId: 조회할 공지 ID
     /// - Returns: 공지 상세 정보 (제목, 내용, 작성자, 링크, 이미지, 투표 정보 포함)
-    func getDetailNotice(noticeId: Int) async throws -> NoticeDetail
+    func getDetailNotice(noticeId: String) async throws -> NoticeDetail
 
     /// 공지 열람 통계 조회
     /// - Parameter noticeId: 통계를 조회할 공지 ID
     /// - Returns: 열람 통계 정보 (총 대상자 수, 읽음/안읽음 수)
-    func getReadStatics(noticeId: Int) async throws -> NoticeReadStatics
+    func getReadStatics(noticeId: String) async throws -> NoticeReadStatics
 
     /// 공지 열람 현황 상세 조회 (커서 기반 페이징)
     /// - Parameters:
@@ -167,10 +167,10 @@ public protocol NoticeUseCaseProtocol {
     ///   - status: 읽음 상태 ("READ", "UNREAD", "ALL")
     /// - Returns: 열람 현황 목록 (사용자별 읽음 상태, 다음 커서 ID)
     func getReadStatusList(
-        noticeId: Int,
-        cursorId: Int,
+        noticeId: String,
+        cursorId: String,
         filterType: String,
-        organizationIds: [Int],
+        organizationIds: [String],
         status: String
     ) async throws -> NoticeReadStatusPage
     
@@ -188,9 +188,9 @@ public protocol NoticeUseCaseProtocol {
     
     /// 공지사항 삭제
     /// - Parameter noticeId: 삭제할 공지 ID
-    func deleteNotice(noticeId: Int) async throws
+    func deleteNotice(noticeId: String) async throws
 
     /// 공지사항에 연결된 투표 삭제
     /// - Parameter noticeId: 공지 ID
-    func deleteVote(noticeId: Int) async throws
+    func deleteVote(noticeId: String) async throws
 }
