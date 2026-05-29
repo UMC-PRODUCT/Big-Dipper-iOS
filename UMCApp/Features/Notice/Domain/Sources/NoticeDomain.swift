@@ -1,1 +1,1 @@
-public protocol NoticeUseCase {}
+// public protocol NoticeUseCase {}

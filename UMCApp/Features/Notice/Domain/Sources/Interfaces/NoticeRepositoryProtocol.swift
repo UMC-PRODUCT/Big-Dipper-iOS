@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import NoticeDomain
 
 /// 공지사항 데이터 접근 계층 인터페이스
 ///
@@ -16,20 +15,28 @@ public protocol NoticeRepositoryProtocol {
     // MARK: - 공지 생성
     /// 공지사항 전체 생성
     func createNotice(
-        body: PostNoticeRequestDTO,
-        // TODO: 투표
+        title: String,
+        content: String,
+        shouldNotify: Bool,
+        targetInfo: NoticeTargetInfo,
         links: [String],
         imageIds: [String]
     ) async throws -> NoticeDetail
     
-    /// 공지사항 글 생성
-    func postNotice(body: PostNoticeRequestDTO) async throws -> NoticeItemModel
+// TODO: 사용되는 곳 없음, 검토 필요
+//    /// 공지사항 글 생성
+//    func postNotice(body: PostNoticeRequestDTO) async throws -> NoticeItemModel
     
     /// 공지사항 투표 추가
     func addVote(
         noticeId: String,
-        body: AddVoteRequestDTO
-    ) async throws -> AddVoteResponseDTO
+        title: String,
+        isAnonymous: Bool,
+        allowMultipleChoice: Bool,
+        startsAt: Date,
+        endsAtExclusive: Date,
+        options: [String]
+    ) async throws -> String
     
     /// 공지사항 링크 추가
     func addLink(noticeId: String, links: [String]) async throws -> NoticeItemModel
@@ -38,22 +45,23 @@ public protocol NoticeRepositoryProtocol {
     func addImage(noticeId: String, imageIds: [String]) async throws -> NoticeItemModel
     
     /// 공지사항 리마인더 발송
-    func sendReminder(noticeId: String, targetIds: [Int]) async throws
+    func sendReminder(noticeId: String, targetIds: [String]) async throws
     
     /// 공지사항 읽음 처리
     func readNotice(noticeId: String) async throws
 
     /// 투표 응답(사용자 선택 전송)
-    func submitVoteResponse(noticeId: String, optionIds: [Int]) async throws
+    func submitVoteResponse(noticeId: String, optionIds: [String]) async throws
 
     /// 투표 응답 수정
-    func updateVoteResponse(noticeId: String, optionIds: [Int]) async throws
+    func updateVoteResponse(noticeId: String, optionIds: [String]) async throws
     
     // MARK: - 공지 수정
     /// 공지사항 수정 (제목, 본문)
     func updateNotice(
         noticeId: String,
-        body: UpdateNoticeRequestDTO
+        title: String,
+        content: String
     ) async throws -> NoticeDetail
     
     /// 공지사항 링크 수정
@@ -70,28 +78,28 @@ public protocol NoticeRepositoryProtocol {
     
     // MARK: - 공지 조회
     /// 공지사항 전체 조회
-    func getAllNotices(request: NoticeListQuery) async throws -> NoticePageDTO<NoticeDTO>
+    func getAllNotices(request: NoticeListRequest) async throws -> NoticePage
     
     /// 공지사항 상세 조회
     func getDetailNotice(noticeId: String) async throws -> NoticeDetail
     
     /// 공지 열람 통계 조회
-    func getReadStatics(noticeId: String) async throws -> NoticeReadStaticsDTO
+    func getReadStatics(noticeId: String) async throws -> NoticeReadStatics
     
     /// 공지 열람 현황 상세 조회
     func getReadStatusList(
         noticeId: String,
-        cursorId: Int,
+        cursorId: String,
         filterType: String,
-        organizationIds: [Int],
+        organizationIds: [String],
         status: String
-    ) async throws -> NoticeReadStatusResponseDTO
+    ) async throws -> NoticeReadStatusPage
     
     /// 공지사항 검색
     func searchNotice(
         keyword: String,
-        request: NoticeListQuery
-    ) async throws -> NoticePageDTO<NoticeDTO>
+        request: NoticeListRequest
+    ) async throws -> NoticePage
     
     // MARK: - 공지 삭제
     /// 공지사항 삭제
