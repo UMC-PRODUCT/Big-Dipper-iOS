@@ -12,11 +12,19 @@ import Foundation
 /// UI 프로퍼티(icon/title/placeholder)는 Presentation 모듈의 extension으로 제공합니다.
 public enum SocialLinkType: String, CaseIterable {
     /// 깃허브 링크
-    case github = "Github를"
+    case github
     /// 링크드인 링크
-    case linkedin = "LinkedIn을"
+    case linkedin
     /// 개인 블로그 링크
-    case blog = "Blog를"
+    case blog
+    
+    public var title: String {
+        switch self {
+        case .github: return "Github를"
+        case .linkedin: return "LinkedIn을"
+        case .blog: return "Blog를"
+        }
+    }
 
     /// API 요청/응답에서 사용하는 type 문자열
     public var apiType: String {
