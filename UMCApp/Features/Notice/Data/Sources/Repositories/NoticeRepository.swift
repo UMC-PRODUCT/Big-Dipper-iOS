@@ -10,7 +10,7 @@ import CoreNetwork
 import NoticeDomain
 import UMCFoundation
 
-// MARK: - NoticeRepositoryProtocol
+// MARK: - NoticeRepository
 
 /// 공지사항 Repository 구현체
 ///
@@ -28,10 +28,25 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
     // MARK: - 공지 생성
     /// 공지사항 완전 생성 (links, images 포함) → 상세 조회 반환
     public func createNotice(
-        body: PostNoticeRequestDTO,
-        links: [String] = [],
-        imageIds: [String] = []
+        title: String,
+        content: String,
+        shouldNotify: Bool,
+        targetInfo: NoticeTargetInfo,
+        links: [String],
+        imageIds: [String]
     ) async throws -> NoticeDetail {
+        let body = PostNoticeRequestDTO(
+            title: title,
+            content: content,
+            shouldNotify: shouldNotify,
+            targetInfo: TargetInfoDTO(
+            targetGisuId: Int(targetInfo.gisuId) ?? 0,
+                targetChapterId: targetInfo.chapterId.flatMap(Int.init),
+                targetSchoolId: targetInfo.schoolId.flatMap(Int.init),
+                targetParts: targetInfo.parts
+            )
+        )
+        
         let response = try await adapter.request(NoticeRouter.postNotice(body: body))
         
         let apiResponse = try JSONDecoder().decode(
@@ -108,33 +123,49 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
         )
     }
     
-    /// 공지사항 기본 생성 → NoticeItemModel 반환
-    public func postNotice(body: PostNoticeRequestDTO) async throws -> NoticeItemModel {
-        let response = try await adapter.request(NoticeRouter.postNotice(body: body))
-        
-        let apiResponse = try JSONDecoder().decode(
-            APIResponse<NoticeCreateResponseDTO>.self,
-            from: response.data
-        )
-        let noticeId = try apiResponse.unwrap().noticeId
-        let detail = try await getDetailNotice(noticeId: noticeId)
-        return detail.toItemModel()
-    }
+// TODO: 사용되는 곳 없음, 검토 필요
+//    /// 공지사항 기본 생성 → NoticeItemModel 반환
+//    public func postNotice(body: PostNoticeRequestDTO) async throws -> NoticeItemModel {
+//        let response = try await adapter.request(NoticeRouter.postNotice(body: body))
+//        
+//        let apiResponse = try JSONDecoder().decode(
+//            APIResponse<NoticeCreateResponseDTO>.self,
+//            from: response.data
+//        )
+//        let noticeId = try apiResponse.unwrap().noticeId
+//        let detail = try await getDetailNotice(noticeId: noticeId)
+//        return detail.toItemModel()
+//    }
     
     /// 공지사항 투표 추가
     public func addVote(
         noticeId: String,
-        body: AddVoteRequestDTO
-    ) async throws -> AddVoteResponseDTO {
+        title: String,
+        isAnonymous: Bool,
+        allowMultipleChoice: Bool,
+        startsAt: Date,
+        endsAtExclusive: Date,
+        options: [String]
+    ) async throws -> String {
+        let formatter = ISO8601DateFormatter()
+        let body = AddVoteRequestDTO(
+            title: title,
+            isAnonymous: isAnonymous,
+            allowMultipleChoice: allowMultipleChoice,
+            startsAt: formatter.string(from: startsAt),
+            endsAtExclusive: formatter.string(from: endsAtExclusive),
+            options: options
+        )
+        
         let response = try await adapter.request(
             NoticeRouter.addVote(noticeId: noticeId, body: body)
         )
-
+        
         let apiResponse = try JSONDecoder().decode(
             APIResponse<AddVoteResponseDTO>.self,
             from: response.data
         )
-        return try apiResponse.unwrap()
+        return try apiResponse.unwrap().noticeVoteId
     }
     
     /// 공지사항 링크 추가 → NoticeItemModel 반환
@@ -174,7 +205,7 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
     }
     
     /// 공지사항 리마인더 발송
-    public func sendReminder(noticeId: String, targetIds: [Int]) async throws {
+    public func sendReminder(noticeId: String, targetIds: [String]) async throws {
         let response = try await adapter.request(
             NoticeRouter.sendReminder(
                 noticeId: noticeId,
@@ -203,7 +234,7 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
     }
 
     /// 투표 응답(사용자 선택 전송)
-    public func submitVoteResponse(noticeId: String, optionIds: [Int]) async throws {
+    public func submitVoteResponse(noticeId: String, optionIds: [String]) async throws {
         let response = try await adapter.request(
             NoticeRouter.submitVoteResponse(
                 noticeId: noticeId,
@@ -219,7 +250,7 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
     }
 
     /// 투표 응답 수정
-    public func updateVoteResponse(noticeId: String, optionIds: [Int]) async throws {
+    public func updateVoteResponse(noticeId: String, optionIds: [String]) async throws {
         let response = try await adapter.request(
             NoticeRouter.updateVoteResponse(
                 noticeId: noticeId,
@@ -237,7 +268,8 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
     // MARK: - 공지 수정
     
     /// 공지사항 수정 (제목, 본문) → NoticeDetail 반환
-    public func updateNotice(noticeId: String, body: UpdateNoticeRequestDTO) async throws -> NoticeDetail {
+    public func updateNotice(noticeId: String, title: String, content: String) async throws -> NoticeDetail {
+        let body = UpdateNoticeRequestDTO(title: title, content: content)
         let response = try await adapter.request(
             NoticeRouter.updateNotice(noticeId: noticeId, body: body)
         )
@@ -293,30 +325,28 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
     // MARK: - 공지 조회
     
     /// 공지사항 전체 조회
-    public func getAllNotices(
-        request: NoticeListQuery
-    ) async throws -> NoticePageDTO<NoticeDTO> {
+    public func getAllNotices(request: NoticeListRequest) async throws -> NoticePage {
         let response = try await adapter.request(
-            NoticeRouter.getAllNotices(request: request)
+            NoticeRouter.getAllNotices(request: NoticeListQuery(from: request))
         )
-
         do {
             let apiResponse = try JSONDecoder().decode(
                 APIResponse<NoticePageDTO<NoticeDTO>>.self,
                 from: response.data
             )
             let pageDTO = try apiResponse.unwrap()
-
+            
             #if DEBUG
             print(
                 "[NoticeRepository] getAllNotices success " +
-                "query=\(request.toParameters) " +
+                "query=\(NoticeListQuery(from: request).toParameters) " +
                 "contentCount=\(pageDTO.content.count) " +
                 "totalElements=\(pageDTO.totalElements)"
             )
             #endif
-
-            return pageDTO
+            
+            let items = pageDTO.content.map { $0.toItemModel() }
+            return NoticePage(items: items, hasNext: pageDTO.hasNext, totalElements: pageDTO.totalElements)
         } catch let decodingError as DecodingError {
             #if DEBUG
             let rawBody = String(data: response.data, encoding: .utf8) ?? "<invalid utf8>"
@@ -352,7 +382,7 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
     }
     
     /// 공지 열람 통계 조회
-    public func getReadStatics(noticeId: String) async throws -> NoticeReadStaticsDTO {
+    public func getReadStatics(noticeId: String) async throws -> NoticeReadStatics {
         let response = try await adapter.request(
             NoticeRouter.getNoticeReadStatusCount(noticeId: noticeId)
         )
@@ -361,50 +391,60 @@ public struct NoticeRepository: NoticeRepositoryProtocol {
             APIResponse<NoticeReadStaticsDTO>.self,
             from: response.data
         )
-        return try apiResponse.unwrap()
+        let dto = try apiResponse.unwrap()
+        return NoticeReadStatics(
+            totalCount: dto.totalCount,
+            readCount: dto.readCount,
+            unreadCount: dto.unreadCount,
+            readRate: dto.readRate
+        )
     }
     
     /// 공지 열람 현황 상세 조회
     public func getReadStatusList(
         noticeId: String,
-        cursorId: Int = 0,
+        cursorId: String = "0",
         filterType: String,
-        organizationIds: [Int],
+        organizationIds: [String],
         status: String
-    ) async throws -> NoticeReadStatusResponseDTO {
+    ) async throws -> NoticeReadStatusPage {
         let response = try await adapter.request(
             NoticeRouter.getNoticeReadStatusList(
                 noticeId: noticeId,
                 query: NoticeReadStatusListQuery(
-                    cursorId: cursorId,
+                    cursorId: Int(cursorId) ?? 0,
                     filterType: filterType,
-                    organizationIds: organizationIds,
+                    organizationIds: organizationIds.compactMap { Int($0) },
                     status: status
                 )
             )
         )
-        
         let apiResponse = try JSONDecoder().decode(
             APIResponse<NoticeReadStatusResponseDTO>.self,
             from: response.data
         )
-        return try apiResponse.unwrap()
+        let dto = try apiResponse.unwrap()
+        let isRead = status == "READ"
+        let users = dto.content.map { $0.toDomain(isRead: isRead) }
+        return NoticeReadStatusPage(users: users, nextCursor: dto.nextCursor, hasNext: dto.hasNext)
     }
     
     /// 공지사항 검색
     public func searchNotice(
         keyword: String,
-        request: NoticeListQuery
-    ) async throws -> NoticePageDTO<NoticeDTO> {
+        request: NoticeListRequest
+    ) async throws -> NoticePage {
         let response = try await adapter.request(
-            NoticeRouter.searchNotice(keyword: keyword, request: request)
+            NoticeRouter.searchNotice(keyword: keyword, request: NoticeListQuery(from: request))
         )
         
         let apiResponse = try JSONDecoder().decode(
             APIResponse<NoticePageDTO<NoticeDTO>>.self,
             from: response.data
         )
-        return try apiResponse.unwrap()
+        let pageDTO = try apiResponse.unwrap()
+        let items = pageDTO.content.map { $0.toItemModel() }
+        return NoticePage(items: items, hasNext: pageDTO.hasNext, totalElements: pageDTO.totalElements)
     }
     
     // MARK: - 공지 삭제
