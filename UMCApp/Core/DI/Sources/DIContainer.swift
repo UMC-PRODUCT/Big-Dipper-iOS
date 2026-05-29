@@ -172,7 +172,7 @@ extension DIContainer {
         container.register(TokenStore.self) {
             KeychainTokenStore()
         }
-
+        
         // MARK: - Network Infrastructure
         container.register(NetworkClient.self) {
             AuthSystemFactory.makeNetworkClient(
@@ -185,7 +185,15 @@ extension DIContainer {
         container.register(TokenStore.self) {
             KeychainTokenStore()
         }
-
+        
+        // MARK: - Moya Network Adapter
+        container.register(MoyaNetworkAdapter.self) {
+            MoyaNetworkAdapter(
+                networkClient: container.resolve(NetworkClient.self),
+                baseURL: NetworkConfig.baseURL
+            )
+        }
+        
         return container
     }
 
