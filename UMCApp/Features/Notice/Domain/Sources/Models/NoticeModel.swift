@@ -8,18 +8,6 @@
 import Foundation
 import UMCFoundation
 
-// MARK: - Generation
-/// 기수 모델
-public struct Generation: Identifiable, Equatable, Hashable {
-    public let value: String
-    public var id: String { value }
-    public var title: String { "\(value)기" }
-    
-    public init(value: String) {
-        self.value = value
-    }
-}
-
 // MARK: - NoticeScope
 /// 공지 출처 (어디서 온 공지인지)
 public enum NoticeScope: Equatable, Hashable {
