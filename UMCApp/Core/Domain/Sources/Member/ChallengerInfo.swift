@@ -19,10 +19,10 @@ public struct ChallengerInfo: Identifiable, Equatable, Hashable {
     public let memberId: String
 
     /// challenger ID (챌린저 엔티티 식별용)
-    public let challengerId: Int
+    public let challengerId: String
 
     /// 기수 (예: 11기)
-    public let gen: Int
+    public let gen: String
 
     /// 실명
     public let name: String
@@ -49,8 +49,8 @@ public struct ChallengerInfo: Identifiable, Equatable, Hashable {
     public init(
         id: UUID = .init(),
         memberId: String,
-        challengerId: Int? = nil,
-        gen: Int,
+        challengerId: String? = nil,
+        gen: String,
         name: String,
         nickname: String,
         schoolName: String,
@@ -59,7 +59,7 @@ public struct ChallengerInfo: Identifiable, Equatable, Hashable {
     ) {
         self.id = id
         self.memberId = memberId
-        self.challengerId = challengerId ?? (Int(memberId) ?? 0)
+        self.challengerId = challengerId ?? "0"
         self.gen = gen
         self.name = name
         self.nickname = nickname

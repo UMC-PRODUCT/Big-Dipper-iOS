@@ -15,7 +15,7 @@ public struct ProfileData: Identifiable, Equatable, Hashable {
     public var id: UUID = .init()
 
     /// 챌린지 ID (서버 연동 등에서 사용)
-    public var challengeId: Int
+    public var challengeId: String
 
     /// 사용자 기본 정보 (이름, 학교, 기수 등)
     public var challangerInfo: ChallengerInfo
@@ -36,7 +36,7 @@ public struct ProfileData: Identifiable, Equatable, Hashable {
 
     public init(
         id: UUID = .init(),
-        challengeId: Int,
+        challengeId: String,
         challangerInfo: ChallengerInfo,
         socialConnections: [SocialConnection],
         activityLogs: [ActivityLog],
@@ -54,14 +54,14 @@ public struct ProfileData: Identifiable, Equatable, Hashable {
 /// 연동된 소셜 계정의 서버 식별자와 타입을 나타내는 모델입니다.
 public struct SocialConnection: Identifiable, Equatable, Hashable {
     /// OAuth 연동 ID
-    public let memberOAuthId: Int
+    public let memberOAuthId: String
 
     /// 연동된 소셜 타입
     public let socialType: SocialType
 
-    public var id: Int { memberOAuthId }
+    public var id: String { memberOAuthId }
 
-    public init(memberOAuthId: Int, socialType: SocialType) {
+    public init(memberOAuthId: String, socialType: SocialType) {
         self.memberOAuthId = memberOAuthId
         self.socialType = socialType
     }
@@ -76,7 +76,7 @@ public struct ActivityLog: Identifiable, Equatable, Hashable {
     public var part: UMCPartType
 
     /// 활동 기수 (예: 11기, 12기)
-    public var generation: Int
+    public var generation: String
 
     /// 맡았던 역할 목록 (같은 기수/파트에서 여러 역할을 가질 수 있음)
     public var roles: [ManagementTeam]
@@ -89,7 +89,7 @@ public struct ActivityLog: Identifiable, Equatable, Hashable {
     public init(
         id: UUID = .init(),
         part: UMCPartType,
-        generation: Int,
+        generation: String,
         role: ManagementTeam
     ) {
         self.id = id
@@ -101,7 +101,7 @@ public struct ActivityLog: Identifiable, Equatable, Hashable {
     public init(
         id: UUID = .init(),
         part: UMCPartType,
-        generation: Int,
+        generation: String,
         roles: [ManagementTeam]
     ) {
         self.id = id
