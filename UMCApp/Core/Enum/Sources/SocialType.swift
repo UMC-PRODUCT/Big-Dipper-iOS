@@ -17,11 +17,7 @@ public enum SocialType: String, CaseIterable, Hashable {
     case apple = "Apple"
     /// 구글 로그인
     case google = "Google"
-
-    public static var allCases: [SocialType] {
-        [.kakao, .apple, .google]
-    }
-
+    
     /// 앱에서 직접 로그인/연동 추가를 지원하는 소셜 목록입니다.
     public static var appConnectableCases: [SocialType] {
         [.kakao, .apple]
