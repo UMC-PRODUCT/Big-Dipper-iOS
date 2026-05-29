@@ -13,8 +13,8 @@ import CoreEnum
 /// Community / MyPage 등 여러 Feature에서 공유합니다.
 public struct CommunityItemModel: Equatable, Identifiable, Hashable {
     public let id = UUID()
-    public let postId: Int
-    public let userId: Int
+    public let postId: String
+    public let userId: String
     public let category: CommunityItemCategory
     public let title: String
     public let content: String
@@ -23,9 +23,9 @@ public struct CommunityItemModel: Equatable, Identifiable, Hashable {
     public let userNickname: String?
     public let part: UMCPartType
     public let createdAt: Date
-    public var likeCount: Int
-    public let commentCount: Int
-    public var scrapCount: Int
+    public var likeCount: String
+    public let commentCount: String
+    public var scrapCount: String
     public var isLiked: Bool = false
     public var isScrapped: Bool = false
     public let isAuthor: Bool
@@ -39,8 +39,8 @@ public struct CommunityItemModel: Equatable, Identifiable, Hashable {
     }
 
     public init(
-        postId: Int,
-        userId: Int,
+        postId: String,
+        userId: String,
         category: CommunityItemCategory,
         title: String,
         content: String,
@@ -49,9 +49,9 @@ public struct CommunityItemModel: Equatable, Identifiable, Hashable {
         userNickname: String?,
         part: UMCPartType,
         createdAt: Date,
-        likeCount: Int,
-        commentCount: Int,
-        scrapCount: Int,
+        likeCount: String,
+        commentCount: String,
+        scrapCount: String,
         isLiked: Bool = false,
         isScrapped: Bool = false,
         isAuthor: Bool,
