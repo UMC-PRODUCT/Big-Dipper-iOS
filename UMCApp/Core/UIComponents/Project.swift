@@ -7,7 +7,6 @@ let project = coreProject(
     dependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
-        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .external(name: "Kingfisher"),
     ]
 )
