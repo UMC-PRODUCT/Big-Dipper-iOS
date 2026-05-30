@@ -1,5 +1,5 @@
 //
-//  DIContatiner.swift
+//  DIContainer.swift
 //  CoreDI
 //
 //  Created by One on 5/10/26.
