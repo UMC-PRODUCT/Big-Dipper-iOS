@@ -304,9 +304,23 @@ private actor StubAuthRepository: AuthRepositoryProtocol {
     }
 
     func sendEmailVerification(
-        email: String
+        email: String,
+        purpose: EmailVerificationPurpose
     ) async throws -> String {
         fatalError("sendEmailVerification not used in these tests")
+    }
+
+    func resendEmailVerification(
+        emailVerificationId: String
+    ) async throws {
+        fatalError("resendEmailVerification not used in these tests")
+    }
+
+    func resetPassword(
+        emailVerificationToken: String,
+        newPassword: String
+    ) async throws {
+        fatalError("resetPassword not used in these tests")
     }
 
     func verifyEmailCode(
@@ -336,6 +350,10 @@ private actor StubAuthRepository: AuthRepositoryProtocol {
         termsType: String
     ) async throws -> Terms {
         fatalError("getTerms not used in these tests")
+    }
+
+    func registerCredential(rawPassword: String) async throws {
+        fatalError("registerCredential not used in these tests")
     }
 }
 

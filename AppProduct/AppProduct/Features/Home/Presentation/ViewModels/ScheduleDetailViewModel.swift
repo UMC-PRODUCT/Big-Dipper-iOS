@@ -29,10 +29,12 @@ class ScheduleDetailViewModel {
     var alertPromprt: AlertPrompt?
     /// 수정 화면 표시 여부
     var isShowModify: Bool = false
-    /// 일정 수정 가능 여부 (WRITE/MANAGE)
+    /// 일정 수정 가능 여부 (EDIT/WRITE/MANAGE)
     var canEditSchedule: Bool = false
     /// 일정 삭제 가능 여부 (DELETE/MANAGE)
     var canDeleteSchedule: Bool = false
+    /// 출석 기록 보유 일정에 대한 강제 삭제 가능 여부 (FORCE_DELETE/MANAGE — 일정 기수의 SUPER_ADMIN)
+    var canForceDeleteSchedule: Bool = false
     /// 일정 삭제 진행 중 여부
     var isDeleting: Bool = false
 
@@ -109,6 +111,7 @@ class ScheduleDetailViewModel {
         if ProcessInfo.processInfo.arguments.contains("--schedule-force-permission") {
             canEditSchedule = true
             canDeleteSchedule = true
+            canForceDeleteSchedule = true
             return
         }
         #endif
@@ -118,12 +121,33 @@ class ScheduleDetailViewModel {
                 resourceType: .schedule,
                 resourceId: scheduleId
             )
-            canEditSchedule = permission.hasAny([.write, .manage])
+            canEditSchedule = permission.hasAny([.edit, .write, .manage])
             canDeleteSchedule = permission.hasAny([.delete, .manage])
+            canForceDeleteSchedule = permission.hasAny([.forceDelete, .manage])
         } catch {
             canEditSchedule = false
             canDeleteSchedule = false
+            canForceDeleteSchedule = false
         }
+    }
+
+    /// 출석 기록이 있는 일정에 대한 강제 삭제 확인 Alert을 표시합니다.
+    ///
+    /// 일반 삭제가 ``DomainError/scheduleHasAttendanceRecords`` 로 거부되었을 때,
+    /// SUPER_ADMIN(FORCE_DELETE 권한 보유자)에게만 노출되는 2차 확인 다이얼로그입니다.
+    ///
+    /// - Parameter onConfirm: 강제 삭제 확정 시 실행할 액션
+    func forceDeleteAlertAction(onConfirm: @escaping () -> Void) {
+        alertPromprt = .init(
+            title: "출석 기록 포함 일정 강제 삭제",
+            message:
+                "이 일정에는 이미 출석 기록이 있습니다.\n강제 삭제하면 출석 데이터까지 함께 삭제되며, 되돌릴 수 없습니다.",
+            positiveBtnTitle: "강제 삭제",
+            positiveBtnAction: onConfirm,
+            negativeBtnTitle: "취소",
+            negativeBtnAction: {},
+            isPositiveBtnDestructive: true
+        )
     }
 
     /// 일정 상세 정보를 조회합니다.

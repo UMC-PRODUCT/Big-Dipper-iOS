@@ -6,10 +6,8 @@
 .DS_Store
 .AppleDouble
 .LSOverride
-
 # Thumbnails
 ._*
-
 # Files that might appear in the root of a volume
 .DocumentRevisions-V100
 .fseventsd
@@ -18,30 +16,24 @@
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
-
 # Directories potentially created on remote AFP share
 .AppleDB
 .AppleDesktop
 Network Trash Folder
 Temporary Items
 .apdisk
-
 ### macOS Patch ###
 # iCloud generated files
 *.icloud
-
 ### Swift ###
 # Xcode
 #
 # gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
-
 ## User settings
 xcuserdata/
-
 ## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
 *.xcscmblueprint
 *.xccheckout
-
 ## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
 build/
 DerivedData/
@@ -54,19 +46,15 @@ DerivedData/
 !default.mode2v3
 *.perspectivev3
 !default.perspectivev3
-
 ## Obj-C/Swift specific
 *.hmap
-
 ## App packaging
 *.ipa
 *.dSYM.zip
 *.dSYM
-
 ## Playgrounds
 timeline.xctimeline
 playground.xcworkspace
-
 # Swift Package Manager
 # Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
 # Packages/
@@ -76,9 +64,7 @@ playground.xcworkspace
 # Xcode automatically generates this directory with a .xcworkspacedata file and xcuserdata
 # hence it is not needed unless you have added a package configuration file to your project
 # .swiftpm
-
 .build/
-
 # CocoaPods
 # We recommend against adding the Pods directory to your .gitignore. However
 # you should judge for yourself, the pros and cons are mentioned at:
@@ -86,43 +72,31 @@ playground.xcworkspace
 # Pods/
 # Add this line if you want to avoid checking in source code from the Xcode workspace
 # *.xcworkspace
-
 # Carthage
 # Add this line if you want to avoid checking in source code from Carthage dependencies.
 # Carthage/Checkouts
-
 Carthage/Build/
-
 # Accio dependency management
 Dependencies/
 .accio/
-
 # fastlane
 # It is recommended to not store the screenshots in the git repo.
 # Instead, use fastlane to re-generate the screenshots whenever they are needed.
 # For more information about the recommended setup visit:
 # https://docs.fastlane.tools/best-practices/source-control/#source-control
-
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
-
 # Code Injection
 # After new code Injection tools there's a generated folder /iOSInjectionProject
 # https://github.com/johnno1962/injectionforxcode
-
 iOSInjectionProject/
-
 ### SwiftPackageManager ###
 Packages
 xcuserdata
-
-
 ### Xcode ###
-
 ## Xcode 8 and earlier
-
 ### Xcode Patch ###
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
@@ -131,14 +105,10 @@ xcuserdata
 !*.xcworkspace/contents.xcworkspacedata
 /*.gcno
 **/xcshareddata/WorkspaceSettings.xcsettings
-
 # End of https://www.toptal.com/developers/gitignore/api/swift,macos,xcode,swiftpackagemanager
-
 # Custom Rules
-
 ## Xcconfig
 Secrets.xcconfig
-
 ## Claude Code (개인 설정)
 CLAUDE.local.md
 AGENTS.local.md
@@ -147,24 +117,17 @@ AGENTS.md
 .claude/
 .mcp.json
 PROJECT_CONTEXT.md
-
 ## Swagger 자동화 개인용 파일 (로컬 전용)
 tools/openapi/
 docs/openapi/
 AppProduct/AppProduct/Features/*/Data/Generated/
-
 ## 테스트 설정 (토큰, 인증코드 등 민감 정보)
 .test-config.*
-
 # Personal agent context
-
-
 # Firebase local config
 GoogleService-Info.plist
-
 # Superpowers / brainstorming local caches
 .superpowers/
 docs/superpowers/
-
 # Git worktrees
 .worktrees/

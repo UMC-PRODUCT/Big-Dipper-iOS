@@ -26,6 +26,8 @@ enum ScheduleV2Router {
     // TODO: [#688] 백엔드 OpenAPI 어노테이션 미등록 — 추가 후 Stella 재스캔 시 unmatched에서 제외 예정
     /// 일정 삭제 (스터디 그룹 일정 2단계 실패 시 베스트 에포트 롤백 등)
     case deleteSchedule(scheduleId: Int)
+    /// 일정 강제 삭제 (출석 기록이 있는 일정 — 일정 기수의 SUPER_ADMIN 전용)
+    case forceDeleteSchedule(scheduleId: Int)
     /// 운영진용 일정 출석 현황 목록 조회 (SCHEDULE-Q004)
     ///
     /// - `from` / `to` 미지정 시 서버 기본값(요청 시점 -1개월 ~ +24시간) 적용
@@ -60,6 +62,8 @@ extension ScheduleV2Router: BaseTargetType {
             return "/api/v2/schedules/\(scheduleId)"
         case .deleteSchedule(let scheduleId):
             return "/api/v2/schedules/\(scheduleId)"
+        case .forceDeleteSchedule(let scheduleId):
+            return "/api/v2/schedules/\(scheduleId)/force"
         case .getAttendanceList:
             return "/api/v2/schedules/attendance"
         case .getAttendanceDetail(let scheduleId, _):
@@ -84,7 +88,7 @@ extension ScheduleV2Router: BaseTargetType {
             return .post
         case .patchSchedule:
             return .patch
-        case .deleteSchedule:
+        case .deleteSchedule, .forceDeleteSchedule:
             return .delete
         }
     }
@@ -93,7 +97,7 @@ extension ScheduleV2Router: BaseTargetType {
 
     var task: Moya.Task {
         switch self {
-        case .getCapabilities, .getScheduleDetail, .deleteSchedule:
+        case .getCapabilities, .getScheduleDetail, .deleteSchedule, .forceDeleteSchedule:
             return .requestPlain
         case .getMySchedules(let query):
             return .requestParameters(

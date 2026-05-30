@@ -39,6 +39,15 @@ enum AuthError: Error, LocalizedError, Equatable {
     /// 인증 코드 만료
     case verificationCodeExpired
 
+    /// 이미 가입된 이메일 (회원가입 시)
+    case emailAlreadyExists
+
+    /// 이메일 인증 발송 throttle (60초 이내 재요청)
+    case emailVerificationThrottled
+
+    /// 잘못된 이메일 형식 (서버 검증 실패)
+    case invalidEmailFormat
+
     // MARK: - LocalizedError
 
     var errorDescription: String? {
@@ -63,6 +72,12 @@ enum AuthError: Error, LocalizedError, Equatable {
             return "인증 번호가 올바르지 않습니다."
         case .verificationCodeExpired:
             return "인증 번호가 만료되었습니다."
+        case .emailAlreadyExists:
+            return "이미 가입된 이메일입니다."
+        case .emailVerificationThrottled:
+            return "잠시 후 다시 시도해주세요."
+        case .invalidEmailFormat:
+            return "유효하지 않은 이메일 형식입니다."
         }
     }
 
@@ -79,6 +94,12 @@ enum AuthError: Error, LocalizedError, Equatable {
             return "인증 번호를 다시 확인해주세요."
         case .verificationCodeExpired:
             return "인증 번호가 만료되었어요. 다시 요청해주세요."
+        case .emailAlreadyExists:
+            return "이미 가입된 이메일이에요."
+        case .emailVerificationThrottled:
+            return "60초 후에 다시 요청해주세요."
+        case .invalidEmailFormat:
+            return "유효하지 않은 이메일 형식이에요."
         default:
             return errorDescription ?? ""
         }

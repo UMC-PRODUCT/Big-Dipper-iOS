@@ -26,6 +26,8 @@ enum AuthorizationPermissionType: String, CaseIterable, Hashable {
     case edit = "EDIT"
     case write = "WRITE"
     case delete = "DELETE"
+    /// 출석 기록이 있는 일정에 대한 강제 삭제 권한 (일정 기수의 SUPER_ADMIN만 부여).
+    case forceDelete = "FORCE_DELETE"
     case approve = "APPROVE"
     case check = "CHECK"
     case manage = "MANAGE"

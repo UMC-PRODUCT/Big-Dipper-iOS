@@ -568,7 +568,7 @@ private func signUpPreview(shouldFailTerms: Bool = false) -> some View {
 }
 
 private struct SignUpPreviewSendEmailUseCase: SendEmailVerificationUseCaseProtocol {
-    func execute(email: String) async throws -> String {
+    func execute(email: String, purpose: EmailVerificationPurpose) async throws -> String {
         "preview_verification_id"
     }
 }

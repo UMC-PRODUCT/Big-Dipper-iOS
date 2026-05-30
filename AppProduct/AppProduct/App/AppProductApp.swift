@@ -14,7 +14,7 @@ import TipKit
 
 /// UMC 동아리 운영 관리 앱의 진입점
 ///
-/// 앱 상태(splash/login/signUp/main)에 따라 루트 화면을 전환하고,
+/// 앱 상태(bootstrap/login/signUp/main)에 따라 루트 화면을 전환하고,
 /// DIContainer, ErrorHandler, ModelContainer를 하위 뷰에 주입합니다.
 @main
 struct AppProductApp: App {
@@ -25,15 +25,15 @@ struct AppProductApp: App {
     @State private var container: DIContainer
     @State private var didConfigureAppDelegate: Bool = false
     @State private var errorHandler: ErrorHandler = .init()
-    @State private var appState: AppState = .splash
+    @State private var appState: AppState = .bootstrap
     private let sharedModelContainer: ModelContainer
 
     // MARK: - AppState
 
     /// 앱 전체 화면 상태
     private enum AppState: Equatable {
-        /// 스플래시 화면 (토큰 검사 중)
-        case splash
+        /// 부트스트랩 화면 (자동 chromaticLens 시네마틱 + 토큰/프로필 검사)
+        case bootstrap
         /// 로그인 화면
         case login
         /// 회원가입 화면
@@ -93,13 +93,15 @@ extension AppProductApp {
     private var rootView: some View {
         ZStack {
             switch appState {
-            case .splash:
-                SplashView(
+            case .bootstrap:
+                AuthBootstrapView(
                     networkClient: container.resolve(NetworkClient.self),
                     fetchMyProfileUseCase: container.resolve(
                         HomeUseCaseProviding.self
                     ).fetchMyProfileUseCase,
-                    tokenStore: container.resolve(TokenStore.self)
+                    tokenStore: container.resolve(TokenStore.self),
+                    loginUseCase: authProvider.loginUseCase,
+                    errorHandler: errorHandler
                 )
                 .transition(rootTransition)
 

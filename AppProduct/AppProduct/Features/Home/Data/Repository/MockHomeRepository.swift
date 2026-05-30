@@ -73,6 +73,10 @@ final class MockScheduleRepository: ScheduleRepositoryProtocol {
     func deleteSchedule(scheduleId: Int) async throws {
         throw DomainError.insufficientPermission(required: "인증")
     }
+
+    func forceDeleteSchedule(scheduleId: Int) async throws {
+        throw DomainError.insufficientPermission(required: "SUPER_ADMIN")
+    }
 }
 
 // MARK: - MockChallengerGenRepository

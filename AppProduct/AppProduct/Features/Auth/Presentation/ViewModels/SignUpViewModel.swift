@@ -179,7 +179,7 @@ final class SignUpViewModel {
     @MainActor
     func requestEmailVerification() async throws {
         let id = try await sendEmailVerificationUseCase
-            .execute(email: email)
+            .execute(email: email, purpose: .register)
         emailVerificationId = id
     }
 

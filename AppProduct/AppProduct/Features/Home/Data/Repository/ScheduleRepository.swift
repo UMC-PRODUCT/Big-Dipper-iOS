@@ -67,8 +67,11 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
 
     /// 일정을 단순 삭제합니다.
     ///
+    /// 서버는 출석 기록이 1건이라도 있는 일정에 대해 일반 DELETE 를 거부합니다 (FORCE_DELETE 만 허용).
+    /// 이 경우 응답 메시지를 파싱해 ``DomainError/scheduleHasAttendanceRecords`` 로 변환합니다.
+    ///
     /// - Parameter scheduleId: 삭제할 일정 ID
-    /// - Throws: 서버 에러 또는 네트워크 에러
+    /// - Throws: ``DomainError/scheduleHasAttendanceRecords`` / 서버 에러 / 네트워크 에러
     func deleteSchedule(
         scheduleId: Int
     ) async throws {
@@ -82,7 +85,23 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
             APIResponse<EmptyResult>.self,
             from: response.data
         )
-        try apiResponse.validateSuccess()
+        do {
+            try apiResponse.validateSuccess()
+        } catch let error as RepositoryError {
+            throw Self.mapScheduleDeleteError(error)
+        }
+    }
+
+    /// 일정 삭제 실패 메시지에서 출석 기록 존재 케이스를 감지해 도메인 에러로 변환합니다.
+    ///
+    /// 서버 메시지 또는 에러 코드를 기반으로 ``DomainError/scheduleHasAttendanceRecords`` 로 매핑합니다.
+    private static func mapScheduleDeleteError(_ error: RepositoryError) -> Error {
+        guard case .serverError(let code, let message) = error else { return error }
+        let combined = "\(code ?? "") \(message ?? "")"
+        if combined.contains("출석 기록") || combined.contains("출석 데이터") || combined.contains("출석") && combined.contains("삭제") {
+            return DomainError.scheduleHasAttendanceRecords
+        }
+        return error
     }
 
     /// 일정 정보를 부분 수정합니다.
@@ -118,5 +137,27 @@ final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Sendable 
         scheduleId: Int
     ) async throws {
         try await deleteSchedule(scheduleId: scheduleId)
+    }
+
+    /// 출석 기록이 있는 일정을 강제 삭제합니다.
+    ///
+    /// 서버 권한 정책상 일정 기수의 SUPER_ADMIN 만 호출할 수 있으며, 그 외 사용자는 403 으로 반려됩니다.
+    ///
+    /// - Parameter scheduleId: 강제 삭제할 일정 ID
+    /// - Throws: 서버 에러 또는 네트워크 에러
+    func forceDeleteSchedule(
+        scheduleId: Int
+    ) async throws {
+        let response = try await adapter.request(
+            ScheduleV2Router.forceDeleteSchedule(scheduleId: scheduleId)
+        )
+        if response.data.isEmpty {
+            return
+        }
+        let apiResponse = try decoder.decode(
+            APIResponse<EmptyResult>.self,
+            from: response.data
+        )
+        try apiResponse.validateSuccess()
     }
 }

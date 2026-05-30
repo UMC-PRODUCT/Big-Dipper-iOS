@@ -55,6 +55,21 @@ struct OperatorStudyManagementView: View {
         _viewModel = State(initialValue: studyManagementViewModel)
     }
 
+    // MARK: - Constants
+
+    private enum Constants {
+        static let permissionTitle: String = "스터디 그룹 관리"
+        static let permissionDescription: String = "등록된 스터디 그룹이 없습니다\n스터디 그룹 생성에는 별도 권한이 필요해요"
+        static let permissionGuideTitle: String = "스터디 관리가 가능한 역할"
+        static let roleChapterLeader: String = "지부장"
+        static let rolePresident: String = "회장 / 부회장"
+        static let roleOperator: String = "운영진"
+        static let roleChapterLeaderDescription: String = "지부 내 전체 학교의 스터디를 관리할 수 있어요"
+        static let rolePresidentDescription: String = "소속 학교의 스터디 그룹을 생성·관리할 수 있어요"
+        static let roleOperatorDescription: String = "담당 파트의 스터디를 조회할 수 있어요"
+        static let permissionGuideFooter: String = "권한이 필요하다면 지부장 또는 회장에게 역할 부여를 요청하세요"
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -131,81 +146,96 @@ struct OperatorStudyManagementView: View {
         }
     }
 
+    @ViewBuilder
     private var groupManagementEmptyView: some View {
-        emptyContentView(
-            title: "스터디 그룹 관리",
-            message: "등록된 스터디 그룹이 없습니다"
-        )
+        if canCreateStudyGroup {
+            ContentUnavailableView {
+                Label("스터디 그룹 관리", systemImage: "person.3")
+            } description: {
+                Text("등록된 스터디 그룹이 없습니다\n상단의 + 버튼으로 새 그룹을 만들어 보세요")
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        } else {
+            permissionDeniedView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        }
     }
 
     private func groupManagementListView(groups: [StudyGroupInfo]) -> some View {
         ScrollView {
-            LazyVStack(spacing: DefaultSpacing.spacing16) {
-                ForEach(groups) { group in
-                    StudyGroupCard(
-                        detail: group,
-                        onEdit: {
-                            viewModel.showEditSheet(for: group)
-                        },
-                        onDelete: {
-                            viewModel.deleteGroup(group)
-                        },
-                        onAddMember: {
-                            viewModel.showAddMemberSheet(
-                                for: group
-                            )
-                        },
-                        onAddMentor: {
-                            viewModel.showAddMentorSheet(for: group)
-                        },
-                        onSchedule: {
-                            let isMentor = group.mentors.contains { mentor in
-                                mentor.challengerID == currentChallengerId
-                            }
-                            guard isMentor else {
-                                viewModel.alertPrompt = AlertPrompt(
-                                    title: "권한 없음",
-                                    message: "담당 파트장(멘토)만 일정을 등록할 수 있습니다.",
-                                    positiveBtnTitle: "확인"
+            // Apple iOS 26 가이드: 같은 화면에 Liquid Glass가 여러 개 있을 때
+            // GlassEffectContainer 로 묶어 카드 사이 morphing/blending + 렌더링 성능 ↑
+            GlassEffectContainer(spacing: DefaultSpacing.spacing16) {
+                LazyVStack(spacing: DefaultSpacing.spacing16) {
+                    ForEach(groups) { group in
+                        StudyGroupCard(
+                            detail: group,
+                            onEdit: {
+                                viewModel.showEditSheet(for: group)
+                            },
+                            onDelete: {
+                                viewModel.deleteGroup(group)
+                            },
+                            onAddMember: {
+                                viewModel.showAddMemberSheet(
+                                    for: group
                                 )
-                                return
-                            }
-                            guard let studyGroupId = Int(group.serverID) else {
-                                return
-                            }
-                            pathStore.activityPath.append(
-                                .activity(
-                                    .studyScheduleRegistration(
-                                        studyName: group.name,
-                                        studyGroupId: studyGroupId
+                            },
+                            onAddMentor: {
+                                viewModel.showAddMentorSheet(for: group)
+                            },
+                            onSchedule: {
+                                let isMentor = group.mentors.contains { mentor in
+                                    mentor.challengerID == currentChallengerId
+                                }
+                                guard isMentor else {
+                                    viewModel.alertPrompt = AlertPrompt(
+                                        title: "권한 없음",
+                                        message: "담당 파트장(멘토)만 일정을 등록할 수 있습니다.",
+                                        positiveBtnTitle: "확인"
+                                    )
+                                    return
+                                }
+                                guard let studyGroupId = Int(group.serverID) else {
+                                    return
+                                }
+                                pathStore.activityPath.append(
+                                    .activity(
+                                        .studyScheduleRegistration(
+                                            studyName: group.name,
+                                            studyGroupId: studyGroupId
+                                        )
                                     )
                                 )
-                            )
-                        },
-                        onRemoveMember: { member in
-                            Task {
-                                await viewModel.removeMember(member, from: group)
+                            },
+                            onRemoveMember: { member in
+                                Task {
+                                    await viewModel.removeMember(member, from: group)
+                                }
+                            },
+                            onRemoveMentor: { mentor in
+                                Task {
+                                    await viewModel.removeMentor(mentor, from: group)
+                                }
                             }
-                        },
-                        onRemoveMentor: { mentor in
-                            Task {
-                                await viewModel.removeMentor(mentor, from: group)
-                            }
-                        }
-                    )
-                    .equatable()
-                    .task {
-                        await viewModel.loadMoreGroupManagementDataIfNeeded(
-                            currentGroupID: group.id
                         )
+                        .equatable()
+                        .task {
+                            await viewModel.loadMoreGroupManagementDataIfNeeded(
+                                currentGroupID: group.id
+                            )
+                        }
                     }
-                }
 
-                if viewModel.isLoadingMoreStudyGroupDetails {
-                    ProgressView()
-                        .tint(.grey500)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, DefaultSpacing.spacing8)
+                    if viewModel.isLoadingMoreStudyGroupDetails {
+                        ProgressView()
+                            .tint(.grey500)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, DefaultSpacing.spacing8)
+                    }
                 }
             }
             .safeAreaPadding(
@@ -235,27 +265,81 @@ struct OperatorStudyManagementView: View {
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
 
-    // MARK: - Empty View
+    // MARK: - Permission Denied View
 
-    private func emptyContentView(
-        title: String,
-        message: String
-    ) -> some View {
-        ContentUnavailableView {
-            Label(title, systemImage: "person.3")
-        } description: {
-            Text(message)
+    private var permissionDeniedView: some View {
+        ScrollView {
+            VStack(spacing: DefaultSpacing.spacing32) {
+                ContentUnavailableView {
+                    Label(Constants.permissionTitle, systemImage: "person.3")
+                } description: {
+                    Text(Constants.permissionDescription)
+                        .multilineTextAlignment(.center)
+                }
+
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
+                    Text(Constants.permissionGuideTitle)
+                        .appFont(.calloutEmphasis)
+
+                    permissionRoleRow(
+                        icon: "building.columns.fill",
+                        role: Constants.roleChapterLeader,
+                        description: Constants.roleChapterLeaderDescription
+                    )
+
+                    permissionRoleRow(
+                        icon: "star.fill",
+                        role: Constants.rolePresident,
+                        description: Constants.rolePresidentDescription
+                    )
+
+                    permissionRoleRow(
+                        icon: "person.badge.key.fill",
+                        role: Constants.roleOperator,
+                        description: Constants.roleOperatorDescription
+                    )
+                }
+                .padding(DefaultSpacing.spacing16)
+                .background(.regularMaterial, in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius))
+
+                Text(Constants.permissionGuideFooter)
+                    .appFont(.footnote)
+                    .foregroundStyle(.grey500)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, DefaultSpacing.spacing32)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+    }
+
+    private func permissionRoleRow(icon: String, role: String, description: String) -> some View {
+        HStack(spacing: DefaultSpacing.spacing12) {
+            Image(systemName: icon)
+                .font(.app(.title3))
+                .foregroundStyle(.grey600)
+                .frame(width: 32, alignment: .center)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(role)
+                    .appFont(.subheadline)
+                Text(description)
+                    .appFont(.footnote)
+                    .foregroundStyle(.grey500)
+            }
+        }
     }
 
     // MARK: - Error View
 
+    @ViewBuilder
     private func errorView(
         error: AppError,
         retryAction: @escaping () async -> Void
     ) -> some View {
+        if error.isPermissionDenied {
+            permissionDeniedView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        } else {
             RetryContentUnavailableView(
                 title: "불러오지 못했어요",
                 systemImage: "exclamationmark.triangle",
@@ -269,6 +353,7 @@ struct OperatorStudyManagementView: View {
                 .horizontal,
                 DefaultConstant.defaultSafeHorizon
             )
+        }
     }
 }
 

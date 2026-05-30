@@ -67,13 +67,21 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Action
 
-    /// 일정 목록 + pending 출석 조회
-    ///
-    /// V1 `GET /api/v1/schedules` 제거로 인해 미구현 상태입니다.
-    /// V2 `fetchAttendanceList` 기반 재구현 예정 (#688).
     @MainActor
     func fetchSessions() async {
-        sessionsState = .loaded([])
+        sessionsState = .loading
+        do {
+            let infos = try await useCase.fetchAttendanceList(
+                from: nil, to: nil, attendanceStatus: nil
+            )
+            sessionsState = .loaded(infos.map { $0.toOperatorSessionAttendance() })
+        } catch let error as DomainError {
+            sessionsState = .failed(.domain(error))
+        } catch let error as NetworkError {
+            sessionsState = .failed(.network(error))
+        } catch {
+            sessionsState = .failed(.unknown(message: error.localizedDescription))
+        }
     }
 
     /// 위치 변경 버튼 탭
@@ -316,12 +324,18 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Polling
 
-    /// 세션 목록 배경 갱신 (로딩 상태 변경 없이)
-    ///
-    /// V1 `GET /api/v1/schedules` 제거로 인해 미구현 상태입니다.
-    /// V2 `fetchAttendanceList` 기반 재구현 예정 (#688).
     @MainActor
-    func refreshSessions() async {}
+    func refreshSessions() async {
+        guard sessionsState.isComplete else { return }
+        do {
+            let infos = try await useCase.fetchAttendanceList(
+                from: nil, to: nil, attendanceStatus: nil
+            )
+            sessionsState = .loaded(infos.map { $0.toOperatorSessionAttendance() })
+        } catch {
+            // 배경 갱신 실패는 무시 — 기존 데이터 유지
+        }
+    }
 
     /// 세션 진행 중일 때 주기적으로 데이터를 갱신합니다.
     ///
@@ -381,10 +395,10 @@ final class OperatorAttendanceViewModel {
                 isApproval: isApproved
             )
         } catch {
-            errorHandler.handle(error, context: .init(
-                feature: "Activity",
+            await handleDecisionError(
+                error,
                 action: isApproved ? "approveAttendance" : "rejectAttendance"
-            ))
+            )
         }
     }
 
@@ -417,10 +431,10 @@ final class OperatorAttendanceViewModel {
                 isApproval: isApproved
             )
         } catch {
-            errorHandler.handle(error, context: .init(
-                feature: "Activity",
+            await handleDecisionError(
+                error,
                 action: isApproved ? "approveAllAttendances" : "rejectAllAttendances"
-            ))
+            )
         }
     }
 
@@ -456,11 +470,52 @@ final class OperatorAttendanceViewModel {
                 isApproval: isApproved
             )
         } catch {
-            errorHandler.handle(error, context: .init(
-                feature: "Activity",
+            await handleDecisionError(
+                error,
                 action: isApproved ? "approveSelectedAttendances" : "rejectSelectedAttendances"
-            ))
+            )
         }
+    }
+
+    /// 출석 승인/반려 실패 처리.
+    ///
+    /// HTTP 403 (권한 부족) 인 경우 명확한 안내 Alert 후 세션 목록을 갱신해
+    /// 서버 측 권한/상태 변화를 즉시 반영합니다. 그 외 에러는 기존 ErrorHandler 로 위임합니다.
+    @MainActor
+    private func handleDecisionError(_ error: Error, action: String) async {
+        if Self.isPermissionDenied(error) {
+            alertPrompt = AlertPrompt(
+                title: "권한이 없어요",
+                message: "출석을 처리할 권한이 없습니다. 운영진 권한을 확인해 주세요.",
+                positiveBtnTitle: "확인",
+                positiveBtnAction: { [weak self] in
+                    self?.alertPrompt = nil
+                }
+            )
+            await refreshSessions()
+            return
+        }
+        errorHandler.handle(error, context: .init(
+            feature: "Activity",
+            action: action
+        ))
+    }
+
+    /// HTTP 403(권한 부족) 여부 감지.
+    ///
+    /// - `AppError.network(.requestFailed(403, _))`
+    /// - `NetworkError.requestFailed(403, _)`
+    /// 두 표현을 모두 처리합니다.
+    private static func isPermissionDenied(_ error: Error) -> Bool {
+        if let appError = error as? AppError, appError.isPermissionDenied {
+            return true
+        }
+        if let networkError = error as? NetworkError,
+           case .requestFailed(let status, _) = networkError,
+           status == 403 {
+            return true
+        }
+        return false
     }
 
     // MARK: - Helper

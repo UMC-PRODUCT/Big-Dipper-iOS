@@ -242,21 +242,83 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
 
     /// 이메일 인증 코드를 발송합니다.
     ///
-    /// - Parameter email: 인증할 이메일 주소
+    /// - Parameters:
+    ///   - email: 인증할 이메일 주소
+    ///   - purpose: 인증 목적 (회원가입/비밀번호 초기화)
     /// - Returns: 발급된 이메일 인증 ID
     func sendEmailVerification(
-        email: String
+        email: String,
+        purpose: EmailVerificationPurpose
     ) async throws -> String {
-        let response = try await adapter.requestWithoutAuth(
-            AuthRouter.sendEmailVerification(
-                body: SendEmailVerificationRequestDTO(email: email)
+        do {
+            let response = try await adapter.requestWithoutAuth(
+                AuthRouter.sendEmailVerification(
+                    body: SendEmailVerificationRequestDTO(
+                        email: email,
+                        purpose: purpose.rawValue
+                    )
+                )
             )
-        )
-        let apiResponse = try decoder.decode(
-            APIResponse<EmailVerificationResponseDTO>.self,
-            from: response.data
-        )
-        return try apiResponse.unwrap().emailVerificationId
+            let apiResponse = try decoder.decode(
+                APIResponse<EmailVerificationResponseDTO>.self,
+                from: response.data
+            )
+            return try apiResponse.unwrap().emailVerificationId
+        } catch let error as NetworkError {
+            throw Self.mapEmailVerificationError(from: error) ?? error
+        }
+    }
+
+    /// 이메일 인증 코드를 재전송합니다.
+    ///
+    /// - Parameter emailVerificationId: 발송 시 발급된 인증 ID
+    func resendEmailVerification(
+        emailVerificationId: String
+    ) async throws {
+        do {
+            let response = try await adapter.requestWithoutAuth(
+                AuthRouter.resendEmailVerification(
+                    body: ResendEmailVerificationRequestDTO(
+                        emailVerificationId: emailVerificationId
+                    )
+                )
+            )
+            let apiResponse = try decoder.decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let error as NetworkError {
+            throw Self.mapEmailVerificationError(from: error) ?? error
+        }
+    }
+
+    /// 비밀번호를 초기화합니다.
+    ///
+    /// - Parameters:
+    ///   - emailVerificationToken: `purpose=PASSWORD_RESET`로 발급된 토큰
+    ///   - newPassword: 새 비밀번호 (평문)
+    func resetPassword(
+        emailVerificationToken: String,
+        newPassword: String
+    ) async throws {
+        do {
+            let response = try await adapter.requestWithoutAuth(
+                AuthRouter.resetPassword(
+                    body: ResetPasswordRequestDTO(
+                        emailVerificationToken: emailVerificationToken,
+                        newPassword: newPassword
+                    )
+                )
+            )
+            let apiResponse = try decoder.decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
     }
 
     /// 이메일 인증 코드를 검증합니다.
@@ -404,6 +466,34 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
 // MARK: - Private Helpers
 
 private extension AuthRepository {
+    /// 이메일 인증 발송/재전송 에러 코드 → AuthError 매핑
+    ///
+    /// - `AUTHENTICATION-0026 EMAIL_ALREADY_EXISTS` (409): 회원가입 시 이미 가입된 이메일
+    /// - `AUTHENTICATION-0027 EMAIL_VERIFICATION_THROTTLED` (429): 60초 throttle
+    /// - `AUTHENTICATION-0025 INVALID_EMAIL_FORMAT` (400): 잘못된 이메일 형식
+    static func mapEmailVerificationError(from error: NetworkError) -> Error? {
+        guard case .requestFailed(_, let data) = error,
+              let data,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+        let code = json["code"] as? String
+        let message = (json["message"] as? String) ?? (json["result"] as? String)
+
+        switch code {
+        case "AUTHENTICATION-0026":
+            return AuthError.emailAlreadyExists
+        case "AUTHENTICATION-0027":
+            return AuthError.emailVerificationThrottled
+        case "AUTHENTICATION-0025":
+            return AuthError.invalidEmailFormat
+        default:
+            guard code != nil || message != nil else { return nil }
+            return RepositoryError.serverError(code: code, message: message)
+        }
+    }
+
     static func parseServerError(from error: NetworkError) -> Error? {
         guard case .requestFailed(_, let data) = error,
               let data,

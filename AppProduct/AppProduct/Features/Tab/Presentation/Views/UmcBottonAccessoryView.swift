@@ -46,7 +46,7 @@ fileprivate struct HomeBottonAccessoryView: View {
     private var pathStore: PathStore {
         di.resolve(PathStore.self)
     }
-
+//
     var body: some View {
         Group {
             if pathStore.homePath.isEmpty {

@@ -485,9 +485,15 @@ class ScheduleRegistrationViewModel {
             return
         }
 
+        let memberIds = sanitizedParticipantMemberIds()
+        if let overflowMessage = participantOverflowMessage(memberIds: memberIds) {
+            submitState = .idle
+            inlineErrorMessage = overflowMessage
+            return
+        }
+
         submitState = .loading
         inlineErrorMessage = nil
-        let memberIds = sanitizedParticipantMemberIds()
         let dto = GenerateScheduleRequetDTO(
             name: title,
             description: memo,
@@ -573,6 +579,19 @@ class ScheduleRegistrationViewModel {
         isAllDay ? dataRange.endDate.kstEndOfDay : dataRange.endDate
     }
 
+    /// 참여자 수가 서버 측 한도(`ScheduleCapabilities.maxParticipantCount`)를 초과하면
+    /// 인라인 메시지로 표시할 안내 문구를 반환합니다.
+    ///
+    /// - capabilities 가 아직 로드되지 않았거나 한도가 0 이하면 검사 생략(`nil`).
+    /// - 본인 강제 포함 후의 최종 참여자 수를 기준으로 검증합니다.
+    private func participantOverflowMessage(memberIds: [Int]) -> String? {
+        guard case .loaded(let capabilities) = capabilitiesState else { return nil }
+        let limit = capabilities.maxParticipantCount
+        guard limit > 0 else { return nil }
+        guard memberIds.count > limit else { return nil }
+        return "최대 \(limit)명까지 초대할 수 있어요. 현재 \(memberIds.count)명이 선택되어 있습니다."
+    }
+
     /// 본인 멤버 ID 를 강제 포함한 정렬된 참여자 ID 목록
     private func sanitizedParticipantMemberIds() -> [Int] {
         var memberIds = Array(Set(participatn.compactMap { Int($0.memberId) })).sorted()
@@ -645,10 +664,17 @@ class ScheduleRegistrationViewModel {
             return
         }
 
+        let participantMemberIds: [Int]? = participatn.isEmpty ? nil : sanitizedParticipantMemberIds()
+        if let memberIds = participantMemberIds,
+           let overflowMessage = participantOverflowMessage(memberIds: memberIds) {
+            submitState = .idle
+            inlineErrorMessage = overflowMessage
+            return
+        }
+
         submitState = .loading
         inlineErrorMessage = nil
 
-        let participantMemberIds: [Int]? = participatn.isEmpty ? nil : sanitizedParticipantMemberIds()
         let dto = UpdateScheduleRequestDTO(
             name: title,
             description: memo,

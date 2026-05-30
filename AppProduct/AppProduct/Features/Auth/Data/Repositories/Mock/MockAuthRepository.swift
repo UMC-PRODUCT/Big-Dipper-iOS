@@ -140,10 +140,24 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
     }
 
     func sendEmailVerification(
-        email: String
+        email: String,
+        purpose: EmailVerificationPurpose
     ) async throws -> String {
         try await Task.sleep(for: .milliseconds(500))
         return "mock_verification_id_1"
+    }
+
+    func resendEmailVerification(
+        emailVerificationId: String
+    ) async throws {
+        try await Task.sleep(for: .milliseconds(500))
+    }
+
+    func resetPassword(
+        emailVerificationToken: String,
+        newPassword: String
+    ) async throws {
+        try await Task.sleep(for: .milliseconds(500))
     }
 
     func verifyEmailCode(

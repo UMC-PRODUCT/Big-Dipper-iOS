@@ -18,7 +18,9 @@ struct StudyGroupMemberChip: View, Equatable {
         static let avatarPlaceholderImageName: String = "person.fill"
         static let bestBorderWidth: CGFloat = 1
         static let bestPointThreshold: Int = 0
-        static let chipCornerMinimum: Edge.Corner.Style = 16
+        /// 칩 corner radius — Nested Material/Glass 환경에서 ConcentricRectangle inheritance가
+        /// 끊기는 문제가 있어 명시 cornerRadius로 곡률을 직접 보장한다.
+        static let chipCornerRadius: CGFloat = 16
         static let chipHeight: CGFloat = 68
         static let chipHorizontalPadding: CGFloat = 6
         static let chipVerticalPadding: CGFloat = 6
@@ -67,7 +69,9 @@ struct StudyGroupMemberChip: View, Equatable {
     var body: some View {
         VStack(spacing: DefaultSpacing.spacing4) {
             avatarView
-            Text(member.name)
+            // 칩에는 닉네임만 노출(없으면 본명). LeaderRow의 "닉네임/이름" 풀 표기와 다르게,
+            // 좁은 폭의 칩에서는 한 글자라도 더 보여야 가독성이 높다는 디자인 결정.
+            Text(member.nickname ?? member.name)
                 .appFont(.caption1)
                 .lineLimit(Constants.nameLineLimit)
                 .minimumScaleFactor(Constants.nameMinimumScaleFactor)
@@ -75,12 +79,14 @@ struct StudyGroupMemberChip: View, Equatable {
         .padding(.horizontal, Constants.chipHorizontalPadding)
         .padding(.vertical, Constants.chipVerticalPadding)
         .frame(width: Constants.chipWidth, height: Constants.chipHeight)
+        // 명시 cornerRadius로 칩 곡률 보장 — ConcentricRectangle은 nested Material/Glass에서
+        // corner inheritance가 끊겨 곡률이 무너진다(이번 이슈 캡처 검증).
         .glassEffect(
             .regular.tint(.gray.opacity(Constants.baseTintOpacity)),
-            in: .rect(corners: .concentric(minimum: Constants.chipCornerMinimum))
+            in: .rect(cornerRadius: Constants.chipCornerRadius)
         )
         .overlay {
-            ConcentricRectangle(corners: .concentric(minimum: Constants.chipCornerMinimum))
+            RoundedRectangle(cornerRadius: Constants.chipCornerRadius)
                 .stroke(
                     hasBestWorkbookPoint
                         ? .orange.opacity(Constants.bestBorderOpacity)

@@ -83,11 +83,29 @@ protocol AuthRepositoryProtocol: Sendable {
     ) async throws
 
     /// 이메일 인증 발송
-    /// - Parameter email: 인증할 이메일 주소
+    /// - Parameters:
+    ///   - email: 인증할 이메일 주소
+    ///   - purpose: 인증 목적 (회원가입/비밀번호 초기화)
     /// - Returns: 이메일 인증 ID
     func sendEmailVerification(
-        email: String
+        email: String,
+        purpose: EmailVerificationPurpose
     ) async throws -> String
+
+    /// 이메일 인증 코드 재전송
+    /// - Parameter emailVerificationId: 발송 시 발급된 인증 ID
+    func resendEmailVerification(
+        emailVerificationId: String
+    ) async throws
+
+    /// 비밀번호 초기화
+    /// - Parameters:
+    ///   - emailVerificationToken: `purpose=PASSWORD_RESET`로 발급된 토큰
+    ///   - newPassword: 새 비밀번호 (평문)
+    func resetPassword(
+        emailVerificationToken: String,
+        newPassword: String
+    ) async throws
 
     /// 이메일 인증코드 검증
     /// - Parameters:

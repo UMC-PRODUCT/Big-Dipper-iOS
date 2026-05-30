@@ -69,11 +69,20 @@ private extension NavigationRoutingView {
             let authProvider = di.resolve(AuthUseCaseProviding.self)
             SignUpByIdPwView(
                 sendEmailVerificationUseCase: authProvider.sendEmailVerificationUseCase,
+                resendEmailVerificationUseCase: authProvider.resendEmailVerificationUseCase,
                 verifyEmailCodeUseCase: authProvider.verifyEmailCodeUseCase,
                 registerByEmailUseCase: authProvider.registerByEmailUseCase,
                 checkEmailAvailabilityUseCase: authProvider.checkEmailAvailabilityUseCase,
                 fetchSignUpDataUseCase: authProvider.fetchSignUpDataUseCase,
                 fetchMyProfileUseCase: di.resolve(HomeUseCaseProviding.self).fetchMyProfileUseCase
+            )
+        case .resetPassword:
+            let authProvider = di.resolve(AuthUseCaseProviding.self)
+            ResetPasswordView(
+                sendEmailVerificationUseCase: authProvider.sendEmailVerificationUseCase,
+                resendEmailVerificationUseCase: authProvider.resendEmailVerificationUseCase,
+                verifyEmailCodeUseCase: authProvider.verifyEmailCodeUseCase,
+                resetPasswordUseCase: authProvider.resetPasswordUseCase
             )
         }
     }
