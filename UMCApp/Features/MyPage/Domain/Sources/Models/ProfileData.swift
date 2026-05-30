@@ -18,7 +18,7 @@ public struct ProfileData: Identifiable, Equatable, Hashable {
     public var challengeId: Int
 
     /// 사용자 기본 정보 (이름, 학교, 기수 등)
-    public var challangerInfo: ChallengerInfo
+    public var challengerInfo: ChallengerInfo
 
     /// 현재 연동된 소셜 계정 목록
     public var socialConnections: [SocialConnection]
@@ -44,7 +44,7 @@ public struct ProfileData: Identifiable, Equatable, Hashable {
     ) {
         self.id = id
         self.challengeId = challengeId
-        self.challangerInfo = challangerInfo
+        self.challengerInfo = challangerInfo
         self.socialConnections = socialConnections
         self.activityLogs = activityLogs
         self.profileLink = profileLink
