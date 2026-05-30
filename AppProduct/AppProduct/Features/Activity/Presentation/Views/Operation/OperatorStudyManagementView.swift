@@ -166,72 +166,76 @@ struct OperatorStudyManagementView: View {
 
     private func groupManagementListView(groups: [StudyGroupInfo]) -> some View {
         ScrollView {
-            LazyVStack(spacing: DefaultSpacing.spacing16) {
-                ForEach(groups) { group in
-                    StudyGroupCard(
-                        detail: group,
-                        onEdit: {
-                            viewModel.showEditSheet(for: group)
-                        },
-                        onDelete: {
-                            viewModel.deleteGroup(group)
-                        },
-                        onAddMember: {
-                            viewModel.showAddMemberSheet(
-                                for: group
-                            )
-                        },
-                        onAddMentor: {
-                            viewModel.showAddMentorSheet(for: group)
-                        },
-                        onSchedule: {
-                            let isMentor = group.mentors.contains { mentor in
-                                mentor.challengerID == currentChallengerId
-                            }
-                            guard isMentor else {
-                                viewModel.alertPrompt = AlertPrompt(
-                                    title: "권한 없음",
-                                    message: "담당 파트장(멘토)만 일정을 등록할 수 있습니다.",
-                                    positiveBtnTitle: "확인"
+            // Apple iOS 26 가이드: 같은 화면에 Liquid Glass가 여러 개 있을 때
+            // GlassEffectContainer 로 묶어 카드 사이 morphing/blending + 렌더링 성능 ↑
+            GlassEffectContainer(spacing: DefaultSpacing.spacing16) {
+                LazyVStack(spacing: DefaultSpacing.spacing16) {
+                    ForEach(groups) { group in
+                        StudyGroupCard(
+                            detail: group,
+                            onEdit: {
+                                viewModel.showEditSheet(for: group)
+                            },
+                            onDelete: {
+                                viewModel.deleteGroup(group)
+                            },
+                            onAddMember: {
+                                viewModel.showAddMemberSheet(
+                                    for: group
                                 )
-                                return
-                            }
-                            guard let studyGroupId = Int(group.serverID) else {
-                                return
-                            }
-                            pathStore.activityPath.append(
-                                .activity(
-                                    .studyScheduleRegistration(
-                                        studyName: group.name,
-                                        studyGroupId: studyGroupId
+                            },
+                            onAddMentor: {
+                                viewModel.showAddMentorSheet(for: group)
+                            },
+                            onSchedule: {
+                                let isMentor = group.mentors.contains { mentor in
+                                    mentor.challengerID == currentChallengerId
+                                }
+                                guard isMentor else {
+                                    viewModel.alertPrompt = AlertPrompt(
+                                        title: "권한 없음",
+                                        message: "담당 파트장(멘토)만 일정을 등록할 수 있습니다.",
+                                        positiveBtnTitle: "확인"
+                                    )
+                                    return
+                                }
+                                guard let studyGroupId = Int(group.serverID) else {
+                                    return
+                                }
+                                pathStore.activityPath.append(
+                                    .activity(
+                                        .studyScheduleRegistration(
+                                            studyName: group.name,
+                                            studyGroupId: studyGroupId
+                                        )
                                     )
                                 )
-                            )
-                        },
-                        onRemoveMember: { member in
-                            Task {
-                                await viewModel.removeMember(member, from: group)
+                            },
+                            onRemoveMember: { member in
+                                Task {
+                                    await viewModel.removeMember(member, from: group)
+                                }
+                            },
+                            onRemoveMentor: { mentor in
+                                Task {
+                                    await viewModel.removeMentor(mentor, from: group)
+                                }
                             }
-                        },
-                        onRemoveMentor: { mentor in
-                            Task {
-                                await viewModel.removeMentor(mentor, from: group)
-                            }
-                        }
-                    )
-                    .equatable()
-                    .task {
-                        await viewModel.loadMoreGroupManagementDataIfNeeded(
-                            currentGroupID: group.id
                         )
+                        .equatable()
+                        .task {
+                            await viewModel.loadMoreGroupManagementDataIfNeeded(
+                                currentGroupID: group.id
+                            )
+                        }
                     }
-                }
 
-                if viewModel.isLoadingMoreStudyGroupDetails {
-                    ProgressView()
-                        .tint(.grey500)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, DefaultSpacing.spacing8)
+                    if viewModel.isLoadingMoreStudyGroupDetails {
+                        ProgressView()
+                            .tint(.grey500)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, DefaultSpacing.spacing8)
+                    }
                 }
             }
             .safeAreaPadding(
