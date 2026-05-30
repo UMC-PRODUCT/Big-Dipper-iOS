@@ -467,9 +467,12 @@ JSON Number 가 아닌 String 으로 오므로, Response DTO 가 `Int` 로
 2. **synthesized `Codable` 금지** — `Int` 필드가 있으면 반드시 custom
    `init(from:)` + `encode(to:)` 를 작성
 3. **`decode(Int.self)` / `decodeIfPresent(Int.self)` 직접 호출 금지** —
-   `decodeIntFlexibleIfPresent` 헬퍼 사용
+   `decodeFlexibleIntIfPresent` 헬퍼 사용
 4. **폴백 순서**: `Int` → `String("123")` → `Double(123.0)` → throw
 5. **Request DTO (Encodable, 우리가 보내는 쪽) 는 제외** — `Int` 그대로 OK
+6. **헬퍼는 `UMCFoundation` 공용 확장 사용** — `KeyedDecodingContainer+FlexibleNumber.swift`
+   에 `decodeFlexible{String,Int,Double}` / `…IfPresent` 6종이 정의되어 있다.
+   파일별 `private extension` 으로 중복 정의하지 않는다.
 
 ### ❌ 안티패턴
 
@@ -488,7 +491,11 @@ init(from decoder: Decoder) throws {
 
 ### ✅ 권장 패턴
 
+헬퍼는 `import UMCFoundation` 으로 가져와 바로 사용합니다 (직접 정의 X).
+
 ```swift
+import UMCFoundation
+
 struct UserDTO: Codable {
     let userId: Int
     let name: String
@@ -499,7 +506,7 @@ struct UserDTO: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        userId = try container.decodeIntFlexibleIfPresent(forKey: .userId) ?? 0
+        userId = try container.decodeFlexibleIntIfPresent(forKey: .userId) ?? 0
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
     }
 
@@ -509,28 +516,26 @@ struct UserDTO: Codable {
         try container.encode(name, forKey: .name)
     }
 }
+```
 
-private extension KeyedDecodingContainer {
-    func decodeIntFlexible(forKey key: Key) throws -> Int {
-        if let value = try? decode(Int.self, forKey: key) { return value }
-        if let value = try? decode(String.self, forKey: key),
-           let intValue = Int(value) { return intValue }
-        if let value = try? decode(Double.self, forKey: key) { return Int(value) }
-        throw DecodingError.typeMismatch(
-            Int.self,
-            DecodingError.Context(
-                codingPath: codingPath + [key],
-                debugDescription: "Expected Int/String-number/Double for key '\(key.stringValue)'"
-            )
-        )
-    }
+공용 헬퍼 정의 (`UMCFoundation/Sources/Extensions/KeyedDecodingContainer+FlexibleNumber.swift`):
 
-    func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
-        if (try? decodeNil(forKey: key)) == true { return nil }
-        return try? decodeIntFlexible(forKey: key)
-    }
+```swift
+public extension KeyedDecodingContainer {
+    // String / Int / Double × (필수 / IfPresent) = 6종
+    func decodeFlexibleString(forKey key: Key) throws -> String { … }
+    func decodeFlexibleStringIfPresent(forKey key: Key) throws -> String? { … }
+    func decodeFlexibleInt(forKey key: Key) throws -> Int { … }
+    func decodeFlexibleIntIfPresent(forKey key: Key) throws -> Int? { … }
+    func decodeFlexibleDouble(forKey key: Key) throws -> Double { … }
+    func decodeFlexibleDoubleIfPresent(forKey key: Key) throws -> Double? { … }
 }
 ```
+
+> **네이밍 규칙**: `decodeFlexible` + 타입명(`String`/`Int`/`Double`) + `IfPresent?` 순서로 통일.
+> (`decodeIntFlexible…` 처럼 타입명을 앞에 두지 않는다.)
+> 서버가 모든 정수를 String 으로 내려주는 정책상, 정수 필드는 **`decodeFlexibleString` 으로
+> String 보존**이 1순위이고, 연산이 필요한 필드만 `decodeFlexibleInt` 를 쓴다.
 
 ### 리뷰 체크리스트
 
@@ -538,15 +543,15 @@ Response DTO 변경이 포함된 PR 리뷰 시 검증:
 
 - [ ] `Int` / `Int?` / `[Int]` / `Int64` 등 정수 타입 필드가 있는가
 - [ ] 정수 필드가 있다면 custom `init(from:)` 이 정의되어 있는가 (synthesized Codable 금지)
-- [ ] `init(from:)` 안에서 `decodeIntFlexibleIfPresent` (또는 동급) 사용 — `decode(Int.self)` 직접 호출 없음
-- [ ] 헬퍼가 파일 내 `private extension KeyedDecodingContainer` 로 정의되어 있는가
+- [ ] `init(from:)` 안에서 `decodeFlexibleIntIfPresent` / `decodeFlexibleString` (또는 동급) 사용 — `decode(Int.self)` 직접 호출 없음
+- [ ] 헬퍼를 파일에 재정의하지 않고 `import UMCFoundation` 공용 확장을 사용하는가
 - [ ] **Request/Encodable DTO 는 적용 제외 확인** — 보내는 쪽이라 무관
 
 ### 적용 범위
 
 - **신규 Response DTO**: 처음부터 위 패턴 적용
 - **기존 Response DTO**: 별도 마이그레이션 PR 로 진행
-- **공용 헬퍼 통합**: 현재 파일별 중복 정의 — 추후 `Core/Common/Decoding/` 위치로 단일화 예정
+- **공용 헬퍼 통합**: `UMCFoundation` 의 `KeyedDecodingContainer+FlexibleNumber.swift` 로 단일화 완료 — 파일별 중복 정의 금지
 
 ## 디자인 시스템
 
@@ -818,7 +823,7 @@ AppProduct/AppProduct/
 1. **서버 응답 숫자는 전 레이어 String 통일**
    - 서버가 모든 정수를 String으로 직렬화 → Response DTO뿐 아니라 **Domain Model, Repository Protocol 파라미터까지 `String`**
    - Int 변환은 연산이 필요한 시점에만 수행
-   - DTO에서 `decode(Int.self)` 직접 호출 금지 → `decodeIntFlexibleIfPresent` 사용
+   - DTO에서 `decode(Int.self)` 직접 호출 금지 → `decodeFlexibleIntIfPresent` 사용
    - Request DTO (우리가 보내는 쪽)는 Int 허용
 
 2. **Response DTO는 Synthesized Codable 금지**
