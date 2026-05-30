@@ -15,7 +15,7 @@ public protocol MyPageRepositoryProtocol: Sendable {
     func fetchMyProfile() async throws -> ProfileData
 
     /// 특정 멤버 프로필 조회
-    func fetchMemberProfile(memberId: Int) async throws -> MemberProfileSummary
+    func fetchMemberProfile(memberId: String) async throws -> MemberProfileSummary
 
     /// 내가 쓴 글 목록을 조회합니다.
     func fetchMyPosts(query: MyPagePostListQuery) async throws -> MyActivePostPage
@@ -35,7 +35,7 @@ public protocol MyPageRepositoryProtocol: Sendable {
     // 별도 이슈에서 복원합니다. 복원 시 이 주석을 해제하고 Repository 구현체를 추가하세요.
     //
     // /// 특정 챌린저 프로필 조회
-    // func fetchChallengerProfile(challengerId: Int) async throws -> MemberProfileSummary
+    // func fetchChallengerProfile(challengerId: String) async throws -> MemberProfileSummary
     //
     // /// 운영진 발급 코드로 챌린저 기록을 추가합니다.
     // func addChallengerRecord(code: String) async throws

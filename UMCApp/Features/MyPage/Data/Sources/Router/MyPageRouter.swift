@@ -17,7 +17,7 @@ public enum MyPageRouter {
     /// 내 프로필 조회 (`GET /api/v1/member/me`)
     case getMyProfile
     /// 특정 멤버 프로필 조회 (`GET /api/v1/member/profile/{memberId}`)
-    case getMemberProfile(memberId: Int)
+    case getMemberProfile(memberId: String)
     /// 내가 쓴 글 목록 (`GET /api/v1/posts/my`)
     case getMyPosts(query: MyPagePostListQueryDTO)
     /// 댓글 단 글 목록 (`GET /api/v1/posts/commented`)

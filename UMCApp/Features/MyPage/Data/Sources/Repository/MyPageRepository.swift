@@ -48,7 +48,7 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
     ///
     /// 서버 응답이 `APIResponse` 래퍼 형식 또는 raw DTO 형식 어느 쪽이든 흡수합니다
     /// (구버전 endpoint 호환성 — AppProduct 구현 보존).
-    public func fetchMemberProfile(memberId: Int) async throws -> MemberProfileSummary {
+    public func fetchMemberProfile(memberId: String) async throws -> MemberProfileSummary {
         let response = try await adapter.request(
             MyPageRouter.getMemberProfile(memberId: memberId)
         )
