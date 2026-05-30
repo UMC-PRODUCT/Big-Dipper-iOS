@@ -59,7 +59,7 @@ struct MyPagePostResponseDTOTests {
 
     // MARK: - toCommunityItemModel
 
-    @Test("필드들이 CommunityItemModel로 매핑된다 (String → Int 변환 포함)")
+    @Test("필드들이 CommunityItemModel로 매핑된다 (숫자 필드 String 보존)")
     func basicFieldsMapped() throws {
         let dto = try Self.decodePost(Self.postDict(
             postId: "42",
@@ -69,11 +69,11 @@ struct MyPagePostResponseDTOTests {
         ))
         let item = dto.toCommunityItemModel()
 
-        #expect(item.postId == 42)
-        #expect(item.userId == 7)
-        #expect(item.commentCount == 3)
-        #expect(item.likeCount == 11)
-        #expect(item.scrapCount == 0)
+        #expect(item.postId == "42")
+        #expect(item.userId == "7")
+        #expect(item.commentCount == "3")
+        #expect(item.likeCount == "11")
+        #expect(item.scrapCount == "0")
         #expect(item.userNickname == nil)
     }
 
@@ -170,7 +170,7 @@ struct MyPagePostResponseDTOTests {
 
     // MARK: - MyPagePostPageDTO.toDomain
 
-    @Test("페이지 응답을 MyActivePostPage로 변환한다 (page String → Int)")
+    @Test("페이지 응답을 MyActivePostPage로 변환한다 (page String 보존)")
     func pageDtoToDomain() throws {
         let pageDict: [String: Any] = [
             "content": [
@@ -193,9 +193,9 @@ struct MyPagePostResponseDTOTests {
         let page = dto.toDomain()
 
         #expect(page.items.count == 2)
-        #expect(page.items.first?.postId == 1)
-        #expect(page.items.last?.postId == 2)
-        #expect(page.page == 2)
+        #expect(page.items.first?.postId == "1")
+        #expect(page.items.last?.postId == "2")
+        #expect(page.page == "2")
         #expect(page.hasNext == true)
     }
 }

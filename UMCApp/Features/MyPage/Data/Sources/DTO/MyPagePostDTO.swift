@@ -20,8 +20,8 @@ import MyPageDomain
 /// 직렬화하는 책임을 갖습니다. `GET /api/v1/posts/my|commented|scrapped` 의
 /// `?page=&size=&sort=` 쿼리스트링에 사용됩니다.
 public struct MyPagePostListQueryDTO: Encodable {
-    public let page: Int
-    public let size: Int
+    public let page: String
+    public let size: String
     public let sort: [String]
 
     public init(query: MyPagePostListQuery) {
@@ -128,8 +128,8 @@ public extension MyPagePostResponseDTO {
         let parsedCreatedAt = ServerDateTimeConverter.parseUTCDateTime(createdAt) ?? Date()
 
         return CommunityItemModel(
-            postId: Int(postId) ?? 0,
-            userId: Int(authorId) ?? 0,
+            postId: postId,
+            userId: authorId,
             category: CommunityItemCategory(apiValue: category) ?? .free,
             title: title,
             content: content,
@@ -138,9 +138,9 @@ public extension MyPagePostResponseDTO {
             userNickname: nil,
             part: authorPart,
             createdAt: parsedCreatedAt,
-            likeCount: Int(likeCount) ?? 0,
-            commentCount: Int(commentCount) ?? 0,
-            scrapCount: 0,
+            likeCount: likeCount,
+            commentCount: commentCount,
+            scrapCount: "0",
             isLiked: isLiked,
             isAuthor: isAuthor,
             lightningInfo: lightningInfo?.toDomain()
@@ -203,7 +203,7 @@ public extension MyPagePostPageDTO where T == MyPagePostResponseDTO {
     func toDomain() -> MyActivePostPage {
         MyActivePostPage(
             items: content.map { $0.toCommunityItemModel() },
-            page: Int(page) ?? 0,
+            page: page,
             hasNext: hasNext
         )
     }
