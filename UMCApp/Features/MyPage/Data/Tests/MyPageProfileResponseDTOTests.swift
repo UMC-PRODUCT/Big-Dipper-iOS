@@ -96,8 +96,8 @@ struct MyPageProfileResponseDTOTests {
         let dto = try Self.dto()
         let profile = dto.toProfileData()
 
-        #expect(profile.challengeId == 0)
-        #expect(profile.challangerInfo.gen == 0)
+        #expect(profile.challengeId == "0")
+        #expect(profile.challengerInfo.gen == 0)
         #expect(profile.activityLogs.isEmpty)
         #expect(profile.profileLink.count == SocialLinkType.allCases.count)
     }
@@ -111,9 +111,9 @@ struct MyPageProfileResponseDTOTests {
         let dto = try Self.dto(records: records)
         let profile = dto.toProfileData()
 
-        #expect(profile.challangerInfo.gen == 11)
-        #expect(profile.challangerInfo.name == "신버전")
-        #expect(profile.challangerInfo.nickname == "new")
+        #expect(profile.challengerInfo.gen == 11)
+        #expect(profile.challengerInfo.name == "신버전")
+        #expect(profile.challengerInfo.nickname == "new")
     }
 
     @Test("ADMIN part 챌린저 기록은 visibleRecords에서 제외되어 latestRecord 선정 후보가 아니다")
@@ -125,8 +125,8 @@ struct MyPageProfileResponseDTOTests {
         let dto = try Self.dto(records: records)
         let profile = dto.toProfileData()
 
-        #expect(profile.challangerInfo.gen == 5)
-        #expect(profile.challangerInfo.name == "iOS")
+        #expect(profile.challengerInfo.gen == 5)
+        #expect(profile.challengerInfo.name == "iOS")
     }
 
     @Test("같은 기수의 admin 역할 여러 개는 하나의 ActivityLog로 병합된다")
@@ -147,7 +147,7 @@ struct MyPageProfileResponseDTOTests {
         let profile = dto.toProfileData()
 
         let admin11 = profile.activityLogs.first {
-            $0.part == .admin && $0.generation == 11
+            $0.part == .admin && $0.generation == "11"
         }
         #expect(admin11 != nil)
         #expect(admin11?.roles.count == 2)
@@ -186,7 +186,7 @@ struct MyPageProfileResponseDTOTests {
         let summary = dto.toMemberProfileSummary()
 
         #expect(summary.roleName == "교내 회장")
-        #expect(summary.generation == 10)
+        #expect(summary.generation == "10")
     }
 
     @Test("같은 level이면 generation 내림차순으로 선정된다")
@@ -198,7 +198,7 @@ struct MyPageProfileResponseDTOTests {
         let dto = try Self.dto(roles: roles)
         let summary = dto.toMemberProfileSummary()
 
-        #expect(summary.generation == 12)
+        #expect(summary.generation == "12")
     }
 
     @Test("roles가 비어 있으면 latestRecord의 기수로 generation을 채운다")
@@ -209,7 +209,7 @@ struct MyPageProfileResponseDTOTests {
         let dto = try Self.dto(records: records)
         let summary = dto.toMemberProfileSummary()
 
-        #expect(summary.generation == 7)
+        #expect(summary.generation == "7")
         #expect(summary.organizationName == "강남지부")
     }
 }

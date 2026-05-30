@@ -357,7 +357,7 @@ public extension MyPageProfileResponseDTO {
         let logs = activityLogs(records: records)
 
         return ProfileData(
-            challengeId: latestRecord?.challengerId.intValue ?? latestRole?.challengerId.intValue ?? 0,
+            challengeId: latestRecord?.challengerId ?? latestRole?.challengerId ?? "0",
             challangerInfo: challengerInfo,
             socialConnections: [],
             activityLogs: logs,
@@ -397,7 +397,7 @@ public extension MyPageProfileResponseDTO {
             memberId: id,
             name: latestRecordName(),
             nickname: latestRecordNickname(),
-            generation: generation,
+            generation: String(generation),
             organizationName: organizationName,
             roleName: roleName,
             profileImageURL: profileImageLink
@@ -410,7 +410,7 @@ private extension MyPageProfileResponseDTO {
         let roleLogs = roles.map { role in
             ActivityLog(
                 part: role.responsiblePart.flatMap { UMCPartType(apiValue: $0) } ?? .admin,
-                generation: role.gisu?.intValue ?? 0,
+                generation: role.gisu ?? "0",
                 role: role.roleType
             )
         }
@@ -422,7 +422,7 @@ private extension MyPageProfileResponseDTO {
 
             return ActivityLog(
                 part: part,
-                generation: record.gisu.intValue,
+                generation: record.gisu,
                 role: .challenger
             )
         }
@@ -440,7 +440,7 @@ private extension MyPageProfileResponseDTO {
 
     /// 같은 기수의 Admin 이력을 하나로 병합합니다.
     func mergeAdminLogs(_ logs: [ActivityLog]) -> [ActivityLog] {
-        var adminByGen: [Int: [ManagementTeam]] = [:]
+        var adminByGen: [String: [ManagementTeam]] = [:]
         var result: [ActivityLog] = []
 
         for log in logs {

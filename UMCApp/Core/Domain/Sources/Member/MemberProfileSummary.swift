@@ -12,7 +12,7 @@ public struct MemberProfileSummary: Equatable, Hashable {
     public let memberId: String
     public let name: String
     public let nickname: String
-    public let generation: Int
+    public let generation: String
     public let organizationName: String?
     public let roleName: String
     public let profileImageURL: String?
@@ -21,7 +21,7 @@ public struct MemberProfileSummary: Equatable, Hashable {
         memberId: String,
         name: String,
         nickname: String,
-        generation: Int,
+        generation: String,
         organizationName: String?,
         roleName: String,
         profileImageURL: String?
