@@ -15,6 +15,8 @@
 //     실제 유리 dispersion 처럼 blue 가 더 많이, red 가 더 적게 휜다.
 //  5. 가장자리에는 smoothstep 으로 얇은 highlight ring 을 더해 유리 rim 느낌을 추가.
 //  6. lens 안쪽에 각도+반경 기반 HSV pastel 을 합성해 진주·비누거품 같은 무지개 광택을 더한다.
+//  7. time uniform(경과 초) 으로 무지개 흐름 + 이동 specular glint + 광택 미세 호흡을 구동해
+//     "살아있는 빛" 을 더한다. time=0 이면 이 모션은 비활성 — 정적 호출부와 픽셀 단위로 동일.
 //
 
 #include <metal_stdlib>
@@ -30,7 +32,8 @@ half4 chromaticLens(
     float refractionStrength,
     float dispersionStrength,
     float edgeHighlight,
-    float iridescenceStrength
+    float iridescenceStrength,
+    float time
 ) {
     float2 toCenter = position - center;
     float dist = length(toCenter);
@@ -87,7 +90,9 @@ half4 chromaticLens(
     // 가장자리(0.92+) 는 rim highlight 영역이라 iridescence 와 겹치지 않게 분리.
     float angle = atan2(toCenter.y, toCenter.x);
     float angleNorm = (angle + 3.14159265) / 6.28318530;  // 0~1
-    float hue = fract(angleNorm + normalized * 0.6);
+    // 무지개 흐름 — time 항이 hue 를 회전시켜 색띠가 유동한다 (time=0 이면 기존과 동일).
+    const float hueFlowSpeed = 0.12;  // cycle/s
+    float hue = fract(angleNorm + normalized * 0.6 + time * hueFlowSpeed);
     float h6 = hue * 6.0;
     half3 iridescent = half3(
         clamp(abs(h6 - 3.0) - 1.0, 0.0, 1.0),
@@ -97,6 +102,11 @@ half4 chromaticLens(
     float irisMask = smoothstep(0.05, 0.30, normalized)
                    * (1.0 - smoothstep(0.75, 0.92, normalized))
                    * iridescenceStrength;
+    // 미세 호흡 — 광택 강도가 부드럽게 맥동. time>0 일 때만 적용해 정적 호출부 회귀를 막는다.
+    if (time > 0.0) {
+        const float breathSpeed = 2.2;  // rad/s
+        irisMask *= (0.85 + 0.15 * sin(time * breathSpeed));
+    }
     half3 baseRGB = half3(r, g, b);
 
     // 채도 조정 — 진주·비누거품 톤을 위해 iridescent 자체를 흰색에 살짝 mix.
@@ -106,5 +116,22 @@ half4 chromaticLens(
     half3 pastelIridescent = mix(half3(1.0), iridescent, half(0.35));
     half3 finalRGB = mix(baseRGB, pastelIridescent, half(irisMask));
 
-    return half4(finalRGB + highlight, a);
+    // ── 이동 specular glint ───────────────────────────────────────────────
+    // 대각 축을 따라 움직이는 가우시안 밝은 띠 — 유리 표면을 빛줄기가 주기적으로
+    // 가로지르는 반짝임. time>0 일 때만 (정적/인터랙티브 호출부는 glint 없이 회귀 보존).
+    // exp(-d*d) 로 띠를 만든다. pow(음수, 2.0) 이 일부 GPU 에서 NaN 을 내므로 d*d 직접 사용.
+    half3 glintHighlight = half3(0.0);
+    if (time > 0.0) {
+        const float glintSpeed = 0.45;      // sweep/s
+        const float glintWidth = 0.18;
+        const float glintIntensity = 0.6;
+        float s = dot(toCenter, normalize(float2(1.0, 1.0))) / radius;  // 대각 좌표 ≈ [-1,1]
+        float sweepPos = -1.3 + fract(time * glintSpeed) * 2.6;         // 한쪽→반대쪽 주기 이동
+        float d = (s - sweepPos) / glintWidth;
+        float glint = exp(-d * d);                                      // 밝은 띠
+        glint *= (1.0 - smoothstep(0.70, 1.0, normalized));            // rim 영역과 분리
+        glintHighlight = half3(1.0) * half(glint * glintIntensity);
+    }
+
+    return half4(finalRGB + highlight + glintHighlight, a);
 }

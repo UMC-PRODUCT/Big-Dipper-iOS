@@ -52,6 +52,8 @@ private struct ChromaticLensModifier: ViewModifier {
     let dispersionStrength: CGFloat
     let edgeHighlight: CGFloat
     let iridescenceStrength: CGFloat
+    /// 경과 초. 0 이면 셰이더의 흐르는 빛(무지개 흐름/글림/호흡)이 비활성 — 정적 lens 는 0 고정.
+    let time: Double
 
     @State private var contentSize: CGSize = .zero
 
@@ -74,7 +76,8 @@ private struct ChromaticLensModifier: ViewModifier {
                     .float(Float(refractionStrength)),
                     .float(Float(dispersionStrength)),
                     .float(Float(edgeHighlight)),
-                    .float(Float(iridescenceStrength))
+                    .float(Float(iridescenceStrength)),
+                    .float(Float(time))
                 ),
                 maxSampleOffset: CGSize(width: radius, height: radius)
             )
@@ -137,7 +140,8 @@ private struct ChromaticLensInteractiveModifier: ViewModifier {
                     .float(Float(refractionStrength)),
                     .float(Float(dispersionStrength)),
                     .float(Float(edgeHighlight)),
-                    .float(Float(iridescenceStrength))
+                    .float(Float(iridescenceStrength)),
+                    .float(0)  // time=0 — 인터랙티브 lens 는 흐르는 빛 모션 미사용
                 ),
                 maxSampleOffset: CGSize(width: maxRadius, height: maxRadius)
             )
@@ -162,13 +166,16 @@ extension View {
     ///   - iridescenceStrength: lens 안쪽 무지개 광택 강도(0~1). 기본 0.55.
     ///     배경이 단조로워(흰색 등) chromatic dispersion 만으로는 무지개가 잘 안 드러날 때
     ///     이 값을 키워 비누거품·진주 같은 holographic 광택을 추가한다.
+    ///   - time: 경과 초. 0(기본)이면 흐르는 빛(무지개 흐름/이동 글림/미세 호흡)이 비활성.
+    ///     `RefractiveCinematic` 이 시간 클럭을 주입해 시네마틱에서 빛을 살아 움직이게 한다.
     func chromaticLens(
         center: UnitPoint = .center,
         radius: CGFloat,
         refractionStrength: CGFloat = 52,
         dispersionStrength: CGFloat = 60,
         edgeHighlight: CGFloat = 0.35,
-        iridescenceStrength: CGFloat = 0.55
+        iridescenceStrength: CGFloat = 0.55,
+        time: Double = 0
     ) -> some View {
         modifier(
             ChromaticLensModifier(
@@ -177,7 +184,8 @@ extension View {
                 refractionStrength: refractionStrength,
                 dispersionStrength: dispersionStrength,
                 edgeHighlight: edgeHighlight,
-                iridescenceStrength: iridescenceStrength
+                iridescenceStrength: iridescenceStrength,
+                time: time
             )
         )
     }
