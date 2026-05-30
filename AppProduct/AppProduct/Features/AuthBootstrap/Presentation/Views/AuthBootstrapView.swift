@@ -10,11 +10,11 @@
 //
 //  ## 동작
 //
-//  - mount 직후 `refractiveCinematic` modifier 가 3-phase (정적 → bloom → collapse) 시퀀스를
-//    1.5s 동안 재생한다. dwell(정점 정지) 단계 없이 한 keyframe timeline 으로 흘러 멈춤 느낌 없음.
+//  - mount 직후 `refractiveCinematic` modifier 가 3-phase (워터마크 → bloom → collapse) 시퀀스를
+//    2.3s 동안 재생한다. dwell(정점 정지) 단계 없이 한 keyframe timeline 으로 흘러 멈춤 느낌 없음.
 //  - 동시에 `bootstrapViewModel.checkAuthStatus()` 가 background 에서 토큰/프로필/버전 검사를
 //    수행한다.
-//  - 시네마틱 최소 시간(1.8s) + 인증 완료 둘 다 만족하면 결과에 따라 분기한다.
+//  - 시네마틱 최소 시간(2.3s) + 인증 완료 둘 다 만족하면 결과에 따라 분기한다.
 //    - `.approved` / `.pendingApproval` → AppFlow 로 외부 화면 라우팅
 //    - `.notLoggedIn` → **`stage` 를 `.loginReady` 로 전환** → 같은 화면 안에서 layout 이
 //      `withAnimation` 으로 morph (로고가 위로 슬라이드, LoginActionStack 이 아래에서 등장)
@@ -57,9 +57,11 @@ struct AuthBootstrapView: View {
     private let kakaoPlusManager: KakaoPlusManager = .init()
 
     private enum Constants {
-        /// 시네마틱 종료 시점. `RefractiveCinematic` 시퀀스 총 길이와 일치.
-        /// 인증이 더 빨리 끝나도 이 시간만큼은 시네마틱을 유지하고, 그 후 morph 트리거.
-        static let cinematicTotalDuration: TimeInterval = 1.5
+        /// 시네마틱 종료 시점. `RefractiveCinematic` 시퀀스 총 길이(preDelay 0.4 + bloom 1.0 +
+        /// collapse 0.9 = 2.3s)와 일치한다. 인증이 더 빨리 끝나도 이 시간만큼은 시네마틱을
+        /// 유지하고, 그 후 morph 트리거. **이 값과 refractiveCinematic 의 duration 합은 항상
+        /// 동기화해야 한다** — 어긋나면 라우팅이 collapse 도중 끊고 들어온다.
+        static let cinematicTotalDuration: TimeInterval = 2.3
         /// 인증 최대 대기 시간. 초과 시 `.notLoggedIn` 가정 후 loginReady morph.
         static let authTimeout: TimeInterval = 3.0
         /// stage 전환 애니메이션 시간 — 로고 위로 슬라이드 + actionStack 등장 morph.
