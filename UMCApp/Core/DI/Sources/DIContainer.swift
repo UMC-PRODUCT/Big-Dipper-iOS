@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 import CoreNetwork
+import MyPageData
 
 // MARK: - DIContainer 사용 예시
 /// DIContainer는 의존성 주입(Dependency Injection)을 관리하는 컨테이너입니다.
@@ -167,14 +168,24 @@ extension DIContainer {
         let container = DIContainer()
         
         // MARK: - Token Store
-          container.register(TokenStore.self) {
-              KeychainTokenStore()
-          }
+        container.register(TokenStore.self) {
+            KeychainTokenStore()
+        }
         
         // MARK: - Network Infrastructure
         container.register(NetworkClient.self) {
             AuthSystemFactory.makeNetworkClient(baseURL: NetworkConfig.baseURL, tokenStore: container.resolve(TokenStore.self)
             )
+        }
+        
+        // MARK: - MyPageRepository
+        container.register(MoyaNetworkAdapter.self) {
+            MoyaNetworkAdapter(networkClient: container.resolve(NetworkClient.self), baseURL: NetworkConfig.baseURL)
+        }
+        
+        // MARK: - MyPageRepository
+        container.register(MyPageRepository.self) {
+            MyPageRepository(adapter: container.resolve(MoyaNetworkAdapter.self), decoder: JSONDecoder())
         }
         
         return container
