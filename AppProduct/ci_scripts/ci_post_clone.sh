@@ -66,6 +66,21 @@ if [ -z "$TMAP_SECRET_KEY" ]; then
   exit 1
 fi
 
+# Google OAuth (iOS Google Sign-In)
+# - GOOGLE_CLIENT_ID 필수 (예: 6550...-xxxx.apps.googleusercontent.com)
+# - GOOGLE_REVERSED_CLIENT_ID 미지정 시 CLIENT_ID에서 자동 도출
+#   (com.googleusercontent.apps.<unique>)
+if [ -z "$GOOGLE_CLIENT_ID" ]; then
+  echo "ERROR: GOOGLE_CLIENT_ID environment variable is required."
+  exit 1
+fi
+
+GOOGLE_REVERSED_CLIENT_ID_VALUE="${GOOGLE_REVERSED_CLIENT_ID:-}"
+if [ -z "$GOOGLE_REVERSED_CLIENT_ID_VALUE" ]; then
+  GOOGLE_CLIENT_ID_UNIQUE="$(printf "%s" "$GOOGLE_CLIENT_ID" | sed 's/\.apps\.googleusercontent\.com$//')"
+  GOOGLE_REVERSED_CLIENT_ID_VALUE="com.googleusercontent.apps.${GOOGLE_CLIENT_ID_UNIQUE}"
+fi
+
 # xcconfig에서는 '//'가 주석이므로 URL을 https:/$()/... 형식으로 변환
 to_xcconfig_url() {
   printf "%s" "$1" | sed 's#://#:/$()/#'
@@ -81,12 +96,17 @@ BASE_URL=${BASE_URL_RELEASE_XCCONFIG}
 BASE_URL[config=Debug]=${BASE_URL_DEBUG_XCCONFIG}
 BASE_URL[config=Release]=${BASE_URL_RELEASE_XCCONFIG}
 TMAP_SECRET_KEY=${TMAP_SECRET_KEY}
+GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+GOOGLE_REVERSED_CLIENT_ID=${GOOGLE_REVERSED_CLIENT_ID_VALUE}
 EOF
 
 echo "Secrets.xcconfig created successfully"
 echo "Secrets.xcconfig created successfully at: $CONFIG_PATH"
 
-if ! grep -q '^KAKAO_KEY=' "$CONFIG_PATH" || ! grep -q '^TMAP_SECRET_KEY=' "$CONFIG_PATH"; then
+if ! grep -q '^KAKAO_KEY=' "$CONFIG_PATH" \
+  || ! grep -q '^TMAP_SECRET_KEY=' "$CONFIG_PATH" \
+  || ! grep -q '^GOOGLE_CLIENT_ID=' "$CONFIG_PATH" \
+  || ! grep -q '^GOOGLE_REVERSED_CLIENT_ID=' "$CONFIG_PATH"; then
   echo "ERROR: Secrets.xcconfig validation failed (missing required keys)"
   exit 1
 fi

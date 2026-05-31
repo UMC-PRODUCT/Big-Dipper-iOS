@@ -39,6 +39,7 @@ struct LoginActionStack: View {
     let isLoading: Bool
     let onKakaoTap: () -> Void
     let onAppleTap: () -> Void
+    let onGoogleTap: () -> Void
     let onSupportTap: () -> Void
 
     private enum Constants {
@@ -63,6 +64,7 @@ struct LoginActionStack: View {
         VStack(spacing: DefaultSpacing.spacing12) {
             kakaoLoginButton
             appleLoginButton
+            googleLoginButton
         }
     }
 
@@ -91,6 +93,16 @@ struct LoginActionStack: View {
         .disabled(isLoading)
         .accessibilityLabel(Text("Apple로 시작하기"))
         .accessibilityHint(Text("Apple 계정으로 로그인합니다"))
+    }
+
+    private var googleLoginButton: some View {
+        Button(action: onGoogleTap) {
+            SocialLoginLabel(.google)
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoading)
+        .accessibilityLabel(Text("Google로 시작하기"))
+        .accessibilityHint(Text("Google 계정으로 로그인합니다"))
     }
 
     private var idPwLoginButton: some View {
@@ -137,6 +149,7 @@ struct LoginActionStack: View {
             isLoading: false,
             onKakaoTap: {},
             onAppleTap: {},
+            onGoogleTap: {},
             onSupportTap: {}
         )
         .padding()

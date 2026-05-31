@@ -25,7 +25,7 @@ enum SocialType: String, CaseIterable, Hashable {
 
     /// 앱에서 직접 로그인/연동 추가를 지원하는 소셜 목록입니다.
     static var appConnectableCases: [SocialType] {
-        [.kakao, .apple]
+        [.kakao, .apple, .google]
     }
 
     /// 소셜 타입에 해당하는 ImageResource를 반환합니다.
@@ -36,7 +36,7 @@ enum SocialType: String, CaseIterable, Hashable {
         case .apple:
             return .appleIcon
         case .google:
-            return .kakaoIcon
+            return .google
         case .email:
             return .email
         }
@@ -50,7 +50,7 @@ enum SocialType: String, CaseIterable, Hashable {
         case .apple:
             return Image(.apple) // 애플 로고 에셋
         case .google:
-            return Image(.kakao)
+            return Image(.google) // 구글 로고 에셋
         case .email:
             return Image(.email)
         }
@@ -64,7 +64,7 @@ enum SocialType: String, CaseIterable, Hashable {
         case .apple:
             return Color.black // 애플 고유 검정색
         case .google:
-            return Color(red: 0.26, green: 0.52, blue: 0.96)
+            return Color.grey100 // 흰 화면과 구분되는 연한 회색 배경
         case .email:
             return Color.clear
         }
@@ -78,7 +78,7 @@ enum SocialType: String, CaseIterable, Hashable {
         case .apple:
             return .white // 검은 배경엔 흰 글씨
         case .google:
-            return .white
+            return .black // 흰 배경엔 검은 글씨
         case .email:
             return .black
         }

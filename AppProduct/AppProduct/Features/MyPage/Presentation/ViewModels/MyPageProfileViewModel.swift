@@ -21,6 +21,7 @@ class MyPageProfileViewModel: SinglePhotoPickerManageable {
     private let useCaseProvider: MyPageUseCaseProviding
     private let authUseCaseProvider: AuthUseCaseProviding
     private let kakaoLoginManager = KakaoLoginManager()
+    private let googleLoginManager = GoogleLoginManager()
 
     // MARK: - 이미지 선택 관련
 
@@ -217,10 +218,8 @@ class MyPageProfileViewModel: SinglePhotoPickerManageable {
         case .apple:
             return (nil, nil)
         case .google:
-            throw AuthError.socialLoginFailed(
-                provider: socialType.rawValue,
-                reason: "현재 앱에서는 Google 연동 해제를 지원하지 않습니다."
-            )
+            let accessToken = try await googleLoginManager.fetchAccessToken()
+            return (accessToken, nil)
         case .email:
             throw AuthError.socialLoginFailed(
                 provider: socialType.rawValue,

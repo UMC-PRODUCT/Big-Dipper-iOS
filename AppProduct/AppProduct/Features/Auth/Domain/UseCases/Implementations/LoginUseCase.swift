@@ -53,6 +53,14 @@ final class LoginUseCase: LoginUseCaseProtocol {
         try await saveTokenIfNeeded(result)
         return result
     }
+
+    func executeGoogle(
+        idToken: String
+    ) async throws -> OAuthLoginResult {
+        let result = try await repository.loginGoogle(idToken: idToken)
+        try await saveTokenIfNeeded(result)
+        return result
+    }
 }
 
 // MARK: - Private

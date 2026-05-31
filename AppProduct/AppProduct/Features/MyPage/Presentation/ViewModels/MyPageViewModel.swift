@@ -25,6 +25,8 @@ class MyPageViewModel {
     private let kakaoLoginManager = KakaoLoginManager()
     /// 애플 소셜 로그인 매니저 (연동 시 authorization code 발급용)
     private let appleLoginManager = AppleLoginManager()
+    /// 구글 소셜 로그인 매니저 (연동 시 idToken 발급용)
+    private let googleLoginManager = GoogleLoginManager()
 
     // MARK: - Init
 
@@ -158,9 +160,9 @@ class MyPageViewModel {
                 fullName: nil
             )
         case .google:
-            throw AuthError.socialLoginFailed(
-                provider: social.rawValue,
-                reason: "현재 앱에서는 Google 연동 추가를 지원하지 않습니다."
+            let idToken = try await googleLoginManager.login()
+            result = try await authProvider.loginUseCase.executeGoogle(
+                idToken: idToken
             )
         case .email:
             throw AuthError.socialLoginFailed(

@@ -95,6 +95,7 @@ struct LoginView: View {
                 isLoading: viewModel.loginState.isLoading,
                 onKakaoTap: { Task { await viewModel.loginWithKakao() } },
                 onAppleTap: { viewModel.loginWithApple() },
+                onGoogleTap: { Task { await viewModel.loginWithGoogle() } },
                 onSupportTap: {
                     kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
                 }
@@ -131,6 +132,15 @@ private struct LoginViewPreviewLoginUseCase: LoginUseCaseProtocol {
         email: String?,
         fullName: String?
     ) async throws -> OAuthLoginResult {
+        .existingMember(
+            tokenPair: TokenPair(
+                accessToken: "preview_access_token",
+                refreshToken: "preview_refresh_token"
+            )
+        )
+    }
+
+    func executeGoogle(idToken: String) async throws -> OAuthLoginResult {
         .existingMember(
             tokenPair: TokenPair(
                 accessToken: "preview_access_token",

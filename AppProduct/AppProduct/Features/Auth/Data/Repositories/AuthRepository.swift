@@ -95,6 +95,34 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         return try apiResponse.unwrap().toDomain()
     }
 
+    /// Google 소셜 로그인을 수행합니다.
+    ///
+    /// - Parameter idToken: GoogleSignIn에서 발급받은 idToken
+    /// - Returns: 기존 회원/신규 회원 분기 결과
+    /// - Important: 서버 요청 바디의 `accessToken` 필드에 **idToken**을 담습니다.
+    func loginGoogle(
+        idToken: String
+    ) async throws -> OAuthLoginResult {
+        let response = try await adapter.requestWithoutAuth(
+            AuthRouter.loginGoogle(
+                body: LoginGoogleRequestDTO(
+                    accessToken: idToken,
+                    clientType: "IOS"
+                )
+            )
+        )
+        #if DEBUG
+        if let json = String(data: response.data, encoding: .utf8) {
+            print("[Auth] 구글 로그인 응답: \(json)")
+        }
+        #endif
+        let apiResponse = try decoder.decode(
+            APIResponse<OAuthLoginResponseDTO>.self,
+            from: response.data
+        )
+        return try apiResponse.unwrap().toDomain()
+    }
+
     /// 이메일 로그인을 수행합니다.
     ///
     /// - Parameter body: email / password

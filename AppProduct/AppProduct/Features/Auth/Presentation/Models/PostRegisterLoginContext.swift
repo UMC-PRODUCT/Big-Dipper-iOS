@@ -21,4 +21,7 @@ enum PostRegisterLoginContext: Equatable {
         email: String?,
         fullName: String?
     )
+
+    /// Google 로그인 재시도에 필요한 정보
+    case google(idToken: String)
 }

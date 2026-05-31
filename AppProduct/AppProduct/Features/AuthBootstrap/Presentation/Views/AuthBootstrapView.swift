@@ -128,6 +128,7 @@ struct AuthBootstrapView: View {
                     isLoading: loginViewModel.loginState.isLoading,
                     onKakaoTap: { Task { await loginViewModel.loginWithKakao() } },
                     onAppleTap: { loginViewModel.loginWithApple() },
+                    onGoogleTap: { Task { await loginViewModel.loginWithGoogle() } },
                     onSupportTap: {
                         kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
                     }

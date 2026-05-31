@@ -17,6 +17,7 @@ final class LoginViewModel {
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     private let kakaoLoginManager: KakaoLoginManager
     private let appleLoginManager: AppleLoginManager
+    private let googleLoginManager: GoogleLoginManager
     private let tokenStore: TokenStore
     private let errorHandler: ErrorHandler
 
@@ -33,7 +34,8 @@ final class LoginViewModel {
         tokenStore: TokenStore,
         errorHandler: ErrorHandler,
         kakaoLoginManager: KakaoLoginManager = KakaoLoginManager(),
-        appleLoginManager: AppleLoginManager = AppleLoginManager()
+        appleLoginManager: AppleLoginManager = AppleLoginManager(),
+        googleLoginManager: GoogleLoginManager = GoogleLoginManager()
     ) {
         self.loginUseCase = loginUseCase
         self.fetchMyProfileUseCase = fetchMyProfileUseCase
@@ -41,6 +43,7 @@ final class LoginViewModel {
         self.errorHandler = errorHandler
         self.kakaoLoginManager = kakaoLoginManager
         self.appleLoginManager = appleLoginManager
+        self.googleLoginManager = googleLoginManager
     }
 
     // MARK: - Function
@@ -130,6 +133,36 @@ final class LoginViewModel {
         }
 
         appleLoginManager.signWithApple()
+    }
+
+    /// Google 로그인 실행
+    @MainActor
+    func loginWithGoogle() async {
+        loginState = .loading
+        destination = nil
+
+        do {
+            let idToken = try await googleLoginManager.login()
+            #if DEBUG
+            print("[Auth] 구글 idToken: \(idToken)")
+            #endif
+            let result = try await loginUseCase.executeGoogle(idToken: idToken)
+            SocialType.addConnected(.google)
+            loginState = .loaded(result)
+            destination = try await resolveDestination(
+                from: result,
+                postRegisterLoginContext: .google(idToken: idToken)
+            )
+        } catch {
+            loginState = .idle
+            errorHandler.handle(error, context: ErrorContext(
+                feature: "Auth",
+                action: "loginWithGoogle",
+                retryAction: { [weak self] in
+                    await self?.loginWithGoogle()
+                }
+            ))
+        }
     }
 }
 

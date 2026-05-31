@@ -32,6 +32,13 @@ protocol AuthRepositoryProtocol: Sendable {
         fullName: String?
     ) async throws -> OAuthLoginResult
 
+    /// Google 소셜 로그인
+    /// - Parameter idToken: GoogleSignIn에서 발급받은 idToken (서버 검증용)
+    /// - Returns: 로그인 결과 (기존 회원/신규 회원)
+    func loginGoogle(
+        idToken: String
+    ) async throws -> OAuthLoginResult
+
     /// 이메일 로그인 (App Store 리뷰어용 비-OAuth 진입)
     /// - Parameter body: 로그인 요청 DTO (email, password)
     /// - Returns: 회원 ID + 토큰 쌍
