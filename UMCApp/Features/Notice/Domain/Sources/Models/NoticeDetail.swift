@@ -368,6 +368,12 @@ public struct NoticeReadStatus: Equatable {
     public var bottomMessage: String {
         "이미 \(confirmedCount)명이 공지를 확인했습니다."
     }
+    
+    public init(noticeId: String, confirmedUsers: [ReadStatusUser], unconfirmedUsers: [ReadStatusUser]) {
+        self.noticeId = noticeId
+        self.confirmedUsers = confirmedUsers
+        self.unconfirmedUsers = unconfirmedUsers
+    }
 }
 
 
