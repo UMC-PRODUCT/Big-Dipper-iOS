@@ -408,6 +408,34 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         return try apiResponse.unwrap().schools.map { $0.toDomain() }
     }
 
+    /// 비밀번호를 변경합니다.
+    ///
+    /// - Parameters:
+    ///   - currentPassword: 현재 비밀번호 (평문)
+    ///   - newPassword: 새 비밀번호 (평문)
+    func changePassword(
+        currentPassword: String,
+        newPassword: String
+    ) async throws {
+        do {
+            let response = try await adapter.request(
+                AuthRouter.changePassword(
+                    body: ChangePasswordRequestDTO(
+                        currentPassword: currentPassword,
+                        newPassword: newPassword
+                    )
+                )
+            )
+            let apiResponse = try decoder.decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
+    }
+
     /// OAuth 회원 비밀번호를 추가 등록합니다.
     ///
     /// - Parameter rawPassword: 평문 비밀번호

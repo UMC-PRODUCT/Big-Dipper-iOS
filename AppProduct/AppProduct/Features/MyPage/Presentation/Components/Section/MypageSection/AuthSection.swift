@@ -19,6 +19,10 @@ struct AuthSection: View {
     @Environment(\.appFlow) private var appFlow
     @Environment(ErrorHandler.self) private var errorHandler
 
+    private var pathStore: PathStore {
+        di.resolve(PathStore.self)
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -48,9 +52,11 @@ struct AuthSection: View {
 
     /// 인증 타입에 따른 액션을 처리하고 AlertPrompt를 표시
     ///
-    /// - Parameter auth: 처리할 인증 타입 (로그아웃 또는 회원탈퇴)
+    /// - Parameter auth: 처리할 인증 타입 (비밀번호 변경, 로그아웃 또는 회원탈퇴)
     private func typeAction(_ auth: AuthType) {
         switch auth {
+        case .changePassword:
+            pathStore.mypagePath.append(.auth(.changePassword))
         case .logout:
             alertPrompt = .init(
                 title: "로그아웃",

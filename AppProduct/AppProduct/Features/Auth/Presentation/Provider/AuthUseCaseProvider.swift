@@ -39,6 +39,8 @@ protocol AuthUseCaseProviding {
     var fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol { get }
     /// OAuth 회원 비밀번호 추가 등록 UseCase
     var registerCredentialUseCase: RegisterCredentialUseCaseProtocol { get }
+    /// 비밀번호 변경 UseCase
+    var changePasswordUseCase: ChangePasswordUseCaseProtocol { get }
 }
 
 /// Auth UseCase Provider 구현
@@ -63,6 +65,7 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
     let registerExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol
     let fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol
     let registerCredentialUseCase: RegisterCredentialUseCaseProtocol
+    let changePasswordUseCase: ChangePasswordUseCaseProtocol
 
     // MARK: - Init
 
@@ -118,6 +121,9 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
             repository: repository
         )
         self.registerCredentialUseCase = RegisterCredentialUseCase(
+            repository: repository
+        )
+        self.changePasswordUseCase = ChangePasswordUseCase(
             repository: repository
         )
     }

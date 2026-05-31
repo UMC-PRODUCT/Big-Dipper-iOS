@@ -144,4 +144,13 @@ protocol AuthRepositoryProtocol: Sendable {
     /// OAuth 회원 비밀번호 추가 등록
     /// - Parameter rawPassword: 평문 비밀번호
     func registerCredential(rawPassword: String) async throws
+
+    /// 비밀번호 변경
+    /// - Parameters:
+    ///   - currentPassword: 현재 비밀번호 (평문)
+    ///   - newPassword: 새 비밀번호 (평문)
+    func changePassword(
+        currentPassword: String,
+        newPassword: String
+    ) async throws
 }
