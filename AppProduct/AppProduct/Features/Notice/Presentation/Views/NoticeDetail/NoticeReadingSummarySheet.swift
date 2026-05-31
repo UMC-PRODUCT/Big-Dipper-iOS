@@ -20,8 +20,8 @@ struct NoticeReadingSummarySheet: View {
     @Bindable var viewModel: NoticeDetailViewModel
     let noticeContent: String
 
-    /// 시트 높이. 요약 글이 잘리지 않도록 기본을 `.large` 로 연다.
-    @State private var selectedDetent: PresentationDetent = .large
+    /// 시트 높이. 기본은 `.medium`, 필요 시 `.large` 로 끌어올릴 수 있다.
+    @State private var selectedDetent: PresentationDetent = .medium
 
     // MARK: - Constants
 
@@ -126,11 +126,35 @@ struct NoticeReadingSummarySheet: View {
     }
 
     private var completedContent: some View {
-        MarkdownRenderedView(markdown: viewModel.readingSummaryStreamingText)
-            .fixedSize(horizontal: false, vertical: true)
+        Text(renderedSummary)
+            .appFont(.body)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Constants.cardPadding)
             .glassEffect(.regular, in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius)))
+    }
+
+    /// 요약 마크다운(굵게 · 불릿)을 네이티브 `AttributedString` 으로 변환합니다.
+    ///
+    /// UITextView 기반 렌더러는 ScrollView 안에서 너비 제안이 비면 한 줄로 붕괴하므로,
+    /// 네이티브 `Text` 로 렌더링해 항상 정상 줄바꿈되도록 합니다.
+    /// `* ` / `- ` 로 시작하는 줄은 `•` 불릿으로 치환합니다.
+    private var renderedSummary: AttributedString {
+        let normalized = viewModel.readingSummaryStreamingText
+            .components(separatedBy: "\n")
+            .map { line -> String in
+                let trimmed = line.drop(while: { $0 == " " })
+                if trimmed.hasPrefix("* ") || trimmed.hasPrefix("- ") {
+                    return "•  " + String(trimmed.dropFirst(2))
+                }
+                return line
+            }
+            .joined(separator: "\n")
+
+        let options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace
+        )
+        return (try? AttributedString(markdown: normalized, options: options))
+            ?? AttributedString(normalized)
     }
 
     private func failedContent(message: String) -> some View {
