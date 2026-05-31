@@ -31,7 +31,6 @@ struct NoticeEditorPresentations: ViewModifier {
             .sheet(item: $viewModel.activeSheetType, content: targetSheet)
             .fullScreenCover(isPresented: $viewModel.showVoting, content: votingSheet)
             .alertPrompt(item: $viewModel.alertPrompt)
-            // AI Rewrite: 확인 다이얼로그
             .overlay {
                 if viewModel.showAIConfirmation {
                     AIConfirmationOverlay(
@@ -47,7 +46,6 @@ struct NoticeEditorPresentations: ViewModifier {
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: viewModel.showAIConfirmation)
-            // AI Rewrite: 로딩/완료 오버레이
             .overlay {
                 if viewModel.isAIProcessing || viewModel.showAICompletionSummary {
                     AILoadingOverlay(
@@ -60,63 +58,6 @@ struct NoticeEditorPresentations: ViewModifier {
             }
             .animation(.easeInOut(duration: 0.25), value: viewModel.isAIProcessing)
             .animation(.easeInOut(duration: 0.25), value: viewModel.showAICompletionSummary)
-            // AI Summary: 붙여넣기 입력 시트
-            .sheet(isPresented: $viewModel.showAISummaryInput, onDismiss: {
-                viewModel.summarySourceText = ""
-            }) {
-                AISummaryInputSheet(
-                    sourceText: $viewModel.summarySourceText,
-                    tokenUsage: viewModel.aiTokenUsage,
-                    onSummarize: {
-                        viewModel.requestAISummary(from: viewModel.summarySourceText)
-                    },
-                    onCancel: {
-                        viewModel.closeSummaryInput()
-                    }
-                )
-            }
-            // AI Summary: 확인 다이얼로그
-            .overlay {
-                if viewModel.showAISummaryConfirmation {
-                    AIConfirmationOverlay(
-                        tokenUsage: viewModel.aiTokenUsage,
-                        titleText: "외부 텍스트를 요약해 공지 초안을 만들어 드릴게요.\n지금 시작할까요?",
-                        confirmButtonTitle: "요약하기",
-                        onConfirm: {
-                            Task { await viewModel.startAISummary() }
-                        },
-                        onCancel: {
-                            viewModel.showAISummaryConfirmation = false
-                            viewModel.pendingSummaryDraft = nil
-                        }
-                    )
-                    .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .center)))
-                }
-            }
-            .animation(.easeInOut(duration: 0.25), value: viewModel.showAISummaryConfirmation)
-            // AI Summary: 요약 진행 중 오버레이
-            .overlay {
-                if viewModel.isAISummaryProcessing {
-                    AILoadingOverlay(
-                        phase: .processing,
-                        streamingText: viewModel.aiSummaryStreamingText
-                    )
-                    .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .center)))
-                }
-            }
-            .animation(.easeInOut(duration: 0.25), value: viewModel.isAISummaryProcessing)
-            // AI Summary: 초안 검토 오버레이
-            .overlay {
-                if viewModel.showAISummaryDraftReview, let draft = viewModel.pendingSummaryDraft {
-                    AISummaryDraftOverlay(
-                        draft: draft,
-                        onAccept: { viewModel.applySummaryDraft() },
-                        onReject: { viewModel.dismissAISummaryDraft() }
-                    )
-                    .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .center)))
-                }
-            }
-            .animation(.easeInOut(duration: 0.25), value: viewModel.showAISummaryDraftReview)
             .sheet(
                 isPresented: Binding(
                     get: { viewModel.editorToolbarViewModel.isFormatPanelVisible },

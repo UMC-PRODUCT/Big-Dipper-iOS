@@ -191,14 +191,11 @@ struct NoticeEditorView: View {
                     isEditMode: viewModel.isEditMode,
                     isAIButtonDisabled: viewModel.isAIProcessing
                         || viewModel.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                    isAISummaryButtonDisabled: viewModel.isAISummaryProcessing
-                        || viewModel.isAIProcessing,
                     isPhotoPickerPresented: $isPhotoPickerPresented,
                     selectedPhotoItems: $viewModel.selectedPhotoItems,
                     selectedHighlightColor: $selectedHighlightColor,
                     onAddLink: addLinkAttachment,
                     onTapAI: handleTapAI,
-                    onTapAISummary: handleTapAISummary,
                     onShowVotingSheet: viewModel.showVotingFormSheet
                 )
                 Spacer()
@@ -349,14 +346,9 @@ struct NoticeEditorView: View {
         viewModel.toggleSubCategory(subCategory)
     }
 
-    /// AI 도우미 버튼 탭 (본문 다듬기)
+    /// AI 도우미 버튼 탭
     private func handleTapAI() {
         viewModel.requestAIImprovement()
-    }
-
-    /// AI 요약 버튼 탭 (외부 텍스트 → 공지 초안)
-    private func handleTapAISummary() {
-        viewModel.openAISummaryInput()
     }
 
     // MARK: - Helper
