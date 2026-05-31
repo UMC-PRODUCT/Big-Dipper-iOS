@@ -49,6 +49,9 @@ struct AuthBootstrapView: View {
     @State private var loginViewModel: LoginViewModel
     @State private var stage: Stage = .cinematic
     @State private var navPath: [NavigationDestination] = []
+    /// 슬로건 reveal 투명도(0~1). preDelay 동안 0 (이미지 로고만 보임) → bloom 동안 0 → 1
+    /// (lens 가 비춰지면서 슬로건이 차오름) → collapse 동안 1 유지. `revealSlogan()` 가 컨트롤.
+    @State private var sloganOpacity: Double = 0
 
     @Environment(\.appFlow) private var appFlow
     @Environment(ErrorHandler.self) private var errorHandler
@@ -66,6 +69,12 @@ struct AuthBootstrapView: View {
         static let authTimeout: TimeInterval = 3.0
         /// stage 전환 애니메이션 시간 — 로고 위로 슬라이드 + actionStack 등장 morph.
         static let morphDuration: TimeInterval = 0.55
+        /// 슬로건 reveal 시작 지연. RefractiveCinematic 의 preDelay 와 동기화 — preDelay 동안
+        /// 이미지 로고만 보이고 슬로건은 숨김.
+        static let sloganRevealDelay: TimeInterval = 0.4
+        /// 슬로건 reveal 애니메이션 시간. RefractiveCinematic 의 bloomDuration 과 동기화 —
+        /// lens 가 펴지는 동안 슬로건이 0 → 1 로 차올라 "lens 안에서 슬로건이 보이며 등장" 효과.
+        static let sloganRevealDuration: TimeInterval = 1.0
     }
 
     // MARK: - Init
@@ -102,6 +111,7 @@ struct AuthBootstrapView: View {
                 .refractiveCinematic()
                 .alertPrompt(item: $bootstrapViewModel.updateAlertPrompt)
                 .task { await runBootstrap() }
+                .task { await revealSlogan() }
                 .navigationDestination(for: NavigationDestination.self) { destination in
                     NavigationRoutingView(destination: destination)
                 }
@@ -117,7 +127,7 @@ struct AuthBootstrapView: View {
         VStack(spacing: .zero) {
             Spacer()
 
-            AuthLogoBlock()
+            AuthLogoBlock(sloganOpacity: sloganOpacity)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
 
@@ -144,6 +154,20 @@ struct AuthBootstrapView: View {
     }
 
     // MARK: - Bootstrap
+
+    /// 슬로건 reveal — preDelay 동안 숨겨두고 (sloganOpacity = 0), bloom 시작 시점에 0 → 1 로
+    /// ease-in-out 차오르게 한다. RefractiveCinematic 의 lens 가 펴지는 동안 슬로건이 lens
+    /// 안에서 동시에 reveal 되어 "lens 가 비춰지면서 슬로건이 보이는" 시네마틱 연출이 완성된다.
+    ///
+    /// 별도 `.task` 로 띄워 `runBootstrap` 의 인증 결과와 무관하게 timeline 을 따라가게 한다 —
+    /// 인증이 빨라서 일찍 morph 가 트리거돼도 슬로건은 이미 reveal 된 상태로 인계.
+    @MainActor
+    private func revealSlogan() async {
+        try? await Task.sleep(for: .seconds(Constants.sloganRevealDelay))
+        withAnimation(.easeInOut(duration: Constants.sloganRevealDuration)) {
+            sloganOpacity = 1.0
+        }
+    }
 
     /// 시네마틱 최소 시간과 인증 검사를 병렬로 진행하고, 둘 다 완료되면 라우팅 or morph.
     @MainActor

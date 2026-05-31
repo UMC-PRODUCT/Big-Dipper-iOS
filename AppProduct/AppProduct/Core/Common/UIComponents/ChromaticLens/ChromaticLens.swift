@@ -79,7 +79,14 @@ private struct ChromaticLensModifier: ViewModifier {
                     .float(Float(iridescenceStrength)),
                     .float(Float(time))
                 ),
-                maxSampleOffset: CGSize(width: radius, height: radius)
+                maxSampleOffset: CGSize(width: radius, height: radius),
+                // radius 가 시각적으로 의미 없는 크기(5px 미만) 면 layerEffect 자체를 비활성화한다.
+                // `SpringKeyframe(bounce: 0)` 의 critically damped 시뮬레이션이 정확히 0 으로
+                // 수렴하지 못하고 작은 잔여 radius (예: 0.5~3.0px) 에서 멈추는 numerical residue
+                // 때문에, layerEffect 가 켜져있는 한 정중앙 몇 픽셀에 lens (작은 굴절 + iridescence)
+                // 가 영구히 보이는 artifact 가 발생한다. isEnabled=false 면 layer 가 통째로
+                // bypass 되어 view 가 원본 그대로 통과 — raster cache 도 안 만들어진다.
+                isEnabled: radius >= 5.0
             )
     }
 }

@@ -137,11 +137,12 @@ private struct RefractiveCinematicModifier: ViewModifier {
                 trigger: trigger,
                 content: { view, state in
                     // SpringKeyframe(bounce: 0) 의 collapse 종료 시 발생하는 numerical residue
-                    // (정확히 0 으로 수렴 못 하고 미세값이 남는 현상) 가 정중앙 1픽셀에 lens
-                    // 처리를 남겨 "콜랩스 후 점이 보이는" artifact 를 만든다. 1px 미만은 0 으로
-                    // clamp 해 lens 가 완전히 사라지도록 보장 (셰이더에도 같은 가드가 있어
-                    // 이중 안전망).
-                    let clampedRadius: CGFloat = state.radius < 1.0 ? 0 : state.radius
+                    // (정확히 0 으로 수렴 못 하고 작은 잔여값 — 측정상 0.5~3.0px — 이 남는 현상)
+                    // 가 정중앙 몇 픽셀에 작은 lens 를 영구히 남기는 artifact 를 만든다.
+                    // 5px 미만은 0 으로 clamp 해 lens 가 완전히 사라지도록 보장한다.
+                    // ChromaticLens 의 `.layerEffect(isEnabled: radius >= 5.0)` 가드와 같은
+                    // 임계값으로 묶어, layer 자체가 bypass 되어 raster cache 도 안 만들어진다.
+                    let clampedRadius: CGFloat = state.radius < 5.0 ? 0 : state.radius
 
                     // keyframeAnimator 의 content closure 는 `@Sendable` (non-isolated) 시그니처라
                     // `@MainActor` 격리된 `chromaticLens(...)` 을 직접 호출하면 Swift 6 isolation
