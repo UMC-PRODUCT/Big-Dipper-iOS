@@ -23,10 +23,13 @@ struct AppProductApp: App {
     // MARK: - Property
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
     @State private var container: DIContainer
     @State private var didConfigureAppDelegate: Bool = false
     @State private var errorHandler: ErrorHandler = .init()
     @State private var appState: AppState = .bootstrap
+    /// 원격 점검(킬스위치) 상태를 관리하는 앱 전역 ViewModel
+    @State private var maintenanceViewModel: MaintenanceViewModel
     private let sharedModelContainer: ModelContainer
 
     // MARK: - AppState
@@ -53,9 +56,17 @@ struct AppProductApp: App {
     init() {
         sharedModelContainer = Self.makeModelContainer()
         KakaoSDK.initSDK(appKey: Config.kakaoAppKey)
-        _container = State(
-            initialValue: DIContainer.configured(
-                modelContext: sharedModelContainer.mainContext
+        let container = DIContainer.configured(
+            modelContext: sharedModelContainer.mainContext
+        )
+        _container = State(initialValue: container)
+        // RemoteConfig 접근은 lazy 이므로 여기서 ViewModel 을 만들어도
+        // FirebaseApp.configure() 이전에 RemoteConfig 가 생성되지 않는다.
+        _maintenanceViewModel = State(
+            initialValue: MaintenanceViewModel(
+                checkMaintenanceUseCase: container.resolve(
+                    CheckMaintenanceUseCaseProtocol.self
+                )
             )
         )
         try? Tips.configure()
@@ -72,6 +83,18 @@ struct AppProductApp: App {
                 .environment(\.appFlow, appFlow)
                 .modelContainer(sharedModelContainer)
                 .alertPrompt(item: errorAlertBinding)
+                .fullScreenCover(isPresented: maintenanceBinding) {
+                    if let info = maintenanceViewModel.maintenanceInfo {
+                        MaintenanceView(info: info)
+                    }
+                }
+                .task {
+                    await maintenanceViewModel.check()
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    Task { await maintenanceViewModel.check() }
+                }
                 .onAppear(perform: configureAppDelegateIfNeeded)
                 .onReceive(
                     NotificationCenter.default.publisher(for: .authSessionExpired)
@@ -185,6 +208,17 @@ extension AppProductApp {
                     errorHandler.clearError()
                 }
             }
+        )
+    }
+
+    /// 점검 상태를 fullScreenCover 표시 바인딩으로 변환합니다.
+    ///
+    /// 사용자가 직접 닫을 수 없도록 setter 는 무시합니다. 점검 해제는
+    /// 포그라운드 재확인 시 `maintenanceInfo` 가 `nil` 로 갱신되며 자동 dismiss 됩니다.
+    private var maintenanceBinding: Binding<Bool> {
+        Binding(
+            get: { maintenanceViewModel.isUnderMaintenance },
+            set: { _ in }
         )
     }
 
