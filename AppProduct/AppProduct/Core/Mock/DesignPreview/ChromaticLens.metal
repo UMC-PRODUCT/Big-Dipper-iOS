@@ -38,8 +38,12 @@ half4 chromaticLens(
     float2 toCenter = position - center;
     float dist = length(toCenter);
 
-    // Outside the lens — pass through unchanged.
-    if (dist > radius) {
+    // Outside the lens — or lens too small to render — pass through unchanged.
+    // `radius < 1.0` 가드는 `SpringKeyframe(bounce: 0)` 의 collapse 종료 시 발생하는 numerical
+    // residue (정확히 0 으로 수렴 못 하고 0.001~0.5 같은 미세값이 남는 현상) 가 정중앙 1픽셀에
+    // lens 처리를 남기는 artifact ("콜랩스 후 점이 보임") 를 방어한다. 1px 미만 lens 는 어차피
+    // 시각적으로 의미 없으므로 통과.
+    if (radius < 1.0 || dist > radius) {
         return layer.sample(position);
     }
 
