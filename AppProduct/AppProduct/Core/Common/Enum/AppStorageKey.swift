@@ -27,6 +27,12 @@ enum AppStorageKey {
     static let connectedSocialProviders: String = "connectedSocialProviders"
     /// 자동 로그인 허용 여부 (승인/등록 완료 사용자만 true)
     static let canAutoLogin: String = "canAutoLogin"
+    /// 2.0.0 강제 재로그인 마이그레이션 1회 실행 여부.
+    ///
+    /// iOS 키체인은 앱 업데이트·재설치로 지워지지 않으므로, 2.0.0 최초 실행 시 한 번만
+    /// 강제 로그아웃(키체인 토큰 삭제)을 수행하고 이 플래그를 set 한다.
+    /// 기기 스코프 값이므로 `sessionScopedKeys` 에 포함하지 않는다(로그아웃해도 보존).
+    static let didForceLogoutForV2: String = "didForceLogoutForV2"
 
     // MARK: - Profile (최신 기수 기준)
 

@@ -148,6 +148,16 @@ final class AuthBootstrapViewModel {
     /// 토큰/프로필 기반으로 부트스트랩 인증 상태를 판정
     private func resolveAuthStatus() async -> AuthBootstrapStatus {
         let defaults = UserDefaults.standard
+
+        // 2.0.0 강제 재로그인 마이그레이션 (1회):
+        // iOS 키체인은 앱 업데이트·재설치로 지워지지 않으므로, 1.x 사용자의 잔존 토큰을
+        // 한 번만 명시적으로 비워 로그인 화면부터 다시 인증하도록 한다.
+        // (신규 설치 사용자는 저장된 토큰이 없어 logout() 이 무해하게 no-op 동작)
+        if !defaults.bool(forKey: AppStorageKey.didForceLogoutForV2) {
+            try? await networkClient.logout()
+            defaults.set(true, forKey: AppStorageKey.didForceLogoutForV2)
+        }
+
         let canAutoLogin = defaults.bool(
             forKey: AppStorageKey.canAutoLogin
         )
