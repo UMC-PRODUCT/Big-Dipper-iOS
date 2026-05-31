@@ -444,6 +444,7 @@ struct CommunityDetailView: View {
     /// 댓글 로딩 중 상태를 나타내는 인디케이터입니다.
     private var commentLoadingIndicator: some View {
         Progress(message: Constant.commentLoadingMessage, size: .regular)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 
     /// 댓글 전송 버튼이 포함된 입력창 하단 액션 행입니다.
