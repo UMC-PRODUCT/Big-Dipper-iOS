@@ -55,6 +55,7 @@ struct NoticeDetailView: View {
         static let collapseAnimation: Animation = .spring(response: 0.36, dampingFraction: 0.88)
         static let failedTitleText: String = "공지사항을 불러오지 못했습니다."
         static let failedIconName: String = "exclamationmark.triangle"
+        static let aiSummaryIcon: String = "sparkles"
     }
 
     // MARK: - Body
@@ -67,6 +68,7 @@ struct NoticeDetailView: View {
             .safeAreaBar(edge: .bottom, alignment: .center, content: expandedReadStatusInset)
             .safeAreaBar(edge: .bottom, alignment: .trailing, content: collapsedReadStatusInset)
             .sheet(isPresented: $viewModel.showReadStatusSheet, content: readStatusSheet)
+            .sheet(isPresented: $viewModel.showReadingSummarySheet, content: readingSummarySheet)
             .alertPrompt(item: $viewModel.alertPrompt)
             .task { await onTask() }
     }
@@ -272,6 +274,17 @@ struct NoticeDetailView: View {
     /// 수정/삭제 메뉴를 포함하는 네비게이션 툴바
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        if viewModel.isAIReadingSummaryAvailable, case .loaded = viewModel.noticeState {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    viewModel.showReadingSummarySheet = true
+                } label: {
+                    Image(systemName: Constants.aiSummaryIcon)
+                        .foregroundStyle(.indigo500)
+                }
+            }
+        }
+
         if currentNotice != nil, !toolbarActions.isEmpty {
             ToolBarCollection.ToolbarTrailingMenu(actions: toolbarActions)
         }
@@ -366,6 +379,14 @@ struct NoticeDetailView: View {
         NoticeReadStatusSheet(viewModel: viewModel)
             .presentationDetents(Constants.detailSheetDetents)
             .interactiveDismissDisabled()
+    }
+
+    /// AI 읽기 요약 시트를 구성합니다.
+    @ViewBuilder
+    private func readingSummarySheet() -> some View {
+        if let content = currentNotice?.content {
+            NoticeReadingSummarySheet(viewModel: viewModel, noticeContent: content)
+        }
     }
 
     // MARK: - Task

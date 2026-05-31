@@ -30,6 +30,8 @@ struct NoticeEditorAttachmentToolbar: View {
     private enum Constants {
         static let height: CGFloat = 44
         static let itemSpacing: CGFloat = 12
+        static let aiIconSize: CGFloat = 20
+        static let aiIconFrame: CGSize = .init(width: 30, height: 30)
     }
 
     // MARK: - Body
@@ -48,6 +50,37 @@ struct NoticeEditorAttachmentToolbar: View {
 
     // MARK: - Components
 
+    private var isBothAIDisabled: Bool {
+        isAIButtonDisabled && isAISummaryButtonDisabled
+    }
+
+    private var aiMenu: some View {
+        Menu {
+            Button {
+                onTapAI()
+            } label: {
+                Label("본문 다듬기", systemImage: "sparkles")
+            }
+            .disabled(isAIButtonDisabled)
+
+            Button {
+                onTapAISummary()
+            } label: {
+                Label("붙여넣고 요약", systemImage: "wand.and.stars")
+            }
+            .disabled(isAISummaryButtonDisabled)
+        } label: {
+            Image(systemName: "sparkles")
+                .font(.system(size: Constants.aiIconSize))
+                .foregroundStyle(isBothAIDisabled ? Color.black.opacity(0.4) : Color.black)
+                .frame(
+                    width: Constants.aiIconFrame.width,
+                    height: Constants.aiIconFrame.height
+                )
+                .padding(DefaultConstant.defaultBtnPadding)
+        }
+    }
+
     private var scrollableItems: some View {
         HStack(spacing: Constants.itemSpacing) {
             ToolbarIconButton(
@@ -65,13 +98,7 @@ struct NoticeEditorAttachmentToolbar: View {
             )
 
             ToolbarIconButton(icon: "link", action: onAddLink)
-            ToolbarIconButton(icon: "sparkles", action: onTapAI)
-                .disabled(isAIButtonDisabled)
-                .opacity(isAIButtonDisabled ? 0.4 : 1)
-
-            ToolbarIconButton(icon: "wand.and.stars", action: onTapAISummary)
-                .disabled(isAISummaryButtonDisabled)
-                .opacity(isAISummaryButtonDisabled ? 0.4 : 1)
+            aiMenu
 
             ToolbarTextFormatButton(
                 title: "B",
