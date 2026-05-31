@@ -177,6 +177,29 @@ final class NoticeEditorViewModel: MultiplePhotoPickerManageable {
     /// AI 개선 완료 후 확인 버튼 대기 중 상태 (오버레이 유지용)
     var showAICompletionSummary: Bool = false
 
+    // MARK: - AI Summary State
+
+    /// 외부 텍스트 붙여넣기 + AI 요약 시트 표시 여부
+    var showAISummaryInput: Bool = false
+
+    /// 붙여넣기 시트의 입력 텍스트 버퍼 (시트 닫힐 때 초기화)
+    var summarySourceText: String = ""
+
+    /// AI 요약 요청 전 확인 다이얼로그 표시 여부
+    var showAISummaryConfirmation: Bool = false
+
+    /// AI 요약 처리 중 여부
+    var isAISummaryProcessing: Bool = false
+
+    /// AI 요약 스트리밍 진행 중 현재까지 생성된 텍스트 (진행 상황 표시용)
+    var aiSummaryStreamingText: String = ""
+
+    /// AI 요약 완료 후 초안 검토 대기 중 상태
+    var showAISummaryDraftReview: Bool = false
+
+    /// AI 요약으로 생성된 제목 + 본문 초안 (검토 후 수락 or 기각)
+    var pendingSummaryDraft: AISummaryDraft?
+
     // MARK: - Edit Snapshot
 
     /// 수정 화면 원본 제목

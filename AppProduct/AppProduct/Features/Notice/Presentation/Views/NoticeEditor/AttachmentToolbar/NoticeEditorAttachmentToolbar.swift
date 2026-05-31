@@ -16,11 +16,13 @@ struct NoticeEditorAttachmentToolbar: View {
     @Bindable var editorToolbarViewModel: EditorToolbarViewModel
     let isEditMode: Bool
     let isAIButtonDisabled: Bool
+    let isAISummaryButtonDisabled: Bool
     @Binding var isPhotoPickerPresented: Bool
     @Binding var selectedPhotoItems: [PhotosPickerItem]
     @Binding var selectedHighlightColor: HighlightColor
     let onAddLink: () -> Void
     let onTapAI: () -> Void
+    let onTapAISummary: () -> Void
     let onShowVotingSheet: () -> Void
 
     // MARK: - Constants
@@ -66,6 +68,10 @@ struct NoticeEditorAttachmentToolbar: View {
             ToolbarIconButton(icon: "sparkles", action: onTapAI)
                 .disabled(isAIButtonDisabled)
                 .opacity(isAIButtonDisabled ? 0.4 : 1)
+
+            ToolbarIconButton(icon: "wand.and.stars", action: onTapAISummary)
+                .disabled(isAISummaryButtonDisabled)
+                .opacity(isAISummaryButtonDisabled ? 0.4 : 1)
 
             ToolbarTextFormatButton(
                 title: "B",
