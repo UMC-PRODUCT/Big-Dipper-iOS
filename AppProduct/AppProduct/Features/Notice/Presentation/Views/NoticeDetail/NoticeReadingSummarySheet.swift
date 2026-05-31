@@ -20,6 +20,9 @@ struct NoticeReadingSummarySheet: View {
     @Bindable var viewModel: NoticeDetailViewModel
     let noticeContent: String
 
+    /// 시트 높이. 요약 글이 잘리지 않도록 기본을 `.large` 로 연다.
+    @State private var selectedDetent: PresentationDetent = .large
+
     // MARK: - Constants
 
     fileprivate enum Constants {
@@ -58,7 +61,7 @@ struct NoticeReadingSummarySheet: View {
             .navigation(naviTitle: .noticeAISummary, displayMode: .inline)
             .toolbar { sheetToolbar }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
         .onAppear {
             if viewModel.readingSummaryPhase == .idle {
                 viewModel.requestReadingSummary(content: noticeContent, modelContext: modelContext)
@@ -124,6 +127,7 @@ struct NoticeReadingSummarySheet: View {
 
     private var completedContent: some View {
         MarkdownRenderedView(markdown: viewModel.readingSummaryStreamingText)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Constants.cardPadding)
             .glassEffect(.regular, in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius)))
