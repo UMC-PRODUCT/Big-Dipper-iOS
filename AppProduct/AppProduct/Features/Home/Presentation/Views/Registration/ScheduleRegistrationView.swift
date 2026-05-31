@@ -757,22 +757,27 @@ fileprivate struct AIAutofillSheet: View {
         static let buttonLabel = "AI로 정리"
         static let sheetTitle = "AI 자동완성"
         static let sheetDescription = "일정 내용을 자연어로 입력하면 AI가 폼을 자동으로 채웁니다."
+        static let headerLabel = "Apple Intelligence"
     }
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
+                headerSection
+
                 Text(Constants.sheetDescription)
                     .appFont(.subheadline, color: .grey600)
                     .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-                    .padding(.top, DefaultSpacing.spacing8)
 
                 inputArea
+
+                autofillButton
 
                 statusArea
 
                 Spacer()
             }
+            .padding(.top, DefaultSpacing.spacing16)
             .navigationTitle(Constants.sheetTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -799,47 +804,60 @@ fileprivate struct AIAutofillSheet: View {
 
     // MARK: - Private
 
-    private var inputArea: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-            HStack(spacing: DefaultSpacing.spacing8) {
-                TextField(
-                    "",
-                    text: $viewModel.aiRawInput,
-                    prompt: Text(Constants.placeholder)
-                        .foregroundStyle(Color.grey400)
-                )
-                .appFont(.body, color: .black)
-                .submitLabel(.done)
-                .onSubmit {
-                    Task { @MainActor in
-                        await viewModel.requestAIAutofill()
-                    }
-                }
+    private var headerSection: some View {
+        HStack(spacing: DefaultSpacing.spacing8) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(.indigo500)
 
-                autofillButton
-            }
-            .padding(DefaultSpacing.spacing12)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: DefaultConstant.defaultCornerRadius))
+            Text(Constants.headerLabel)
+                .appFont(.calloutEmphasis)
+                .foregroundStyle(.grey700)
         }
+        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+    }
+
+    private var inputArea: some View {
+        TextField(
+            "",
+            text: $viewModel.aiRawInput,
+            prompt: Text(Constants.placeholder)
+                .foregroundStyle(Color.grey400),
+            axis: .vertical
+        )
+        .appFont(.body, color: .black)
+        .lineLimit(3...6)
+        .padding(DefaultSpacing.spacing12)
+        .background(Color.grey100)
+        .clipShape(RoundedRectangle(cornerRadius: DefaultConstant.defaultCornerRadius))
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
 
     @ViewBuilder
     private var autofillButton: some View {
-        if case .loading = viewModel.aiAutofillState {
-            ProgressView()
-                .controlSize(.small)
-                .tint(.indigo500)
-        } else {
-            Button(Constants.buttonLabel) {
-                Task { @MainActor in
-                    await viewModel.requestAIAutofill()
+        Group {
+            if case .loading = viewModel.aiAutofillState {
+                ProgressView()
+                    .controlSize(.regular)
+                    .tint(.indigo500)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, DefaultSpacing.spacing8)
+            } else {
+                Button {
+                    Task { @MainActor in
+                        await viewModel.requestAIAutofill()
+                    }
+                } label: {
+                    Text(Constants.buttonLabel)
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.glassProminent)
+                .tint(.indigo500)
+                .controlSize(.large)
+                .disabled(viewModel.aiRawInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            .appFont(.footnoteEmphasis, color: .indigo500)
-            .disabled(viewModel.aiRawInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
+        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
 
     @ViewBuilder
