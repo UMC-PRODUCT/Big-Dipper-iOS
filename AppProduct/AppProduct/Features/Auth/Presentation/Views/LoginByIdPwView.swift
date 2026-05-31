@@ -178,8 +178,8 @@ struct LoginByIdPwView: View {
             Task { await viewModel.loginWithEmail() }
         }
         .loading(.constant(viewModel.loginByEmailState.isLoading))
-        .disabled(viewModel.loginByEmailState.isLoading)
-        .buttonStyle(.gradientCapsule)
+        .disabled(!viewModel.canSubmit)
+        .buttonStyle(.glassProminent)
     }
 }
 
