@@ -57,6 +57,8 @@ enum NavigationDestination: Hashable {
         case signUpByIdPw
         /// 비밀번호 찾기 화면
         case resetPassword
+        /// 비밀번호 변경 화면
+        case changePassword
     }
 
     /// 홈(Home) 관련 화면 목적지

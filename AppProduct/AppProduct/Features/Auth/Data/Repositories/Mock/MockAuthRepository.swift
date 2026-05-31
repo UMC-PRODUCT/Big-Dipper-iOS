@@ -160,6 +160,20 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         try await Task.sleep(for: .milliseconds(500))
     }
 
+    func changePassword(
+        currentPassword: String,
+        newPassword: String
+    ) async throws {
+        try await Task.sleep(for: .milliseconds(500))
+
+        guard currentPassword == "umc12345!" else {
+            throw RepositoryError.serverError(
+                code: "AUTHENTICATION-0022",
+                message: "현재 비밀번호가 올바르지 않습니다."
+            )
+        }
+    }
+
     func verifyEmailCode(
         emailVerificationId: String,
         verificationCode: String

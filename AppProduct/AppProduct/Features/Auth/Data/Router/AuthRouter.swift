@@ -54,6 +54,8 @@ enum AuthRouter: BaseTargetType {
     case getTerms(termsType: String)
     /// OAuth 회원 비밀번호 추가 등록
     case registerCredential(body: RegisterCredentialRequestDTO)
+    /// 비밀번호 변경
+    case changePassword(body: ChangePasswordRequestDTO)
 
     // MARK: - Path
 
@@ -95,6 +97,8 @@ enum AuthRouter: BaseTargetType {
             return "/api/v1/terms/type/\(termsType)"
         case .registerCredential:
             return "/api/v1/auth/credentials"
+        case .changePassword:
+            return "/api/v1/auth/password"
         }
     }
 
@@ -115,7 +119,7 @@ enum AuthRouter: BaseTargetType {
             return .get
         case .registerCredential:
             return .post
-        case .resetPassword:
+        case .resetPassword, .changePassword:
             return .patch
         }
     }
@@ -175,6 +179,8 @@ enum AuthRouter: BaseTargetType {
         case .getSchools, .getTerms:
             return .requestPlain
         case .registerCredential(let body):
+            return .requestJSONEncodable(body)
+        case .changePassword(let body):
             return .requestJSONEncodable(body)
         }
     }

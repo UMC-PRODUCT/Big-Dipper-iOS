@@ -84,6 +84,10 @@ private extension NavigationRoutingView {
                 verifyEmailCodeUseCase: authProvider.verifyEmailCodeUseCase,
                 resetPasswordUseCase: authProvider.resetPasswordUseCase
             )
+        case .changePassword:
+            ChangePasswordView(
+                changePasswordUseCase: di.resolve(AuthUseCaseProviding.self).changePasswordUseCase
+            )
         }
     }
 
