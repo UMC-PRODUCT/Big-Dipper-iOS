@@ -10,7 +10,7 @@
 //
 //  ## 동작
 //
-//  - mount 직후 `refractiveCinematic` modifier 가 3-phase (워터마크 → bloom → collapse) 시퀀스를
+//  - mount 직후 `refractiveCinematic` modifier 가 3-phase (정적 로고 → bloom → collapse) 시퀀스를
 //    2.3s 동안 재생한다. dwell(정점 정지) 단계 없이 한 keyframe timeline 으로 흘러 멈춤 느낌 없음.
 //  - 동시에 `bootstrapViewModel.checkAuthStatus()` 가 background 에서 토큰/프로필/버전 검사를
 //    수행한다.
