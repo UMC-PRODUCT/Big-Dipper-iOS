@@ -55,7 +55,6 @@ struct ActivityCompactMapView: View {
 /// 지도 하단의 위치 상태 표시바
 fileprivate struct LocationStatusBarView: View {
     @Bindable private var mapViewModel: BaseMapViewModel
-    @State private var animate = false
 
     init(mapViewModel: BaseMapViewModel) {
         self.mapViewModel = mapViewModel
@@ -67,8 +66,6 @@ fileprivate struct LocationStatusBarView: View {
         static let statusBarSpacing: CGFloat = 4
         static let contextMenuIconSize: CGFloat = 12
         static let addressVerticalPadding: CGFloat = 4
-        static let animationOffset: CGFloat = 240
-        static let animationDuration: Double = 8
     }
     
     var body: some View {
@@ -116,26 +113,8 @@ fileprivate struct LocationStatusBarView: View {
     /// 세션 위치의 주소 (역지오코딩 결과)
     private var address: some View {
         HStack(spacing: DefaultSpacing.spacing4) {
-            Spacer(minLength: 0)
-
-            Text(mapViewModel.sessionAddress ?? "주소를 알 수 없습니다.")
-                .appFont(.caption1, color: .grey600)
-                .offset(x: animate ? -Constants.animationOffset : 0)
-                .animation(
-                    animate
-                        ? .linear(duration: Constants.animationDuration)
-                            .repeatForever(autoreverses: false)
-                        : .linear(duration: 0),
-                    value: animate
-                )
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .clipped()
-                .onAppear {
-                    animate = true
-                }
-                .onDisappear {
-                    animate = false
-                }
+            MarqueeText(text: mapViewModel.sessionAddress ?? "주소를 알 수 없습니다.")
+                .frame(maxWidth: .infinity)
 
             Image(systemName: "ellipsis.circle")
                 .font(.system(size: Constants.contextMenuIconSize))
@@ -194,6 +173,94 @@ private struct LocationStatusBarContextPreview: View {
         .padding(DefaultConstant.defaultBtnPadding)
         .frame(width: Constants.previewWidth)
         .glassEffect()
+    }
+}
+
+/// 컨테이너 너비를 넘는 텍스트를 끊김 없이 좌측으로 흐르게 반복 스크롤하는 마퀴 텍스트.
+///
+/// 동일 텍스트 2벌을 `spacing` 간격으로 이어 붙인 뒤 "한 벌 너비 + 간격"만큼 이동시킵니다.
+/// 2벌째가 1벌째의 시작 위치에 정확히 도달하는 순간 오프셋이 0으로 리셋되므로
+/// 시각적으로 이음매(깜빡임)가 없습니다. 텍스트가 컨테이너 안에 들어가면 스크롤하지 않고
+/// 우측 정렬로 고정 표시합니다.
+fileprivate struct MarqueeText: View {
+
+    let text: String
+    var color: Color = .grey600
+    /// 초당 이동 거리(pt)
+    var velocity: CGFloat = 30
+    /// 반복되는 두 벌 사이의 간격(pt)
+    var spacing: CGFloat = 48
+
+    @State private var textSize: CGSize = .zero
+    @State private var offset: CGFloat = 0
+
+    var body: some View {
+        GeometryReader { proxy in
+            let containerWidth = proxy.size.width
+            let needsScroll = textSize.width > containerWidth + 1
+
+            Group {
+                if needsScroll {
+                    HStack(spacing: spacing) {
+                        label
+                        label
+                    }
+                    .offset(x: offset)
+                    .frame(width: containerWidth, alignment: .leading)
+                    .clipped()
+                    .onAppear { startScrolling() }
+                    .onChange(of: textSize.width) { startScrolling() }
+                    .onChange(of: containerWidth) { startScrolling() }
+                } else {
+                    label
+                        .frame(width: containerWidth, alignment: .trailing)
+                }
+            }
+        }
+        .frame(height: textSize.height)
+        .background(measurementLayer)
+    }
+
+    private var label: some View {
+        Text(text)
+            .appFont(.caption1, color: color)
+            .fixedSize()
+    }
+
+    /// 텍스트의 자연 크기를 측정하기 위한 숨겨진 레이어
+    private var measurementLayer: some View {
+        Text(text)
+            .appFont(.caption1, color: color)
+            .fixedSize()
+            .hidden()
+            .background(
+                GeometryReader { geometry in
+                    Color.clear.preference(
+                        key: MarqueeSizeKey.self,
+                        value: geometry.size
+                    )
+                }
+            )
+            .onPreferenceChange(MarqueeSizeKey.self) { textSize = $0 }
+    }
+
+    private func startScrolling() {
+        let distance = textSize.width + spacing
+        guard distance > 0 else { return }
+        offset = 0
+        withAnimation(
+            .linear(duration: Double(distance / velocity))
+                .repeatForever(autoreverses: false)
+        ) {
+            offset = -distance
+        }
+    }
+}
+
+private struct MarqueeSizeKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
     }
 }
 
