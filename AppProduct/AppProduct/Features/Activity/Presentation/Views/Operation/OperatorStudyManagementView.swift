@@ -67,7 +67,6 @@ struct OperatorStudyManagementView: View {
         static let roleChapterLeaderDescription: String = "지부 내 전체 학교의 스터디를 관리할 수 있어요"
         static let rolePresidentDescription: String = "소속 학교의 스터디 그룹을 생성·관리할 수 있어요"
         static let roleOperatorDescription: String = "담당 파트의 스터디를 조회할 수 있어요"
-        static let permissionGuideFooter: String = "권한이 필요하다면 지부장 또는 회장에게 역할 부여를 요청하세요"
     }
 
     // MARK: - Body
@@ -301,11 +300,6 @@ struct OperatorStudyManagementView: View {
                 }
                 .padding(DefaultSpacing.spacing16)
                 .background(.regularMaterial, in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius))
-
-                Text(Constants.permissionGuideFooter)
-                    .appFont(.footnote)
-                    .foregroundStyle(.grey500)
-                    .multilineTextAlignment(.center)
             }
             .padding(.top, DefaultSpacing.spacing32)
         }
