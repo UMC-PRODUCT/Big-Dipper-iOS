@@ -74,10 +74,9 @@ struct PenaltyCard: View, Equatable {
                 .offset(x: dragOffset)
                 .contentShape(.rect)
                 .gesture(swipeGesture)
+                .animation(.smooth(duration: 0.3), value: currentIndex)
         })
-        .animation(.smooth(duration: 0.3), value: currentIndex)
         .padding(Constants.padding)
-        .clipped()
         .clipShape(.rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true))
         .glassEffect(.regular, in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius))
         .task {
