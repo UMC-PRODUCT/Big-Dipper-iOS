@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import FoundationModels
+import SwiftData
 
 /// 일정 생성 화면
 ///
@@ -19,6 +21,7 @@ struct ScheduleRegistrationView: View {
     @State var viewModel: ScheduleRegistrationViewModel
 
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     /// 화면이 생성 모드인지 수정 모드인지 구분합니다.
     private let mode: Mode
@@ -74,6 +77,7 @@ struct ScheduleRegistrationView: View {
                 }
             }
             .task {
+                viewModel.modelContext = modelContext
                 if mode == .edit {
                     await viewModel.fetchPrefillParticipants()
                 }
@@ -93,6 +97,9 @@ struct ScheduleRegistrationView: View {
     private var formContent: some View {
         Form {
             inlineErrorSection
+            if isAIAvailable {
+                AIAutofillSection(viewModel: viewModel)
+            }
             section(.title)
             placeSection
             section(.allDay, .date)
@@ -102,6 +109,14 @@ struct ScheduleRegistrationView: View {
             section(.memo)
         }
         .alertPrompt(item: $viewModel.alertPrompt)
+    }
+
+    /// 현재 기기에서 온디바이스 AI 가 사용 가능한지 여부입니다.
+    private var isAIAvailable: Bool {
+        if case .available = SystemLanguageModel.default.availability {
+            return true
+        }
+        return false
     }
 
     /// 대면/비대면 토글과 장소 선택을 묶은 섹션입니다.
@@ -705,6 +720,91 @@ fileprivate struct AttendancePolicySection: View {
                 viewModel.attendanceToggleChanged(to: newValue)
             }
         )
+    }
+}
+
+// MARK: - AI Autofill Section
+
+/// 자연어 입력으로 일정 폼을 자동으로 채워주는 AI 보조 섹션.
+///
+/// `SystemLanguageModel.default.availability == .available` 일 때만 표시됩니다.
+/// 장소 이름만 제안하며 좌표는 생성하지 않습니다.
+/// 참여자 및 출석 정책은 AI 가 변경하지 않습니다.
+fileprivate struct AIAutofillSection: View {
+
+    @Bindable var viewModel: ScheduleRegistrationViewModel
+
+    private enum Constants {
+        static let placeholder = "예: 다음 주 화요일 저녁 7시 스터디 모임 강남역 근처"
+        static let buttonLabel = "AI로 정리"
+    }
+
+    var body: some View {
+        Section {
+            HStack(spacing: DefaultSpacing.spacing8) {
+                TextField(
+                    "",
+                    text: $viewModel.aiRawInput,
+                    prompt: Text(Constants.placeholder)
+                        .foregroundStyle(Color.grey400)
+                )
+                .appFont(.subheadline, color: .black)
+                .submitLabel(.done)
+                .onSubmit {
+                    Task { @MainActor in
+                        await viewModel.requestAIAutofill()
+                    }
+                }
+
+                autofillButton
+            }
+
+            autofillStatusRow
+        } header: {
+            Text("AI 자동완성")
+                .appFont(.caption1, color: .grey500)
+        }
+    }
+
+    /// AI 자동완성 실행 버튼 또는 로딩 인디케이터
+    @ViewBuilder
+    private var autofillButton: some View {
+        if case .loading = viewModel.aiAutofillState {
+            ProgressView()
+                .controlSize(.small)
+                .tint(.indigo500)
+        } else {
+            Button(Constants.buttonLabel) {
+                Task { @MainActor in
+                    await viewModel.requestAIAutofill()
+                }
+            }
+            .appFont(.footnoteEmphasis, color: .indigo500)
+            .disabled(viewModel.aiRawInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+
+    /// 자동완성 성공/실패 인라인 상태 행
+    @ViewBuilder
+    private var autofillStatusRow: some View {
+        switch viewModel.aiAutofillState {
+        case .loaded:
+            HStack(spacing: DefaultSpacing.spacing4) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.green)
+                Text("자동완성 적용됨. 내용을 확인하고 필요 시 수정하세요.")
+                    .appFont(.caption1, color: .grey600)
+            }
+        case .failed(let error):
+            HStack(spacing: DefaultSpacing.spacing4) {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(Color.red500)
+                Text(error.errorDescription ?? error.userMessage)
+                    .appFont(.caption1, color: .red500)
+            }
+        default:
+            EmptyView()
+        }
     }
 }
 

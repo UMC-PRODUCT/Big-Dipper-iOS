@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftData
 
 /// 일정 등록 화면의 비즈니스 로직을 담당하는 뷰 모델입니다.
 ///
@@ -135,9 +136,20 @@ class ScheduleRegistrationViewModel {
     /// 수정 모드 초기값 스냅샷
     private var initialEditSnapshot: EditFormSnapshot?
     /// 사용자가 태그를 직접 조정했는지 여부
-    private var isTagManuallyOverridden: Bool = false
+    var isTagManuallyOverridden: Bool = false
     /// 수정 모드 프리필 시 서버에서 받은 참여자 멤버 ID 목록
     private var prefillMemberIds: Set<Int> = []
+
+    // MARK: - AI Autofill Property
+
+    /// SwiftData ModelContext (토큰 사용량 기록용). 뷰에서 주입합니다.
+    var modelContext: ModelContext?
+
+    /// AI 자동완성 자연어 입력 텍스트
+    var aiRawInput: String = ""
+
+    /// AI 자동완성 진행 상태
+    var aiAutofillState: Loadable<Bool> = .idle
 
     // MARK: - Init
 
