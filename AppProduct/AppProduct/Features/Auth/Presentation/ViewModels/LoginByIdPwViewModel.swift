@@ -36,6 +36,15 @@ final class LoginByIdPwViewModel {
     /// 자동로그인 활성화 여부
     var isAutoLoginEnabled: Bool = false
 
+    /// 로그인 버튼 활성화 조건.
+    ///
+    /// 이메일(공백 제거 후)과 비밀번호가 모두 입력되어야 `true`. `loginWithEmail()`의
+    /// 빈 입력 검증과 동일한 기준이라, 비활성 상태와 실제 제출 가능 여부가 항상 일치합니다.
+    var canSubmit: Bool {
+        !emailInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !passwordInput.isEmpty
+    }
+
     // MARK: - Init
 
     init(
