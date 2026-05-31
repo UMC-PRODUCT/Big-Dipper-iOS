@@ -123,8 +123,7 @@ struct NoticeReadingSummarySheet: View {
     }
 
     private var completedContent: some View {
-        Text(viewModel.readingSummaryStreamingText)
-            .appFont(.body)
+        MarkdownRenderedView(markdown: viewModel.readingSummaryStreamingText)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Constants.cardPadding)
             .glassEffect(.regular, in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius)))
