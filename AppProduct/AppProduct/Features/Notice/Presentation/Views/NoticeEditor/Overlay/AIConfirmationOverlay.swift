@@ -12,6 +12,8 @@ struct AIConfirmationOverlay: View {
     // MARK: - Property
 
     let tokenUsage: NoticeEditorViewModel.AITokenUsage?
+    var titleText: String = "공지 본문을 더 읽기 좋게 다듬어 드릴게요.\n지금 바로 시작할까요?"
+    var confirmButtonTitle: String = "작성하기"
     let onConfirm: () -> Void
     let onCancel: () -> Void
 
@@ -39,7 +41,7 @@ struct AIConfirmationOverlay: View {
                     .appFont(.calloutEmphasis)
                     .multilineTextAlignment(.center)
 
-                Text("공지 본문을 더 읽기 좋게 다듬어 드릴게요.\n지금 바로 시작할까요?")
+                Text(titleText)
                     .font(.app(.footnote))
                     .foregroundStyle(.grey500)
                     .multilineTextAlignment(.center)
@@ -55,7 +57,7 @@ struct AIConfirmationOverlay: View {
                 HStack(spacing: DefaultSpacing.spacing8) {
                     MainButton("취소") { onCancel() }
                         .buttonStyle(.glass)
-                    MainButton("작성하기") { onConfirm() }
+                    MainButton(confirmButtonTitle) { onConfirm() }
                         .buttonStyle(.glassProminent)
                         .disabled(tokenUsage.map { isTokenExhausted($0) } ?? false)
                 }
