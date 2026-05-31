@@ -51,7 +51,7 @@ struct SocialSection: View {
         Button(action: {
             onConnect(social)
         }, label: {
-            MyPageSectionRow(icon: social.imageResource, title: social.rawValue, rightText: "연동하기")
+            MyPageSectionRow(icon: social.imageResource, title: social.displayName, rightText: "연동하기")
         })
     }
 }

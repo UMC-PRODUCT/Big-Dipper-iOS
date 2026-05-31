@@ -61,7 +61,7 @@ struct ConnectionSocial: View {
             onDisconnect(connection)
         } label: {
             HStack(spacing: DefaultSpacing.spacing4) {
-                Text(social.rawValue)
+                Text(social.displayName)
                 Image(systemName: disconnectingSocialType == social ? "hourglass" : "minus.circle.fill")
                     .font(.caption)
             }

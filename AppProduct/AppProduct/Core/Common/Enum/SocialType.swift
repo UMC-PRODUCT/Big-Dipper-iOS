@@ -97,6 +97,22 @@ enum SocialType: String, CaseIterable, Hashable {
         }
     }
 
+    /// 마이페이지 연동 섹션 등에서 사용하는 표시용 서비스 이름입니다.
+    ///
+    /// `rawValue` 는 로그인 버튼 문구("카카오로 계속하기")라 표시용으로 부적합합니다.
+    var displayName: String {
+        switch self {
+        case .kakao:
+            return "카카오"
+        case .apple:
+            return "Apple"
+        case .google:
+            return "Google"
+        case .email:
+            return "이메일"
+        }
+    }
+
     /// 서버 provider 문자열("KAKAO", "APPLE" 등)로 변환합니다.
     init?(provider: String) {
         switch provider.uppercased() {
