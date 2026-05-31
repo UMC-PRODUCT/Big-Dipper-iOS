@@ -6,6 +6,7 @@
 //
 
 import CloudKit
+import GoogleSignIn
 import KakaoSDKAuth
 import KakaoSDKCommon
 import SwiftData
@@ -197,6 +198,9 @@ extension AppProductApp {
     
     /// 카카오 로그인 딥링크 URL을 처리합니다.
     private func handleOpenURL(_ url: URL) {
+        if GIDSignIn.sharedInstance.handle(url) {
+            return
+        }
         guard AuthApi.isKakaoTalkLoginUrl(url) else { return }
         _ = AuthController.handleOpenUrl(url: url)
     }

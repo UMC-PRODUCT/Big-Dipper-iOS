@@ -43,6 +43,15 @@ private struct PreviewLoginUseCase: LoginUseCaseProtocol {
             )
         )
     }
+
+    func executeGoogle(idToken: String) async throws -> OAuthLoginResult {
+        .existingMember(
+            tokenPair: TokenPair(
+                accessToken: "preview",
+                refreshToken: "preview"
+            )
+        )
+    }
 }
 
 /// Preview 전용 내 프로필 조회 UseCase

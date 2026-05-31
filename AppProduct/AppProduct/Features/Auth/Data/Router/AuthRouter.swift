@@ -18,6 +18,8 @@ enum AuthRouter: BaseTargetType {
     case loginKakao(body: LoginKakaoRequestDTO)
     /// Apple 소셜 로그인
     case loginApple(body: LoginAppleRequestDTO)
+    /// Google 소셜 로그인
+    case loginGoogle(body: LoginGoogleRequestDTO)
     /// 이메일 로그인 (App Store 리뷰어용)
     case loginByEmail(body: EmailLoginRequestDTO)
     /// 이메일 회원가입 (App Store 리뷰어용)
@@ -65,6 +67,8 @@ enum AuthRouter: BaseTargetType {
             return "/api/v1/auth/login/kakao"
         case .loginApple:
             return "/api/v1/auth/login/apple"
+        case .loginGoogle:
+            return "/api/v1/auth/login/google"
         case .loginByEmail:
             return "/api/v1/auth/login/email"
         case .registerByEmail:
@@ -106,7 +110,7 @@ enum AuthRouter: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .loginKakao, .loginApple, .loginByEmail, .registerByEmail,
+        case .loginKakao, .loginApple, .loginGoogle, .loginByEmail, .registerByEmail,
              .renewToken, .sendEmailVerification, .resendEmailVerification,
              .verifyEmailCode, .register, .registerExistingChallenger:
             return .post
@@ -131,6 +135,8 @@ enum AuthRouter: BaseTargetType {
         case .loginKakao(let body):
             return .requestJSONEncodable(body)
         case .loginApple(let body):
+            return .requestJSONEncodable(body)
+        case .loginGoogle(let body):
             return .requestJSONEncodable(body)
         case .loginByEmail(let body):
             return .requestJSONEncodable(body)

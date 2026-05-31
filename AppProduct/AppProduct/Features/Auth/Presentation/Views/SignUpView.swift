@@ -613,6 +613,15 @@ private struct SignUpPreviewLoginUseCase: LoginUseCaseProtocol {
             )
         )
     }
+
+    func executeGoogle(idToken: String) async throws -> OAuthLoginResult {
+        .existingMember(
+            tokenPair: TokenPair(
+                accessToken: "preview_access_token",
+                refreshToken: "preview_refresh_token"
+            )
+        )
+    }
 }
 
 private struct SignUpPreviewFetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol {

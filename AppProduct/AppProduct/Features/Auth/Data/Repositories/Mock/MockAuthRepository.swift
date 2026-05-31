@@ -42,6 +42,19 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         )
     }
 
+    func loginGoogle(
+        idToken: String
+    ) async throws -> OAuthLoginResult {
+        try await Task.sleep(for: .milliseconds(500))
+
+        return .existingMember(
+            tokenPair: TokenPair(
+                accessToken: "mock_access_token",
+                refreshToken: "mock_refresh_token"
+            )
+        )
+    }
+
     func loginByEmail(
         _ body: EmailLoginRequestDTO
     ) async throws -> LoginByIdPwResult {

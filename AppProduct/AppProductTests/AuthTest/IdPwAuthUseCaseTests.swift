@@ -279,6 +279,12 @@ private actor StubAuthRepository: AuthRepositoryProtocol {
         fatalError("loginApple not used in these tests")
     }
 
+    func loginGoogle(
+        idToken: String
+    ) async throws -> OAuthLoginResult {
+        fatalError("loginGoogle not used in these tests")
+    }
+
     func renewToken(
         refreshToken: String
     ) async throws -> TokenPair {

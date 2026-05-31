@@ -32,4 +32,11 @@ protocol LoginUseCaseProtocol {
         email: String?,
         fullName: String?
     ) async throws -> OAuthLoginResult
+
+    /// Google 로그인 실행
+    /// - Parameter idToken: GoogleSignIn에서 발급받은 idToken
+    /// - Returns: 로그인 결과
+    func executeGoogle(
+        idToken: String
+    ) async throws -> OAuthLoginResult
 }
