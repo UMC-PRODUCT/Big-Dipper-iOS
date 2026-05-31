@@ -379,6 +379,16 @@ extension DIContainer {
             )
         }
 
+        // MARK: - Maintenance (Remote Kill Switch)
+        container.register(RemoteConfigServiceProtocol.self) {
+            DefaultRemoteConfigService()
+        }
+        container.register(CheckMaintenanceUseCaseProtocol.self) {
+            CheckMaintenanceUseCase(
+                service: container.resolve(RemoteConfigServiceProtocol.self)
+            )
+        }
+
         return container
     }
 

@@ -18,6 +18,7 @@
 		0EEC14D52F0B92FA00345AD8 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 0EEC14D42F0B92FA00345AD8 /* Kingfisher */; };
 		1F3173D62F127A5000601344 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1F3173D52F127A5000601344 /* FirebaseCore */; };
 		1F3173D82F127A5000601344 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 1F3173D72F127A5000601344 /* FirebaseMessaging */; };
+		1F3173E22F127A5000601344 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 1F3173E12F127A5000601344 /* FirebaseRemoteConfig */; };
 		1F9189A52FCC480E008F6668 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 1F9189A42FCC480E008F6668 /* GoogleSignIn */; };
 		1F9189A72FCC480E008F6668 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 1F9189A62FCC480E008F6668 /* GoogleSignInSwift */; };
 		1F953CD92F31D2BB0067FE73 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1F953CD82F31D2BB0067FE73 /* AppIcon.icon */; };
@@ -88,6 +89,7 @@
 				0EEC14C52F0B92CD00345AD8 /* CombineMoya in Frameworks */,
 				0EEC14CE2F0B92EF00345AD8 /* KakaoSDKCert in Frameworks */,
 				1F3173D82F127A5000601344 /* FirebaseMessaging in Frameworks */,
+				1F3173E22F127A5000601344 /* FirebaseRemoteConfig in Frameworks */,
 				0EEC14CC2F0B92EF00345AD8 /* KakaoSDKAuth in Frameworks */,
 			);
 		};
@@ -149,6 +151,7 @@
 				0EEC14D42F0B92FA00345AD8 /* Kingfisher */,
 				1F3173D52F127A5000601344 /* FirebaseCore */,
 				1F3173D72F127A5000601344 /* FirebaseMessaging */,
+				1F3173E12F127A5000601344 /* FirebaseRemoteConfig */,
 				1F9189A42FCC480E008F6668 /* GoogleSignIn */,
 				1F9189A62FCC480E008F6668 /* GoogleSignInSwift */,
 			);
@@ -683,6 +686,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1F3173D42F127A5000601344 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		1F3173E12F127A5000601344 /* FirebaseRemoteConfig */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1F3173D42F127A5000601344 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseRemoteConfig;
 		};
 		1F9189A42FCC480E008F6668 /* GoogleSignIn */ = {
 			isa = XCSwiftPackageProductDependency;
