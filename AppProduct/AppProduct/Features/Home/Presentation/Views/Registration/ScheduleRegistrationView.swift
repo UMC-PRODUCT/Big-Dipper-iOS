@@ -26,6 +26,8 @@ struct ScheduleRegistrationView: View {
     /// 화면이 생성 모드인지 수정 모드인지 구분합니다.
     private let mode: Mode
 
+    @State private var showAISheet: Bool = false
+
     /// 일정 등록 화면의 동작 모드입니다.
     enum Mode {
         case create
@@ -61,7 +63,7 @@ struct ScheduleRegistrationView: View {
         }
         self._viewModel = .init(wrappedValue: viewModel)
     }
-    
+
     // MARK: - Body
 
     /// 일정 등록 폼과 상단 툴바를 조합한 화면 본문입니다.
@@ -89,6 +91,9 @@ struct ScheduleRegistrationView: View {
             .onChange(of: viewModel.isAllDay) {
                 viewModel.prefillAttendancePolicyIfNeeded()
             }
+            .sheet(isPresented: $showAISheet) {
+                AIAutofillSheet(viewModel: viewModel, isPresented: $showAISheet)
+            }
     }
 
     // MARK: - Private Function
@@ -97,9 +102,6 @@ struct ScheduleRegistrationView: View {
     private var formContent: some View {
         Form {
             inlineErrorSection
-            if isAIAvailable {
-                AIAutofillSection(viewModel: viewModel)
-            }
             section(.title)
             placeSection
             section(.allDay, .date)
@@ -176,6 +178,11 @@ struct ScheduleRegistrationView: View {
                 dismissOnTap: false,
             )
         } else {
+            if isAIAvailable {
+                ToolbarItem(placement: .topBarTrailing) {
+                    aiToolbarButton
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 createToolbarButton
             }
@@ -210,6 +217,16 @@ struct ScheduleRegistrationView: View {
         }
         .tint((isActionDisabled || isSubmitting) ? .grey300 : .indigo500)
         .disabled(isActionDisabled || isSubmitting)
+    }
+
+    /// 생성 모드에서 AI 자동완성 시트를 여는 툴바 버튼입니다.
+    private var aiToolbarButton: some View {
+        Button {
+            showAISheet = true
+        } label: {
+            Image(systemName: "sparkles")
+        }
+        .tint(.indigo500)
     }
 
     /// 일정 생성 또는 수정 요청이 진행 중인지 여부입니다.
@@ -723,24 +740,67 @@ fileprivate struct AttendancePolicySection: View {
     }
 }
 
-// MARK: - AI Autofill Section
+// MARK: - AI Autofill Sheet
 
-/// 자연어 입력으로 일정 폼을 자동으로 채워주는 AI 보조 섹션.
+/// 자연어 입력으로 일정 폼을 자동으로 채워주는 AI 자동완성 시트.
 ///
-/// `SystemLanguageModel.default.availability == .available` 일 때만 표시됩니다.
+/// 성공(.loaded) 상태가 되면 시트를 자동으로 닫아 사용자가 채워진 폼을 확인하게 합니다.
 /// 장소 이름만 제안하며 좌표는 생성하지 않습니다.
 /// 참여자 및 출석 정책은 AI 가 변경하지 않습니다.
-fileprivate struct AIAutofillSection: View {
+fileprivate struct AIAutofillSheet: View {
 
     @Bindable var viewModel: ScheduleRegistrationViewModel
+    @Binding var isPresented: Bool
 
     private enum Constants {
         static let placeholder = "예: 다음 주 화요일 저녁 7시 스터디 모임 강남역 근처"
         static let buttonLabel = "AI로 정리"
+        static let sheetTitle = "AI 자동완성"
+        static let sheetDescription = "일정 내용을 자연어로 입력하면 AI가 폼을 자동으로 채웁니다."
     }
 
     var body: some View {
-        Section {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
+                Text(Constants.sheetDescription)
+                    .appFont(.subheadline, color: .grey600)
+                    .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                    .padding(.top, DefaultSpacing.spacing8)
+
+                inputArea
+
+                statusArea
+
+                Spacer()
+            }
+            .navigationTitle(Constants.sheetTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        viewModel.resetAIAutofillState()
+                        isPresented = false
+                    } label: {
+                        Image(systemName: "xmark")
+                            .foregroundStyle(Color.grey500)
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+        .onChange(of: viewModel.aiAutofillState) {
+            if case .loaded = viewModel.aiAutofillState {
+                viewModel.resetAIAutofillState()
+                isPresented = false
+            }
+        }
+    }
+
+    // MARK: - Private
+
+    private var inputArea: some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
             HStack(spacing: DefaultSpacing.spacing8) {
                 TextField(
                     "",
@@ -748,7 +808,7 @@ fileprivate struct AIAutofillSection: View {
                     prompt: Text(Constants.placeholder)
                         .foregroundStyle(Color.grey400)
                 )
-                .appFont(.subheadline, color: .black)
+                .appFont(.body, color: .black)
                 .submitLabel(.done)
                 .onSubmit {
                     Task { @MainActor in
@@ -758,15 +818,13 @@ fileprivate struct AIAutofillSection: View {
 
                 autofillButton
             }
-
-            autofillStatusRow
-        } header: {
-            Text("AI 자동완성")
-                .appFont(.caption1, color: .grey500)
+            .padding(DefaultSpacing.spacing12)
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: DefaultConstant.defaultCornerRadius))
         }
+        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
 
-    /// AI 자동완성 실행 버튼 또는 로딩 인디케이터
     @ViewBuilder
     private var autofillButton: some View {
         if case .loading = viewModel.aiAutofillState {
@@ -784,17 +842,9 @@ fileprivate struct AIAutofillSection: View {
         }
     }
 
-    /// 자동완성 성공/실패 인라인 상태 행
     @ViewBuilder
-    private var autofillStatusRow: some View {
+    private var statusArea: some View {
         switch viewModel.aiAutofillState {
-        case .loaded:
-            HStack(spacing: DefaultSpacing.spacing4) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Color.green)
-                Text("자동완성 적용됨. 내용을 확인하고 필요 시 수정하세요.")
-                    .appFont(.caption1, color: .grey600)
-            }
         case .failed(let error):
             HStack(spacing: DefaultSpacing.spacing4) {
                 Image(systemName: "exclamationmark.circle.fill")
@@ -802,6 +852,7 @@ fileprivate struct AIAutofillSection: View {
                 Text(error.errorDescription ?? error.userMessage)
                     .appFont(.caption1, color: .red500)
             }
+            .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
         default:
             EmptyView()
         }
