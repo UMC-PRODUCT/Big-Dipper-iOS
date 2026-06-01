@@ -222,6 +222,10 @@ extension TargetAudience {
 public struct ImageViewerItem: Identifiable {
     public let id = UUID()
     public let index: String
+    
+    public init(index: String) {
+        self.index = index
+    }
 }
 
 
@@ -284,6 +288,11 @@ public struct NoticeVote: Equatable, Identifiable, Hashable {
     /// 사용자 투표 여부
     public var hasUserVoted: Bool {
         !userVotedOptionIds.isEmpty
+    }
+    
+    /// 날짜 포맷 (MM.dd - MM.dd)
+    public var formattedPeriod: String {
+        startDate.dateRange(to: endDate)
     }
 }
 
