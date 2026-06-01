@@ -96,12 +96,22 @@ fileprivate struct LocationStatusBarView: View {
     /// 지오펜스 내 위치 인증 상태 표시
     private var verifyLocationStatus: some View {
         HStack(spacing: Constants.statusBarSpacing) {
-            Image(.Map.verifyLocation)
-                .resizable()
-                .frame(
-                    width: Constants.verifyIconSize,
-                    height: Constants.verifyIconSize)
-            
+            if mapViewModel.isUserInsideGeofence {
+                Image(.Map.verifyLocation)
+                    .resizable()
+                    .frame(
+                        width: Constants.verifyIconSize,
+                        height: Constants.verifyIconSize)
+            } else {
+                Image(systemName: "location.slash.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(
+                        width: Constants.verifyIconSize,
+                        height: Constants.verifyIconSize)
+                    .foregroundStyle(.red)
+            }
+
             Text(mapViewModel.isUserInsideGeofence
                  ? "위치 인증됨" : "위치 미인증")
                 .appFont(.caption1,
@@ -153,9 +163,17 @@ private struct LocationStatusBarContextPreview: View {
     var body: some View {
         HStack(spacing: Constants.spacing) {
             HStack(spacing: Constants.spacing) {
-                Image(.Map.verifyLocation)
-                    .resizable()
-                    .frame(width: Constants.verifyIconSize, height: Constants.verifyIconSize)
+                if isUserInsideGeofence {
+                    Image(.Map.verifyLocation)
+                        .resizable()
+                        .frame(width: Constants.verifyIconSize, height: Constants.verifyIconSize)
+                } else {
+                    Image(systemName: "location.slash.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: Constants.verifyIconSize, height: Constants.verifyIconSize)
+                        .foregroundStyle(.red)
+                }
 
                 Text(isUserInsideGeofence ? "위치 인증됨" : "위치 미인증")
                     .appFont(.caption1, color: isUserInsideGeofence ? .indigo500 : .red)
@@ -182,6 +200,10 @@ private struct LocationStatusBarContextPreview: View {
 /// 2벌째가 1벌째의 시작 위치에 정확히 도달하는 순간 오프셋이 0으로 리셋되므로
 /// 시각적으로 이음매(깜빡임)가 없습니다. 텍스트가 컨테이너 안에 들어가면 스크롤하지 않고
 /// 우측 정렬로 고정 표시합니다.
+///
+/// - Note: 크기 기준은 `fixedSize` 없는 '고스트 텍스트'(한 줄 높이 + 부모 폭)로 고정하고,
+///   보이는 마퀴는 그 위 overlay 의 `GeometryReader` 가 준 폭으로만 그립니다. 덕분에 콘텐츠의
+///   intrinsic 폭이 부모 HStack 으로 새어 좌측 위치 상태를 밀어내는 일이 없습니다.
 fileprivate struct MarqueeText: View {
 
     let text: String
@@ -191,63 +213,90 @@ fileprivate struct MarqueeText: View {
     /// 반복되는 두 벌 사이의 간격(pt)
     var spacing: CGFloat = 48
 
-    @State private var textSize: CGSize = .zero
+    @State private var textWidth: CGFloat = 0
+    @State private var containerWidth: CGFloat = 0
     @State private var offset: CGFloat = 0
 
-    var body: some View {
-        GeometryReader { proxy in
-            let containerWidth = proxy.size.width
-            let needsScroll = textSize.width > containerWidth + 1
-
-            Group {
-                if needsScroll {
-                    HStack(spacing: spacing) {
-                        label
-                        label
-                    }
-                    .offset(x: offset)
-                    .frame(width: containerWidth, alignment: .leading)
-                    .clipped()
-                    .onAppear { startScrolling() }
-                    .onChange(of: textSize.width) { startScrolling() }
-                    .onChange(of: containerWidth) { startScrolling() }
-                } else {
-                    label
-                        .frame(width: containerWidth, alignment: .trailing)
-                }
-            }
-        }
-        .frame(height: textSize.height)
-        .background(measurementLayer)
+    private var needsScroll: Bool {
+        textWidth > 0 && containerWidth > 0 && textWidth > containerWidth + 1
     }
 
-    private var label: some View {
+    var body: some View {
+        // 크기 기준 '고스트': lineLimit(1) 한 줄 높이 + 부모 폭(maxWidth:.infinity).
+        // fixedSize 를 쓰지 않으므로 거대한 intrinsic 폭이 부모로 새어 위치 상태를
+        // 화면 밖으로 밀어내는 일이 없다. 보이는 마퀴는 그 위 overlay 로만 그린다.
         Text(text)
             .appFont(.caption1, color: color)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity)
+            .hidden()
+            .overlay {
+                GeometryReader { geo in
+                    visibleMarquee(width: geo.size.width)
+                        .onAppear { updateContainer(geo.size.width) }
+                        .onChange(of: geo.size.width) { _, newWidth in
+                            updateContainer(newWidth)
+                        }
+                }
+            }
+            .background(widthProbe)
+    }
+
+    /// 실제로 보이는 마퀴. `width` 는 GeometryReader 가 준 확정 컨테이너 폭이라 순환 의존이 없다.
+    @ViewBuilder
+    private func visibleMarquee(width: CGFloat) -> some View {
+        if needsScroll {
+            HStack(spacing: spacing) {
+                singleLine
+                singleLine
+            }
+            .fixedSize()
+            .offset(x: offset)
+            .frame(width: width, alignment: .leading)
+            .clipped()
+        } else {
+            singleLine
+                .frame(width: width, alignment: .trailing)
+        }
+    }
+
+    private var singleLine: some View {
+        Text(text)
+            .appFont(.caption1, color: color)
+            .lineLimit(1)
             .fixedSize()
     }
 
-    /// 텍스트의 자연 크기를 측정하기 위한 숨겨진 레이어
-    private var measurementLayer: some View {
+    /// 텍스트 자연 폭 측정용 — background 라 부모 레이아웃에 영향이 없다.
+    private var widthProbe: some View {
         Text(text)
             .appFont(.caption1, color: color)
+            .lineLimit(1)
             .fixedSize()
             .hidden()
             .background(
-                GeometryReader { geometry in
+                GeometryReader { geo in
                     Color.clear.preference(
-                        key: MarqueeSizeKey.self,
-                        value: geometry.size
-                    )
+                        key: MarqueeSizeKey.self, value: geo.size.width)
                 }
             )
-            .onPreferenceChange(MarqueeSizeKey.self) { textSize = $0 }
+            .onPreferenceChange(MarqueeSizeKey.self) { width in
+                guard width > 0, abs(width - textWidth) > 0.5 else { return }
+                textWidth = width
+                restartScrolling()
+            }
     }
 
-    private func startScrolling() {
-        let distance = textSize.width + spacing
-        guard distance > 0 else { return }
+    private func updateContainer(_ width: CGFloat) {
+        guard width > 0, abs(width - containerWidth) > 0.5 else { return }
+        containerWidth = width
+        restartScrolling()
+    }
+
+    private func restartScrolling() {
         offset = 0
+        guard needsScroll else { return }
+        let distance = textWidth + spacing
         withAnimation(
             .linear(duration: Double(distance / velocity))
                 .repeatForever(autoreverses: false)
@@ -258,9 +307,9 @@ fileprivate struct MarqueeText: View {
 }
 
 private struct MarqueeSizeKey: PreferenceKey {
-    static var defaultValue: CGSize = .zero
-    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
-        value = nextValue()
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
