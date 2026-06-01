@@ -119,11 +119,8 @@ struct ActivityView: View {
         }
     }
 
-    /// 운영진 출석 관리 섹션
-    ///
-    /// 운영진 뷰는 자체적으로 `/api/v1/schedules` 데이터를 조회합니다.
     private var operatorAttendanceContent: some View {
-        OperatorAttendanceSectionView(
+        AttendanceListView(
             container: di,
             errorHandler: errorHandler
         )

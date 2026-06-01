@@ -14,7 +14,7 @@ struct OperatorLocationChangeSheetView: View {
 
     // MARK: - Property
 
-    @Bindable private var viewModel: OperatorAttendanceViewModel
+    @Bindable private var viewModel: AttendanceDetailViewModel
     private let errorHandler: ErrorHandler
 
     @State private var selectedPlace: PlaceSearchInfo = .init(
@@ -36,7 +36,7 @@ struct OperatorLocationChangeSheetView: View {
     // MARK: - Init
 
     init(
-        viewModel: OperatorAttendanceViewModel,
+        viewModel: AttendanceDetailViewModel,
         errorHandler: ErrorHandler,
     ) {
         self.viewModel = viewModel
@@ -144,7 +144,7 @@ struct OperatorLocationChangeSheetView: View {
         .background(.white, in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
         .glass()
     }
-    
+
     private var placeholderPlaceInfo: some View {
         HStack {
             Image(systemName: "location.circle")
