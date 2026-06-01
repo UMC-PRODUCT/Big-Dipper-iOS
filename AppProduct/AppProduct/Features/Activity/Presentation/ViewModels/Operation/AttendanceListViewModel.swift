@@ -77,6 +77,15 @@ final class AttendanceListViewModel {
         return infos.contains { now >= $0.startsAt && now <= $0.endsAt }
     }
 
+    /// 접근 권한 거부 상태 여부 (HTTP 403)
+    ///
+    /// 필터 칩·기간 필터·승인 대기 배너 등 **권한 보유자 전용 UI** 노출 분기에 사용합니다.
+    /// 권한이 없는 사용자에게는 ``AttendanceListView`` 가 폴백 안내만 표시합니다.
+    var isPermissionDenied: Bool {
+        guard case .failed(let error) = listState else { return false }
+        return error.isPermissionDenied
+    }
+
     // MARK: - Init
 
     init(

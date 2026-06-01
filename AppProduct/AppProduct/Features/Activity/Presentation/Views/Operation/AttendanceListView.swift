@@ -40,16 +40,19 @@ struct AttendanceListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
-            filterChipRow
+            // 필터 칩·기간 필터·승인 대기 배너는 권한 보유자에게만 노출 (권한 거부 시 폴백 안내만 표시)
+            if !viewModel.isPermissionDenied {
+                filterChipRow
 
-            if viewModel.isFilterExpanded {
-                periodFilterExpandedRow
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+                if viewModel.isFilterExpanded {
+                    periodFilterExpandedRow
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
-            if viewModel.totalPendingCount > 0 {
-                pendingInboxBanner
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                if viewModel.totalPendingCount > 0 {
+                    pendingInboxBanner
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
 
             switch viewModel.listState {
