@@ -32,7 +32,7 @@ struct AttendancePolicyDisplaySection: View, Equatable {
     var body: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
             Text("출석 정책")
-                .appFont(.title2Emphasis, color: .black)
+                .appFont(.title3Emphasis, color: .black)
 
             policyCard
         }
