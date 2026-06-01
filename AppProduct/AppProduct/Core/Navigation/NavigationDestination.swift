@@ -97,8 +97,6 @@ enum NavigationDestination: Hashable {
         case myInfo(profileData: ProfileData)
         /// 내 활동 게시글 목록
         case myActivePosts(type: MyActiveLogsType)
-        /// 프로덕트 팀 소개
-        case productTeamIntroduction
     }
 
     /// 활동(Activity) 관련 화면 목적지

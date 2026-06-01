@@ -28,7 +28,6 @@ struct NavigationModifier: ViewModifier {
         case registrationEdit = "일정 수정"
         case myProfile = "프로필"
         case myPage = "마이 페이지"
-        case productTeam = "UMC PRODUCT"
         case myWrittenPosts = "내가 쓴 글"
         case myCommentedPosts = "댓글 단 글"
         case myScrappedPosts = "스크랩"
