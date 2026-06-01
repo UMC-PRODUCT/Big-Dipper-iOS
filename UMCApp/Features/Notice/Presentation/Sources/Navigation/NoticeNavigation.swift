@@ -22,6 +22,7 @@ public enum NavigationDestination: Hashable {
 public enum NoticeDestination: Hashable {
     case detail(detailItem: NoticeDetail)
     case staffNotice
+    case editor(mode: NoticeEditorMode, selectedGisuId: String?)
 }
 
 public struct NavigationRoutingView: View {
