@@ -150,6 +150,8 @@ public struct VoteFormData: Equatable {
         isDateRangeValid
     }
     
+    public init() {}
+    
     public init(
         title: String,
         options: [VoteOptionItem],

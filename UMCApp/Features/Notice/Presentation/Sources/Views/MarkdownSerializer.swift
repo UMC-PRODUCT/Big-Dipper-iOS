@@ -10,6 +10,12 @@ import UIKit
 
 // TODO: 교체 - MarkdownSerializer 본체로 대체 예정
 public enum MarkdownSerializer {
+    
+    static func serialize(_ attributedString: NSAttributedString) -> String {
+        var markdown = ""
+        return markdown
+    }
+    
     public static func plainText(from markdown: String) -> String { markdown }
     
     public static func looksLikeHTML(_ content: String) -> Bool {
@@ -25,5 +31,10 @@ public enum MarkdownSerializer {
     public static func unescapeForDisplay(_ markdown: String) -> String {
         var unescaped = ""
         return unescaped
+    }
+    
+    public static func deserialize(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
+        let attributedString = NSMutableAttributedString()
+        return attributedString
     }
 }

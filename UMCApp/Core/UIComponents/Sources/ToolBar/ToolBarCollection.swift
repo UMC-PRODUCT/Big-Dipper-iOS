@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UMCFoundation
 import CoreDesignSystem
 
 /// 앱 전체에서 사용되는 재사용 가능한 Toolbar 컴포넌트 모음

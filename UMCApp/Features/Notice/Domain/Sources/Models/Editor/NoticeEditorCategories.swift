@@ -17,6 +17,7 @@ public enum EditorMainCategory: Identifiable, Equatable, Hashable {
     case branch
     case school
     case part(UMCPartType)
+    case management(ManagementNoticeCategory)
 
     /// 고유 식별자
     public var id: String {
@@ -26,6 +27,7 @@ public enum EditorMainCategory: Identifiable, Equatable, Hashable {
         case .branch: return "branch"
         case .school: return "school"
         case .part(let part): return "part_\(part.apiValue)"
+        case .management(let category): return "management_\(category.id)"
         }
     }
 
@@ -37,6 +39,7 @@ public enum EditorMainCategory: Identifiable, Equatable, Hashable {
         case .branch: return "지부"
         case .school: return "학교"
         case .part(let part): return NoticePart(umcPartType: part)?.displayName ?? part.name
+        case .management(let category): return category.labelText
         }
     }
 
@@ -48,6 +51,7 @@ public enum EditorMainCategory: Identifiable, Equatable, Hashable {
         case .branch: return "mappin.and.ellipse"
         case .school: return "graduationcap"
         case .part: return "person.3.fill"
+        case .management(let category): return category.labelIcon
         }
     }
 
@@ -64,6 +68,11 @@ public enum EditorMainCategory: Identifiable, Equatable, Hashable {
             return [.school, .part]
         case .part:
             return []
+        case .management(let category):
+            switch category {
+            case .centralAll, .schoolCore: return []
+            case .schoolPartLeader: return [.part]
+            }
         }
     }
 
@@ -167,6 +176,8 @@ public struct EditorSubCategorySelection: Equatable {
         }
         return items.isEmpty ? "선택" : items.joined(separator: ", ")
     }
+    
+    public init() {}
     
     public init(
         selectedSubCategories: Set<EditorSubCategory>,
