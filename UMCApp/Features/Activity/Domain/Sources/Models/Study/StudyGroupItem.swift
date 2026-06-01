@@ -46,7 +46,11 @@ public struct StudyGroupItem: Identifiable, Equatable, Hashable {
         part: nil
     )
 
+    #if DEBUG
     /// SwiftUI Preview / Mock 용 샘플 데이터 (전체 항목 + 7개 파트)
+    ///
+    /// - Important: `#if DEBUG` 가드 적용 — 릴리스 바이너리에 포함되지 않습니다.
+    ///   본 fixture 에 의존하는 테스트도 동일하게 `#if DEBUG` 로 감쌉니다.
     public static let preview: [StudyGroupItem] = [
         .all,
         StudyGroupItem(
@@ -92,4 +96,5 @@ public struct StudyGroupItem: Identifiable, Equatable, Hashable {
             part: .pm
         )
     ]
+    #endif
 }

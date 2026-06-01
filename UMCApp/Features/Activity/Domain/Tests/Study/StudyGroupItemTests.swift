@@ -61,6 +61,9 @@ struct StudyGroupItemTests {
 
     // MARK: - .preview sample
 
+    // `StudyGroupItem.preview` 는 `#if DEBUG` 가드 fixture 이므로
+    // 의존 테스트도 동일하게 가드 — Release 빌드 컴파일 실패 방지.
+    #if DEBUG
     @Test("StudyGroupItem.preview 의 첫 항목은 .all 이다")
     func previewFirstItemIsAll() {
         // Given
@@ -84,4 +87,5 @@ struct StudyGroupItemTests {
         // Then
         #expect(coveredParts == Set(StudyPart.allCases))
     }
+    #endif
 }

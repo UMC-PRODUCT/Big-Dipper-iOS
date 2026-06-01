@@ -144,6 +144,8 @@ CLAUDE.local.md
 AGENTS.local.md
 CODEX.md
 AGENTS.md
+.codex/
+.agents/
 .claude/
 .mcp.json
 PROJECT_CONTEXT.md

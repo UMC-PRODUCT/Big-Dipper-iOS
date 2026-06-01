@@ -24,8 +24,8 @@ public struct StudyGroupMember: Identifiable, Equatable, Hashable {
 
     public let id: UUID
     public let serverID: String
-    public let challengerID: Int?
-    public let memberID: Int?
+    public let challengerID: String?
+    public let memberID: String?
     public let name: String
     public let nickname: String?
     public let university: String
@@ -46,8 +46,8 @@ public struct StudyGroupMember: Identifiable, Equatable, Hashable {
     public init(
         id: UUID = UUID(),
         serverID: String,
-        challengerID: Int? = nil,
-        memberID: Int? = nil,
+        challengerID: String? = nil,
+        memberID: String? = nil,
         name: String,
         nickname: String? = nil,
         university: String,
