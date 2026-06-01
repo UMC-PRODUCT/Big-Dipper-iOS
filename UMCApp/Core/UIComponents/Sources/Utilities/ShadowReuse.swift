@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import CoreDesignSystem
 
 /// shadow1 modifier
 public struct Shadow1: ViewModifier {

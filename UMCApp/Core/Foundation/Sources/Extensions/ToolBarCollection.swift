@@ -37,6 +37,10 @@ public struct ToolBarCollection {
         @Environment(\.dismiss) var dismiss
         public var action: () -> Void
         
+        public init(action: @escaping () -> Void) {
+            self.action = action
+        }
+        
         public var body: some ToolbarContent {
             ToolbarItem(placement: .cancellationAction) {
                 Button(role: .cancel, action: {
@@ -478,6 +482,10 @@ public struct ToolBarCollection {
     /// 우측 상단의 `ellipsis` 메뉴를 공통 액션 목록으로 렌더링합니다.
     public struct ToolbarTrailingMenu: ToolbarContent {
         public let actions: [ActionItem]
+        
+        public init(actions: [ActionItem]) {
+            self.actions = actions
+        }
         
         /// `ToolbarTrailingMenu`가 노출할 단일 메뉴 액션 모델입니다.
         public struct ActionItem: Identifiable {

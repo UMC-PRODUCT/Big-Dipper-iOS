@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreDesignSystem
 
 public struct DefaultBackgroundModifier: ViewModifier {
     public func body(content: Content) -> some View {
