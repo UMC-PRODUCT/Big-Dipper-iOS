@@ -22,6 +22,10 @@ final class AttendanceListViewModel {
 
     // MARK: - Property
 
+    private enum PollingConfig {
+        static let intervalSeconds: Int = 15
+    }
+
     private var container: DIContainer
     private var errorHandler: ErrorHandler
     private var useCase: OperatorAttendanceUseCaseProtocol
@@ -52,6 +56,27 @@ final class AttendanceListViewModel {
     /// 조회 종료 일시 (기본값: 현재 +24시간, 진행 중 일정 포함)
     var toDate: Date = Date().addingTimeInterval(24 * 60 * 60)
 
+    // MARK: - Derived State
+
+    /// 전체 승인 대기 건수 (`.loaded` 상태에서만 집계)
+    var totalPendingCount: Int {
+        guard case .loaded(let infos) = listState else { return 0 }
+        return infos.map(\.pendingCount).reduce(0, +)
+    }
+
+    /// 승인 대기가 1건 이상인 첫 번째 일정의 scheduleId
+    var firstPendingScheduleId: Int? {
+        guard case .loaded(let infos) = listState else { return nil }
+        return infos.first(where: { $0.pendingCount > 0 })?.scheduleId
+    }
+
+    /// 현재 진행 중인 세션이 하나라도 있는지 여부 (KST 기준)
+    private var hasActiveSession: Bool {
+        guard case .loaded(let infos) = listState else { return false }
+        let now = Date()
+        return infos.contains { now >= $0.startsAt && now <= $0.endsAt }
+    }
+
     // MARK: - Init
 
     init(
@@ -81,6 +106,8 @@ final class AttendanceListViewModel {
             listState = .loaded(list)
         } catch let error as DomainError {
             listState = .failed(.domain(error))
+        } catch let error as NetworkError {
+            listState = .failed(.network(error))
         } catch {
             errorHandler.handle(error, context: ErrorContext(
                 feature: "Activity",
@@ -90,6 +117,39 @@ final class AttendanceListViewModel {
                 }
             ))
             listState = .failed(.unknown(message: error.localizedDescription))
+        }
+    }
+
+    /// 배경 갱신 — `.loading` 전환 없이 fetch 후 상태 교체
+    ///
+    /// 실패 시 기존 데이터를 유지합니다.
+    @MainActor
+    func refreshList() async {
+        guard listState.isComplete else { return }
+        do {
+            let list = try await useCase.fetchAttendanceList(
+                from: fromDate,
+                to: toDate,
+                attendanceStatus: selectedFilter
+            )
+            listState = .loaded(list)
+        } catch {
+            // 배경 갱신 실패는 무시 — 기존 데이터 유지
+        }
+    }
+
+    /// 진행 중인 세션이 있을 때 15초 주기로 배경 갱신
+    ///
+    /// `.task` 모디파이어에서 호출하면 View 소멸 시 자동 취소됩니다.
+    @MainActor
+    func startPollingIfNeeded() async {
+        guard listState.isComplete else { return }
+
+        while !Task.isCancelled {
+            guard hasActiveSession else { return }
+            try? await Task.sleep(for: .seconds(PollingConfig.intervalSeconds))
+            guard !Task.isCancelled else { break }
+            await refreshList()
         }
     }
 

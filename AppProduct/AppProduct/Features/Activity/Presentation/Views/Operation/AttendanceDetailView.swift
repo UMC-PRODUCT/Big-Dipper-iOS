@@ -18,7 +18,11 @@ struct AttendanceDetailView: View {
     // MARK: - Property
 
     @Environment(\.di) private var di
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: AttendanceDetailViewModel
+    @State private var showPendingSheet: Bool = false
+
+    private let errorHandler: ErrorHandler
 
     // MARK: - Init
 
@@ -27,6 +31,7 @@ struct AttendanceDetailView: View {
         errorHandler: ErrorHandler,
         scheduleId: Int
     ) {
+        self.errorHandler = errorHandler
         let useCase = container.resolve(ActivityUseCaseProviding.self)
             .operatorAttendanceUseCase
         _viewModel = State(initialValue: AttendanceDetailViewModel(
@@ -52,10 +57,53 @@ struct AttendanceDetailView: View {
         }
         .navigationTitle("출석 현황")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbarContent }
+        .sheet(isPresented: $viewModel.showLocationSheet) {
+            OperatorLocationChangeSheetView(
+                viewModel: viewModel,
+                errorHandler: errorHandler
+            )
+        }
+        .sheet(isPresented: $showPendingSheet) {
+            pendingSheet
+        }
+        .alertPrompt(item: $viewModel.alertPrompt)
         .task {
             if case .idle = viewModel.detailState {
                 await viewModel.fetch()
             }
+        }
+        .task(id: viewModel.detailState.isComplete) {
+            await viewModel.startPollingIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await viewModel.refreshDetail() }
+            }
+        }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button {
+                    viewModel.approveAllButtonTapped()
+                } label: {
+                    Label("전체 승인", systemImage: "checkmark.circle")
+                }
+
+                Button(role: .destructive) {
+                    viewModel.rejectAllButtonTapped()
+                } label: {
+                    Label("전체 거절", systemImage: "xmark.circle")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .disabled(pendingCount == 0)
         }
     }
 
@@ -115,13 +163,28 @@ struct AttendanceDetailView: View {
 
     private func headerCard(info: ScheduleAttendanceInfo) -> some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-            Text(info.name)
-                .appFont(.title3Emphasis, color: .grey700)
-                .lineLimit(2)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
+                    Text(info.name)
+                        .appFont(.title3Emphasis, color: .grey700)
+                        .lineLimit(2)
 
-            if !info.description.isEmpty {
-                Text(info.description)
-                    .appFont(.subheadline, color: .grey600)
+                    if !info.description.isEmpty {
+                        Text(info.description)
+                            .appFont(.subheadline, color: .grey600)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if isBeforeStart(info: info) {
+                    Button {
+                        viewModel.locationButtonTapped()
+                    } label: {
+                        Label("위치 변경", systemImage: "map.fill")
+                            .appFont(.caption1, color: .indigo500)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             HStack(spacing: DefaultSpacing.spacing8) {
@@ -149,6 +212,10 @@ struct AttendanceDetailView: View {
                         .appFont(.footnote, color: .grey500)
                 }
             }
+
+            if info.pendingCount > 0 {
+                pendingBanner(count: info.pendingCount)
+            }
         }
         .padding(DefaultSpacing.spacing16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -159,6 +226,30 @@ struct AttendanceDetailView: View {
                 isUniform: true
             )
         )
+    }
+
+    private func pendingBanner(count: Int) -> some View {
+        Button {
+            showPendingSheet = true
+        } label: {
+            HStack(spacing: DefaultSpacing.spacing8) {
+                Image(systemName: "clock.badge.exclamationmark")
+                    .font(.system(size: 14))
+                Text("승인 대기 \(count)건")
+                    .appFont(.calloutEmphasis)
+                Spacer()
+                Image(systemName: DefaultConstant.chevronForwardImage)
+                    .font(.system(size: 12))
+            }
+            .foregroundStyle(.orange)
+            .padding(DefaultSpacing.spacing12)
+            .frame(maxWidth: .infinity)
+            .glassEffect(
+                .regular.tint(.orange).interactive(),
+                in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius))
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func statsRow(info: ScheduleAttendanceInfo) -> some View {
@@ -229,13 +320,93 @@ struct AttendanceDetailView: View {
         } else {
             LazyVStack(spacing: DefaultSpacing.spacing8) {
                 ForEach(participants) { participant in
-                    ParticipantAttendanceRow(participant: participant)
+                    ParticipantAttendanceRow(
+                        participant: participant,
+                        isProcessing: viewModel.processingMemberIds.contains(participant.memberId)
+                    )
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        participantSwipeActions(participant: participant)
+                    }
                 }
             }
         }
     }
 
+    @ViewBuilder
+    private func participantSwipeActions(participant: ParticipantAttendance) -> some View {
+        if participant.attendanceStatus.isPending {
+            let isProcessing = viewModel.processingMemberIds.contains(participant.memberId)
+
+            Button {
+                viewModel.approveButtonTapped(participant: participant)
+            } label: {
+                Label("승인", systemImage: "checkmark")
+            }
+            .tint(.green)
+            .disabled(isProcessing)
+
+            Button {
+                viewModel.rejectButtonTapped(participant: participant)
+            } label: {
+                Label("거절", systemImage: "xmark")
+            }
+            .tint(.red)
+            .disabled(isProcessing)
+
+            if let reason = participant.excuseReason, !reason.isEmpty {
+                Button {
+                    viewModel.alertPrompt = AlertPrompt(
+                        title: "출석 사유 확인",
+                        message: "\(participant.name)님이 작성한 사유입니다.\n\n\"\(reason)\"",
+                        positiveBtnTitle: "반려",
+                        positiveBtnAction: {
+                            viewModel.rejectDirectly(participant: participant)
+                        },
+                        secondaryBtnTitle: "승인",
+                        secondaryBtnAction: {
+                            viewModel.approveDirectly(participant: participant)
+                        },
+                        negativeBtnTitle: "닫기",
+                        isPositiveBtnDestructive: true
+                    )
+                } label: {
+                    Label("사유", systemImage: "text.bubble")
+                }
+                .tint(.orange)
+            }
+        }
+    }
+
+    // MARK: - Pending Sheet
+
+    @ViewBuilder
+    private var pendingSheet: some View {
+        if case .loaded(let info) = viewModel.detailState {
+            PendingApprovalSheetView(
+                participants: info.participants.filter(\.attendanceStatus.isPending),
+                processingMemberIds: viewModel.processingMemberIds,
+                onApprove: { viewModel.approveButtonTapped(participant: $0) },
+                onReject: { viewModel.rejectButtonTapped(participant: $0) },
+                onApproveDirectly: { viewModel.approveDirectly(participant: $0) },
+                onRejectDirectly: { viewModel.rejectDirectly(participant: $0) },
+                onApproveSelected: { viewModel.approveSelectedButtonTapped(participants: $0) },
+                onRejectSelected: { viewModel.rejectSelectedButtonTapped(participants: $0) },
+                onApproveAll: { viewModel.approveAllButtonTapped() },
+                onRejectAll: { viewModel.rejectAllButtonTapped() }
+            )
+        }
+    }
+
     // MARK: - Helper
+
+    private var pendingCount: Int {
+        guard case .loaded(let info) = viewModel.detailState else { return 0 }
+        return info.pendingCount
+    }
+
+    private func isBeforeStart(info: ScheduleAttendanceInfo) -> Bool {
+        Date() < info.startsAt
+    }
 
     private func dateRangeText(info: ScheduleAttendanceInfo) -> String {
         let formatter = DateFormatter()
@@ -259,17 +430,19 @@ struct AttendanceDetailView: View {
     }
 }
 
-// MARK: - Row
+// MARK: - ParticipantAttendanceRow
 
 private struct ParticipantAttendanceRow: View, Equatable {
 
     let participant: ParticipantAttendance
+    let isProcessing: Bool
 
     static func == (lhs: ParticipantAttendanceRow, rhs: ParticipantAttendanceRow) -> Bool {
         lhs.participant.memberId == rhs.participant.memberId
             && lhs.participant.attendanceStatus == rhs.participant.attendanceStatus
             && lhs.participant.isLocationVerified == rhs.participant.isLocationVerified
             && lhs.participant.excuseReason == rhs.participant.excuseReason
+            && lhs.isProcessing == rhs.isProcessing
     }
 
     var body: some View {
@@ -310,7 +483,12 @@ private struct ParticipantAttendanceRow: View, Equatable {
 
             Spacer()
 
-            AttendanceStatusBadge(status: participant.attendanceStatus)
+            if isProcessing {
+                ProgressView()
+                    .frame(width: 32, height: 32)
+            } else {
+                AttendanceStatusBadge(status: participant.attendanceStatus)
+            }
         }
         .padding(DefaultSpacing.spacing12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -329,5 +507,185 @@ private struct ParticipantAttendanceRow: View, Equatable {
             size: CGSize(width: 40, height: 40),
             cornerRadius: 20
         )
+    }
+}
+
+// MARK: - PendingApprovalSheetView
+
+private struct PendingApprovalSheetView: View {
+
+    // MARK: - Property
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var isSelecting: Bool = false
+    @State private var selectedMemberIds: Set<Int> = []
+    @State private var localAlertPrompt: AlertPrompt?
+
+    let participants: [ParticipantAttendance]
+    let processingMemberIds: Set<Int>
+    let onApprove: (ParticipantAttendance) -> Void
+    let onReject: (ParticipantAttendance) -> Void
+    let onApproveDirectly: (ParticipantAttendance) -> Void
+    let onRejectDirectly: (ParticipantAttendance) -> Void
+    let onApproveSelected: ([ParticipantAttendance]) -> Void
+    let onRejectSelected: ([ParticipantAttendance]) -> Void
+    let onApproveAll: () -> Void
+    let onRejectAll: () -> Void
+
+    // MARK: - Body
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if participants.isEmpty {
+                    ContentUnavailableView(
+                        "승인 대기 멤버 없음",
+                        systemImage: "person.crop.circle.badge.checkmark",
+                        description: Text("현재 승인 대기 중인 멤버가 없습니다.")
+                    )
+                } else {
+                    List {
+                        ForEach(participants) { participant in
+                            pendingRow(participant: participant)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    pendingRowSwipeActions(participant: participant)
+                                }
+                        }
+                    }
+                    .listRowSpacing(DefaultSpacing.spacing12)
+                }
+            }
+            .navigationTitle("승인 대기 명단")
+            .navigationBarTitleDisplayMode(.inline)
+            .presentationDetents([.medium, .large])
+            .toolbar {
+                ToolBarCollection.CancelBtn { dismiss() }
+
+                ToolBarCollection.OperationApprovalMenu(
+                    isSelecting: $isSelecting,
+                    selectedCount: selectedMemberIds.count,
+                    onApproveSelected: {
+                        let selected = participants.filter { selectedMemberIds.contains($0.memberId) }
+                        onApproveSelected(selected)
+                        selectedMemberIds.removeAll()
+                        dismiss()
+                    },
+                    onRejectSelected: {
+                        let selected = participants.filter { selectedMemberIds.contains($0.memberId) }
+                        onRejectSelected(selected)
+                        selectedMemberIds.removeAll()
+                        dismiss()
+                    },
+                    onApproveAll: {
+                        onApproveAll()
+                        dismiss()
+                    },
+                    onRejectAll: {
+                        onRejectAll()
+                        dismiss()
+                    }
+                )
+            }
+            .onChange(of: isSelecting) { _, newValue in
+                if !newValue { selectedMemberIds.removeAll() }
+            }
+        }
+        .alertPrompt(item: $localAlertPrompt)
+    }
+
+    // MARK: - Row
+
+    private func pendingRow(participant: ParticipantAttendance) -> some View {
+        HStack(spacing: DefaultSpacing.spacing16) {
+            if isSelecting {
+                Button {
+                    toggleSelection(for: participant.memberId)
+                } label: {
+                    Image(
+                        systemName: selectedMemberIds.contains(participant.memberId)
+                            ? "checkmark.circle.fill"
+                            : "circle"
+                    )
+                    .font(.system(size: 22))
+                    .foregroundStyle(
+                        selectedMemberIds.contains(participant.memberId) ? .indigo500 : .grey400
+                    )
+                }
+                .buttonStyle(.plain)
+                .transition(.scale.combined(with: .opacity))
+            }
+
+            RemoteImage(
+                urlString: participant.profileImageUrl,
+                size: CGSize(width: DefaultConstant.iconSize, height: DefaultConstant.iconSize),
+                cornerRadius: 0,
+                placeholderImage: "person.fill"
+            )
+
+            VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
+                let displayName = participant.nickname.isEmpty
+                    ? participant.name
+                    : "\(participant.nickname)/\(participant.name)"
+                Text(displayName)
+                    .appFont(.calloutEmphasis, color: .black)
+                Text(participant.schoolName)
+                    .appFont(.footnote, color: .grey600)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(.snappy(duration: DefaultConstant.animationTime), value: isSelecting)
+    }
+
+    @ViewBuilder
+    private func pendingRowSwipeActions(participant: ParticipantAttendance) -> some View {
+        let isProcessing = processingMemberIds.contains(participant.memberId)
+
+        Button {
+            onApprove(participant)
+        } label: {
+            Label("승인", systemImage: "checkmark")
+        }
+        .tint(.green)
+        .disabled(isProcessing)
+
+        Button {
+            onReject(participant)
+        } label: {
+            Label("거절", systemImage: "xmark")
+        }
+        .tint(.red)
+        .disabled(isProcessing)
+
+        if let reason = participant.excuseReason, !reason.isEmpty {
+            let displayName = participant.nickname.isEmpty
+                ? participant.name
+                : "\(participant.nickname)/\(participant.name)"
+            Button {
+                localAlertPrompt = AlertPrompt(
+                    title: "출석 사유 확인",
+                    message: "\(displayName)님이 작성한 사유입니다.\n\n\"\(reason)\"",
+                    positiveBtnTitle: "반려",
+                    positiveBtnAction: { onRejectDirectly(participant) },
+                    secondaryBtnTitle: "승인",
+                    secondaryBtnAction: { onApproveDirectly(participant) },
+                    negativeBtnTitle: "닫기",
+                    isPositiveBtnDestructive: true
+                )
+            } label: {
+                Label("사유", systemImage: "text.bubble")
+            }
+            .tint(.orange)
+        }
+    }
+
+    // MARK: - Helper
+
+    private func toggleSelection(for memberId: Int) {
+        if selectedMemberIds.contains(memberId) {
+            selectedMemberIds.remove(memberId)
+        } else {
+            selectedMemberIds.insert(memberId)
+        }
     }
 }
