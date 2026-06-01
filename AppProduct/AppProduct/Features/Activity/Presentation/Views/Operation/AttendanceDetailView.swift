@@ -302,6 +302,9 @@ struct AttendanceDetailView: View {
                 }
             }
         }
+        // 칩 행이 좌우 가장자리까지 자연스럽게 스크롤되도록: 부모 16pt 패딩 상쇄 + 콘텐츠 16pt 인셋.
+        .contentMargins(.horizontal, DefaultConstant.defaultSafeHorizon, for: .scrollContent)
+        .padding(.horizontal, -DefaultConstant.defaultSafeHorizon)
     }
 
     @ViewBuilder
