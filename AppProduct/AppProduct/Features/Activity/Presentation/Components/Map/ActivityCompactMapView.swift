@@ -157,11 +157,13 @@ private struct LocationStatusBarContextPreview: View {
     private enum Constants {
         static let verifyIconSize: CGFloat = 12
         static let spacing: CGFloat = 4
+        static let rowSpacing: CGFloat = 8
         static let previewWidth: CGFloat = 320
     }
 
     var body: some View {
-        HStack(spacing: Constants.spacing) {
+        // 상태 행(위) + 전체폭 주소 행(아래). 주소는 줄바꿈을 허용해 긴 주소도 전부 보인다.
+        VStack(alignment: .leading, spacing: Constants.rowSpacing) {
             HStack(spacing: Constants.spacing) {
                 if isUserInsideGeofence {
                     Image(.Map.verifyLocation)
@@ -177,16 +179,19 @@ private struct LocationStatusBarContextPreview: View {
 
                 Text(isUserInsideGeofence ? "위치 인증됨" : "위치 미인증")
                     .appFont(.caption1, color: isUserInsideGeofence ? .indigo500 : .red)
+
+                Spacer(minLength: 0)
             }
 
-            Spacer(minLength: 0)
+            HStack(alignment: .top, spacing: Constants.spacing) {
+                Text(sessionAddress)
+                    .appFont(.caption1, color: .grey600)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(sessionAddress)
-                .appFont(.caption1, color: .grey600)
-                .lineLimit(1)
-
-            Image(systemName: "ellipsis.circle")
-                .foregroundStyle(.grey500)
+                Image(systemName: "ellipsis.circle")
+                    .foregroundStyle(.grey500)
+            }
         }
         .padding(DefaultConstant.defaultBtnPadding)
         .frame(width: Constants.previewWidth)
