@@ -361,6 +361,10 @@ private actor StubAuthRepository: AuthRepositoryProtocol {
     func registerCredential(rawPassword: String) async throws {
         fatalError("registerCredential not used in these tests")
     }
+
+    func changePassword(currentPassword: String, newPassword: String) async throws {
+        fatalError("changePassword not used in these tests")
+    }
 }
 
 // MARK: - InMemoryTokenStore
