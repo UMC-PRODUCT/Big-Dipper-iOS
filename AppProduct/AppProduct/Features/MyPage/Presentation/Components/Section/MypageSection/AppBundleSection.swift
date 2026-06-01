@@ -13,11 +13,10 @@ import SwiftUI
 struct InfoSection: View {
     // MARK: - Property
 
-    @Environment(\.di) private var di
-
     private enum Constants {
         static let appStoreURLString = "https://apps.apple.com/us/app/umc/id6759412446"
         static let appStoreReviewURLString = "https://apps.apple.com/app/id6759412446?action=write-review"
+        static let techBlogURLString = "https://tech.university.neordinary.com/"
         static let appName = "UMC"
         static let shareDescription = "UMC 동아리 운영을 한 곳에서 관리할 수 있는 앱이에요."
     }
@@ -43,10 +42,6 @@ struct InfoSection: View {
         \(Constants.shareDescription)
         \(appStoreURL.absoluteString)
         """
-    }
-
-    private var pathStore: PathStore {
-        di.resolve(PathStore.self)
     }
 
     // MARK: - Function
@@ -87,16 +82,18 @@ struct InfoSection: View {
                         iconBackgroundColor: .yellow
                     )
                 }
-                Button(action: {
-                    pathStore.mypagePath.append(.myPage(.productTeamIntroduction))
-                }, label: {
+                Button {
+                    if let url = URL(string: Constants.techBlogURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
                     MyPageSectionRow(
-                        systemIcon: "person.3.fill",
-                        title: "UMC PRODUCT 소개",
-                        rightImage: "chevron.right",
-                        iconBackgroundColor: .orange
+                        systemIcon: "newspaper.fill",
+                        title: "UMC Product Tech Blog",
+                        rightImage: "arrow.up.right",
+                        iconBackgroundColor: .indigo
                     )
-                })
+                }
                 .buttonStyle(.plain)
             },
             header: {
