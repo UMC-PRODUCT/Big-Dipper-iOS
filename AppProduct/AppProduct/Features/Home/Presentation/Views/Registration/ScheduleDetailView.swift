@@ -316,7 +316,7 @@ struct ScheduleDetailView: View {
     private func detailDescription(_ data: ScheduleDetailData) -> some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing12, content: {
             Text(Constants.detailTitle)
-                .appFont(.title2Emphasis, color: .black)
+                .appFont(.title3Emphasis, color: .black)
 
             Text(data.description)
                 .appFont(.callout, color: .grey600)

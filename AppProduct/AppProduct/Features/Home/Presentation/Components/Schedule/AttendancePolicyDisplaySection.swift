@@ -39,6 +39,7 @@ struct AttendancePolicyDisplaySection: View, Equatable {
             Text(Constants.title)
                 .appFont(.title2Emphasis, color: .black)
 
+
             policyCard
         }
     }
