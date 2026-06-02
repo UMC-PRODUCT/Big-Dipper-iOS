@@ -175,6 +175,15 @@ final class AttendanceListViewModel {
         await fetch()
     }
 
+    /// "전체" 칩 선택 — 상태 필터를 해제하고 전체 목록을 다시 불러온다.
+    /// 이미 전체(필터 없음)면 불필요한 재조회를 막기 위해 아무 것도 하지 않는다.
+    @MainActor
+    func clearFilter() async {
+        guard selectedFilter != nil else { return }
+        selectedFilter = nil
+        await fetch()
+    }
+
     /// 기간 프리셋 선택
     ///
     /// `.custom` 선택 시에는 `fromDate`/`toDate` 를 현재 값으로 유지하며

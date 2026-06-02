@@ -39,59 +39,76 @@ struct AttendanceListView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
-            // 필터 칩·기간 필터·승인 대기 배너는 권한 보유자에게만 노출 (권한 거부 시 폴백 안내만 표시)
-            if !viewModel.isPermissionDenied {
-                filterChipRow
+        listStateContent
+            .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+            .animation(.easeInOut(duration: 0.2), value: viewModel.isFilterExpanded)
+            .animation(.easeInOut(duration: 0.2), value: viewModel.totalPendingCount > 0)
+            // 필터 칩·기간 필터·승인 대기 배너는 VStack 본문에 넣지 않고 상단 safeAreaBar 로
+            // 고정한다. 칩이 네비게이션 바 바로 아래에 붙고, 목록은 그 아래에서 스크롤된다.
+            // (권한 거부 시에는 바를 숨기고 폴백 안내만 노출)
+            .safeAreaBar(edge: .top) {
+                if !viewModel.isPermissionDenied {
+                    topFilterBar
+                }
+            }
+            .navigationTitle("출석 현황")
+            .navigationBarTitleDisplayMode(.inline)
+            .task {
+                if case .idle = viewModel.listState {
+                    await viewModel.fetch()
+                }
+            }
+            .task(id: viewModel.listState.isComplete) {
+                guard viewModel.listState.isComplete else { return }
+                await viewModel.startPollingIfNeeded()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    Task { await viewModel.refreshList() }
+                }
+            }
+    }
 
-                if viewModel.isFilterExpanded {
-                    periodFilterExpandedRow
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
+    /// listState 에 따른 본문(목록/로딩/빈/에러/권한). 상단 safeAreaBar 아래의 스크롤 영역이다.
+    @ViewBuilder
+    private var listStateContent: some View {
+        switch viewModel.listState {
+        case .idle, .loading:
+            loadingView
+        case .loaded(let infos):
+            if infos.isEmpty {
+                emptyView
+            } else {
+                listContent(infos: infos)
+            }
+        case .failed(let error):
+            if error.isPermissionDenied {
+                permissionDeniedView
+            } else {
+                errorView(error: error)
+            }
+        }
+    }
 
-                if viewModel.totalPendingCount > 0 {
-                    pendingInboxBanner
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
+    /// 상단 고정 필터 바(safeAreaBar 콘텐츠).
+    /// 칩 행은 `contentMargins` 로 가장자리까지 스크롤되고, 기간/대기 배너는 16pt 인셋으로 정렬한다.
+    private var topFilterBar: some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
+            filterChipRow
+
+            if viewModel.isFilterExpanded {
+                periodFilterExpandedRow
+                    .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
-            switch viewModel.listState {
-            case .idle, .loading:
-                loadingView
-            case .loaded(let infos):
-                if infos.isEmpty {
-                    emptyView
-                } else {
-                    listContent(infos: infos)
-                }
-            case .failed(let error):
-                if error.isPermissionDenied {
-                    permissionDeniedView
-                } else {
-                    errorView(error: error)
-                }
+            if viewModel.totalPendingCount > 0 {
+                pendingInboxBanner
+                    .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: viewModel.isFilterExpanded)
-        .animation(.easeInOut(duration: 0.2), value: viewModel.totalPendingCount > 0)
-        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-        .padding(.top, DefaultConstant.defaultSafeTop)
-        .navigationTitle("출석 현황")
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            if case .idle = viewModel.listState {
-                await viewModel.fetch()
-            }
-        }
-        .task(id: viewModel.listState.isComplete) {
-            guard viewModel.listState.isComplete else { return }
-            await viewModel.startPollingIfNeeded()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                Task { await viewModel.refreshList() }
-            }
-        }
+        .padding(.vertical, DefaultSpacing.spacing8)
     }
 
     // MARK: - Constants
@@ -118,7 +135,7 @@ struct AttendanceListView: View {
                     "전체",
                     isSelected: viewModel.selectedFilter == nil
                 ) {
-                    Task { await viewModel.filterButtonTapped(viewModel.selectedFilter ?? .present) }
+                    Task { await viewModel.clearFilter() }
                 }
                 .buttonSize(.small)
 
@@ -136,6 +153,8 @@ struct AttendanceListView: View {
                 periodFilterToggleButton
             }
         }
+        // safeAreaBar 안에서 칩 행이 좌우 가장자리까지 스크롤되도록 콘텐츠만 16pt 인셋.
+        .contentMargins(.horizontal, DefaultConstant.defaultSafeHorizon, for: .scrollContent)
     }
 
     private var periodFilterToggleButton: some View {
@@ -273,7 +292,7 @@ struct AttendanceListView: View {
             .padding(DefaultSpacing.spacing16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassEffect(
-                .regular.interactive(),
+                .regular,
                 in: ConcentricRectangle(
                     corners: .concentric(minimum: DefaultConstant.concentricRadius),
                     isUniform: true
