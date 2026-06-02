@@ -36,11 +36,17 @@ struct AttendanceListView: View {
         ))
     }
 
+    #if DEBUG
+    /// 프리뷰 전용 init — 더미 데이터가 주입된 ViewModel 을 직접 받는다.
+    init(viewModel: AttendanceListViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
+    #endif
+
     // MARK: - Body
 
     var body: some View {
         listStateContent
-            .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
             .animation(.easeInOut(duration: 0.2), value: viewModel.isFilterExpanded)
             .animation(.easeInOut(duration: 0.2), value: viewModel.totalPendingCount > 0)
             // 필터 칩·기간 필터·승인 대기 배너는 VStack 본문에 넣지 않고 상단 safeAreaBar 로
@@ -298,6 +304,12 @@ struct AttendanceListView: View {
                     isUniform: true
                 )
             )
+            .contentShape(
+                ConcentricRectangle(
+                    corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                    isUniform: true
+                )
+            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel("승인 대기 \(viewModel.totalPendingCount)건")
@@ -382,6 +394,7 @@ struct AttendanceListView: View {
                 }
             }
         }
+        .contentMargins(.horizontal, DefaultConstant.defaultSafeHorizon, for: .scrollContent)
     }
 }
 
@@ -491,3 +504,36 @@ private struct AttendanceListRow: View, Equatable {
         return f
     }()
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("출석 현황 - 더미 데이터") {
+    AttendanceListPreviewView()
+}
+
+/// 더미 출석 현황을 표시하는 프리뷰 래퍼
+///
+/// 빈 `DIContainer` 에 행 탭 시 필요한 `PathStore` 만 등록하고,
+/// `.loaded` 상태가 주입된 ViewModel 을 주입한다.
+private struct AttendanceListPreviewView: View {
+
+    private let container: DIContainer
+    private let viewModel: AttendanceListViewModel
+
+    init() {
+        let container = DIContainer()
+        container.register(PathStore.self) { PathStore() }
+        self.container = container
+        self.viewModel = AttendanceListViewModel.preview(container: container)
+    }
+
+    var body: some View {
+        NavigationStack {
+            AttendanceListView(viewModel: viewModel)
+        }
+        .environment(\.di, container)
+        .environment(ErrorHandler())
+    }
+}
+#endif

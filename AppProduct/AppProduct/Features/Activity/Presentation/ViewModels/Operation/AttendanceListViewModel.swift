@@ -198,3 +198,188 @@ final class AttendanceListViewModel {
         await fetch()
     }
 }
+
+// MARK: - Preview Support
+
+#if DEBUG
+
+/// 프리뷰 전용 운영진 출석 UseCase 스텁
+///
+/// 네트워크 호출 없이 ``AttendanceListViewModel/previewInfos`` 더미 데이터를 반환합니다.
+/// `#if DEBUG` 가드로 릴리스 빌드에는 포함되지 않습니다.
+private final class PreviewOperatorAttendanceUseCase: OperatorAttendanceUseCaseProtocol {
+
+    func decideAttendances(
+        scheduleId: Int,
+        decisions: [AttendanceDecisionInput]
+    ) async throws -> [AttendanceDecisionResult] { [] }
+
+    func updateScheduleLocation(
+        scheduleId: Int,
+        locationName: String,
+        latitude: Double,
+        longitude: Double
+    ) async throws {}
+
+    func fetchAttendanceList(
+        from: Date?,
+        to: Date?,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> [ScheduleAttendanceInfo] {
+        AttendanceListViewModel.previewInfos
+    }
+
+    func fetchAttendanceDetail(
+        scheduleId: Int,
+        attendanceStatus: AttendanceStatusV2?
+    ) async throws -> ScheduleAttendanceInfo {
+        AttendanceListViewModel.previewInfos.first { $0.scheduleId == scheduleId }
+            ?? AttendanceListViewModel.previewInfos[0]
+    }
+}
+
+extension AttendanceListViewModel {
+
+    /// 더미 출석 현황이 이미 로드된 상태의 프리뷰용 ViewModel
+    ///
+    /// 네트워크 fetch 없이 `.loaded` 상태로 시작하므로 `View` 의 `.task` 가
+    /// 재조회하지 않고 곧바로 카드 리스트를 표시합니다.
+    static func preview(container: DIContainer) -> AttendanceListViewModel {
+        let viewModel = AttendanceListViewModel(
+            container: container,
+            errorHandler: ErrorHandler(),
+            useCase: PreviewOperatorAttendanceUseCase()
+        )
+        viewModel.listState = .loaded(previewInfos)
+        return viewModel
+    }
+
+    // MARK: - Dummy Data
+
+    /// 운영진 출석 현황 더미 목록 (상태·장소·비대면 조합)
+    ///
+    /// - 정시 출석/지각/결석/사유결석/승인 대기 상태를 골고루 포함
+    /// - 대면(좌표 보유) · 비대면(`isOnline`) 행을 모두 노출
+    /// - 진행 중(현재 시각이 `startsAt...endsAt` 에 걸친) 일정은 없어 배경 폴링이 돌지 않음
+    static let previewInfos: [ScheduleAttendanceInfo] = {
+        let now = Date()
+
+        func participant(
+            _ id: Int,
+            _ name: String,
+            _ nickname: String,
+            _ school: String,
+            _ status: AttendanceStatusV2,
+            verified: Bool = true,
+            reason: String? = nil
+        ) -> ParticipantAttendance {
+            ParticipantAttendance(
+                memberId: id,
+                name: name,
+                nickname: nickname,
+                profileImageUrl: "",
+                schoolId: 1,
+                schoolName: school,
+                attendanceStatus: status,
+                isLocationVerified: verified,
+                excuseReason: reason
+            )
+        }
+
+        return [
+            ScheduleAttendanceInfo(
+                scheduleId: 101,
+                name: "iOS 8주차 정기 세션",
+                description: "좋은 컴포넌트 설계란 무엇일까",
+                startsAt: now.addingTimeInterval(-3 * 24 * 3600),
+                endsAt: now.addingTimeInterval(-3 * 24 * 3600 + 2 * 3600),
+                location: ScheduleLocation(
+                    latitude: 37.582967,
+                    longitude: 127.010527,
+                    locationName: "한성대학교 상상관 502호"
+                ),
+                isOnline: false,
+                authorMemberId: 1,
+                attendancePolicy: nil,
+                tags: ["STUDY"],
+                participants: [
+                    participant(1, "김미주", "마티", "덕성여자대학교", .present),
+                    participant(2, "이재원", "리버", "한성대학교", .present),
+                    participant(3, "정의장", "제이", "가천대학교", .present),
+                    participant(4, "이예지", "예지", "한성대학교", .late),
+                    participant(5, "박찬호", "찬", "국민대학교", .absent, verified: false)
+                ]
+            ),
+            ScheduleAttendanceInfo(
+                scheduleId: 102,
+                name: "PM DAY 통합 세션",
+                description: "기획 파트 합동 발표",
+                startsAt: now.addingTimeInterval(-1 * 24 * 3600),
+                endsAt: now.addingTimeInterval(-1 * 24 * 3600 + 2 * 3600),
+                location: ScheduleLocation(
+                    latitude: 37.5445,
+                    longitude: 126.9519,
+                    locationName: "공덕 프론트원 11층"
+                ),
+                isOnline: false,
+                authorMemberId: 1,
+                attendancePolicy: nil,
+                tags: ["LEADERSHIP"],
+                participants: [
+                    participant(6, "한지원", "지원", "숙명여자대학교", .present),
+                    participant(7, "오세윤", "세윤", "한성대학교", .present),
+                    participant(8, "유관식", "관식", "가천대학교", .presentPending),
+                    participant(9, "최민호", "민호", "국민대학교", .presentPending),
+                    participant(10, "강다은", "다은", "덕성여자대학교", .latePending),
+                    participant(11, "임도현", "도현", "한성대학교", .absent, verified: false)
+                ]
+            ),
+            ScheduleAttendanceInfo(
+                scheduleId: 103,
+                name: "디자인 시스템 워크숍",
+                description: "Liquid Glass 컴포넌트 정리",
+                startsAt: now.addingTimeInterval(2 * 24 * 3600),
+                endsAt: now.addingTimeInterval(2 * 24 * 3600 + 2 * 3600),
+                location: nil,
+                isOnline: true,
+                authorMemberId: 1,
+                attendancePolicy: nil,
+                tags: ["DESIGN"],
+                participants: [
+                    participant(12, "서연우", "연우", "이화여자대학교", .present),
+                    participant(13, "노준영", "준영", "한성대학교", .present),
+                    participant(14, "백서윤", "서윤", "가천대학교", .excused, reason: "병원 진료"),
+                    participant(15, "고은채", "은채", "국민대학교", .present)
+                ]
+            ),
+            ScheduleAttendanceInfo(
+                scheduleId: 104,
+                name: "연합 네트워킹 데이",
+                description: "전 파트 합동 네트워킹",
+                startsAt: now.addingTimeInterval(-7 * 24 * 3600),
+                endsAt: now.addingTimeInterval(-7 * 24 * 3600 + 2 * 3600),
+                location: ScheduleLocation(
+                    latitude: 37.5445,
+                    longitude: 126.9519,
+                    locationName: "공덕 창업허브 대강당"
+                ),
+                isOnline: false,
+                authorMemberId: 1,
+                attendancePolicy: nil,
+                tags: ["NETWORKING"],
+                participants: [
+                    participant(16, "윤하늘", "하늘", "한성대학교", .present),
+                    participant(17, "조시우", "시우", "가천대학교", .present),
+                    participant(18, "남기훈", "기훈", "국민대학교", .present),
+                    participant(19, "허지안", "지안", "덕성여자대학교", .present),
+                    participant(20, "문채원", "채원", "숙명여자대학교", .present),
+                    participant(21, "배준서", "준서", "한성대학교", .late),
+                    participant(22, "신유나", "유나", "이화여자대학교", .excusedPending, reason: "가족 행사"),
+                    participant(23, "권태양", "태양", "가천대학교", .absent, verified: false)
+                ]
+            )
+        ]
+    }()
+}
+
+#endif
