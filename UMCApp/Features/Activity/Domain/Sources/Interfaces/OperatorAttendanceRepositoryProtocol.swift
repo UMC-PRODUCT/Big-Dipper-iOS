@@ -12,10 +12,12 @@ import Foundation
 /// 출석 일괄 결정 요청 항목
 public struct AttendanceDecisionInput: Equatable, Sendable {
     public let isApproved: Bool
-    public let participantMemberId: Int
+
+    /// 결정 대상 참여자 멤버 ID (서버 응답)
+    public let participantMemberId: String
     public let reason: String
 
-    public init(isApproved: Bool, participantMemberId: Int, reason: String) {
+    public init(isApproved: Bool, participantMemberId: String, reason: String) {
         self.isApproved = isApproved
         self.participantMemberId = participantMemberId
         self.reason = reason
@@ -53,7 +55,7 @@ public protocol OperatorAttendanceRepositoryProtocol {
     ///   - scheduleId: 일정 식별자
     ///   - attendanceStatus: 필터링할 출석 상태 (`nil` 이면 모든 상태)
     func fetchAttendanceDetail(
-        scheduleId: Int,
+        scheduleId: String,
         attendanceStatus: ParticipantAttendanceStatus?
     ) async throws -> ScheduleAttendanceInfo
 
@@ -61,13 +63,13 @@ public protocol OperatorAttendanceRepositoryProtocol {
 
     /// 출석 일괄 승인/반려
     func decideAttendances(
-        scheduleId: Int,
+        scheduleId: String,
         decisions: [AttendanceDecisionInput]
     ) async throws -> [AttendanceDecisionResult]
 
     /// 세션 출석 위치 변경 (관리자)
     func updateScheduleLocation(
-        scheduleId: Int,
+        scheduleId: String,
         locationName: String,
         latitude: Double,
         longitude: Double

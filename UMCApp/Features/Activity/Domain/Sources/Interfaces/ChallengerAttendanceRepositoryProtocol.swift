@@ -22,7 +22,7 @@ public protocol ChallengerAttendanceRepositoryProtocol {
     ///   - longitude: 체크인 경도
     ///   - locationVerified: 클라이언트 측 지오펜스 검증 결과
     func requestAttendance(
-        scheduleId: Int,
+        scheduleId: String,
         latitude: Double,
         longitude: Double,
         locationVerified: Bool
@@ -37,7 +37,7 @@ public protocol ChallengerAttendanceRepositoryProtocol {
     ///   - latitude: 보고 시점 위도
     ///   - longitude: 보고 시점 경도
     func submitExcuse(
-        scheduleId: Int,
+        scheduleId: String,
         excuseReason: String,
         isVerified: Bool,
         latitude: Double,

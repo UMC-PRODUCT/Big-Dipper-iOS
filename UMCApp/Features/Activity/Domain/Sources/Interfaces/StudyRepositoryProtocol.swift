@@ -45,47 +45,54 @@ public protocol StudyRepositoryProtocol {
     /// 단일 스터디 그룹 상세 조회
     ///
     /// `GET /api/v1/study-groups/{groupId}`
-    func fetchStudyGroupDetail(groupId: Int) async throws -> StudyGroupInfo
+    ///
+    /// - Parameter groupId: 스터디 그룹 식별자 (서버 응답)
+    func fetchStudyGroupDetail(groupId: String) async throws -> StudyGroupInfo
 
     /// 멤버 ID 로 챌린저 ID 조회
     ///
     /// - Parameters:
-    ///   - memberId: 멤버 ID
-    ///   - preferredGeneration: 우선 조회할 기수 (없으면 최신 레코드 기준)
-    /// - Returns: 조회된 챌린저 ID (없으면 `nil`)
+    ///   - memberId: 멤버 ID (서버 응답)
+    ///   - preferredGeneration: 우선 조회할 기수 (클라이언트 입력, 없으면 최신 레코드 기준)
+    /// - Returns: 조회된 챌린저 ID — 서버 응답이므로 `String?`
     func resolveChallengerId(
-        memberId: Int,
+        memberId: String,
         preferredGeneration: Int?
-    ) async throws -> Int?
+    ) async throws -> String?
 
     // MARK: - 운영진 스터디 그룹 CRUD
 
     /// 스터디 그룹 생성
+    ///
+    /// - Parameters:
+    ///   - gisuId: 기수 ID (서버 응답)
+    ///   - memberIds: 멤버 ID 목록 (서버 응답)
+    ///   - mentorIds: 멘토 ID 목록 (서버 응답)
     func createStudyGroup(
-        gisuId: Int,
+        gisuId: String,
         name: String,
         part: UMCPartType,
-        memberIds: [Int],
-        mentorIds: [Int]
+        memberIds: [String],
+        mentorIds: [String]
     ) async throws
 
     /// 스터디 그룹 정보 수정 (이름만 수정 가능)
-    func updateStudyGroup(groupId: Int, name: String) async throws
+    func updateStudyGroup(groupId: String, name: String) async throws
 
     /// 스터디 그룹 삭제
-    func deleteStudyGroup(groupId: Int) async throws
+    func deleteStudyGroup(groupId: String) async throws
 
     /// 스터디 그룹에 스터디원 추가
-    func addStudyGroupMember(groupId: Int, memberId: Int) async throws
+    func addStudyGroupMember(groupId: String, memberId: String) async throws
 
     /// 스터디 그룹에서 스터디원 제거
-    func removeStudyGroupMember(groupId: Int, memberId: Int) async throws
+    func removeStudyGroupMember(groupId: String, memberId: String) async throws
 
     /// 스터디 그룹에 담당 파트장(멘토) 추가
-    func addStudyGroupMentor(groupId: Int, mentorId: Int) async throws
+    func addStudyGroupMentor(groupId: String, mentorId: String) async throws
 
     /// 스터디 그룹에서 담당 파트장(멘토) 제거
-    func removeStudyGroupMentor(groupId: Int, mentorId: Int) async throws
+    func removeStudyGroupMentor(groupId: String, mentorId: String) async throws
 
     // MARK: - 그룹-일정 연결
 
@@ -93,10 +100,12 @@ public protocol StudyRepositoryProtocol {
     ///
     /// `POST /api/v1/study-groups/schedules` 엔드포인트의 단순 래퍼.
     /// 1단계 일정 생성은 별도 `ScheduleRepositoryProtocol.generateSchedule(...)` 사용.
+    ///
+    /// 모두 서버 응답 식별자 → `String`.
     func linkStudyGroupSchedule(
-        scheduleId: Int,
-        studyGroupId: Int,
-        weeklyCurriculumId: Int
+        scheduleId: String,
+        studyGroupId: String,
+        weeklyCurriculumId: String
     ) async throws
 
     // MARK: - 외부 도메인 의존 (별도 이슈로 추가 예정)
