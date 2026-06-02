@@ -15,8 +15,8 @@ import Foundation
 /// - SeeAlso: ``ScheduleAttendanceInfo``, ``ParticipantAttendanceStatus``
 public struct ParticipantAttendance: Equatable, Sendable, Identifiable {
 
-    /// 멤버 식별자
-    public let memberId: Int
+    /// 멤버 식별자 (서버 응답)
+    public let memberId: String
 
     /// 본명
     public let name: String
@@ -27,8 +27,8 @@ public struct ParticipantAttendance: Equatable, Sendable, Identifiable {
     /// 프로필 이미지 URL (없으면 빈 문자열)
     public let profileImageUrl: String
 
-    /// 학교 식별자
-    public let schoolId: Int
+    /// 학교 식별자 (서버 응답)
+    public let schoolId: String
 
     /// 학교명
     public let schoolName: String
@@ -42,14 +42,14 @@ public struct ParticipantAttendance: Equatable, Sendable, Identifiable {
     /// 사유 결석 사유 (없으면 `nil`)
     public let excuseReason: String?
 
-    public var id: Int { memberId }
+    public var id: String { memberId }
 
     public init(
-        memberId: Int,
+        memberId: String,
         name: String,
         nickname: String,
         profileImageUrl: String,
-        schoolId: Int,
+        schoolId: String,
         schoolName: String,
         attendanceStatus: ParticipantAttendanceStatus,
         isLocationVerified: Bool,

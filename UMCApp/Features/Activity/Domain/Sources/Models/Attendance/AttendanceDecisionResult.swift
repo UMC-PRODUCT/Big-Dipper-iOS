@@ -15,17 +15,17 @@ public struct AttendanceDecisionResult: Equatable, Sendable {
     // MARK: - Nested Type
 
     public struct DecisionMakerInfo: Equatable, Sendable {
-        public let memberId: Int
+        public let memberId: String
         public let name: String
         public let nickname: String
-        public let schoolId: Int
+        public let schoolId: String
         public let schoolName: String
 
         public init(
-            memberId: Int,
+            memberId: String,
             name: String,
             nickname: String,
-            schoolId: Int,
+            schoolId: String,
             schoolName: String
         ) {
             self.memberId = memberId
@@ -57,11 +57,14 @@ public struct AttendanceDecisionResult: Equatable, Sendable {
     /// 승인자 정보
     public let decisionMakerMemberInfo: DecisionMakerInfo?
 
-    /// 승인자 존재 여부
-    public let hasDecisionMakerMember: Bool
-
     /// 승인 대기 중 여부
     public let isPendingDecision: Bool
+
+    /// 승인자 존재 여부 (`decisionMakerMemberInfo` 와 1:1 연동)
+    ///
+    /// 별도 필드로 분리하면 `info = nil && hasDecisionMakerMember = true` 같은
+    /// 불일치 상태가 생성자에서 허용되므로, 단일 정보원에서 파생합니다.
+    public var hasDecisionMakerMember: Bool { decisionMakerMemberInfo != nil }
 
     public init(
         status: ParticipantAttendanceStatus,
@@ -71,7 +74,6 @@ public struct AttendanceDecisionResult: Equatable, Sendable {
         latitude: Double?,
         longitude: Double?,
         decisionMakerMemberInfo: DecisionMakerInfo?,
-        hasDecisionMakerMember: Bool,
         isPendingDecision: Bool
     ) {
         self.status = status
@@ -81,7 +83,6 @@ public struct AttendanceDecisionResult: Equatable, Sendable {
         self.latitude = latitude
         self.longitude = longitude
         self.decisionMakerMemberInfo = decisionMakerMemberInfo
-        self.hasDecisionMakerMember = hasDecisionMakerMember
         self.isPendingDecision = isPendingDecision
     }
 }

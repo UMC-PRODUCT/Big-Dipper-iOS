@@ -15,8 +15,8 @@ import Foundation
 /// - SeeAlso: ``ParticipantAttendance``, ``ParticipantAttendanceStatus``
 public struct ScheduleAttendanceInfo: Equatable, Sendable, Identifiable {
 
-    /// 일정 식별자
-    public let scheduleId: Int
+    /// 일정 식별자 (서버 응답)
+    public let scheduleId: String
 
     /// 일정 제목
     public let name: String
@@ -36,8 +36,8 @@ public struct ScheduleAttendanceInfo: Equatable, Sendable, Identifiable {
     /// 비대면 일정 여부 (정상 상태에서는 `location == nil` 과 동치)
     public let isOnline: Bool
 
-    /// 작성자 멤버 ID
-    public let authorMemberId: Int
+    /// 작성자 멤버 ID (서버 응답)
+    public let authorMemberId: String
 
     /// 출석 정책 (`nil` = 정책 미부착)
     public let attendancePolicy: ScheduleAttendancePolicy?
@@ -48,17 +48,17 @@ public struct ScheduleAttendanceInfo: Equatable, Sendable, Identifiable {
     /// 참여자별 출석 정보
     public let participants: [ParticipantAttendance]
 
-    public var id: Int { scheduleId }
+    public var id: String { scheduleId }
 
     public init(
-        scheduleId: Int,
+        scheduleId: String,
         name: String,
         description: String,
         startsAt: Date,
         endsAt: Date,
         location: ScheduleLocation?,
         isOnline: Bool,
-        authorMemberId: Int,
+        authorMemberId: String,
         attendancePolicy: ScheduleAttendancePolicy?,
         tags: [String],
         participants: [ParticipantAttendance]

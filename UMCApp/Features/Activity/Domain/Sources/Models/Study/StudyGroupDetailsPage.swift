@@ -12,9 +12,11 @@ public struct StudyGroupDetailsPage: Equatable {
 
     public let content: [StudyGroupInfo]
     public let hasNext: Bool
-    public let nextCursor: Int?
 
-    public init(content: [StudyGroupInfo], hasNext: Bool, nextCursor: Int?) {
+    /// 다음 페이지 커서 (서버 응답)
+    public let nextCursor: String?
+
+    public init(content: [StudyGroupInfo], hasNext: Bool, nextCursor: String?) {
         self.content = content
         self.hasNext = hasNext
         self.nextCursor = nextCursor
