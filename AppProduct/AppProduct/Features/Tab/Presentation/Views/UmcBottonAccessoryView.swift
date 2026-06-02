@@ -148,9 +148,9 @@ fileprivate struct ActivityAccessoryView: View {
     /// 운영진/챌린저 모드 전환 버튼
     private var adminToggleButton: some View {
         Button {
-            withAnimation(.snappy) {
-                userSession.toggleAdminMode()
-            }
+            // withAnimation 으로 감싸면 ActivityView 의 무거운 콘텐츠 교체(출석 체크 ↔ 출석 현황)까지
+            // 함께 애니메이션돼 두 화면이 겹쳐 보이는 잔상·경계선이 생긴다. 모드 전환은 즉시 처리한다.
+            userSession.toggleAdminMode()
         } label: {
             HStack(spacing: DefaultSpacing.spacing8) {
                 Image(systemName: userSession.isAdminModeEnabled
