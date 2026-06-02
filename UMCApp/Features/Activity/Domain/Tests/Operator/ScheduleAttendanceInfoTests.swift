@@ -12,7 +12,7 @@ import Testing
 // MARK: - Helpers
 
 private func makeParticipant(
-    memberId: Int = 1,
+    memberId: String = "1",
     status: ParticipantAttendanceStatus
 ) -> ParticipantAttendance {
     ParticipantAttendance(
@@ -20,7 +20,7 @@ private func makeParticipant(
         name: "참여자\(memberId)",
         nickname: "닉\(memberId)",
         profileImageUrl: "",
-        schoolId: 1,
+        schoolId: "1",
         schoolName: "한성대",
         attendanceStatus: status,
         isLocationVerified: false,
@@ -30,14 +30,14 @@ private func makeParticipant(
 
 private func makeInfo(participants: [ParticipantAttendance]) -> ScheduleAttendanceInfo {
     ScheduleAttendanceInfo(
-        scheduleId: 100,
+        scheduleId: "100",
         name: "정기 세션",
         description: "",
         startsAt: Date(timeIntervalSince1970: 1_736_942_400),
         endsAt: Date(timeIntervalSince1970: 1_736_949_600),
         location: nil,
         isOnline: true,
-        authorMemberId: 1,
+        authorMemberId: "1",
         attendancePolicy: nil,
         tags: [],
         participants: participants
@@ -55,12 +55,12 @@ struct ScheduleAttendanceInfoTests {
     func presentCountCountsPresentLateExcused() {
         // Given
         let info = makeInfo(participants: [
-            makeParticipant(memberId: 1, status: .present),
-            makeParticipant(memberId: 2, status: .late),
-            makeParticipant(memberId: 3, status: .excused),
-            makeParticipant(memberId: 4, status: .absent),
-            makeParticipant(memberId: 5, status: .pending),
-            makeParticipant(memberId: 6, status: .presentPending)
+            makeParticipant(memberId: "1", status: .present),
+            makeParticipant(memberId: "2", status: .late),
+            makeParticipant(memberId: "3", status: .excused),
+            makeParticipant(memberId: "4", status: .absent),
+            makeParticipant(memberId: "5", status: .pending),
+            makeParticipant(memberId: "6", status: .presentPending)
         ])
 
         // When
@@ -88,11 +88,11 @@ struct ScheduleAttendanceInfoTests {
     func pendingCountCountsPendingFamily() {
         // Given
         let info = makeInfo(participants: [
-            makeParticipant(memberId: 1, status: .presentPending),
-            makeParticipant(memberId: 2, status: .latePending),
-            makeParticipant(memberId: 3, status: .excusedPending),
-            makeParticipant(memberId: 4, status: .present),
-            makeParticipant(memberId: 5, status: .pending)
+            makeParticipant(memberId: "1", status: .presentPending),
+            makeParticipant(memberId: "2", status: .latePending),
+            makeParticipant(memberId: "3", status: .excusedPending),
+            makeParticipant(memberId: "4", status: .present),
+            makeParticipant(memberId: "5", status: .pending)
         ])
 
         // When
@@ -108,8 +108,8 @@ struct ScheduleAttendanceInfoTests {
     func totalCountMatchesParticipantsLength() {
         // Given
         let info = makeInfo(participants: [
-            makeParticipant(memberId: 1, status: .present),
-            makeParticipant(memberId: 2, status: .absent)
+            makeParticipant(memberId: "1", status: .present),
+            makeParticipant(memberId: "2", status: .absent)
         ])
 
         // When
@@ -125,10 +125,10 @@ struct ScheduleAttendanceInfoTests {
     func attendanceRateReturnsRatio() {
         // Given
         let info = makeInfo(participants: [
-            makeParticipant(memberId: 1, status: .present),
-            makeParticipant(memberId: 2, status: .late),
-            makeParticipant(memberId: 3, status: .absent),
-            makeParticipant(memberId: 4, status: .pending)
+            makeParticipant(memberId: "1", status: .present),
+            makeParticipant(memberId: "2", status: .late),
+            makeParticipant(memberId: "3", status: .absent),
+            makeParticipant(memberId: "4", status: .pending)
         ])
 
         // When
@@ -154,9 +154,9 @@ struct ScheduleAttendanceInfoTests {
     func attendanceRateIsOneWhenAllPresent() {
         // Given
         let info = makeInfo(participants: [
-            makeParticipant(memberId: 1, status: .present),
-            makeParticipant(memberId: 2, status: .excused),
-            makeParticipant(memberId: 3, status: .late)
+            makeParticipant(memberId: "1", status: .present),
+            makeParticipant(memberId: "2", status: .excused),
+            makeParticipant(memberId: "3", status: .late)
         ])
 
         // When

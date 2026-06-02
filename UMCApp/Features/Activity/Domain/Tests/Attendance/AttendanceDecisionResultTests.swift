@@ -27,7 +27,6 @@ private func makeResult(
         latitude: nil,
         longitude: nil,
         decisionMakerMemberInfo: nil,
-        hasDecisionMakerMember: false,
         isPendingDecision: false
     )
 }
