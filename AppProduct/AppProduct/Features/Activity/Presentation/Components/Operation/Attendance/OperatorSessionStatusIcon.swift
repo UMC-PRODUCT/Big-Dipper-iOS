@@ -70,6 +70,7 @@ struct OperatorSessionStatusIcon: View, Equatable {
         Image(systemName: "checkmark.circle.fill")
             .resizable()
             .foregroundStyle(status.iconColor)
+            .symbolDrawOn(isActive: true)
     }
     
     

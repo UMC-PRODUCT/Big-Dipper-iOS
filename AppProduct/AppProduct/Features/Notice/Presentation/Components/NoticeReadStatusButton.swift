@@ -80,6 +80,7 @@ struct NoticeReadStatusButton: View {
                     HStack(spacing: DefaultSpacing.spacing8) {
                         Image(systemName: "checkmark.circle.fill")
                             .appFont(.body, color: .green)
+                            .symbolDrawOn(isActive: true)
 
                         Text("수신 확인 현황")
                             .appFont(.calloutEmphasis, color: .black)

@@ -71,7 +71,8 @@ struct ChallengerMissionCardContent: View, Equatable {
         MissionStatusResultView(
             icon: "checkmark.circle.fill",
             message: "미션을 통과하였습니다.",
-            color: .green
+            color: .green,
+            drawsOnAppear: true
         )
     }
 
@@ -126,6 +127,8 @@ fileprivate struct MissionStatusResultView: View, Equatable {
     let icon: String
     let message: String
     let color: Color
+    /// `true`이면 등장 시 아이콘에 draw-on 애니메이션을 적용합니다. (통과 등 긍정 상태 전용)
+    var drawsOnAppear: Bool = false
 
     private enum Constants {
 
@@ -138,6 +141,7 @@ fileprivate struct MissionStatusResultView: View, Equatable {
         HStack {
             Image(systemName: icon)
                 .foregroundStyle(color)
+                .symbolDrawOn(isActive: drawsOnAppear)
             Text(message)
                 .appFont(.callout, color: color)
         }

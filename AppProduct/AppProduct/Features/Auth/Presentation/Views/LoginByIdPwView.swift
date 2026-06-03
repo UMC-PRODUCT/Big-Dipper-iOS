@@ -134,7 +134,9 @@ struct LoginByIdPwView: View {
 
     private var autoLoginToggle: some View {
         Button {
-            viewModel.isAutoLoginEnabled.toggle()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                viewModel.isAutoLoginEnabled.toggle()
+            }
         } label: {
             HStack(spacing: DefaultSpacing.spacing8) {
                 Image(
@@ -146,6 +148,7 @@ struct LoginByIdPwView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: Constants.checkboxSize, height: Constants.checkboxSize)
                 .foregroundStyle(viewModel.isAutoLoginEnabled ? .indigo500 : .grey400)
+                .contentTransition(.symbolEffect(.replace))
                 Text(Constants.autoLoginLabel)
                     .appFont(.subheadline, color: .grey600)
             }

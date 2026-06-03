@@ -59,12 +59,14 @@ struct ChallengerMissionStatusIcon: View, Equatable {
         Image(systemName: "checkmark.circle.fill")
             .resizable()
             .foregroundStyle(status.missionListIconColor)
+            .symbolDrawOn(isActive: true)
     }
 
     private var passIcon: some View {
         Image(systemName: "checkmark.circle.fill")
             .resizable()
             .foregroundStyle(status.missionListIconColor)
+            .symbolDrawOn(isActive: true)
     }
 
     private var failIcon: some View {

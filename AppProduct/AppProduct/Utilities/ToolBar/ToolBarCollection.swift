@@ -84,6 +84,7 @@ struct ToolBarCollection {
                     ZStack {
                         Image(systemName: "checkmark")
                             .opacity(isLoading ? 0 : 1)
+                            .symbolDrawOn(isActive: !isLoading)
 
                         if isLoading {
                             ProgressView()

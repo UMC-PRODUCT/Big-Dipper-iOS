@@ -165,6 +165,7 @@ struct SignUpByIdPwView: View {
             case .loaded(true):
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
+                    .symbolDrawOn(isActive: true)
                 Text("사용 가능한 이메일입니다.")
                     .appFont(.footnote, color: .green)
             case .loaded(false):

@@ -483,6 +483,7 @@ struct VoteResultRow: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.indigo500)
                     .appFont(.callout)
+                    .symbolDrawOn(isActive: true)
             }
 
             Text(String(format: "%.1f%%", option.percentage(totalVotes: totalVotes)))
