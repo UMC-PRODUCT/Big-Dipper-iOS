@@ -21,6 +21,9 @@ struct AttendanceListView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: AttendanceListViewModel
 
+    /// "직접 입력" 기간 편집 시트 표시 플래그 (View 전용 일시 상태)
+    @State private var isCustomDatePresented: Bool = false
+
     // MARK: - Init
 
     init(
@@ -47,18 +50,30 @@ struct AttendanceListView: View {
 
     var body: some View {
         listStateContent
-            .animation(.easeInOut(duration: 0.2), value: viewModel.isFilterExpanded)
             .animation(.easeInOut(duration: 0.2), value: viewModel.totalPendingCount > 0)
-            // 필터 칩·기간 필터·승인 대기 배너는 VStack 본문에 넣지 않고 상단 safeAreaBar 로
-            // 고정한다. 칩이 네비게이션 바 바로 아래에 붙고, 목록은 그 아래에서 스크롤된다.
-            // (권한 거부 시에는 바를 숨기고 폴백 안내만 노출)
+            // 상태/기간 필터는 우상단 툴바의 단일 메뉴 버튼으로 올린다.
+            // 승인 대기 배너만 상단 safeAreaBar 에 고정한다. (권한 거부 시에는 모두 숨김)
             .safeAreaBar(edge: .top) {
-                if !viewModel.isPermissionDenied {
-                    topFilterBar
+                if !viewModel.isPermissionDenied, viewModel.totalPendingCount > 0 {
+                    pendingInboxBanner
+                        .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                        .padding(.vertical, DefaultSpacing.spacing8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !viewModel.isPermissionDenied {
+                        filterMenu
+                    }
                 }
             }
             .navigationTitle("출석 현황")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $isCustomDatePresented) {
+                customDateSheet
+                    .presentationDragIndicator(.visible)
+            }
             .task {
                 if case .idle = viewModel.listState {
                     await viewModel.fetch()
@@ -73,6 +88,13 @@ struct AttendanceListView: View {
                     Task { await viewModel.refreshList() }
                 }
             }
+            #if DEBUG
+            .onAppear {
+                if ProcessInfo.processInfo.arguments.contains("-mockShowDateSheet") {
+                    isCustomDatePresented = true
+                }
+            }
+            #endif
     }
 
     /// listState 에 따른 본문(목록/로딩/빈/에러/권한). 상단 safeAreaBar 아래의 스크롤 영역이다.
@@ -96,27 +118,6 @@ struct AttendanceListView: View {
         }
     }
 
-    /// 상단 고정 필터 바(safeAreaBar 콘텐츠).
-    /// 칩 행은 `contentMargins` 로 가장자리까지 스크롤되고, 기간/대기 배너는 16pt 인셋으로 정렬한다.
-    private var topFilterBar: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
-            filterChipRow
-
-            if viewModel.isFilterExpanded {
-                periodFilterExpandedRow
-                    .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-
-            if viewModel.totalPendingCount > 0 {
-                pendingInboxBanner
-                    .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-        .padding(.vertical, DefaultSpacing.spacing8)
-    }
-
     // MARK: - Constants
 
     private enum Constants {
@@ -132,103 +133,130 @@ struct AttendanceListView: View {
         static let permissionGuideFooter: String = "권한이 필요하다면 지부장에게 역할 부여를 요청하세요"
     }
 
-    // MARK: - View Components
+    // MARK: - Filter Toolbar Menu
 
-    private var filterChipRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: DefaultSpacing.spacing8) {
-                ChipButton(
-                    "전체",
-                    isSelected: viewModel.selectedFilter == nil
-                ) {
-                    Task { await viewModel.clearFilter() }
-                }
-                .buttonSize(.small)
-
-                ForEach(viewModel.filterableStatuses, id: \.self) { status in
-                    ChipButton(
-                        status.displayText,
-                        isSelected: viewModel.selectedFilter == status
-                    ) {
-                        Task { await viewModel.filterButtonTapped(status) }
+    /// 우상단 툴바의 단일 필터 버튼. 버튼 하나 안에서 상태/기간을 각각 중첩 `Menu`(서브메뉴)로 제공한다.
+    ///
+    /// - Note: 라벨이 폭이 변하지 않는 고정 아이콘이라, `.glassEffect` 칩을 `Menu` 라벨로 쓸 때
+    ///   발생하던 라벨 폭 변경 클립 문제가 없다. 옵션은 시스템 렌더링(Picker 체크마크)으로 표시된다.
+    private var filterMenu: some View {
+        Menu {
+            Menu {
+                Picker("출석 상태", selection: statusFilterBinding) {
+                    Label("전체", systemImage: "square.grid.2x2")
+                        .tag(nil as AttendanceStatusV2?)
+                    ForEach(viewModel.filterableStatuses, id: \.self) { status in
+                        Label(status.displayText, systemImage: status.iconName)
+                            .tag(Optional(status))
                     }
-                    .buttonSize(.small)
-                    .accessibilityAddTraits(viewModel.selectedFilter == status ? .isSelected : [])
                 }
-
-                periodFilterToggleButton
+            } label: {
+                Label("출석 상태", systemImage: "person.crop.circle.badge.checkmark")
             }
-        }
-        // safeAreaBar 안에서 칩 행이 좌우 가장자리까지 스크롤되도록 콘텐츠만 16pt 인셋.
-        .contentMargins(.horizontal, DefaultConstant.defaultSafeHorizon, for: .scrollContent)
-    }
 
-    private var periodFilterToggleButton: some View {
-        ChipButton(
-            viewModel.periodPreset.label,
-            isSelected: viewModel.isFilterExpanded,
-            trailingIcon: true,
-            action: { viewModel.isFilterExpanded.toggle() }
-        )
-        .buttonSize(.small)
-        .accessibilityLabel("기간 필터")
-        .accessibilityHint(viewModel.isFilterExpanded ? "필터 접기" : "필터 펼치기")
-    }
-
-    private var periodFilterExpandedRow: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: DefaultSpacing.spacing8) {
+            Menu {
+                Picker("조회 기간", selection: periodFilterBinding) {
                     ForEach(AttendancePeriodPreset.allCases) { preset in
-                        ChipButton(
-                            preset.label,
-                            isSelected: viewModel.periodPreset == preset
-                        ) {
-                            Task { await viewModel.presetSelected(preset) }
-                        }
-                        .buttonSize(.small)
-                        .accessibilityAddTraits(viewModel.periodPreset == preset ? .isSelected : [])
+                        Label(preset.label, systemImage: preset.iconName)
+                            .tag(preset)
+                    }
+                }
+
+                if viewModel.periodPreset == .custom {
+                    Button {
+                        isCustomDatePresented = true
+                    } label: {
+                        Label("입력 기간 수정", systemImage: "calendar.badge.clock")
+                    }
+                }
+            } label: {
+                Label("조회 기간", systemImage: "calendar")
+            }
+        } label: {
+            Label(
+                "필터",
+                systemImage: isFilterActive
+                    ? "line.3.horizontal.decrease.circle.fill"
+                    : "line.3.horizontal.decrease.circle"
+            )
+        }
+        .accessibilityLabel("필터")
+        .accessibilityValue(filterAccessibilityValue)
+    }
+
+    /// 기본값(전체 상태 + 최근 1개월)에서 벗어난 필터가 하나라도 적용됐는지.
+    private var isFilterActive: Bool {
+        viewModel.selectedFilter != nil || viewModel.periodPreset != .oneMonth
+    }
+
+    private var filterAccessibilityValue: String {
+        "상태 \(viewModel.selectedFilter?.displayText ?? "전체"), 기간 \(viewModel.periodPreset.label)"
+    }
+
+    /// 상태 필터 Picker 바인딩 — 선택 즉시 재조회. nil("전체")은 `clearFilter` 로 분기한다.
+    private var statusFilterBinding: Binding<AttendanceStatusV2?> {
+        Binding(
+            get: { viewModel.selectedFilter },
+            set: { newValue in
+                Task {
+                    if let newValue {
+                        await viewModel.filterButtonTapped(newValue)
+                    } else {
+                        await viewModel.clearFilter()
                     }
                 }
             }
-
-            if viewModel.periodPreset == .custom {
-                customDatePickerRow
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                    .animation(.easeInOut(duration: 0.2), value: viewModel.periodPreset == .custom)
-            }
-        }
+        )
     }
 
-    private var customDatePickerRow: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-            DatePicker(
-                "시작",
-                selection: $viewModel.fromDate,
-                displayedComponents: .date
-            )
-            .datePickerStyle(.compact)
-            .font(.app(.footnote))
-            .onChange(of: viewModel.fromDate) {
-                if viewModel.toDate < viewModel.fromDate {
-                    viewModel.toDate = viewModel.fromDate.addingTimeInterval(24 * 60 * 60)
+    /// 기간 프리셋 Picker 바인딩 — 선택 즉시 재조회. "직접 입력" 선택 시 날짜 시트를 띄운다.
+    private var periodFilterBinding: Binding<AttendancePeriodPreset> {
+        Binding(
+            get: { viewModel.periodPreset },
+            set: { newValue in
+                Task { await viewModel.presetSelected(newValue) }
+                if newValue == .custom {
+                    isCustomDatePresented = true
                 }
-                Task { await viewModel.fetch() }
             }
+        )
+    }
 
-            DatePicker(
-                "종료",
-                selection: $viewModel.toDate,
-                in: viewModel.fromDate...,
-                displayedComponents: .date
-            )
-            .datePickerStyle(.compact)
-            .font(.app(.footnote))
-            .onChange(of: viewModel.toDate) {
-                Task { await viewModel.fetch() }
+    /// "직접 입력" 기간 편집 시트 — 시작/종료 날짜. 변경 즉시 재조회한다.
+    private var customDateSheet: some View {
+        NavigationStack {
+            Form {
+                DatePicker(
+                    "시작일",
+                    selection: $viewModel.fromDate,
+                    displayedComponents: .date
+                )
+                .onChange(of: viewModel.fromDate) {
+                    if viewModel.toDate < viewModel.fromDate {
+                        viewModel.toDate = viewModel.fromDate.addingTimeInterval(24 * 60 * 60)
+                    }
+                    Task { await viewModel.fetch() }
+                }
+                .tint(Color.indigo)
+
+                DatePicker(
+                    "종료일",
+                    selection: $viewModel.toDate,
+                    in: viewModel.fromDate...,
+                    displayedComponents: .date
+                )
+                .onChange(of: viewModel.toDate) {
+                    Task { await viewModel.fetch() }
+                }
+                .tint(Color.indigo)
+            }
+            .navigationTitle("기간")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolBarCollection.ConfirmBtn(action: {})
             }
         }
-        .padding(.horizontal, DefaultSpacing.spacing4)
+        .presentationDetents([.medium])
     }
 
     private var loadingView: some View {

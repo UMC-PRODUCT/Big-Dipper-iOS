@@ -81,6 +81,24 @@ enum AttendanceStatusV2: String, Codable, Sendable, CaseIterable, Equatable, Has
         }
     }
 
+    /// 필터 칩 등에 표시할 SF Symbol 이름
+    ///
+    /// 확정 상태는 채워진(`.fill`) 심볼, 승인 대기 상태는 같은 의미의 윤곽 심볼로
+    /// 짝지어 "대기 중"임을 시각적으로 구분합니다.
+    var iconName: String {
+        switch self {
+        case .present:          return "checkmark.circle.fill"
+        case .presentPending:   return "checkmark.circle"
+        case .late:             return "clock.fill"
+        case .latePending:      return "clock"
+        case .absent:           return "xmark.circle.fill"
+        case .excused:          return "text.bubble.fill"
+        case .excusedPending:   return "text.bubble"
+        case .pending:          return "circle.dashed"
+        case .unknown:          return "questionmark.circle"
+        }
+    }
+
     /// 뱃지 컴포넌트에 렌더링할 짧은 텍스트
     ///
     /// `.unknown` 은 폭 제약 때문에 `"알 수 없음"` 으로 단축합니다.

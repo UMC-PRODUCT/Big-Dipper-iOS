@@ -115,6 +115,26 @@ struct AppProductApp: App {
 extension AppProductApp {
     @ViewBuilder
     private var rootView: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-mockAttendance") {
+            NavigationStack {
+                AttendanceListView(
+                    viewModel: AttendanceListViewModel.preview(
+                        container: container,
+                        selected: .excusedPending
+                    )
+                )
+            }
+        } else {
+            mainRootView
+        }
+        #else
+        mainRootView
+        #endif
+    }
+
+    @ViewBuilder
+    private var mainRootView: some View {
         ZStack {
             switch appState {
             case .bootstrap:

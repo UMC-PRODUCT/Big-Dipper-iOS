@@ -10,9 +10,10 @@ import Foundation
 /// 소셜 로그인 화면의 상태 및 액션을 관리하는 ViewModel
 @Observable
 final class LoginViewModel {
-
+    
     // MARK: - Property
-
+    
+    
     private let loginUseCase: LoginUseCaseProtocol
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     private let kakaoLoginManager: KakaoLoginManager
@@ -230,7 +231,7 @@ private extension LoginViewModel {
         if !profile.generations.isEmpty {
             return true
         }
-
+        
         for seasonType in profile.seasonTypes {
             if case .gens(let generations) = seasonType, !generations.isEmpty {
                 return true

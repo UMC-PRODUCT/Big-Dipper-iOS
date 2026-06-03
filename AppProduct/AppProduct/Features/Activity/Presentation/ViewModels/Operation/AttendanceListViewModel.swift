@@ -41,9 +41,6 @@ final class AttendanceListViewModel {
 
     // MARK: - Period Filter (AC#7)
 
-    /// 기간 필터 펼침/접힘 상태
-    var isFilterExpanded: Bool = false
-
     /// 선택된 기간 프리셋 (기본값: 최근 1개월)
     private(set) var periodPreset: AttendancePeriodPreset = .oneMonth
 
@@ -244,12 +241,16 @@ extension AttendanceListViewModel {
     ///
     /// 네트워크 fetch 없이 `.loaded` 상태로 시작하므로 `View` 의 `.task` 가
     /// 재조회하지 않고 곧바로 카드 리스트를 표시합니다.
-    static func preview(container: DIContainer) -> AttendanceListViewModel {
+    static func preview(
+        container: DIContainer,
+        selected: AttendanceStatusV2? = nil
+    ) -> AttendanceListViewModel {
         let viewModel = AttendanceListViewModel(
             container: container,
             errorHandler: ErrorHandler(),
             useCase: PreviewOperatorAttendanceUseCase()
         )
+        viewModel.selectedFilter = selected
         viewModel.listState = .loaded(previewInfos)
         return viewModel
     }

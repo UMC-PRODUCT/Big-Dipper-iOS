@@ -187,6 +187,9 @@ private struct ChipButtonContent: View, Equatable {
 
     var body: some View {
         HStack(spacing: DefaultSpacing.spacing4) {
+            if let leadingIcon {
+                Image(systemName: leadingIcon)
+            }
             Text(title)
             if trailingIcon == true {
                 Image(systemName: "chevron.down")
@@ -196,7 +199,7 @@ private struct ChipButtonContent: View, Equatable {
         .foregroundStyle(style.textColor(isSelected: isSelected))
         .font(size.font)
         .padding(.horizontal, size.horizonPadding)
-        .padding(.vertical, Constants.btnVerticalPadding)
+        .padding(.vertical, Constants.btnVerticalPadding)   
         .background(
             Capsule()
                 .fill(style.bgColor(isSelected: isSelected))

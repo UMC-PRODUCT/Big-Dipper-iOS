@@ -29,6 +29,14 @@ enum AttendancePeriodPreset: String, CaseIterable, Identifiable {
         }
     }
 
+    /// 필터 칩에 표시할 SF Symbol 이름
+    var iconName: String {
+        switch self {
+        case .oneWeek, .oneMonth, .threeMonths: return "calendar"
+        case .custom:                           return "calendar.badge.plus"
+        }
+    }
+
     // MARK: - Date Range
 
     /// 프리셋에 해당하는 `(fromDate, toDate)` 쌍을 반환합니다.
