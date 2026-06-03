@@ -149,6 +149,10 @@ struct AttendanceDetailView: View {
     @ViewBuilder
     private func content(info: ScheduleAttendanceInfo) -> some View {
         ScrollView {
+            // 주의: GlassEffectContainer 로 감싸지 않는다. 헤더/스탯/참여자 카드가
+            // `ConcentricRectangle`(적응형 코너)을 쓰는데, 컨테이너 내부에서는 코너 상속이
+            // 끊겨 `.interactive()` 글래스(승인 대기 배너)의 눌림 효과가 카드와 다른 크기로
+            // morphing된다. (StudyGroupCard 의 동일 이슈 주석 참고)
             VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
                 headerCard(info: info)
                 statsRow(info: info)
@@ -234,18 +238,19 @@ struct AttendanceDetailView: View {
         } label: {
             HStack(spacing: DefaultSpacing.spacing8) {
                 Image(systemName: "clock.badge.exclamationmark")
-                    .font(.system(size: 14))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.orange600)
                 Text("승인 대기 \(count)건")
-                    .appFont(.calloutEmphasis)
+                    .appFont(.calloutEmphasis, color: .orange700)
                 Spacer()
                 Image(systemName: DefaultConstant.chevronForwardImage)
-                    .font(.system(size: 12))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.orange400)
             }
-            .foregroundStyle(.orange)
             .padding(DefaultSpacing.spacing12)
             .frame(maxWidth: .infinity)
             .glassEffect(
-                .regular.tint(.orange).interactive(),
+                .regular.tint(.orange.opacity(0.16)).interactive(),
                 in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius))
             )
         }
@@ -254,18 +259,49 @@ struct AttendanceDetailView: View {
 
     private func statsRow(info: ScheduleAttendanceInfo) -> some View {
         HStack(spacing: DefaultSpacing.spacing12) {
-            statBlock(label: "출석", value: "\(info.presentCount) / \(info.totalCount)")
-            statBlock(label: "대기", value: "\(info.pendingCount)")
-            statBlock(label: "출석률", value: rateText(info: info))
+            statBlock(
+                icon: "person.fill.checkmark",
+                tint: .indigo500,
+                label: "출석",
+                value: "\(info.presentCount) / \(info.totalCount)",
+                valueColor: .grey700
+            )
+            statBlock(
+                icon: "clock.badge",
+                tint: .orange500,
+                label: "대기",
+                value: "\(info.pendingCount)",
+                valueColor: info.pendingCount > 0 ? .orange600 : .grey400
+            )
+            statBlock(
+                icon: "chart.pie.fill",
+                tint: .indigo500,
+                label: "출석률",
+                value: rateText(info: info),
+                valueColor: .indigo600
+            )
         }
     }
 
-    private func statBlock(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
-            Text(label)
-                .appFont(.caption1, color: .grey500)
+    private func statBlock(
+        icon: String,
+        tint: Color,
+        label: String,
+        value: String,
+        valueColor: Color
+    ) -> some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
+            HStack(spacing: DefaultSpacing.spacing4) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(tint)
+                Text(label)
+                    .appFont(.caption1, color: .grey500)
+            }
             Text(value)
-                .appFont(.calloutEmphasis, color: .grey700)
+                .appFont(.title3Emphasis, color: valueColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DefaultSpacing.spacing12)
@@ -321,6 +357,15 @@ struct AttendanceDetailView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, DefaultSpacing.spacing24)
         } else {
+            // LazyVStack is used here instead of List because:
+            // (1) Rows apply glassEffect, which requires GlassEffectContainer wrapping
+            //     that the parent ScrollView already provides — List is incompatible
+            //     with GlassEffectContainer (design-system.md: "적용 불가: List").
+            // (2) Nesting a List inside a ScrollView collapses the list to zero height
+            //     in SwiftUI, breaking layout. Splitting header/list while sharing
+            //     scroll position is not possible without UIKit interop.
+            // swipeActions on LazyVStack rows manages its own gesture state per-cell
+            // and behaves identically to List swipeActions on iOS 26.
             LazyVStack(spacing: DefaultSpacing.spacing8) {
                 ForEach(participants) { participant in
                     ParticipantAttendanceRow(
@@ -402,6 +447,24 @@ struct AttendanceDetailView: View {
 
     // MARK: - Helper
 
+    // DateFormatter is expensive to allocate (~0.5 ms each); static lets ensure
+    // they are created once per process lifetime rather than on every body render.
+    private static let startDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy.M.d (E) HH:mm"
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        return formatter
+    }()
+
+    private static let endTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        return formatter
+    }()
+
     private var pendingCount: Int {
         guard case .loaded(let info) = viewModel.detailState else { return 0 }
         return info.pendingCount
@@ -412,17 +475,8 @@ struct AttendanceDetailView: View {
     }
 
     private func dateRangeText(info: ScheduleAttendanceInfo) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy.M.d (E) HH:mm"
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        let start = formatter.string(from: info.startsAt)
-
-        let endFormatter = DateFormatter()
-        endFormatter.dateFormat = "HH:mm"
-        endFormatter.locale = Locale(identifier: "ko_KR")
-        endFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        let end = endFormatter.string(from: info.endsAt)
+        let start = Self.startDateFormatter.string(from: info.startsAt)
+        let end = Self.endTimeFormatter.string(from: info.endsAt)
         return "\(start) ~ \(end)"
     }
 

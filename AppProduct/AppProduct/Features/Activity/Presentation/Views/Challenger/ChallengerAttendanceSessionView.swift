@@ -56,7 +56,7 @@ struct ChallengerAttendanceSessionView: View {
         )
         self._attendanceViewModel = .init(wrappedValue: attendanceViewModel)
     }
-    
+
     private enum Constants {
         static let animationResponse: Double = 0.35
         static let animationDamping: Double = 0.8
@@ -186,7 +186,7 @@ struct ChallengerAttendanceSessionView: View {
     private var emptySessionView: some View {
         VStack(spacing: DefaultSpacing.spacing12) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 40))
+                .font(.system(size: DefaultConstant.iconSize))
                 .foregroundStyle(.green.opacity(0.7))
                 .symbolDrawOn(isActive: true)
 
@@ -211,9 +211,7 @@ struct ChallengerAttendanceSessionView: View {
             sectionHeader
 
             switch attendanceViewModel.myHistory {
-            case .idle:
-                Color.clear
-            case .loading:
+            case .idle, .loading:
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DefaultSpacing.spacing32)
@@ -241,14 +239,21 @@ struct ChallengerAttendanceSessionView: View {
     private var emptyHistoryView: some View {
         VStack(spacing: DefaultSpacing.spacing12) {
             Image(systemName: "clock.badge.checkmark")
-                .font(.system(size: 40))
-                .foregroundStyle(.grey400)
+                .font(.system(size: DefaultConstant.iconSize))
+                .foregroundStyle(.indigo400)
 
-            Text("출석 이력이 없습니다")
-                .appFont(.body, color: .grey600)
+            VStack(spacing: DefaultSpacing.spacing4) {
+                Text("아직 출석 기록이 없어요")
+                    .appFont(.calloutEmphasis, color: .grey700)
+
+                Text("출석 가능한 세션에서 출석을 완료하면\n이곳에 나의 출석 현황이 표시됩니다.")
+                    .appFont(.footnote, color: .grey500)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, DefaultSpacing.spacing32)
+        .padding(.horizontal, DefaultSpacing.spacing16)
         .background(
             .white,
             in: RoundedRectangle(

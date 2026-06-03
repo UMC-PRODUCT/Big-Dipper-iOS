@@ -289,7 +289,7 @@ struct AttendanceListView: View {
             Spacer()
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 36))
-                .foregroundStyle(.orange)
+                .foregroundStyle(.orange500)
             Text(error.userMessage)
                 .appFont(.subheadline, color: .grey600)
                 .multilineTextAlignment(.center)
@@ -312,7 +312,7 @@ struct AttendanceListView: View {
             HStack(spacing: DefaultSpacing.spacing12) {
                 Image(systemName: "tray.and.arrow.down.fill")
                     .font(.system(size: 18))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.orange500)
 
                 Text("승인 대기 \(viewModel.totalPendingCount)건")
                     .appFont(.calloutEmphasis, color: .grey700)
@@ -411,10 +411,16 @@ struct AttendanceListView: View {
     @ViewBuilder
     private func listContent(infos: [ScheduleAttendanceInfo]) -> some View {
         ScrollView {
+            // 주의: GlassEffectContainer 로 감싸지 않는다. 카드 배경이 `ConcentricRectangle`
+            // (적응형 코너)을 쓰는데, 컨테이너 내부에서는 코너 상속이 끊겨 `.interactive()`
+            // 글래스의 눌림(liquid) 효과가 카드와 다른 크기로 morphing된다.
+            // (StudyGroupCard 의 동일 이슈 주석 참고) → 카드별 glassEffect 를 독립적으로 둔다.
             LazyVStack(spacing: DefaultSpacing.spacing12) {
                 ForEach(infos) { info in
                     Button {
-                        di.resolve(PathStore.self).activityPath.append(.activity(.attendanceDetail(scheduleId: info.scheduleId)))
+                        di.resolve(PathStore.self).activityPath.append(
+                            .activity(.attendanceDetail(scheduleId: info.scheduleId))
+                        )
                     } label: {
                         AttendanceListRow(info: info)
                     }
@@ -439,66 +445,102 @@ private struct AttendanceListRow: View, Equatable {
             && lhs.info.pendingCount == rhs.info.pendingCount
     }
 
+    private var status: OperatorSessionStatus {
+        OperatorSessionStatus.from(startTime: info.startsAt, endTime: info.endsAt)
+    }
+
+    /// 진행중 카드만 은은한 indigo 틴트로 강조.
+    /// (`Glass` 는 로컬 `AppProduct.Glass` 그림자 모디파이어와 이름이 겹치므로
+    ///  SwiftUI 글래스 타입을 명시적으로 한정한다.)
+    private var cardGlass: SwiftUICore.Glass {
+        switch status {
+        case .inProgress:
+            return .regular.tint(.indigo500.opacity(0.10)).interactive()
+        default:
+            return .regular.interactive()
+        }
+    }
+
+    private var statusBadge: some View {
+        Text(status.listBadgeText)
+            .appFont(.caption2Emphasis, color: status.listAccentColor)
+            .padding(.horizontal, DefaultSpacing.spacing8)
+            .padding(.vertical, DefaultSpacing.spacing4)
+            .glassEffect(
+                .clear.tint(status.listAccentColor.opacity(0.18)),
+                in: Capsule()
+            )
+            .accessibilityLabel("상태 \(status.listBadgeText)")
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(info.name)
-                    .appFont(.calloutEmphasis, color: .grey700)
-                    .lineLimit(1)
-                Spacer()
-                Text(rateText)
-                    .appFont(.footnote, color: .grey500)
-            }
+        HStack(alignment: .top, spacing: DefaultSpacing.spacing12) {
+            Capsule()
+                .fill(status.listAccentColor)
+                .frame(width: 4)
 
-            HStack(spacing: DefaultSpacing.spacing8) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.grey500)
-                Text(dateRangeText)
-                    .appFont(.footnote, color: .grey500)
-            }
-
-            if let location = info.location {
-                HStack(spacing: DefaultSpacing.spacing8) {
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.grey500)
-                    Text(location.locationName)
-                        .appFont(.footnote, color: .grey500)
+            VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(info.name)
+                        .appFont(.calloutEmphasis, color: status == .ended ? .grey500 : .grey700)
                         .lineLimit(1)
+                    Spacer()
+                    statusBadge
                 }
-            } else if info.isOnline {
+
                 HStack(spacing: DefaultSpacing.spacing8) {
-                    Image(systemName: "video")
+                    Image(systemName: "calendar")
                         .font(.system(size: 12))
                         .foregroundStyle(.grey500)
-                    Text("비대면")
+                    Text(dateRangeText)
                         .appFont(.footnote, color: .grey500)
                 }
-            }
 
-            HStack(spacing: DefaultSpacing.spacing8) {
-                Text("출석 \(info.presentCount) / \(info.totalCount)")
-                    .appFont(.footnote, color: .grey600)
-                if info.pendingCount > 0 {
-                    InfoBadge(
-                        "대기 \(info.pendingCount)",
-                        textColor: .orange,
-                        tintColor: .yellow,
-                        glassVariant: .clear
-                    )
+                if let location = info.location {
+                    HStack(spacing: DefaultSpacing.spacing8) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.grey500)
+                        Text(location.locationName)
+                            .appFont(.footnote, color: .grey500)
+                            .lineLimit(1)
+                    }
+                } else if info.isOnline {
+                    HStack(spacing: DefaultSpacing.spacing8) {
+                        Image(systemName: "video")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.grey500)
+                        Text("비대면")
+                            .appFont(.footnote, color: .grey500)
+                    }
+                }
+
+                HStack(spacing: DefaultSpacing.spacing8) {
+                    Text("출석 \(info.presentCount) / \(info.totalCount)")
+                        .appFont(.footnote, color: .grey600)
+                    Text(rateText)
+                        .appFont(.footnote, color: .grey500)
+                    if info.pendingCount > 0 {
+                        InfoBadge(
+                            "대기 \(info.pendingCount)",
+                            textColor: .orange500,
+                            tintColor: .orange300,
+                            glassVariant: .clear
+                        )
+                    }
                 }
             }
         }
         .padding(DefaultSpacing.spacing16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(
-            .regular.interactive(),
+            cardGlass,
             in: ConcentricRectangle(
                 corners: .concentric(minimum: DefaultConstant.concentricRadius),
                 isUniform: true
             )
         )
+        .opacity(status == .ended ? 0.85 : 1)
     }
 
     private var rateText: String {
