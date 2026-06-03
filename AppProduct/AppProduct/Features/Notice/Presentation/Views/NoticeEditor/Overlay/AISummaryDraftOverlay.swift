@@ -54,6 +54,7 @@ struct AISummaryDraftOverlay: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: DefaultConstant.iconSize, weight: .medium))
                 .foregroundStyle(.indigo500)
+                .symbolDrawOn(isActive: true)
 
             Text("초안이 완성됐어요")
                 .appFont(.calloutEmphasis)

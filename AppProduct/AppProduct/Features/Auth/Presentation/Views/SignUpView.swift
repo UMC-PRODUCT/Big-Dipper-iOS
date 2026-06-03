@@ -216,13 +216,16 @@ struct SignUpView: View {
 
     private var allAgreeButton: some View {
         Button(action: {
-            viewModel.toggleAllTerms(!viewModel.isAllTermsAgreed)
+            withAnimation(.easeInOut(duration: 0.2)) {
+                viewModel.toggleAllTerms(!viewModel.isAllTermsAgreed)
+            }
         }) {
             HStack(spacing: DefaultSpacing.spacing8) {
                 Image(
                     systemName: viewModel.isAllTermsAgreed
                     ? "checkmark.circle.fill" : "circle"
                 )
+                .contentTransition(.symbolEffect(.replace))
                 .foregroundStyle(viewModel.isAllTermsAgreed ? .indigo500 : .grey400)
                 Text(Constants.allAgreeTitle)
                     .appFont(.calloutEmphasis)
@@ -381,10 +384,13 @@ private struct SignUpTermsRow: View {
     var body: some View {
         HStack(spacing: DefaultSpacing.spacing8) {
             Button(action: {
-                onToggle()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    onToggle()
+                }
             }) {
                 HStack(spacing: DefaultSpacing.spacing8) {
                     Image(systemName: isAgreed ? "checkmark.circle.fill" : "circle")
+                        .contentTransition(.symbolEffect(.replace))
                         .foregroundStyle(isAgreed ? .indigo500 : .grey400)
                     Text(title)
                         .appFont(.subheadline)

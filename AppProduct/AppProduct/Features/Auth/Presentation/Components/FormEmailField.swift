@@ -294,6 +294,7 @@ struct FormEmailField: View {
         HStack(spacing: DefaultSpacing.spacing8) {
             Image(systemName: Constants.successImage)
                 .foregroundStyle(.green)
+                .symbolDrawOn(isActive: true)
             Text(Constants.successMsg)
                 .appFont(.footnote, color: .green)
         }

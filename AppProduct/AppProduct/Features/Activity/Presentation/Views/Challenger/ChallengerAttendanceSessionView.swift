@@ -188,6 +188,7 @@ struct ChallengerAttendanceSessionView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 40))
                 .foregroundStyle(.green.opacity(0.7))
+                .symbolDrawOn(isActive: true)
 
             Text("모든 세션 출석을 완료했습니다")
                 .appFont(.body, color: .grey600)

@@ -42,6 +42,7 @@ struct KeyboardToolbarModifier<Field: Hashable & CaseIterable>: ViewModifier {
                 toolBarButton(action: {
                     focusedField = nil
                 }, image: "checkmark", size: .init(width: 20, height: 20))
+                .symbolDrawOn(isActive: true)
             })
         })
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
@@ -135,6 +136,7 @@ struct KeyboardDismissToolbarModifier: ViewModifier {
                     .tint(.grey900)
                     .padding(DefaultConstant.defaultBtnPadding)
                     .glassEffect(.regular.interactive(), in: .circle)
+                    .symbolDrawOn(isActive: true)
             }
         }
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)

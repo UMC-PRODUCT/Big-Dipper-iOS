@@ -610,6 +610,7 @@ private struct PendingApprovalSheetView: View {
                             ? "checkmark.circle.fill"
                             : "circle"
                     )
+                    .contentTransition(.symbolEffect(.replace))
                     .font(.system(size: 22))
                     .foregroundStyle(
                         selectedMemberIds.contains(participant.memberId) ? .indigo500 : .grey400
@@ -685,10 +686,12 @@ private struct PendingApprovalSheetView: View {
     // MARK: - Helper
 
     private func toggleSelection(for memberId: Int) {
-        if selectedMemberIds.contains(memberId) {
-            selectedMemberIds.remove(memberId)
-        } else {
-            selectedMemberIds.insert(memberId)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if selectedMemberIds.contains(memberId) {
+                selectedMemberIds.remove(memberId)
+            } else {
+                selectedMemberIds.insert(memberId)
+            }
         }
     }
 }
