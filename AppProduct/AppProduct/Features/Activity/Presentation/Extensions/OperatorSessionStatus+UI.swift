@@ -29,4 +29,23 @@ extension OperatorSessionStatus {
         case .ended: return .gray
         }
     }
+
+    /// 출석 현황 목록 카드 전용 강조 색상 (좌측 액센트 바 + 상태 배지).
+    /// inProgress=진행중(브랜드 강조), beforeStart=예정(액센트), ended=마감(디엠퍼사이즈).
+    var listAccentColor: Color {
+        switch self {
+        case .inProgress: return .indigo500
+        case .beforeStart: return .orange500
+        case .ended: return .grey400
+        }
+    }
+
+    /// 목록 카드 상태 배지에 표시할 짧은 라벨.
+    var listBadgeText: String {
+        switch self {
+        case .inProgress: return "진행중"
+        case .beforeStart: return "예정"
+        case .ended: return "마감"
+        }
+    }
 }
