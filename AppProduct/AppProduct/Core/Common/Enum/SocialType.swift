@@ -16,8 +16,8 @@ enum SocialType: String, CaseIterable, Hashable {
     case apple = "Apple로 계속하기"
     /// 구글 로그인
     case google = "Google로 계속하기"
-    /// 이메일로 계속하기
-    case email = "ID/PW로 계속하기"
+    /// UMC 계정(ID/PW) 로그인
+    case email = "UMC 계정 로그인"
 
     static var allCases: [SocialType] {
         [.kakao, .apple, .google, .email]
@@ -64,9 +64,9 @@ enum SocialType: String, CaseIterable, Hashable {
         case .apple:
             return Color.black // 애플 고유 검정색
         case .google:
-            return Color.grey100 // 흰 화면과 구분되는 연한 회색 배경
+            return Color.clear // 아웃라인 스타일 — 회색 테두리는 LoginActionStack에서 처리
         case .email:
-            return Color.clear
+            return Color.green100 // UMC 계정 로그인 — teal 계열 배경(green100 ≈ teal-100)
         }
     }
     
@@ -80,7 +80,7 @@ enum SocialType: String, CaseIterable, Hashable {
         case .google:
             return .black // 흰 배경엔 검은 글씨
         case .email:
-            return .black
+            return .green700 // teal-100 배경 위 teal 계열 텍스트(green700 ≈ teal-600)
         }
     }
     

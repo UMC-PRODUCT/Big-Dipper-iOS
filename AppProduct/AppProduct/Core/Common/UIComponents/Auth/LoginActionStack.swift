@@ -103,6 +103,11 @@ struct LoginActionStack: View {
         .disabled(isLoading)
         .accessibilityLabel(Text("Google로 시작하기"))
         .accessibilityHint(Text("Google 계정으로 로그인합니다"))
+        .overlay {
+            Capsule()
+                .fill(.clear)
+                .strokeBorder(Color.grey500, style: .init(lineWidth: 0.5))
+        }
     }
 
     private var idPwLoginButton: some View {
@@ -112,11 +117,6 @@ struct LoginActionStack: View {
         .buttonBorderShape(.capsule)
         .disabled(isLoading)
         .accessibilityHint(Text("아이디와 비밀번호 입력 화면으로 이동합니다"))
-        .overlay {
-            Capsule()
-                .fill(.clear)
-                .strokeBorder(Color.grey500, style: .init(lineWidth: 0.5))
-        }
     }
 
     private var supportFooter: some View {
