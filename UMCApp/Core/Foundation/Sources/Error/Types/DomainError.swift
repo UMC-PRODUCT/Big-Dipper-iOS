@@ -81,9 +81,6 @@ public enum DomainError: Error, LocalizedError, Equatable {
     /// 출석 사유 입력 필요
     case attendanceReasonRequired
 
-    /// 일정 식별자 변환 실패 (서버 String ID → Int 변환 실패)
-    case invalidScheduleId(String)
-
     // MARK: - 워크북/과제
 
     /// 제출 기한 초과
@@ -137,8 +134,6 @@ public enum DomainError: Error, LocalizedError, Equatable {
             return "출석 시간이 지났습니다."
         case .attendanceReasonRequired:
             return "출석 사유를 입력해주세요."
-        case .invalidScheduleId(let id):
-            return "잘못된 일정 식별자입니다. (\(id))"
         case .workbookDeadlinePassed:
             return "제출 기한이 지났습니다."
         case .workbookAlreadySubmitted:

@@ -12,9 +12,6 @@ import UMCFoundation
 
 // MARK: - Helpers
 
-/// `Int()` 변환이 실패하는 비숫자 일정 식별자 fixture (invalidScheduleId 분기 검증 공용)
-private let invalidScheduleId = "invalid-id"
-
 private func makeCoordinate(
     latitude: Double = 37.5,
     longitude: Double = 127.0
@@ -35,7 +32,6 @@ private func makeDecisionResult(
         latitude: nil,
         longitude: nil,
         decisionMakerMemberInfo: nil,
-        hasDecisionMakerMember: false,
         isPendingDecision: false
     )
 }
@@ -83,14 +79,14 @@ private final class MockChallengerAttendanceRepository: @unchecked Sendable,
     )
 
     private(set) var requestAttendanceCalls: [(
-        scheduleId: Int,
+        scheduleId: String,
         latitude: Double,
         longitude: Double,
         locationVerified: Bool
     )] = []
 
     private(set) var submitExcuseCalls: [(
-        scheduleId: Int,
+        scheduleId: String,
         excuseReason: String,
         isVerified: Bool,
         latitude: Double,
@@ -100,7 +96,7 @@ private final class MockChallengerAttendanceRepository: @unchecked Sendable,
     // MARK: Protocol
 
     func requestAttendance(
-        scheduleId: Int,
+        scheduleId: String,
         latitude: Double,
         longitude: Double,
         locationVerified: Bool
@@ -110,7 +106,7 @@ private final class MockChallengerAttendanceRepository: @unchecked Sendable,
     }
 
     func submitExcuse(
-        scheduleId: Int,
+        scheduleId: String,
         excuseReason: String,
         isVerified: Bool,
         latitude: Double,
@@ -214,19 +210,6 @@ struct ChallengerAttendanceUseCaseGPSTests {
         #expect(location.isInsideQueries == ["100"])
     }
 
-    @Test("scheduleId Int 변환 실패 → DomainError.invalidScheduleId")
-    func requestGPSAttendanceThrowsWhenScheduleIdInvalid() async {
-        let useCase = makeUseCase()
-
-        await #expect(throws: DomainError.invalidScheduleId(invalidScheduleId)) {
-            _ = try await useCase.requestGPSAttendance(
-                sessionId: SessionID(value: "S-1"),
-                userId: UserID(value: "U-1"),
-                scheduleId: invalidScheduleId
-            )
-        }
-    }
-
     @Test("정상 — Repository 위임 + Attendance 매핑 + locationVerified=true")
     func requestGPSAttendanceSucceeds() async throws {
         let repository = MockChallengerAttendanceRepository()
@@ -244,7 +227,7 @@ struct ChallengerAttendanceUseCaseGPSTests {
 
         #expect(repository.requestAttendanceCalls.count == 1)
         let call = try #require(repository.requestAttendanceCalls.first)
-        #expect(call.scheduleId == 42)
+        #expect(call.scheduleId == "42")
         #expect(call.latitude == 37.6)
         #expect(call.longitude == 127.1)
         #expect(call.locationVerified == true)
@@ -278,20 +261,6 @@ struct ChallengerAttendanceUseCaseExcuseTests {
         }
     }
 
-    @Test("scheduleId Int 변환 실패 → DomainError.invalidScheduleId")
-    func submitLateReasonThrowsWhenScheduleIdInvalid() async {
-        let useCase = makeUseCase()
-
-        await #expect(throws: DomainError.invalidScheduleId(invalidScheduleId)) {
-            _ = try await useCase.submitLateReason(
-                sessionId: SessionID(value: "S-1"),
-                userId: UserID(value: "U-1"),
-                reason: "지각 사유",
-                scheduleId: invalidScheduleId
-            )
-        }
-    }
-
     @Test("지각 사유 정상 제출 → Repository 위임 + 좌표 동봉 + isVerified=true")
     func submitLateReasonSucceedsWithCoordinate() async throws {
         let repository = MockChallengerAttendanceRepository()
@@ -311,7 +280,7 @@ struct ChallengerAttendanceUseCaseExcuseTests {
         )
 
         let call = try #require(repository.submitExcuseCalls.first)
-        #expect(call.scheduleId == 42)
+        #expect(call.scheduleId == "42")
         #expect(call.excuseReason == "지각 사유")
         #expect(call.isVerified == true)
         #expect(call.latitude == 37.7)

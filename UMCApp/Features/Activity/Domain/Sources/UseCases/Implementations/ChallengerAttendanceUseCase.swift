@@ -11,8 +11,7 @@ import UMCFoundation
 /// `ChallengerAttendanceUseCaseProtocol` 의 기본 구현체
 ///
 /// - 위치/지오펜스 의존은 `LocationProviding` Protocol 로 주입.
-/// - Repository 는 `Int` 기반 `scheduleId` 를 받지만, UseCase 시그니처는 `String` 으로 통일.
-///   (서버 ID 는 String 으로 직렬화되므로 모듈 경계에서만 변환)
+/// - `scheduleId` 는 서버 String ID 로 전 레이어 통일 (Repository 도 String 으로 수신).
 public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol {
 
     // MARK: - Property
@@ -62,10 +61,8 @@ public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
             throw DomainError.attendanceOutOfRange
         }
 
-        let intScheduleId = try Self.toIntScheduleId(scheduleId)
-
         let result = try await repository.requestAttendance(
-            scheduleId: intScheduleId,
+            scheduleId: scheduleId,
             latitude: coordinate.latitude,
             longitude: coordinate.longitude,
             locationVerified: true
@@ -178,29 +175,15 @@ public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
             throw DomainError.attendanceReasonRequired
         }
 
-        let intScheduleId = try Self.toIntScheduleId(scheduleId)
         let coordinate = locationProvider.currentCoordinate
 
         let result = try await repository.submitExcuse(
-            scheduleId: intScheduleId,
+            scheduleId: scheduleId,
             excuseReason: reason,
             isVerified: coordinate != nil,
             latitude: coordinate?.latitude ?? 0.0,
             longitude: coordinate?.longitude ?? 0.0
         )
         return result.toAttendance(sessionId: sessionId, userId: userId)
-    }
-
-    /// 서버 String 식별자 → Repository Int 시그니처 변환
-    ///
-    /// 본 모듈 경계에서만 일어나는 변환 — UseCase 외부(ViewModel/Repository)는
-    /// 서버용 String 식별자로 통일을 유지합니다.
-    ///
-    // TODO: PR #797 Repository scheduleId 를 String 으로 전환하면 본 변환 + invalidScheduleId 제거 - [26.06.06] 이재원
-    private static func toIntScheduleId(_ scheduleId: String) throws -> Int {
-        guard let intValue = Int(scheduleId) else {
-            throw DomainError.invalidScheduleId(scheduleId)
-        }
-        return intValue
     }
 }

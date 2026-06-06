@@ -35,12 +35,11 @@ public protocol ChallengerAttendanceUseCaseProtocol {
     /// - Parameters:
     ///   - sessionId: 결과 `Attendance` 에 부착할 세션 식별자
     ///   - userId: 결과 `Attendance` 에 부착할 사용자 식별자
-    ///   - scheduleId: 일정 식별자 (서버 String ID — Repository 호출 직전 Int 로 변환)
+    ///   - scheduleId: 일정 식별자 (서버 String ID)
     /// - throws:
     ///   - `LocationError.notAuthorized`: 위치 권한 없음
     ///   - `LocationError.locationFailed`: 현재 좌표 획득 실패
     ///   - `DomainError.attendanceOutOfRange`: 지오펜스 밖
-    ///   - `DomainError.invalidScheduleId`: scheduleId Int 변환 실패
     func requestGPSAttendance(
         sessionId: SessionID,
         userId: UserID,
@@ -54,7 +53,6 @@ public protocol ChallengerAttendanceUseCaseProtocol {
     ///
     /// - throws:
     ///   - `DomainError.attendanceReasonRequired`: 빈 사유(공백 trim 결과 빈 문자열)
-    ///   - `DomainError.invalidScheduleId`: scheduleId Int 변환 실패
     func submitLateReason(
         sessionId: SessionID,
         userId: UserID,
@@ -68,7 +66,6 @@ public protocol ChallengerAttendanceUseCaseProtocol {
     ///
     /// - throws:
     ///   - `DomainError.attendanceReasonRequired`: 빈 사유(공백 trim 결과 빈 문자열)
-    ///   - `DomainError.invalidScheduleId`: scheduleId Int 변환 실패
     func submitAbsentReason(
         sessionId: SessionID,
         userId: UserID,
@@ -80,7 +77,7 @@ public protocol ChallengerAttendanceUseCaseProtocol {
 
     /// 기준 시각(`now`)이 어느 출석 시간대에 속하는지 판정 (순수 함수)
     ///
-    /// `AttendanceGeofenceConstants` 의 임계 시간을 기준으로 분기합니다.
+    /// `AttendancePolicy` 의 임계 시간을 기준으로 분기합니다.
     /// 종일 일정(`isAllDay`)은 시작-종료 시각 사이를 단일 `.onTime` 으로 처리합니다.
     ///
     /// - Parameters:
