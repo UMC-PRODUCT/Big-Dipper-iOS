@@ -75,6 +75,10 @@ public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
     }
 
     /// 지각 사유 제출
+    ///
+    /// `submitAbsentReason` 과 함께 현재는 동일 서버 엔드포인트(`submitExcuse`)로 수렴하지만,
+    /// 호출부(ViewModel)가 "지각"과 "불참"을 도메인 어휘로 구분해 호출하도록 별도 진입점으로 유지합니다.
+    /// 사유 종류별 분기(지각=부분 출석 증빙, 불참=별도 승인 흐름 등)가 생기면 이 지점에서 갈라집니다.
     public func submitLateReason(
         sessionId: SessionID,
         userId: UserID,
@@ -90,6 +94,9 @@ public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
     }
 
     /// 불참 사유 제출
+    ///
+    /// `submitLateReason` 참고 — 동일 엔드포인트(`submitExcuse`)로 수렴하나
+    /// 도메인 의미가 달라 호출부 명확성을 위해 진입점을 분리합니다.
     public func submitAbsentReason(
         sessionId: SessionID,
         userId: UserID,
@@ -188,6 +195,8 @@ public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
     ///
     /// 본 모듈 경계에서만 일어나는 변환 — UseCase 외부(ViewModel/Repository)는
     /// 서버용 String 식별자로 통일을 유지합니다.
+    ///
+    // TODO: PR #797 Repository scheduleId 를 String 으로 전환하면 본 변환 + invalidScheduleId 제거 - [26.06.06] 이재원
     private static func toIntScheduleId(_ scheduleId: String) throws -> Int {
         guard let intValue = Int(scheduleId) else {
             throw DomainError.invalidScheduleId(scheduleId)

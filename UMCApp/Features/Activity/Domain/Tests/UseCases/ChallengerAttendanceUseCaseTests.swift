@@ -12,6 +12,9 @@ import UMCFoundation
 
 // MARK: - Helpers
 
+/// `Int()` 변환이 실패하는 비숫자 일정 식별자 fixture (invalidScheduleId 분기 검증 공용)
+private let invalidScheduleId = "invalid-id"
+
 private func makeCoordinate(
     latitude: Double = 37.5,
     longitude: Double = 127.0
@@ -65,6 +68,8 @@ private func makeUseCase(
 }
 
 // MARK: - Mocks
+
+#if DEBUG
 
 private final class MockChallengerAttendanceRepository: @unchecked Sendable,
     ChallengerAttendanceRepositoryProtocol {
@@ -154,9 +159,10 @@ private final class MockLocationProvider: @unchecked Sendable, LocationProviding
     }
 }
 
+#endif
+
 // MARK: - GPS 출석 요청
 
-@MainActor
 @Suite("ChallengerAttendanceUseCase — GPS 출석 요청 (도메인 규칙)")
 struct ChallengerAttendanceUseCaseGPSTests {
 
@@ -212,11 +218,11 @@ struct ChallengerAttendanceUseCaseGPSTests {
     func requestGPSAttendanceThrowsWhenScheduleIdInvalid() async {
         let useCase = makeUseCase()
 
-        await #expect(throws: DomainError.invalidScheduleId("abc")) {
+        await #expect(throws: DomainError.invalidScheduleId(invalidScheduleId)) {
             _ = try await useCase.requestGPSAttendance(
                 sessionId: SessionID(value: "S-1"),
                 userId: UserID(value: "U-1"),
-                scheduleId: "abc"
+                scheduleId: invalidScheduleId
             )
         }
     }
@@ -252,7 +258,6 @@ struct ChallengerAttendanceUseCaseGPSTests {
 
 // MARK: - 사유 제출
 
-@MainActor
 @Suite("ChallengerAttendanceUseCase — 사유 제출 (도메인 규칙)")
 struct ChallengerAttendanceUseCaseExcuseTests {
 
@@ -277,12 +282,12 @@ struct ChallengerAttendanceUseCaseExcuseTests {
     func submitLateReasonThrowsWhenScheduleIdInvalid() async {
         let useCase = makeUseCase()
 
-        await #expect(throws: DomainError.invalidScheduleId("x")) {
+        await #expect(throws: DomainError.invalidScheduleId(invalidScheduleId)) {
             _ = try await useCase.submitLateReason(
                 sessionId: SessionID(value: "S-1"),
                 userId: UserID(value: "U-1"),
                 reason: "지각 사유",
-                scheduleId: "x"
+                scheduleId: invalidScheduleId
             )
         }
     }
@@ -366,7 +371,6 @@ struct ChallengerAttendanceUseCaseExcuseTests {
 
 // MARK: - 출석 시간 윈도우
 
-@MainActor
 @Suite("ChallengerAttendanceUseCase — 출석 시간 윈도우 (도메인 규칙)")
 struct ChallengerAttendanceUseCaseTimeWindowTests {
 
@@ -481,7 +485,6 @@ struct ChallengerAttendanceUseCaseTimeWindowTests {
 
 // MARK: - 위치/지오펜스 위임
 
-@MainActor
 @Suite("ChallengerAttendanceUseCase — 위치 위임 (도메인 규칙)")
 struct ChallengerAttendanceUseCaseLocationTests {
 

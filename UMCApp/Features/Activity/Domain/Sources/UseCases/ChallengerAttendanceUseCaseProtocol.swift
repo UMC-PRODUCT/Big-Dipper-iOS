@@ -49,6 +49,9 @@ public protocol ChallengerAttendanceUseCaseProtocol {
 
     /// 지각 사유 제출
     ///
+    /// `submitAbsentReason` 과 의미가 다른 별도 도메인 액션입니다. 현재는 동일 서버 엔드포인트로
+    /// 수렴하지만, 호출부가 "지각/불참"을 어휘로 구분하도록 진입점을 분리해 노출합니다.
+    ///
     /// - throws:
     ///   - `DomainError.attendanceReasonRequired`: 빈 사유(공백 trim 결과 빈 문자열)
     ///   - `DomainError.invalidScheduleId`: scheduleId Int 변환 실패
@@ -60,6 +63,8 @@ public protocol ChallengerAttendanceUseCaseProtocol {
     ) async throws -> Attendance
 
     /// 불참 사유 제출
+    ///
+    /// `submitLateReason` 참고 — 별도 도메인 의미를 갖는 진입점입니다.
     ///
     /// - throws:
     ///   - `DomainError.attendanceReasonRequired`: 빈 사유(공백 trim 결과 빈 문자열)
