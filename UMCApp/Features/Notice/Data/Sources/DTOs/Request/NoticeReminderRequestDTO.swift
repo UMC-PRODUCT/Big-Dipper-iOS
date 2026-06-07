@@ -13,5 +13,5 @@ import NoticeDomain
 /// `POST /api/v1/notices/{noticeId}/reminders`
 public struct NoticeReminderRequestDTO: Encodable {
     /// 알림을 다시 보낼 대상 멤버 ID 목록
-    public let targetIds: [Int]
+    public let targetIds: [String]
 }

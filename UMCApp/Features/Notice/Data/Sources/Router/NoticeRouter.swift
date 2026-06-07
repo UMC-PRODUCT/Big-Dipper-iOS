@@ -9,7 +9,6 @@ import Foundation
 import Moya
 import CoreNetwork
 
-// get post put patch delete
 /// Notice 관련 API 엔드포인트 정의
 public enum NoticeRouter: BaseTargetType {
     
@@ -27,10 +26,7 @@ public enum NoticeRouter: BaseTargetType {
         query: NoticeReadStatusListQuery
     )
     /// 공지사항 검색
-    case searchNotice(
-        keyword: String,
-        request: NoticeListQuery
-    )
+    case searchNotice(query: NoticeSearchQuery)
     
     // POST Method
     /// 공지사항 생성
@@ -72,7 +68,7 @@ public enum NoticeRouter: BaseTargetType {
     /// 공지사항 수정
     case updateNotice(
         noticeId: String,
-        body: UpdateNoticeRequestDTO
+        body: NoticePatchRequestDTO
     )
     /// 공지사항 링크 수정
     case updateLink(
@@ -101,6 +97,7 @@ public enum NoticeRouter: BaseTargetType {
         case .getDetailNotice(let noticeId):
             return "/api/v1/notices/\(noticeId)"
         case .getNoticeReadStatusCount(let noticeId):
+            // FIXME: 서버 스펙 확인 필요 (read-statics 오타 의심)
             return "/api/v1/notices/\(noticeId)/read-statics"
         case .getNoticeReadStatusList(let noticeId, _):
             return "/api/v1/notices/\(noticeId)/read-status"
@@ -140,9 +137,14 @@ public enum NoticeRouter: BaseTargetType {
     /// 각 케이스에 대응하는 HTTP 메서드
     public var method: Moya.Method {
         switch self {
-        case .getAllNotices, .getDetailNotice, .getNoticeReadStatusCount, .getNoticeReadStatusList, .searchNotice:
+        case .getAllNotices,
+             .getDetailNotice,
+             .getNoticeReadStatusCount,
+             .getNoticeReadStatusList,
+             .searchNotice:
             return .get
-        case .postNotice, .addVote, .addLink, .addImage, .sendReminder, .readNotice, .submitVoteResponse:
+        case .postNotice, .addVote, .addLink, .addImage,
+             .sendReminder, .readNotice, .submitVoteResponse:
             return .post
         case .updateVoteResponse:
             return .put
@@ -172,11 +174,9 @@ public enum NoticeRouter: BaseTargetType {
                 parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
-        case .searchNotice(let keyword, let request):
-            var params = request.toParameters
-            params["keyword"] = keyword
+        case .searchNotice(let query):
             return .requestParameters(
-                parameters: params,
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
         case .postNotice(let body):

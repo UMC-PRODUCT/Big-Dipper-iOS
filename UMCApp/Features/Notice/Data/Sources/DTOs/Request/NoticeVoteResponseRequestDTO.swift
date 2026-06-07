@@ -14,5 +14,5 @@ import NoticeDomain
 /// - `PUT /api/v1/notices/{noticeId}/votes/responses`
 public struct NoticeVoteResponseRequestDTO: Encodable {
     /// 사용자가 선택한 옵션 ID 목록
-    public let optionIds: [Int]
+    public let optionIds: [String]
 }
