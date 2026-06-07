@@ -1,6 +1,6 @@
 //
 //  UMCPartType+Color.swift
-//  CoreDesignSystem
+//  CoreUIComponents
 //
 //  Created by 이예지 on 5/8/26.
 //
