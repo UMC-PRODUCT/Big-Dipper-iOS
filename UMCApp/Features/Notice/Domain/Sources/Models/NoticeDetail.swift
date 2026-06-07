@@ -171,7 +171,7 @@ public struct NoticeAttachmentImage: Equatable, Hashable, Identifiable {
 }
 
 
-// MARK: - TargetAudienc
+// MARK: - TargetAudience
 /// 공지 수신 대상
 public struct TargetAudience: Equatable, Hashable {
     public let generation: String
@@ -273,8 +273,8 @@ public struct NoticeVote: Equatable, Identifiable, Hashable {
 
     /// 옵션별 voteCount 합계 (복수 선택 시 totalParticipants와 다름)
     public var totalVotes: Int {
-          options.reduce(0) { $0 + (Int($1.voteCount) ?? 0) }
-      }
+        options.reduce(0) { $0 + (Int($1.voteCount) ?? 0) }
+    }
 
     /// 투표 종료 여부
     public var isEnded: Bool {
@@ -361,7 +361,7 @@ public struct NoticeReadStatus: Equatable {
     
     /// 전체 대상자 수
     public var totalCount: String {
-        confirmedCount + unconfirmedCount
+        String(confirmedUsers.count + unconfirmedUsers.count)
     }
     
     /// 하단 메시지 (예: "이미 3명이 공지를 확인했습니다.")
@@ -427,16 +427,4 @@ public enum ReadStatusFilterType: String, CaseIterable, Identifiable {
     case school = "학교별 보기"
     
     public var id: String { rawValue }
-
-    /// 열람 현황 필터 메뉴 아이콘
-    public var iconName: String {
-        switch self {
-        case .all:
-            return "line.3.horizontal.decrease"
-        case .branch:
-            return "mappin.and.ellipse"
-        case .school:
-            return "graduationcap"
-        }
-    }
 }
