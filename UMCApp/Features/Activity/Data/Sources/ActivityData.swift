@@ -1,4 +1,9 @@
-import ActivityDomain
+//
+//  ActivityData.swift
+//  ActivityData
+//
+//  Created by jaewon Lee on 6/7/26.
+//
 
 /// ActivityData 모듈 플레이스홀더.
 ///
