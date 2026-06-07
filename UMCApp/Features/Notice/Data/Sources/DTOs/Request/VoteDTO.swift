@@ -11,7 +11,7 @@ import NoticeDomain
 // MARK: - 투표 추가 Request DTO
 
 /// 공지사항 투표 추가 요청 DTO
-public struct AddVoteRequestDTO: Codable {
+public struct AddVoteRequestDTO: Encodable {
     public let title: String
     public let isAnonymous: Bool
     public let allowMultipleChoice: Bool
