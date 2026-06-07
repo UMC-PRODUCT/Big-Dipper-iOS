@@ -66,6 +66,20 @@ extension TargetAudience {
     }
 }
 
+extension ReadStatusFilterType {
+    /// 열람 현황 필터 메뉴 아이콘 (SF Symbol) — UI 표현이므로 Presentation에 위치
+    public var iconName: String {
+        switch self {
+        case .all:
+            return "line.3.horizontal.decrease"
+        case .branch:
+            return "mappin.and.ellipse"
+        case .school:
+            return "graduationcap"
+        }
+    }
+}
+
 // TODO: dateRange 모듈 추가
 
 //extension NoticeVote {

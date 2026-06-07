@@ -8,12 +8,19 @@
 import Foundation
 import NoticeDomain
 
-import Foundation
-
 // MARK: - Chapter List Response
 /// 지부 목록 조회 응답 DTO
 public struct ChapterListResponseDTO: Codable {
     public let chapters: [ChapterDTO]
+
+    private enum CodingKeys: String, CodingKey {
+        case chapters
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.chapters = try container.decode([ChapterDTO].self, forKey: .chapters)
+    }
 }
 
 // MARK: - Chapter
@@ -21,12 +28,32 @@ public struct ChapterListResponseDTO: Codable {
 public struct ChapterDTO: Codable {
     public let id: String
     public let name: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = container.decodeFlexibleOptionalString(forKey: .id) ?? ""
+        self.name = try container.decode(String.self, forKey: .name)
+    }
 }
 
 // MARK: - School List Response
 /// 학교 목록 조회 응답 DTO
 public struct NoticeEditorSchoolListResponseDTO: Codable {
     public let schools: [NoticeEditorSchoolDTO]
+
+    private enum CodingKeys: String, CodingKey {
+        case schools
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.schools = try container.decode([NoticeEditorSchoolDTO].self, forKey: .schools)
+    }
 }
 
 // MARK: - School
@@ -44,13 +71,7 @@ public struct NoticeEditorSchoolDTO: Codable {
     /// String/Int 혼합 응답을 유연하게 처리합니다.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let id = try? container.decode(String.self, forKey: .schoolId) {
-            self.schoolId = id
-        } else if let id = try? container.decode(Int.self, forKey: .schoolId) {
-            self.schoolId = String(id)
-        } else {
-            self.schoolId = ""
-        }
+        self.schoolId = container.decodeFlexibleOptionalString(forKey: .schoolId) ?? ""
         self.schoolName = try container.decode(String.self, forKey: .schoolName)
     }
 }
@@ -59,6 +80,15 @@ public struct NoticeEditorSchoolDTO: Codable {
 /// 기수별 지부/학교 목록 조회 응답 DTO
 public struct ChapterWithSchoolsResponseDTO: Codable {
     public let chapters: [ChapterWithSchoolsDTO]
+
+    private enum CodingKeys: String, CodingKey {
+        case chapters
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.chapters = try container.decode([ChapterWithSchoolsDTO].self, forKey: .chapters)
+    }
 }
 
 // MARK: - Chapter With Schools
@@ -78,14 +108,25 @@ public struct ChapterWithSchoolsDTO: Codable {
     /// String/Int 혼합 응답을 유연하게 처리합니다.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let id = try? container.decode(String.self, forKey: .chapterId) {
-            self.chapterId = id
-        } else if let id = try? container.decode(Int.self, forKey: .chapterId) {
-            self.chapterId = String(id)
-        } else {
-            self.chapterId = ""
-        }
+        self.chapterId = container.decodeFlexibleOptionalString(forKey: .chapterId) ?? ""
         self.chapterName = try container.decode(String.self, forKey: .chapterName)
         self.schools = try container.decode([NoticeEditorSchoolDTO].self, forKey: .schools)
+    }
+}
+
+// MARK: - Flexible Decoding Helpers
+
+private extension KeyedDecodingContainer {
+    func decodeFlexibleOptionalString(forKey key: Key) -> String? {
+        if let value = try? decodeIfPresent(String.self, forKey: key) {
+            return value
+        }
+        if let value = try? decode(Int.self, forKey: key) {
+            return String(value)
+        }
+        if let value = try? decode(Double.self, forKey: key) {
+            return String(Int(value))
+        }
+        return nil
     }
 }

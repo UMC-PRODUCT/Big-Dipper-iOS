@@ -1,5 +1,5 @@
 //
-//  NoticeDetail+Tags.swift
+//  NoticeItemModel+Tags.swift
 //  NoticePresentation
 //
 //  Created by 이예지 on 5/8/26.
@@ -33,7 +33,8 @@ extension NoticeItemModel {
     }
     
     /// 중앙 공지는 출처 태그 없음 — scope 태그는 지부/교내만 표시
-    var scopeTag: NoticeItemTag? {
+    /// `tags` 구성 전용 내부 헬퍼
+    private var scopeTag: NoticeItemTag? {
         switch scope {
         case .central:
             return nil
@@ -51,7 +52,7 @@ extension NoticeItemModel {
     /// parts 배열 우선, 비어 있으면 category에서 파트 추출
     ///
     /// 파트별 공지(category: .part)는 parts 없이 category만 내려오는 경우가 있음
-    var resolvedParts: [UMCPartType] {
+    private var resolvedParts: [UMCPartType] {
         if !parts.isEmpty {
             return parts
         }
@@ -64,7 +65,7 @@ extension NoticeItemModel {
     }
     
     /// 파트가 4개 이상이면 "여러 파트" 단일 태그로 축약, 3개 이하는 개별 표시
-    var partTags: [NoticeItemTag] {
+    private var partTags: [NoticeItemTag] {
         guard !resolvedParts.isEmpty else { return [] }
         
         if resolvedParts.count >= 4 {

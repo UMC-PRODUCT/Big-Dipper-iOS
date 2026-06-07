@@ -137,11 +137,11 @@ public struct VoteFormData: Equatable {
     
     /// 날짜 범위 유효성 검증
     public var isDateRangeValid: Bool {
-          let calendar = Calendar.current
-          let startDay = calendar.startOfDay(for: startDate)
-          let endDay = calendar.startOfDay(for: endDate)
-          return endDay > startDay
-      }
+        let calendar = Calendar.current
+        let startDay = calendar.startOfDay(for: startDate)
+        let endDay = calendar.startOfDay(for: endDate)
+        return endDay > startDay
+    }
     
     /// 투표 확정 가능 여부 (제목 + 2개 이상 항목 + 날짜 유효성)
     public var canConfirm: Bool {

@@ -9,7 +9,7 @@ import Foundation
 import NoticeDomain
 
 /// 공지사항 수정 요청 DTO
-public struct UpdateNoticeRequestDTO: Encodable {
+public struct NoticePatchRequestDTO: Encodable {
     public let title: String
     public let content: String
 }

@@ -13,11 +13,11 @@ import NoticeDomain
 /// `GET /api/v1/notices/{noticeId}/read-status`
 public struct NoticeReadStatusListQuery: Encodable {
     /// 이전 페이지의 마지막 항목 ID (커서 기반)
-    public let cursorId: Int
+    public let cursorId: String
     /// 필터 타입 (운영진 / 챌린저 등)
     public let filterType: String
     /// 조직(지부/학교) ID 목록
-    public let organizationIds: [Int]
+    public let organizationIds: [String]
     /// 열람 상태 필터 (READ / UNREAD)
     public let status: String
 
