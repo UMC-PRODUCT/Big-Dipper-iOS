@@ -25,6 +25,7 @@ public protocol NoticeRepositoryProtocol {
     /// 공지사항 글 생성
     func postNotice(body: PostNoticeRequestDTO) async throws -> NoticeItemModel
     
+    // TODO: Data DTO 직접 노출 — Domain 모델 반환으로 점진 교체 예정
     /// 공지사항 투표 추가
     func addVote(
         noticeId: String,
@@ -38,22 +39,22 @@ public protocol NoticeRepositoryProtocol {
     func addImage(noticeId: String, imageIds: [String]) async throws -> NoticeItemModel
     
     /// 공지사항 리마인더 발송
-    func sendReminder(noticeId: String, targetIds: [Int]) async throws
+    func sendReminder(noticeId: String, targetIds: [String]) async throws
     
     /// 공지사항 읽음 처리
     func readNotice(noticeId: String) async throws
 
     /// 투표 응답(사용자 선택 전송)
-    func submitVoteResponse(noticeId: String, optionIds: [Int]) async throws
+    func submitVoteResponse(noticeId: String, optionIds: [String]) async throws
 
     /// 투표 응답 수정
-    func updateVoteResponse(noticeId: String, optionIds: [Int]) async throws
+    func updateVoteResponse(noticeId: String, optionIds: [String]) async throws
     
     // MARK: - 공지 수정
     /// 공지사항 수정 (제목, 본문)
     func updateNotice(
         noticeId: String,
-        body: UpdateNoticeRequestDTO
+        body: NoticePatchRequestDTO
     ) async throws -> NoticeDetail
     
     /// 공지사항 링크 수정
@@ -69,24 +70,29 @@ public protocol NoticeRepositoryProtocol {
     ) async throws -> NoticeDetail
     
     // MARK: - 공지 조회
+    // TODO: Data DTO 직접 노출 — Domain 모델 반환으로 점진 교체 예정
     /// 공지사항 전체 조회
     func getAllNotices(request: NoticeListQuery) async throws -> NoticePageDTO<NoticeDTO>
-    
+
     /// 공지사항 상세 조회
     func getDetailNotice(noticeId: String) async throws -> NoticeDetail
-    
+
+    // TODO: Data DTO 직접 노출 — Domain 모델 반환으로 점진 교체 예정
+    // NOTE: 메서드명 `getReadStatics`는 서버 엔드포인트(read-statics) 오타 의심 — 서버 스펙 확정 후 getReadStatistics로 일괄 교체 예정
     /// 공지 열람 통계 조회
     func getReadStatics(noticeId: String) async throws -> NoticeReadStaticsDTO
-    
+
+    // TODO: Data DTO 직접 노출 — Domain 모델 반환으로 점진 교체 예정
     /// 공지 열람 현황 상세 조회
     func getReadStatusList(
         noticeId: String,
-        cursorId: Int,
+        cursorId: String,
         filterType: String,
-        organizationIds: [Int],
+        organizationIds: [String],
         status: String
     ) async throws -> NoticeReadStatusResponseDTO
-    
+
+    // TODO: Data DTO 직접 노출 — Domain 모델 반환으로 점진 교체 예정
     /// 공지사항 검색
     func searchNotice(
         keyword: String,
