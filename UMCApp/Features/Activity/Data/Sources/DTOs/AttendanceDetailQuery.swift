@@ -13,7 +13,7 @@ import Foundation
 ///
 /// - `attendanceStatus` 미지정 시 모든 상태를 반환합니다. 이 경우 파라미터가 비어
 ///   라우터가 `requestPlain` 으로 전송하도록 빈 딕셔너리를 반환합니다.
-struct AttendanceDetailQuery: Encodable {
+struct AttendanceDetailQuery {
     /// 출석 상태 필터 (옵션)
     let attendanceStatus: String?
 

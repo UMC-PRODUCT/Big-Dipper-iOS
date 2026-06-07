@@ -72,8 +72,12 @@ extension AttendanceRouter: BaseTargetType {
     var task: Moya.Task {
         switch self {
         case .fetchAttendanceList(let query):
+            let params = query.toParameters
+            guard !params.isEmpty else {
+                return .requestPlain
+            }
             return .requestParameters(
-                parameters: query.toParameters,
+                parameters: params,
                 encoding: URLEncoding.queryString
             )
         case .fetchAttendanceDetail(_, let query):

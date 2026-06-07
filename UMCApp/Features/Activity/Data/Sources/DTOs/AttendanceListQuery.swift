@@ -17,7 +17,7 @@ import UMCFoundation
 ///
 /// `from` / `to` 는 서버가 UTC ISO8601 datetime 문자열을 기대하므로
 /// ``UMCFoundation/ServerDateTimeConverter/toUTCDateTimeString(_:)`` 로 변환합니다.
-struct AttendanceListQuery: Encodable {
+struct AttendanceListQuery {
     /// 조회 시작 시각 (옵션)
     let from: Date?
     /// 조회 종료 시각 (옵션)

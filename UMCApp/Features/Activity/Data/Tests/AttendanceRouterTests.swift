@@ -157,15 +157,13 @@ struct AttendanceRouterTaskTests {
 
     // MARK: - fetchAttendanceList task
 
-    @Test("fetchAttendanceList — 모든 파라미터 nil 시 task가 .requestParameters (빈 dict + URLEncoding)")
+    @Test("fetchAttendanceList — 모든 파라미터 nil 시 task가 .requestPlain (detail과 동일 분기)")
     func fetchAttendanceListTaskAllNil() {
         let router = AttendanceRouter.fetchAttendanceList(query: makeListQuery())
-        if case let .requestParameters(parameters, encoding) = router.task {
-            #expect(parameters.isEmpty)
-            let usesURLEncoding = encoding is URLEncoding
-            #expect(usesURLEncoding)
+        if case .requestPlain = router.task {
+            // 기대하는 case — 빈 파라미터는 detail과 동일하게 .requestPlain
         } else {
-            Issue.record("task가 .requestParameters 여야 함 — 실제: \(router.task)")
+            Issue.record("task가 .requestPlain 여야 함 — 실제: \(router.task)")
         }
     }
 
