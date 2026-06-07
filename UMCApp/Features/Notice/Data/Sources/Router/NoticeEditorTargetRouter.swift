@@ -19,7 +19,7 @@ public enum NoticeEditorTargetRouter: BaseTargetType {
     /// 전체 학교 목록 조회
     case getAllSchools
     /// 기수별 지부 및 소속 학교 목록 조회
-    case getChaptersWithSchools(gisuId: String)
+    case getChaptersWithSchools(query: ChaptersWithSchoolsQuery)
     /// 지부 단건 조회
     case getChapter(chapterId: String)
 
@@ -52,9 +52,9 @@ public enum NoticeEditorTargetRouter: BaseTargetType {
         switch self {
         case .getAllChapters, .getAllSchools:
             return .requestPlain
-        case .getChaptersWithSchools(let gisuId):
+        case .getChaptersWithSchools(let query):
             return .requestParameters(
-                parameters: ["gisuId": gisuId],
+                parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
         case .getChapter:
