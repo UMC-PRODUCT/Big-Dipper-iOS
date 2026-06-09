@@ -17,6 +17,12 @@ enum StaffNoticeTab: String, CaseIterable, Identifiable, Equatable, Hashable {
     case schoolCore = "SCHOOL_CORE"
     case schoolPartLeader = "SCHOOL_PART_LEADER"
 
+    /// 챌린저(일반) 공지 작성 시 서버에 전달하는 `targetNoticeTab` 값.
+    ///
+    /// 서버 `NoticeTab` enum 의 `CHALLENGER` 와 1:1. 매직 스트링을 새로 만들지 않고
+    /// `ManagementTeam.challenger.rawValue` 를 단일 출처로 참조합니다.
+    static let challengerServerValue = ManagementTeam.challenger.rawValue
+
     var id: String { rawValue }
 
     var labelText: String {

@@ -192,14 +192,16 @@ extension NoticeEditorViewModel {
                 targetGisuId: 0,
                 targetChapterId: nil,
                 targetSchoolId: selectedSchoolFromSheet,
-                targetParts: nil as [UMCPartType]?
+                targetParts: nil as [UMCPartType]?,
+                targetNoticeTab: StaffNoticeTab.challengerServerValue
             )
         case .central:
             return TargetInfoDTO(
                 targetGisuId: currentGeneration,
                 targetChapterId: selectedSchoolFromSheet == nil ? selectedBranchId : nil,
                 targetSchoolId: selectedSchoolFromSheet,
-                targetParts: selectedParts
+                targetParts: selectedParts,
+                targetNoticeTab: StaffNoticeTab.challengerServerValue
             )
         case .branch:
             let resolvedChapterId: Int? = if memberRole?.canWriteChallengerChapterNotice == true,
@@ -213,21 +215,24 @@ extension NoticeEditorViewModel {
                 targetGisuId: currentGeneration,
                 targetChapterId: resolvedChapterId,
                 targetSchoolId: nil,
-                targetParts: selectedParts
+                targetParts: selectedParts,
+                targetNoticeTab: StaffNoticeTab.challengerServerValue
             )
         case .school:
             return TargetInfoDTO(
                 targetGisuId: currentGeneration,
                 targetChapterId: nil,
                 targetSchoolId: selectedSchoolFromSheet,
-                targetParts: selectedParts
+                targetParts: selectedParts,
+                targetNoticeTab: StaffNoticeTab.challengerServerValue
             )
         case .part(let part):
             return TargetInfoDTO(
                 targetGisuId: currentGeneration,
                 targetChapterId: nil,
                 targetSchoolId: nil,
-                targetParts: [part]
+                targetParts: [part],
+                targetNoticeTab: StaffNoticeTab.challengerServerValue
             )
         case .management(let scenario):
             let managementParts = subCategorySelection.selectedParts.isEmpty
