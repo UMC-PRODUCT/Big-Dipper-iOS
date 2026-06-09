@@ -68,7 +68,6 @@ struct NoticeListRequestDTO {
 /// 홈 화면 최근 공지 Response DTO
 struct NoticeListResponseDTO: Codable {
     let id: String
-    let noticeId: Int
     let title: String
     let content: String
     let shouldSendNotification: Bool
@@ -82,7 +81,6 @@ struct NoticeListResponseDTO: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case id
-        case noticeId
         case title
         case content
         case shouldSendNotification
@@ -97,11 +95,7 @@ struct NoticeListResponseDTO: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        let decodedId = try container.decodeStringFlexibleIfPresent(forKey: .id) ?? "0"
-        let decodedNoticeId = try container.decodeIntFlexibleIfPresent(forKey: .noticeId)
-
-        self.id = decodedId
-        self.noticeId = decodedNoticeId ?? Int(decodedId) ?? 0
+        self.id = try container.decodeStringFlexibleIfPresent(forKey: .id) ?? "0"
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         self.content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
         self.shouldSendNotification = try container.decodeBoolFlexibleIfPresent(forKey: .shouldSendNotification) ?? false
@@ -137,8 +131,11 @@ extension NoticeListResponseDTO {
 
         let date = createdAt.toISO8601Date()
 
+        // 상세 진입 PK는 공지탭(NoticeDTO.id)과 동일하게 서버 `id`를 사용한다.
+        // 과거 별도 `noticeId` 필드를 쓰던 경로(#316)에서 id != noticeId일 때
+        // 다른 공지를 조회해 본문이 어긋나는 회귀가 있었다.
         return RecentNoticeData(
-            noticeId: noticeId,
+            noticeId: Int(id) ?? 0,
             category: category,
             title: title,
             createdAt: date

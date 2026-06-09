@@ -149,4 +149,36 @@ struct NoticeListDecodeTests {
         #expect(dto.targetInfo.targetNoticeTab == "SCHOOL_PART_LEADER")
         #expect(dto.targetInfo.targetParts == [.front(type: .ios), .server(type: .spring)])
     }
+
+    @Test("상세 진입 식별자는 noticeId 가 아니라 id 를 사용한다 (#316 회귀 가드)")
+    func recentNoticeDataUsesIdAsDetailIdentifier() throws {
+        // 서버가 id 와 noticeId 를 서로 다른 값으로 내려주는 상황을 재현한다.
+        // 홈 최근공지 상세는 공지탭과 동일하게 id(=상세 PK)로 진입해야 하며,
+        // noticeId 를 따라가면 다른 공지를 열어 본문이 어긋난다.
+        let json = """
+        {
+            "id": "101",
+            "noticeId": "999",
+            "title": "공지 제목",
+            "content": "공지 내용",
+            "shouldSendNotification": true,
+            "viewCount": "42",
+            "createdAt": "2026-06-09T12:00:00.000Z",
+            "targetInfo": {
+                "targetGisuId": "14",
+                "targetChapterId": null,
+                "targetSchoolId": null,
+                "targetParts": null,
+                "targetNoticeTab": "CHALLENGER"
+            },
+            "authorChallengerId": "7",
+            "authorNickname": "닉네임",
+            "authorName": "이름"
+        }
+        """
+
+        let recent = try decodeNoticeList(json).toRecentNoticeData()
+
+        #expect(recent.noticeId == 101)
+    }
 }
