@@ -111,20 +111,16 @@ private struct _MarkdownTextViewRepresentable: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: BlockquoteTextView, context: Context) -> CGSize? {
-        // 높이 측정 전에 최신 본문을 반영해, 콘텐츠 갱신 직후 한 줄로 collapse되는 문제를 막습니다.
+        // 측정 전에 최신 본문을 반영합니다.
         applyMarkdownIfNeeded(to: uiView, coordinator: context.coordinator)
 
         guard let width = proposal.width else { return nil }
-        let inset = uiView.textContainerInset
-        let padding = uiView.textContainer.lineFragmentPadding
-        let containerWidth = max(0, width - inset.left - inset.right - padding * 2)
-        if abs(uiView.textContainer.size.width - containerWidth) > 0.5 {
-            uiView.textContainer.size = CGSize(width: containerWidth, height: .greatestFiniteMagnitude)
-        }
-        uiView.layoutManager.ensureLayout(for: uiView.textContainer)
-        let usedRect = uiView.layoutManager.usedRect(for: uiView.textContainer)
-        let height = ceil(usedRect.height + inset.top + inset.bottom)
-        return CGSize(width: width, height: max(height, 1))
+        // 레거시 layoutManager.usedRect 는 in-place 텍스트 변경(빈 본문→로드 완료) 후
+        // stale 레이아웃을 반환해 높이가 한 줄로 collapse됩니다.
+        // UITextView 공식 sizeThatFits 로 측정하면 현재 활성 레이아웃 기준으로 정확히 계산됩니다.
+        let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        let height = ceil(max(fitted.height, 1))
+        return CGSize(width: width, height: height)
     }
 
     final class Coordinator {
