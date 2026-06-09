@@ -37,8 +37,19 @@ private struct _MarkdownTextViewRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: BlockquoteTextView, context: Context) {
-        guard context.coordinator.lastMarkdown != markdown else { return }
-        context.coordinator.lastMarkdown = markdown
+        applyMarkdownIfNeeded(to: uiView, coordinator: context.coordinator)
+    }
+
+    /// 현재 `markdown`을 텍스트뷰에 반영합니다. 동일한 markdown이면 재처리를 건너뜁니다.
+    ///
+    /// 빈 본문(상세 진입 직후) → 로드 완료로 콘텐츠가 바뀌는 경우,
+    /// SwiftUI가 `sizeThatFits`를 `updateUIView`보다 먼저 호출하면 이전(빈) 텍스트
+    /// 기준으로 높이가 측정되어 본문이 한 줄로 collapse됩니다.
+    /// 따라서 `updateUIView`와 `sizeThatFits` 양쪽에서 이 메서드를 호출해
+    /// 측정 시점에 항상 최신 본문이 반영되도록 보장합니다.
+    private func applyMarkdownIfNeeded(to uiView: BlockquoteTextView, coordinator: Coordinator) {
+        guard coordinator.lastMarkdown != markdown else { return }
+        coordinator.lastMarkdown = markdown
 
         let baseFont = UIFont(name: "Pretendard-Regular", size: 16) ?? UIFont.preferredFont(forTextStyle: .body)
 
@@ -100,6 +111,9 @@ private struct _MarkdownTextViewRepresentable: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: BlockquoteTextView, context: Context) -> CGSize? {
+        // 높이 측정 전에 최신 본문을 반영해, 콘텐츠 갱신 직후 한 줄로 collapse되는 문제를 막습니다.
+        applyMarkdownIfNeeded(to: uiView, coordinator: context.coordinator)
+
         guard let width = proposal.width else { return nil }
         let inset = uiView.textContainerInset
         let padding = uiView.textContainer.lineFragmentPadding
