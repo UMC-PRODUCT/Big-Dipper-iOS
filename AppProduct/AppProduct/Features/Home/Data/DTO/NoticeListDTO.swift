@@ -112,7 +112,8 @@ struct NoticeListResponseDTO: Codable {
                 targetGisuId: 0,
                 targetChapterId: nil,
                 targetSchoolId: nil,
-                targetParts: nil as [UMCPartType]?
+                targetParts: nil as [UMCPartType]?,
+                targetNoticeTab: StaffNoticeTab.challengerServerValue
             )
         self.authorChallengerId = try container.decodeStringFlexibleIfPresent(forKey: .authorChallengerId) ?? "0"
         self.authorNickname = try container.decodeIfPresent(String.self, forKey: .authorNickname) ?? ""
@@ -152,9 +153,13 @@ struct TargetInfoDTO: Codable {
     let targetChapterId: Int?
     let targetSchoolId: Int?
     let targetParts: [UMCPartType]?
-    /// 운영진 공지 탭 식별자 (CENTRAL_MEMBER / SCHOOL_CORE / SCHOOL_PART_LEADER).
-    /// 챌린저 공지 작성 시 nil.
-    let targetNoticeTab: String?
+    /// 공지 대상 탭 식별자. 서버 `NoticeTab` enum 과 1:1 매핑됩니다.
+    /// 챌린저 공지는 `CHALLENGER`, 운영진 공지는
+    /// `CENTRAL_MEMBER` / `SCHOOL_CORE` / `SCHOOL_PART_LEADER`.
+    ///
+    /// 서버 `POST /api/v1/notices` 는 이 값을 `@NotNull` 필수로 받으므로
+    /// non-optional 로 두어 누락 시 컴파일 단계에서 막습니다.
+    let targetNoticeTab: String
 
     private enum CodingKeys: String, CodingKey {
         case targetGisuId
@@ -169,7 +174,7 @@ struct TargetInfoDTO: Codable {
         targetChapterId: Int?,
         targetSchoolId: Int?,
         targetParts: UMCPartType?,
-        targetNoticeTab: String? = nil
+        targetNoticeTab: String
     ) {
         self.targetGisuId = targetGisuId
         self.targetChapterId = targetChapterId
@@ -183,7 +188,7 @@ struct TargetInfoDTO: Codable {
         targetChapterId: Int?,
         targetSchoolId: Int?,
         targetParts: [UMCPartType]?,
-        targetNoticeTab: String? = nil
+        targetNoticeTab: String
     ) {
         self.targetGisuId = targetGisuId
         self.targetChapterId = targetChapterId
@@ -199,6 +204,7 @@ struct TargetInfoDTO: Codable {
         self.targetSchoolId = try container.decodeIntFlexibleIfPresent(forKey: .targetSchoolId)
         self.targetParts = try container.decodeIfPresent([UMCPartType].self, forKey: .targetParts)
         self.targetNoticeTab = try container.decodeIfPresent(String.self, forKey: .targetNoticeTab)
+            ?? StaffNoticeTab.challengerServerValue
     }
 
     /// 공지 생성/수정 요청 인코딩 시 null 규칙을 맞춥니다.
@@ -222,7 +228,7 @@ struct TargetInfoDTO: Codable {
             try container.encodeNil(forKey: .targetParts)
         }
 
-        try container.encodeIfPresent(targetNoticeTab, forKey: .targetNoticeTab)
+        try container.encode(targetNoticeTab, forKey: .targetNoticeTab)
     }
 }
 
