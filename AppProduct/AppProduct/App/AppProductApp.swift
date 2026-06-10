@@ -145,6 +145,9 @@ extension AppProductApp {
                     ).fetchMyProfileUseCase,
                     tokenStore: container.resolve(TokenStore.self),
                     loginUseCase: authProvider.loginUseCase,
+                    checkForceUpdateUseCase: container.resolve(
+                        CheckForceUpdateUseCaseProtocol.self
+                    ),
                     errorHandler: errorHandler
                 )
                 .transition(rootTransition)

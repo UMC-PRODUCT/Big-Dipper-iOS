@@ -4,8 +4,9 @@
 //
 //  Created by euijjang97 on 5/26/26.
 //
-//  앱 진입 시 부트스트랩 ViewModel — 앱스토어 강제 업데이트 검사 + 토큰 검증/리프레시 + 프로필
-//  fetch + 인증 상태 판정. 뷰 측의 시네마틱 진행과는 완전 독립적으로 동작한다.
+//  앱 진입 시 부트스트랩 ViewModel — 강제 업데이트 검사(RemoteConfig 최소 지원 버전 +
+//  앱스토어 Lookup) + 토큰 검증/리프레시 + 프로필 fetch + 인증 상태 판정.
+//  뷰 측의 시네마틱 진행과는 완전 독립적으로 동작한다.
 //
 
 import Foundation
@@ -23,6 +24,7 @@ final class AuthBootstrapViewModel {
     private let networkClient: NetworkClient
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     private let tokenStore: TokenStore
+    private let checkForceUpdateUseCase: CheckForceUpdateUseCaseProtocol
 
     /// 인증 상태 검사 완료 여부
     private(set) var isCheckComplete = false
@@ -51,11 +53,13 @@ final class AuthBootstrapViewModel {
     init(
         networkClient: NetworkClient,
         fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol,
-        tokenStore: TokenStore
+        tokenStore: TokenStore,
+        checkForceUpdateUseCase: CheckForceUpdateUseCaseProtocol
     ) {
         self.networkClient = networkClient
         self.fetchMyProfileUseCase = fetchMyProfileUseCase
         self.tokenStore = tokenStore
+        self.checkForceUpdateUseCase = checkForceUpdateUseCase
     }
 
     // MARK: - Function
@@ -67,7 +71,7 @@ final class AuthBootstrapViewModel {
     @MainActor
     func checkAuthStatus() async {
         await updateDebugTokens()
-        async let updateRequired = checkAppStoreVersion()
+        async let updateRequired = isUpdateRequired()
         async let resolvedStatus = resolveAuthStatus()
 
         if await updateRequired {
@@ -103,10 +107,23 @@ final class AuthBootstrapViewModel {
 
     // MARK: - Private Function
 
+    /// 두 게이트 중 하나라도 걸리면 강제 업데이트가 필요하다고 판정.
+    ///
+    /// - RemoteConfig 게이트: `ios_min_version` 미만이면 차단. 패치 자리까지 비교하므로
+    ///   패치 릴리스도 콘솔 값을 올려 차단할 수 있다 (운영자 제어).
+    /// - 앱스토어 Lookup 게이트: 스토어 최신 버전과 Major.Minor 비교. 마이너 이상
+    ///   변경 시 콘솔 조작 없이도 자동 차단되는 안전망.
+    private func isUpdateRequired() async -> Bool {
+        async let remoteConfigGate = checkForceUpdateUseCase.execute()
+        async let appStoreGate = checkAppStoreVersion()
+        let (remoteRequired, storeRequired) = await (remoteConfigGate, appStoreGate)
+        return remoteRequired || storeRequired
+    }
+
     /// App Store Lookup API 를 호출하여 강제 업데이트가 필요한지 확인.
     ///
     /// Major.Minor 버전만 비교하여 마이너 버전 이상 변경 시에만 `true` 를 반환.
-    /// (예: 1.2 → 1.3 강제 업데이트, 1.2.0 → 1.2.1 허용)
+    /// (예: 1.2 → 1.3 강제 업데이트, 1.2.0 → 1.2.1 허용 — 패치 차단은 RemoteConfig 게이트 담당)
     /// API 호출 실패 시에는 `false` 를 반환하여 앱 진입을 차단하지 않는다.
     private func checkAppStoreVersion() async -> Bool {
         guard let url = URL(string: Constants.lookupURLString) else {

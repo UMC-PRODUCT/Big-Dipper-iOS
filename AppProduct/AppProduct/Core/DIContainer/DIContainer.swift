@@ -388,6 +388,11 @@ extension DIContainer {
                 service: container.resolve(RemoteConfigServiceProtocol.self)
             )
         }
+        container.register(CheckForceUpdateUseCaseProtocol.self) {
+            CheckForceUpdateUseCase(
+                service: container.resolve(RemoteConfigServiceProtocol.self)
+            )
+        }
 
         return container
     }

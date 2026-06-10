@@ -55,6 +55,7 @@ struct AuthBootstrapView: View {
 
     @Environment(\.appFlow) private var appFlow
     @Environment(ErrorHandler.self) private var errorHandler
+    @Environment(\.scenePhase) private var scenePhase
 
     /// 카카오톡 UMC 문의 채널 연동 매니저
     private let kakaoPlusManager: KakaoPlusManager = .init()
@@ -84,13 +85,15 @@ struct AuthBootstrapView: View {
         fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol,
         tokenStore: TokenStore,
         loginUseCase: LoginUseCaseProtocol,
+        checkForceUpdateUseCase: CheckForceUpdateUseCaseProtocol,
         errorHandler: ErrorHandler
     ) {
         self._bootstrapViewModel = .init(
             wrappedValue: AuthBootstrapViewModel(
                 networkClient: networkClient,
                 fetchMyProfileUseCase: fetchMyProfileUseCase,
-                tokenStore: tokenStore
+                tokenStore: tokenStore,
+                checkForceUpdateUseCase: checkForceUpdateUseCase
             )
         )
         self._loginViewModel = .init(
@@ -118,6 +121,11 @@ struct AuthBootstrapView: View {
         }
         .onChange(of: loginViewModel.destination) { _, newDestination in
             handleLoginDestination(newDestination)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // 앱스토어에 다녀온 뒤에도 업데이트 전까지는 진입을 계속 차단한다.
+            guard newPhase == .active, bootstrapViewModel.needsUpdate else { return }
+            bootstrapViewModel.showUpdateAlert()
         }
     }
 

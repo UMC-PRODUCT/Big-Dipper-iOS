@@ -17,6 +17,12 @@ protocol RemoteConfigServiceProtocol {
     /// 마지막으로 활성화된 값(없으면 인앱 기본값 `enabled=false`)을 기준으로 판단합니다.
     /// 따라서 점검 중이 아니면 `nil` 을 반환해 진입을 허용합니다(fail-open).
     func fetchMaintenanceStatus() async -> MaintenanceInfo?
+
+    /// 원격 구성을 갱신한 뒤 최소 지원 버전(`ios_min_version`)을 반환합니다.
+    ///
+    /// 콘솔 값이 비어 있거나 읽지 못하면 `nil` 을 반환해 강제 업데이트를
+    /// 발동하지 않습니다(fail-open).
+    func fetchMinimumSupportedVersion() async -> String?
 }
 
 /// Firebase RemoteConfig 기반 구현.
@@ -33,6 +39,7 @@ final class DefaultRemoteConfigService: RemoteConfigServiceProtocol {
         static let enabled = "maintenance_enabled"
         static let title = "maintenance_title"
         static let message = "maintenance_message"
+        static let minimumVersion = "ios_min_version"
     }
 
     // MARK: - Default Value
@@ -64,6 +71,13 @@ final class DefaultRemoteConfigService: RemoteConfigServiceProtocol {
         return currentMaintenanceInfo()
     }
 
+    func fetchMinimumSupportedVersion() async -> String? {
+        await refreshIfPossible()
+        let version = remoteConfig[Key.minimumVersion].stringValue
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return version.isEmpty ? nil : version
+    }
+
     // MARK: - Private Function
 
     private func makeRemoteConfig() -> RemoteConfig {
@@ -83,7 +97,8 @@ final class DefaultRemoteConfigService: RemoteConfigServiceProtocol {
         config.setDefaults([
             Key.enabled: NSNumber(value: false),
             Key.title: DefaultValue.title as NSString,
-            Key.message: DefaultValue.message as NSString
+            Key.message: DefaultValue.message as NSString,
+            Key.minimumVersion: "" as NSString
         ])
         return config
     }
@@ -120,13 +135,22 @@ final class DefaultRemoteConfigService: RemoteConfigServiceProtocol {
 final class MockRemoteConfigService: RemoteConfigServiceProtocol {
 
     var stubbedInfo: MaintenanceInfo?
+    var stubbedMinimumVersion: String?
 
-    init(stubbedInfo: MaintenanceInfo? = nil) {
+    init(
+        stubbedInfo: MaintenanceInfo? = nil,
+        stubbedMinimumVersion: String? = nil
+    ) {
         self.stubbedInfo = stubbedInfo
+        self.stubbedMinimumVersion = stubbedMinimumVersion
     }
 
     func fetchMaintenanceStatus() async -> MaintenanceInfo? {
         stubbedInfo
+    }
+
+    func fetchMinimumSupportedVersion() async -> String? {
+        stubbedMinimumVersion
     }
 }
 
