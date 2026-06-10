@@ -39,13 +39,21 @@ enum MarkdownHTMLDetector {
     ///
     /// 검색 인덱싱, 미리보기 snippet, 알림 본문 등 서식 없는 텍스트가 필요한 곳에서 사용합니다.
     ///
+    /// 2-패스로 해석합니다. 에디터에 문법을 직접 타이핑해 이스케이프되어 저장된 콘텐츠
+    /// (`\*\*굿\*\*`)는 1차 패스에서 리터럴 `**굿**` 로 풀리는데, 미리보기에는 마커가
+    /// 보이면 안 되므로 그 결과를 한 번 더 마크다운으로 해석해 마커를 제거합니다.
+    /// 파서의 페어링 규칙을 그대로 따르므로 `2 * 3`, `user_name` 같은 일반 텍스트는
+    /// 2차 패스에서도 변형되지 않습니다.
+    ///
     /// - Parameter markdown: 마크다운 또는 HTML 문자열.
     /// - Returns: 서식이 모두 제거된 plain text.
     static func plainText(from markdown: String) -> String {
         if looksLikeHTML(markdown) {
             return plainTextFromHTML(markdown)
         }
-        return MarkdownBlockParser.deserialize(markdown, baseFont: UIFont.preferredFont(forTextStyle: .body)).string
+        let baseFont = UIFont.preferredFont(forTextStyle: .body)
+        let firstPass = MarkdownBlockParser.deserialize(markdown, baseFont: baseFont).string
+        return MarkdownBlockParser.deserialize(firstPass, baseFont: baseFont).string
     }
 
     // MARK: - Private

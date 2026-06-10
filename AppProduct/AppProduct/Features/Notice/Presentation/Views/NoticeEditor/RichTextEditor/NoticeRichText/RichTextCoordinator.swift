@@ -40,6 +40,14 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate {
                 return handleReturnInList(textView: bqTextView, range: range)
             }
         }
+
+        // 붙여넣기 등 다중 문자 삽입이 마크다운 문법을 포함하면 서식으로 변환해 직접 삽입합니다.
+        if text.count > 1, textView.markedTextRange == nil,
+           MarkdownAutoformat.containsMarkdownSyntax(text) {
+            insertParsedMarkdown(text, in: textView, range: range)
+            return false
+        }
+
         return true
     }
 
@@ -57,6 +65,12 @@ final class RichTextCoordinator: NSObject, UITextViewDelegate {
         // 백스페이스 등으로 텍스트가 모두 삭제되어 인용구가 해제된 경우
         // typingAttributes에 남아 있는 인용구 들여쓰기를 리셋합니다.
         cleanupBlockquoteTypingAttributesIfNeeded(in: textView)
+
+        // 타이핑으로 완성된 마크다운 토큰(`**굿**`, `- ` 등)을 서식으로 변환합니다.
+        // 아래 바인딩 동기화보다 먼저 수행해 변환 결과가 함께 반영되도록 합니다.
+        if textView.markedTextRange == nil {
+            applyTypedMarkdownAutoformatIfNeeded(in: textView)
+        }
 
         // IME 조합 중(markedTextRange != nil)에는 바인딩 갱신을 보류합니다.
         // SwiftUI .onChange가 발화되면 상위에서 MarkdownSerializer.serialize가

@@ -30,9 +30,11 @@ enum MarkdownBlockParser {
     ///   - baseFont: 본문 기본 폰트(헤딩이 아닌 줄에 적용).
     /// - Returns: 에디터/미리보기에 표시 가능한 attributed string.
     static func deserialize(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
-        let normalizedMarkdown = markdown
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
+        let normalizedMarkdown = normalizeSpacePaddedInlineTokens(
+            markdown
+                .replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
+        )
         let lines = normalizedMarkdown.components(separatedBy: "\n")
         let attributedString = NSMutableAttributedString()
 
@@ -46,6 +48,40 @@ enum MarkdownBlockParser {
         }
 
         return attributedString
+    }
+
+    /// 마커 안쪽에 공백이 붙어 파서가 거부하는 레거시 인라인 토큰을 정규화합니다.
+    ///
+    /// 과거 직렬화기는 run 양끝 공백을 마커 안쪽에 둔 채 래핑해(`**일시: **`) 인라인
+    /// 정규식의 `(?=\S)...(?<=\S)` 가드에 걸리는 마크다운을 생성했습니다. 저장된 공지를
+    /// 구제하기 위해 공백을 마커 밖으로 옮기고(`**일시:** `), 공백만 감싼 토큰은 마커를
+    /// 제거합니다.
+    ///
+    /// - Note: 단일 `*`/`_` (이탤릭) 토큰은 정규화하지 않습니다. 일반 텍스트의 낱개 `*` 와
+    ///   구문상 구분이 불가능해 본문을 훼손할 수 있기 때문입니다. 이탤릭은 쓰기 측
+    ///   (`MarkdownInlineSerializer`) 수정으로 신규 콘텐츠부터 올바르게 직렬화됩니다.
+    ///
+    /// - Parameter markdown: 개행 정규화가 끝난 마크다운 원본.
+    /// - Returns: 공백 인접 bold/strikethrough 토큰이 정규화된 마크다운.
+    static func normalizeSpacePaddedInlineTokens(_ markdown: String) -> String {
+        var result = markdown
+
+        let replacements: [(NSRegularExpression, String)] = [
+            (MarkdownRegex.spaceOnlyBold, "$1"),
+            (MarkdownRegex.spaceOnlyStrikethrough, "$1"),
+            (MarkdownRegex.spacePaddedBold, "$1**$2**$3"),
+            (MarkdownRegex.spacePaddedStrikethrough, "$1~~$2~~$3"),
+        ]
+
+        for (regex, template) in replacements {
+            result = regex.stringByReplacingMatches(
+                in: result,
+                range: NSRange(location: 0, length: (result as NSString).length),
+                withTemplate: template
+            )
+        }
+
+        return result
     }
 
     /// 한 줄의 마크다운을 블록 prefix 판별 + 인라인 파싱하여 렌더링 결과를 만듭니다.

@@ -90,7 +90,25 @@ enum MarkdownInlineSerializer {
         let cleanedText = text.replacingOccurrences(of: "\u{200B}", with: "")
         guard !cleanedText.isEmpty else { return "" }
 
-        var content = MarkdownEscaping.escapeMarkdownText(cleanedText)
+        // run 양끝 공백은 마커 밖으로 분리합니다. 파서의 인라인 정규식이 `(?=\S)...(?<=\S)` 가드로
+        // `**일시: **` 같은 공백 인접 마커를 거부하므로, 공백을 안쪽에 두면 자기 자신이 생성한
+        // 마크다운을 파싱하지 못해 리스트/상세에 마커가 그대로 노출됩니다.
+        // 코드 스팬은 가드가 없고 내용 보존이 우선이라 분리하지 않습니다.
+        var leadingWhitespace = ""
+        var trailingWhitespace = ""
+        var coreText = cleanedText
+
+        if !isMonospaced {
+            leadingWhitespace = String(cleanedText.prefix(while: \.isWhitespace))
+            let withoutLeading = cleanedText.dropFirst(leadingWhitespace.count)
+            trailingWhitespace = String(withoutLeading.reversed().prefix(while: \.isWhitespace).reversed())
+            coreText = String(withoutLeading.dropLast(trailingWhitespace.count))
+
+            // 공백뿐인 run 은 서식 마커 없이 공백 그대로 직렬화합니다.
+            guard !coreText.isEmpty else { return cleanedText }
+        }
+
+        var content = MarkdownEscaping.escapeMarkdownText(coreText)
 
         if isMonospaced {
             // mono font → `텍스트`
@@ -151,6 +169,6 @@ enum MarkdownInlineSerializer {
             content = "[\(content)](\(escapedURL))"
         }
 
-        return content
+        return leadingWhitespace + content + trailingWhitespace
     }
 }

@@ -50,6 +50,28 @@ enum MarkdownRegex {
     /// `"1. "` numbered 목록 접두어. capture group 1 = 숫자.
     static let numberList = try! NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
 
+    // MARK: - Legacy Space-Padded Token Normalization Regex
+
+    /// 과거 직렬화기가 생성한 `**일시: **` 처럼 마커 안쪽에 공백이 붙은 bold 토큰.
+    ///
+    /// 인라인 파서의 bold 정규식은 `(?=\S)...(?<=\S)` 가드로 이런 토큰을 거부하므로,
+    /// 파싱 전에 공백을 마커 밖으로 옮겨(`**일시:** `) 정상 해석되도록 정규화합니다.
+    /// capture group: 1 = 안쪽 선행 공백, 2 = 본문, 3 = 안쪽 후행 공백.
+    static let spacePaddedBold = try! NSRegularExpression(
+        pattern: "(?<!\\\\)\\*\\*(?!\\*)([ \\t]*)((?:\\\\.|[^*\\n])+?)([ \\t]*)\\*\\*(?!\\*)"
+    )
+
+    /// 공백만 감싼 bold 토큰(`** **`). 마커를 제거하고 공백만 남깁니다.
+    static let spaceOnlyBold = try! NSRegularExpression(pattern: "(?<!\\\\)\\*\\*([ \\t]+)\\*\\*(?!\\*)")
+
+    /// 마커 안쪽에 공백이 붙은 strikethrough 토큰(`~~취소 ~~`). bold 와 동일하게 정규화합니다.
+    static let spacePaddedStrikethrough = try! NSRegularExpression(
+        pattern: "(?<!\\\\)~~([ \\t]*)((?:\\\\.|[^~\\n])+?)([ \\t]*)~~"
+    )
+
+    /// 공백만 감싼 strikethrough 토큰(`~~ ~~`). 마커를 제거하고 공백만 남깁니다.
+    static let spaceOnlyStrikethrough = try! NSRegularExpression(pattern: "(?<!\\\\)~~([ \\t]+)~~")
+
     // MARK: - Leading Block Escape Regex
 
     /// 의도치 않게 목록으로 해석될 수 있는 선행 숫자 패턴을 찾기 위한 정규식.
