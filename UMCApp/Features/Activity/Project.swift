@@ -8,5 +8,9 @@ let project = featureProject(
     presentationExtraDependencies: [
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
     ],
-    includesDomainTests: true
+    includesDomainTests: true,
+    includesDataTests: true,
+    dataTestDependencies: [
+        .external(name: "Moya"),
+    ]
 )
