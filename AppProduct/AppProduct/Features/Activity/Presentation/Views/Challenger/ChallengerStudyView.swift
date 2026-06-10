@@ -50,14 +50,34 @@ struct ChallengerStudyView: View {
             loadingView
 
         case .loaded(let data):
-            ChallengerCurriculumView(
-                curriculumModel: data.progress,
-                missions: data.missions
-            )
+            // 커리큘럼은 조회됐지만 등록된 주차가 없어 표시할 미션이 없는 경우,
+            // 게이지만 0/0으로 덩그러니 남지 않도록 안내 가이드를 노출합니다.
+            if data.missions.isEmpty {
+                emptyCurriculumGuide
+            } else {
+                ChallengerCurriculumView(
+                    curriculumModel: data.progress,
+                    missions: data.missions
+                )
+            }
 
         case .failed(let error):
             errorView(error: error, viewModel: viewModel)
         }
+    }
+
+    /// 등록된 주차별 커리큘럼이 없을 때 표시하는 안내 가이드입니다.
+    ///
+    /// 서버가 커리큘럼 미등록(`CURRICULUM-0001`)을 에러로 내려주는 경우와
+    /// 시각적으로 동일하게 맞춰, 빈 응답(200·weeks 없음)도 같은 가이드로 안내합니다.
+    private var emptyCurriculumGuide: some View {
+        ContentUnavailableView {
+            Label("커리큘럼 준비 중", systemImage: "clock.badge.questionmark")
+        } description: {
+            Text("아직 등록된 주차별 커리큘럼이 없어요.\n커리큘럼이 등록되면 이곳에 표시됩니다.")
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var loadingView: some View {
