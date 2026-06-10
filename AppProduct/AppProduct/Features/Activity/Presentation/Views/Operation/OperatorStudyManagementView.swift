@@ -149,10 +149,18 @@ struct OperatorStudyManagementView: View {
     private var groupManagementEmptyView: some View {
         if canCreateStudyGroup {
             ContentUnavailableView {
-                Label("스터디 그룹 관리", systemImage: "person.3")
+                Label("등록된 스터디 그룹이 없어요", systemImage: "person.3")
             } description: {
-                Text("등록된 스터디 그룹이 없습니다\n상단의 + 버튼으로 새 그룹을 만들어 보세요")
+                Text("새 그룹을 만들고 스터디원과 멘토를 배정해\n스터디 운영을 시작해 보세요.")
                     .multilineTextAlignment(.center)
+            } actions: {
+                Button {
+                    showCreateView = true
+                } label: {
+                    Label("새 스터디 그룹 만들기", systemImage: "plus")
+                        .frame(minHeight: 20)
+                }
+                .buttonStyle(.glassProminent)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
