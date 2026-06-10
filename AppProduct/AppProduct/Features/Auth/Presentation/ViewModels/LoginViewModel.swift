@@ -79,6 +79,8 @@ final class LoginViewModel {
             )
         } catch {
             loginState = .idle
+            // 사용자가 로그인 화면을 취소(X)한 경우는 에러가 아니므로 알럿을 띄우지 않습니다.
+            guard !Self.isUserCancellation(error) else { return }
             errorHandler.handle(error, context: ErrorContext(
                 feature: "Auth",
                 action: "loginWithKakao",
@@ -94,6 +96,25 @@ final class LoginViewModel {
     func loginWithApple() {
         loginState = .loading
         destination = nil
+
+        appleLoginManager.onAuthorizationFailed = { [weak self] error in
+            guard let self else { return }
+            Task { @MainActor in
+                self.loginState = .idle
+                // 사용자가 Apple 로그인 시트를 취소(X)한 경우는 알럿을 띄우지 않습니다.
+                guard !Self.isUserCancellation(error) else { return }
+                self.errorHandler.handle(
+                    error,
+                    context: ErrorContext(
+                        feature: "Auth",
+                        action: "loginWithApple",
+                        retryAction: { [weak self] in
+                            self?.loginWithApple()
+                        }
+                    )
+                )
+            }
+        }
 
         appleLoginManager.onAuthorizationCompleted = {
             [weak self] code, email, fullName in
@@ -156,6 +177,8 @@ final class LoginViewModel {
             )
         } catch {
             loginState = .idle
+            // 사용자가 로그인 화면을 취소(X)한 경우는 에러가 아니므로 알럿을 띄우지 않습니다.
+            guard !Self.isUserCancellation(error) else { return }
             errorHandler.handle(error, context: ErrorContext(
                 feature: "Auth",
                 action: "loginWithGoogle",
@@ -164,6 +187,11 @@ final class LoginViewModel {
                 }
             ))
         }
+    }
+
+    /// 소셜 로그인 에러가 사용자 취소(X)인지 판별합니다.
+    private static func isUserCancellation(_ error: Error) -> Bool {
+        (error as? SocialLoginError) == .cancelled
     }
 }
 

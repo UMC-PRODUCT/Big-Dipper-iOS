@@ -7,6 +7,7 @@
 
 import Foundation
 import KakaoSDKAuth
+import KakaoSDKCommon
 import KakaoSDKUser
 
 /// 카카오 로그인을 처리하는 매니저입니다.
@@ -64,7 +65,7 @@ class KakaoLoginManager {
                 // 카카오톡 앱으로 로그인
                 UserApi.shared.loginWithKakaoTalk { oauthToken, error in
                     if let error = error {
-                        continuation.resume(throwing: error)
+                        continuation.resume(throwing: Self.normalizedLoginError(error))
                     } else if let oauthToken = oauthToken {
                         continuation.resume(returning: oauthToken.accessToken)
                     } else {
@@ -75,7 +76,7 @@ class KakaoLoginManager {
                 // 카카오 계정(웹뷰)으로 로그인
                 UserApi.shared.loginWithKakaoAccount { oauthToken, error in
                     if let error = error {
-                        continuation.resume(throwing: error)
+                        continuation.resume(throwing: Self.normalizedLoginError(error))
                     } else if let oauthToken = oauthToken {
                         continuation.resume(returning: oauthToken.accessToken)
                     } else {
@@ -84,6 +85,17 @@ class KakaoLoginManager {
                 }
             }
         }
+    }
+
+    /// 카카오 SDK의 사용자 취소 에러를 공통 `SocialLoginError.cancelled`로 정규화합니다.
+    ///
+    /// 취소(X)는 정상적인 사용자 행동이므로 상위 레이어에서 에러 알럿을 띄우지 않게 합니다.
+    private static func normalizedLoginError(_ error: Error) -> Error {
+        if let sdkError = error as? SdkError,
+           case .ClientFailed(reason: .Cancelled, errorMessage: _) = sdkError {
+            return SocialLoginError.cancelled
+        }
+        return error
     }
 
     /// 카카오 사용자의 이메일을 가져옵니다.

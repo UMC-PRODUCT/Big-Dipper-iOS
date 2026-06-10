@@ -64,6 +64,12 @@ final class AppleLoginManager: NSObject {
     /// - Parameter authorizationCode: 서버로 전송할 인증 코드
     var onAccountDeleteAuthorized: ((String) -> Void)?
 
+    /// 인증 실패(또는 사용자 취소) 시 호출되는 콜백
+    ///
+    /// 사용자가 취소(X)한 경우 `SocialLoginError.cancelled` 로 정규화해 전달하므로,
+    /// 상위 레이어에서 취소와 실제 에러를 구분해 처리할 수 있습니다.
+    var onAuthorizationFailed: ((Error) -> Void)?
+
     // MARK: - Function
 
     /// Apple 로그인을 시작합니다.
@@ -172,7 +178,16 @@ extension AppleLoginManager: ASAuthorizationControllerDelegate {
     ///   - error: 발생한 에러
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: any Error) {
         defer { flow = nil }
+        #if DEBUG
         print("Apple 인증 실패: \(error.localizedDescription)")
+        #endif
+
+        // 사용자가 취소(X)한 경우 공통 SocialLoginError로 정규화해 전달합니다.
+        if let authError = error as? ASAuthorizationError, authError.code == .canceled {
+            onAuthorizationFailed?(SocialLoginError.cancelled)
+        } else {
+            onAuthorizationFailed?(error)
+        }
     }
 }
 

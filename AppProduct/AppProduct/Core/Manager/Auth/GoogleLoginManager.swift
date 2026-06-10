@@ -80,9 +80,14 @@ final class GoogleLoginManager {
         guard let presentingViewController = Self.topViewController() else {
             throw GoogleLoginError.presentationContextNotFound
         }
-        return try await GIDSignIn.sharedInstance.signIn(
-            withPresenting: presentingViewController
-        )
+        do {
+            return try await GIDSignIn.sharedInstance.signIn(
+                withPresenting: presentingViewController
+            )
+        } catch let error as GIDSignInError where error.code == .canceled {
+            // 사용자가 로그인 시트를 취소(X)한 경우 — 에러가 아니므로 정규화합니다.
+            throw SocialLoginError.cancelled
+        }
     }
 
     /// 현재 화면에서 가장 위에 표시된 ViewController를 반환합니다.
