@@ -185,17 +185,30 @@ struct ChallengerAttendanceSessionView: View {
 
     private var emptySessionView: some View {
         VStack(spacing: DefaultSpacing.spacing12) {
+            // 빈 상태는 전환이 아니라 처음부터 표시되는 화면이므로
+            // 전환 효과(symbolDrawOn)는 심볼이 그려지지 않아 정적 렌더로 표시합니다.
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: DefaultConstant.iconSize))
-                .foregroundStyle(.green.opacity(0.7))
-                .symbolDrawOn(isActive: true)
+                .foregroundStyle(.green)
 
-            Text("모든 세션 출석을 완료했습니다")
-                .appFont(.body, color: .grey600)
+            VStack(spacing: DefaultSpacing.spacing4) {
+                Text("모든 세션 출석을 완료했어요")
+                    .appFont(.calloutEmphasis, color: .grey700)
+
+                Text("지금은 출석할 수 있는 세션이 없어요.\n새로운 세션이 열리면 이곳에 표시됩니다.")
+                    .appFont(.footnote, color: .grey500)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, DefaultSpacing.spacing32)
-        .background(.white, in: RoundedRectangle(cornerRadius: DefaultConstant.defaultCornerRadius))
+        .padding(.horizontal, DefaultSpacing.spacing16)
+        .background(
+            .white,
+            in: RoundedRectangle(
+                cornerRadius: DefaultConstant.defaultCornerRadius
+            )
+        )
         .glass()
     }
     
