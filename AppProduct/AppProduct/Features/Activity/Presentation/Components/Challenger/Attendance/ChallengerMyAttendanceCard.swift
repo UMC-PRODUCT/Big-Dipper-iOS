@@ -123,7 +123,9 @@ private struct MyAttendanceItemPresenter: View, Equatable {
                 .appFont(.calloutEmphasis, color: .black)
                 .lineLimit(2)
 
-            infoRow(systemName: "clock", text: "\(model.dateText) · \(model.timeRange)")
+            // 날짜+시간을 한 줄에 합치면 뱃지/셰브론과 폭을 경쟁해 잘리므로 두 줄로 분리
+            infoRow(systemName: "calendar", text: model.dateText)
+            infoRow(systemName: "clock", text: model.timeRange)
         }
     }
 
