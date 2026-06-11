@@ -110,20 +110,17 @@ final class ChallengerAttendanceViewModel {
 
     /// 화면 등장 시 로드 결정 메서드
     ///
-    /// - availableSchedules가 .idle(첫 마운트): 네트워크 호출을 생략하고 .loaded([])로 시드합니다.
-    ///   부모가 방금 같은 창으로 받아온 sessions prop을 표시하므로 자식의 payload는 불필요하며,
-    ///   syncSessionStates()가 no-op이기 때문에 빈 배열로 시드해도 무해합니다.
-    /// - .idle이 아닌 경우(재등장): availableSchedules는 refreshAvailableSchedules()로,
-    ///   myHistory는 refreshMyHistory()로 배경 갱신합니다.
+    /// - availableSchedules가 .idle(첫 마운트): 부모의 sessions prop이 즉시 렌더되도록
+    ///   .loaded([])로 먼저 시드한 뒤, 배경 갱신으로 payload를 채웁니다.
+    ///   payload는 출석 버튼의 scheduleId 조회와 출석 정책 기반 시간대 판정에 필요합니다.
+    /// - 재등장: 동일하게 배경 갱신 (로딩 스피너 없음). myHistory는 refreshMyHistory()로 갱신.
     @MainActor
     func loadOnAppear() async {
         if availableSchedules.isIdle {
-            // 첫 마운트: availableSchedules 중복 호출 생략
+            // 첫 마운트: 로딩 스피너 없이 sessions prop을 즉시 표시하기 위한 시드
             availableSchedules = .loaded([])
-        } else {
-            // 재등장: 배경 갱신 (로딩 스피너 없음)
-            await refreshAvailableSchedules()
         }
+        await refreshAvailableSchedules()
 
         guard !Task.isCancelled else { return }
 
@@ -244,7 +241,7 @@ final class ChallengerAttendanceViewModel {
     @MainActor
     func attendanceBtnTapped(userId: UserID, session: Session, scheduleId: Int) async {
         let info = session.info
-        let timeWindow = currentTimeWindow(for: info)
+        let timeWindow = currentTimeWindow(for: session)
 
         #if DEBUG
         print("[Attendance] attendanceBtnTapped called")
@@ -297,7 +294,7 @@ final class ChallengerAttendanceViewModel {
         scheduleId: Int
     ) async {
         let info = session.info
-        let timeWindow = currentTimeWindow(for: info)
+        let timeWindow = currentTimeWindow(for: session)
 
         session.updateState(.loading)
 
@@ -351,7 +348,7 @@ final class ChallengerAttendanceViewModel {
         scheduleId: Int
     ) async {
         let info = session.info
-        let timeWindow = currentTimeWindow(for: info)
+        let timeWindow = currentTimeWindow(for: session)
         session.updateState(.loading)
 
         do {
@@ -389,19 +386,71 @@ final class ChallengerAttendanceViewModel {
         }
     }
 
-    /// SessionID → scheduleId 매핑 (available schedules 기반)
-    func scheduleId(for sessionId: SessionID) -> Int? {
+    /// 출석 버튼 위에 표시할 시간대별 안내 문구
+    ///
+    /// 출석 전(`beforeAttendance`) 상태에서만 문구를 반환합니다.
+    /// 정책 시각(available schedules)이 조회된 경우 마감 시각과 남은 시간을 함께 표시하고,
+    /// 아직 조회 전이면 시간대 설명만 표시합니다. 만료 시간대는 버튼 문구가 대신하므로 nil.
+    func attendanceGuidanceText(for session: Session, at now: Date) -> String? {
+        guard session.attendanceStatus == .beforeAttendance else { return nil }
+
+        let timeWindow = currentTimeWindow(for: session)
+        let policy = schedule(for: session.info.sessionId)?.attendancePolicy
+
+        switch timeWindow {
+        case .tooEarly:
+            guard let start = policy?.checkInStartAt else {
+                return "아직 출석 시간 전이에요"
+            }
+            return "\(start.toHourMinutes())부터 출석할 수 있어요"
+        case .onTime:
+            guard let end = policy?.onTimeEndAt else {
+                return "지금 출석하면 정시로 인정돼요"
+            }
+            return "출석 인정 마감 \(end.toHourMinutes()) · \(remainingText(until: end, from: now))"
+        case .lateWindow:
+            guard let end = policy?.lateEndAt else {
+                return "지각 시간대예요 — 사유를 제출해 주세요"
+            }
+            return "지각 인정 마감 \(end.toHourMinutes()) · \(remainingText(until: end, from: now))"
+        case .expired:
+            return nil
+        }
+    }
+
+    /// 마감까지 남은 시간 표시 (예: "7분 남음", "1시간 12분 남음")
+    private func remainingText(until end: Date, from now: Date) -> String {
+        let minutes = max(0, Int(end.timeIntervalSince(now) / 60))
+        if minutes >= 60 {
+            let remainder = minutes % 60
+            return remainder == 0
+                ? "\(minutes / 60)시간 남음"
+                : "\(minutes / 60)시간 \(remainder)분 남음"
+        }
+        return "\(minutes)분 남음"
+    }
+
+    /// SessionID → ScheduleDetailData 매핑 (available schedules 기반)
+    ///
+    /// 첫 마운트에는 `loadOnAppear()`가 빈 배열로 시드하므로 nil일 수 있습니다.
+    /// 호출 측(일정 정보 시트)은 nil이면 `refreshAvailableSchedules()`로 채웁니다.
+    func schedule(for sessionId: SessionID) -> ScheduleDetailData? {
         guard case .loaded(let schedules) = availableSchedules else {
             return nil
         }
-        return schedules.first(where: {
+        return schedules.first {
             String($0.scheduleId) == sessionId.value
-        })?.scheduleId
+        }
+    }
+
+    /// SessionID → scheduleId 매핑 (available schedules 기반)
+    func scheduleId(for sessionId: SessionID) -> Int? {
+        schedule(for: sessionId)?.scheduleId
     }
 
     func isAttendanceAvailable(for session: Session) -> Bool {
         session.canRequestAttendance(
-            timeWindow: currentTimeWindow(for: session.info),
+            timeWindow: currentTimeWindow(for: session),
             isInsideGeofence: challengeAttendanceUseCase.isInsideGeofence,
             isLocationAuthorized: challengeAttendanceUseCase.isLocationAuthorized
         )
@@ -412,21 +461,34 @@ final class ChallengerAttendanceViewModel {
     }
 
     func shouldShowReasonButton(for session: Session) -> Bool {
-        currentTimeWindow(for: session.info) != .expired
+        currentTimeWindow(for: session) != .expired
     }
 
     func buttonStyle(for session: Session) -> String {
         session.buttonTitle(
             isLocationAuthorized: challengeAttendanceUseCase.isLocationAuthorized,
             isInsideGeofence: challengeAttendanceUseCase.isInsideGeofence,
-            timeWindow: challengeAttendanceUseCase.isWithinAttendanceTime(info: session.info)
+            timeWindow: currentTimeWindow(for: session)
         )
     }
 
     // MARK: - Helper Methods
 
-    private func currentTimeWindow(for info: SessionInfo) -> AttendanceTimeWindow {
-        challengeAttendanceUseCase.isWithinAttendanceTime(info: info)
+    /// 세션의 현재 출석 시간대
+    ///
+    /// 서버 출석 정책(available schedules)이 조회된 경우 정책 시각을 기준으로 판정하고,
+    /// 아직 조회 전이면 클라이언트 상수 기반 계산(`isWithinAttendanceTime`)으로 폴백합니다.
+    /// 정책과 상수가 다를 때(예: 지각 마감이 시작+30분보다 늦은 일정) 서버 정책이 우선입니다.
+    private func currentTimeWindow(for session: Session) -> AttendanceTimeWindow {
+        guard let policy = schedule(for: session.info.sessionId)?.attendancePolicy else {
+            return challengeAttendanceUseCase.isWithinAttendanceTime(info: session.info)
+        }
+
+        let now = Date.now
+        if now < policy.checkInStartAt { return .tooEarly }
+        if now <= policy.onTimeEndAt { return .onTime }
+        if now <= policy.lateEndAt { return .lateWindow }
+        return .expired
     }
 
     private func submitExcuse(

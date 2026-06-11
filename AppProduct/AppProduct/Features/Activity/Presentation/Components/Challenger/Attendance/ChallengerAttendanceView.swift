@@ -15,6 +15,7 @@ struct ChallengerAttendanceView: View, Equatable {
     @Bindable private var attendanceViewModel: ChallengerAttendanceViewModel
     @Namespace private var attendanceNamespace
     @State private var showReasonSheet: Bool = false
+    @State private var showPolicyPopover: Bool = false
     @State private var isMapReady: Bool = false
 
     private let userId: UserID
@@ -54,14 +55,20 @@ struct ChallengerAttendanceView: View, Equatable {
 
     var body: some View {
         VStack(spacing: DefaultSpacing.spacing16) {
-            if isMapReady {
-                ActivityCompactMapView(
-                    mapViewModel: mapViewModel,
-                    info: session.info
-                )
-            } else {
-                mapPlaceholder
+            ZStack(alignment: .topTrailing) {
+                if isMapReady {
+                    ActivityCompactMapView(
+                        mapViewModel: mapViewModel,
+                        info: session.info
+                    )
+                } else {
+                    mapPlaceholder
+                }
+
+                scheduleInfoButton
+                    .padding(DefaultSpacing.spacing12)
             }
+            attendanceGuidanceLine
             attendanceActionView
             if attendanceViewModel.shouldShowReasonButton(for: session) {
                 lateReasonButton
@@ -76,6 +83,111 @@ struct ChallengerAttendanceView: View, Equatable {
     }
 
     // MARK: - View Component
+
+    /// 출석 정책 팝오버를 여는 정보 버튼 (지도 우상단 오버레이)
+    private var scheduleInfoButton: some View {
+        Button {
+            showPolicyPopover = true
+        } label: {
+            Image(systemName: "info.circle")
+                .font(.title3)
+                .foregroundStyle(.grey700)
+                .padding(DefaultSpacing.spacing8)
+        }
+        .glassEffect(.regular.interactive(), in: .circle)
+        .accessibilityLabel("출석 정책 보기")
+        .popover(isPresented: $showPolicyPopover) {
+            policyPopoverContent
+                .presentationCompactAdaptation(.popover)
+        }
+    }
+
+    /// 출석 정책 3개 시각 팝오버 콘텐츠
+    ///
+    /// 시트 대신 ⓘ 버튼에 앵커된 말풍선으로 정책만 간편하게 확인합니다.
+    /// 첫 마운트 직후 정책이 비어 있으면 배경 갱신으로 채웁니다.
+    @ViewBuilder
+    private var policyPopoverContent: some View {
+        if let policy = attendanceViewModel
+            .schedule(for: session.info.sessionId)?.attendancePolicy {
+            VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
+                Text("출석 정책")
+                    .appFont(.calloutEmphasis, color: .black)
+
+                policyRow(
+                    icon: "door.right.hand.open", tint: .green,
+                    label: "출석 시작",
+                    date: policy.checkInStartAt, anchor: policy.checkInStartAt)
+                policyRow(
+                    icon: "clock.badge.checkmark", tint: .orange,
+                    label: "출석 인정 마감",
+                    date: policy.onTimeEndAt, anchor: policy.checkInStartAt)
+                policyRow(
+                    icon: "xmark.circle", tint: .red,
+                    label: "지각 인정 마감",
+                    date: policy.lateEndAt, anchor: policy.checkInStartAt)
+            }
+            .padding(DefaultSpacing.spacing16)
+        } else {
+            Text("출석 정책 정보를 불러오고 있어요")
+                .appFont(.footnote, color: .grey500)
+                .padding(DefaultSpacing.spacing16)
+                .task {
+                    await attendanceViewModel.refreshAvailableSchedules()
+                }
+        }
+    }
+
+    /// 정책 행 (아이콘 + 라벨 + 시각) — 라벨/색상은 일정 상세 ``AttendancePolicyDisplaySection`` 과 통일
+    private func policyRow(
+        icon: String,
+        tint: Color,
+        label: String,
+        date: Date,
+        anchor: Date
+    ) -> some View {
+        HStack(spacing: DefaultSpacing.spacing8) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(tint)
+            Text(label)
+                .appFont(.footnote, color: .grey600)
+            Spacer(minLength: DefaultSpacing.spacing16)
+            Text(policyTimeText(date, anchor: anchor))
+                .appFont(.footnoteEmphasis, color: .grey700)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(policyTimeText(date, anchor: anchor))")
+    }
+
+    /// 정책 시각 표시 — 기준일과 같은 날이면 "HH:mm", 자정을 넘으면 "MM.dd HH:mm"
+    private func policyTimeText(_ date: Date, anchor: Date) -> String {
+        if Calendar.kstGregorian.isDate(date, inSameDayAs: anchor) {
+            return date.toHourMinutes()
+        }
+        return "\(date.toMonthDay()) \(date.toHourMinutes())"
+    }
+
+    /// 출석 버튼 위 시간대별 동적 안내 라인
+    ///
+    /// 분 단위로 갱신되며, 출석 전 상태에서만 표시됩니다.
+    /// 정책 시각이 로드되면 마감 시각과 남은 시간을 함께 보여줍니다.
+    private var attendanceGuidanceLine: some View {
+        TimelineView(.everyMinute) { context in
+            if let guidance = attendanceViewModel.attendanceGuidanceText(
+                for: session,
+                at: context.date
+            ) {
+                HStack(spacing: DefaultSpacing.spacing4) {
+                    Image(systemName: "clock")
+                        .font(.caption)
+                    Text(guidance)
+                }
+                .appFont(.footnote, color: .grey600)
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
 
     /// Map 로딩 플레이스홀더
     private var mapPlaceholder: some View {
