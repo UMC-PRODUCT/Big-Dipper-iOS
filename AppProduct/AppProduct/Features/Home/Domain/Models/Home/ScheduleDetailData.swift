@@ -58,6 +58,15 @@ struct ScheduleDetailData: Equatable, Identifiable, ScheduleDDayDisplayable {
         attendancePolicy != nil
     }
 
+    /// 출석 표시가 의미를 갖는 마지막 시각
+    ///
+    /// 정책이 있으면 지각 인정 마감(`lateEndAt`)과 일정 종료 중 늦은 쪽,
+    /// 없으면 일정 종료 시각입니다. 이 시각이 지나면 출석 가능 목록에서 제외합니다.
+    var attendanceWindowEndsAt: Date {
+        guard let policy = attendancePolicy else { return endsAt }
+        return max(policy.lateEndAt, endsAt)
+    }
+
     /// V1 의 `participantMemberIds` 대체 (호환 호출처 보조용)
     var participantMemberIds: [Int] {
         participants.map(\.memberId)

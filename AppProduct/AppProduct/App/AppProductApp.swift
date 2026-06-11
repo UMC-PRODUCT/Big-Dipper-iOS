@@ -116,7 +116,9 @@ extension AppProductApp {
     @ViewBuilder
     private var rootView: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-mockAttendance") {
+        if ProcessInfo.processInfo.arguments.contains("-mockAttendanceHistory") {
+            MyAttendanceHistoryTestView()
+        } else if ProcessInfo.processInfo.arguments.contains("-mockAttendance") {
             NavigationStack {
                 AttendanceListView(
                     viewModel: AttendanceListViewModel.preview(

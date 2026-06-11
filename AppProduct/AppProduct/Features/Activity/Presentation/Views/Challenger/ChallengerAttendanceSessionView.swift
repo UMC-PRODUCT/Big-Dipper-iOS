@@ -105,19 +105,26 @@ struct ChallengerAttendanceSessionView: View {
             DefaultConstant.defaultContentBottomMargins,
             for: .scrollContent)
         .task {
-            // configurePollingSessions는 반드시 fetch보다 먼저 호출
+            // configurePollingSessions는 반드시 loadOnAppear보다 먼저 호출
             // syncSessionStates()가 pollingSessions에 의존
             attendanceViewModel.configurePollingSessions(
                 sessions,
                 userId: userId
             )
-            await attendanceViewModel.fetchAvailableSchedules()
-            await attendanceViewModel.fetchMyHistory()
+            await attendanceViewModel.loadOnAppear()
         }
         .task {
             await attendanceViewModel.startPollingIfNeeded(
                 sessions: sessions
             )
+        }
+        .onChange(of: sessions.map(\.id)) { _, newIds in
+            // 부모가 sessionsState를 .loaded(새 배열)로 교체한 경우(일정 추가/삭제)
+            // 자식의 pollingSessions와 availableSchedules를 최신 세션에 맞게 재구성
+            attendanceViewModel.configurePollingSessions(sessions, userId: userId)
+            Task { @MainActor in
+                await attendanceViewModel.refreshAvailableSchedules()
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -229,12 +236,13 @@ struct ChallengerAttendanceSessionView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DefaultSpacing.spacing32)
             case .loaded(let items):
-                if items.isEmpty {
+                // attendanceStatus가 결정되지 않은(출석 전) 일정은 표시 모델로 변환되지 않으므로,
+                // 원본 개수가 아니라 변환 결과 개수로 빈 상태를 판단해야 가이드가 정상 표시된다.
+                let models = items.compactMap { MyAttendanceItemModel(from: $0) }
+                if models.isEmpty {
                     emptyHistoryView
                 } else {
-                    ChallengerMyAttendanceStatusView(
-                        historyItems: items
-                    )
+                    ChallengerMyAttendanceStatusView(models: models)
                 }
             case .failed(let error):
                 RetryContentUnavailableView(

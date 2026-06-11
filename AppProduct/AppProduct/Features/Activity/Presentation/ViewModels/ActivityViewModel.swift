@@ -39,7 +39,7 @@ final class ActivityViewModel {
 
     // MARK: - Action
 
-    /// 세션 목록 조회
+    /// 세션 목록 조회 (로딩 스피너 표시, 재시도 버튼용)
     @MainActor
     func fetchSessions() async {
         sessionsState = .loading
@@ -51,6 +51,30 @@ final class ActivityViewModel {
             sessionsState = .failed(.domain(error))
         } catch {
             sessionsState = .failed(.unknown(message: error.localizedDescription))
+        }
+    }
+
+    /// 세션 목록 배경 갱신 (로딩 상태 변경 없음, 재진입 시 자식 뷰 파괴 방지)
+    ///
+    /// 일정 멤버십(scheduleId 집합)이 변하지 않으면 sessionsState를 건드리지 않습니다.
+    /// 집합이 달라진 경우에만 .loaded(새 배열)로 교체하여 자식 onChange를 트리거합니다.
+    @MainActor
+    func refreshSessions() async {
+        guard !sessionsState.isLoading else { return }
+        do {
+            let fresh = try await fetchSessionsUseCase.execute()
+            guard case .loaded(let current) = sessionsState else {
+                // .idle/.failed 상태면 full fetch로 대체
+                await fetchSessions()
+                return
+            }
+            let currentIds = Set(current.map(\.id.value))
+            let freshIds = Set(fresh.map(\.id.value))
+            guard currentIds != freshIds else { return }
+            await classifySessionTitles(fresh)
+            sessionsState = .loaded(fresh)
+        } catch {
+            // 배경 갱신 실패는 무시 — 기존 표시 상태 유지
         }
     }
 

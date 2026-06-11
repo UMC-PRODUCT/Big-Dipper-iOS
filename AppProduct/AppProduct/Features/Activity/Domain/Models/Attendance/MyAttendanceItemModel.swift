@@ -17,6 +17,12 @@ struct MyAttendanceItemModel: Equatable, Identifiable {
     let endTime: Date
     let status: MyAttendanceItemStatus
     let category: ScheduleIconCategory
+    /// 출석 정책 (`nil` = 정책 정보 없음)
+    let attendancePolicy: AttendancePolicy?
+    /// 장소명 (`nil` = 장소 미지정)
+    let locationName: String?
+    /// 비대면 여부
+    let isOnline: Bool
 
     // MARK: - Computed Properties
 
@@ -25,12 +31,35 @@ struct MyAttendanceItemModel: Equatable, Identifiable {
         "\(week)주차"
     }
 
+    /// 날짜 표시 텍스트 (예: "6월 11일 (목)")
+    var dateText: String {
+        Self.kstDateFormatter.string(from: startTime)
+    }
+
     /// 시간 범위 텍스트 (예: "14:00 - 18:00")
     var timeRange: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return "\(formatter.string(from: startTime)) - \(formatter.string(from: endTime))"
+        let start = Self.kstTimeFormatter.string(from: startTime)
+        let end = Self.kstTimeFormatter.string(from: endTime)
+        return "\(start) - \(end)"
     }
+
+    // MARK: - Formatter
+
+    private static let kstDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = .kst
+        formatter.dateFormat = "M월 d일 (E)"
+        return formatter
+    }()
+
+    private static let kstTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = .kst
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
 }
 
 // MARK: - Session Conversion
@@ -53,6 +82,9 @@ extension MyAttendanceItemModel {
         self.endTime = session.info.endTime
         self.status = itemStatus
         self.category = category
+        self.attendancePolicy = nil
+        self.locationName = nil
+        self.isOnline = false
     }
 }
 
@@ -74,6 +106,9 @@ extension MyAttendanceItemModel {
         self.endTime = data.endsAt
         self.status = itemStatus
         self.category = .general
+        self.attendancePolicy = data.attendancePolicy
+        self.locationName = data.location?.locationName
+        self.isOnline = data.isOnline
     }
 }
 
@@ -88,7 +123,10 @@ extension MyAttendanceItemModel {
         startTime: Date,
         endTime: Date,
         status: MyAttendanceItemStatus,
-        category: ScheduleIconCategory = .general
+        category: ScheduleIconCategory = .general,
+        attendancePolicy: AttendancePolicy? = nil,
+        locationName: String? = nil,
+        isOnline: Bool = false
     ) {
         self.id = UUID()
         self.week = week
@@ -97,6 +135,9 @@ extension MyAttendanceItemModel {
         self.endTime = endTime
         self.status = status
         self.category = category
+        self.attendancePolicy = attendancePolicy
+        self.locationName = locationName
+        self.isOnline = isOnline
     }
 }
 #endif

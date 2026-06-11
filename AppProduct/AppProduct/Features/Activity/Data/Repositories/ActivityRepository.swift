@@ -28,12 +28,15 @@ final class ActivityRepository: ActivityRepositoryProtocol, @unchecked Sendable 
     @MainActor
     func fetchSessions() async throws -> [Session] {
         let now = Date.now
+        // 서버는 from~to 를 일정 시작 시각 기준으로 필터링하므로, 이미 시작했지만
+        // 출석 창이 열려 있는 진행 중 일정을 포함하려면 from 을 하루 앞당겨야 한다.
+        let from = Calendar.kstGregorian.date(byAdding: .day, value: -1, to: now) ?? now
         let to = Calendar.kstGregorian.date(byAdding: .day, value: 14, to: now) ?? now
         let schedules = try await attendanceRepository
-            .fetchMySchedulesForAttendance(from: now, to: to)
+            .fetchMySchedulesForAttendance(from: from, to: to)
 
         return schedules
-            .filter { $0.isParticipant }
+            .filter { $0.isParticipant && $0.attendanceWindowEndsAt > now }
             .map(Self.makeSession(from:))
             .sorted { $0.info.startTime < $1.info.startTime }
     }

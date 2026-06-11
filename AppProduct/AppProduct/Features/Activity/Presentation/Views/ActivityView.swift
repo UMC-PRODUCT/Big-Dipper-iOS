@@ -71,7 +71,7 @@ struct ActivityView: View {
             }
             .umcDefaultBackground()
             .task {
-                // ViewModel 초기화 및 데이터 로드(Computed Property를 위해 init 대신 task에서 초기화)
+                // ViewModel은 첫 등장 시 한 번만 생성 (탭 재진입마다 재생성 방지)
                 if viewModel == nil {
                     viewModel = ActivityViewModel(
                         fetchSessionsUseCase: activityProvider.fetchSessionsUseCase,
@@ -79,7 +79,17 @@ struct ActivityView: View {
                         classifyScheduleUseCase: activityProvider.classifyScheduleUseCase
                     )
                 }
-                await viewModel?.loadInitialData()
+                guard let vm = viewModel else { return }
+                if vm.userId == nil {
+                    await vm.fetchUserId()
+                }
+                if vm.sessionsState.isIdle {
+                    // 첫 진입: 로딩 스피너와 함께 전체 로드
+                    await vm.fetchSessions()
+                } else {
+                    // 재진입: 로딩 상태 변경 없이 배경 갱신 (자식 뷰 파괴 방지)
+                    await vm.refreshSessions()
+                }
             }
             .navigationDestination(for: NavigationDestination.self) { destination in
                 NavigationRoutingView(destination: destination)

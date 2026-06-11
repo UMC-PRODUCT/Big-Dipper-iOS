@@ -94,8 +94,10 @@ final class ChallengerAttendanceViewModel {
     }
 
     /// 출석 가능 일정 갱신 (로딩 상태 변경 없이)
+    ///
+    /// onChange(sessions.map(\.id)) 에서도 호출하므로 internal로 노출합니다.
     @MainActor
-    private func refreshAvailableSchedules() async {
+    func refreshAvailableSchedules() async {
         guard !availableSchedules.isLoading else { return }
         do {
             let schedules = try await challengeAttendanceUseCase.fetchAvailableSchedules()
@@ -103,6 +105,34 @@ final class ChallengerAttendanceViewModel {
             syncSessionStates()
         } catch {
             // 배경 갱신 실패는 무시
+        }
+    }
+
+    /// 화면 등장 시 로드 결정 메서드
+    ///
+    /// - availableSchedules가 .idle(첫 마운트): 네트워크 호출을 생략하고 .loaded([])로 시드합니다.
+    ///   부모가 방금 같은 창으로 받아온 sessions prop을 표시하므로 자식의 payload는 불필요하며,
+    ///   syncSessionStates()가 no-op이기 때문에 빈 배열로 시드해도 무해합니다.
+    /// - .idle이 아닌 경우(재등장): availableSchedules는 refreshAvailableSchedules()로,
+    ///   myHistory는 refreshMyHistory()로 배경 갱신합니다.
+    @MainActor
+    func loadOnAppear() async {
+        if availableSchedules.isIdle {
+            // 첫 마운트: availableSchedules 중복 호출 생략
+            availableSchedules = .loaded([])
+        } else {
+            // 재등장: 배경 갱신 (로딩 스피너 없음)
+            await refreshAvailableSchedules()
+        }
+
+        guard !Task.isCancelled else { return }
+
+        if myHistory.isIdle {
+            // 첫 마운트: 자식 고유 데이터이므로 정상 로딩 UI와 함께 fetch
+            await fetchMyHistory()
+        } else {
+            // 재등장: 배경 갱신
+            await refreshMyHistory()
         }
     }
 
@@ -171,7 +201,7 @@ final class ChallengerAttendanceViewModel {
 
     // MARK: - Action
 
-    /// 출석 가능 일정 조회
+    /// 출석 가능 일정 조회 (로딩 스피너 표시, .failed 재시도 버튼용)
     @MainActor
     func fetchAvailableSchedules() async {
         availableSchedules = .loading
@@ -180,13 +210,18 @@ final class ChallengerAttendanceViewModel {
             availableSchedules = .loaded(schedules)
             syncSessionStates()
         } catch {
-            availableSchedules = .failed(.unknown(
-                message: error.localizedDescription
-            ))
+            // 취소는 .idle로 되돌려 다음 등장 시 재시도 — .failed로 에러 UI를 표시하지 않음
+            if error.isCancellation {
+                availableSchedules = .idle
+            } else {
+                availableSchedules = .failed(.unknown(
+                    message: error.localizedDescription
+                ))
+            }
         }
     }
 
-    /// 내 출석 이력 조회
+    /// 내 출석 이력 조회 (로딩 스피너 표시, .failed 재시도 버튼용)
     @MainActor
     func fetchMyHistory() async {
         myHistory = .loading
@@ -194,9 +229,14 @@ final class ChallengerAttendanceViewModel {
             let history = try await challengeAttendanceUseCase.fetchMyHistory()
             myHistory = .loaded(history)
         } catch {
-            myHistory = .failed(.unknown(
-                message: error.localizedDescription
-            ))
+            // 취소는 .idle로 되돌려 다음 등장 시 재시도 — .failed로 에러 UI를 표시하지 않음
+            if error.isCancellation {
+                myHistory = .idle
+            } else {
+                myHistory = .failed(.unknown(
+                    message: error.localizedDescription
+                ))
+            }
         }
     }
 

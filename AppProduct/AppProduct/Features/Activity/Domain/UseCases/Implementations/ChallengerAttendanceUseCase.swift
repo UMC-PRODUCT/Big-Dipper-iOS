@@ -36,13 +36,19 @@ final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol {
 
     /// 출석 가능한 세션 목록 조회
     ///
-    /// 향후 ±2주 범위에서 출석 필수(`attendancePolicy != nil`) + 참여자인 일정을 반환합니다.
+    /// 하루 전 ~ 향후 2주 범위에서 출석 필수(`attendancePolicy != nil`) + 참여자이면서
+    /// 출석 창이 아직 끝나지 않은 일정을 반환합니다.
     /// 출석 창이 아직 열리지 않은 일정도 포함하여 View에서 `beforeAttendance` 상태로 표시할 수 있도록 합니다.
+    /// - Note: 서버는 `from~to` 를 일정 시작 시각 기준으로 필터링하므로 `from = now` 로 조회하면
+    ///   이미 시작했지만 출석 창이 열려 있는 진행 중 일정이 누락됩니다. 이를 막기 위해 `from` 을 하루 앞당깁니다.
     func fetchAvailableSchedules() async throws -> [ScheduleDetailData] {
         let now = Date.now
+        let from = Calendar.kstGregorian.date(byAdding: .day, value: -1, to: now) ?? now
         let to = Calendar.kstGregorian.date(byAdding: .day, value: 14, to: now) ?? now
-        let schedules = try await repository.fetchMySchedulesForAttendance(from: now, to: to)
-        return schedules.filter { $0.attendancePolicy != nil && $0.isParticipant }
+        let schedules = try await repository.fetchMySchedulesForAttendance(from: from, to: to)
+        return schedules.filter {
+            $0.attendancePolicy != nil && $0.isParticipant && $0.attendanceWindowEndsAt > now
+        }
     }
 
     /// 내 출석 이력 조회
