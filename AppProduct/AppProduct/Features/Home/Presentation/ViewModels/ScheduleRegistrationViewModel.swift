@@ -369,6 +369,9 @@ class ScheduleRegistrationViewModel {
     /// - 하루종일 일정: 출석 정책 섹션 자체를 비노출하므로 prefill 생략
     /// - 사용자가 한 번이라도 직접 시각을 수정한 경우(`isAttendancePolicyDirty == true`)에는 덮어쓰지 않습니다.
     func prefillAttendancePolicyIfNeeded() {
+        // 일정 시작 시각에 의존하는 검증(checkInAfterScheduleStart 등)이 있으므로
+        // prefill 을 건너뛰는 경우(dirty/하루종일)에도 검증은 항상 갱신한다.
+        defer { attendancePolicyError = validateAttendancePolicy() }
         guard !isAttendancePolicyDirty else { return }
         guard !isAllDay else { return }
         let startsAt = dataRange.startDate
@@ -425,12 +428,15 @@ class ScheduleRegistrationViewModel {
     ///
     /// - Returns: 검증 위반이 있으면 ``AttendancePolicyError``, 없으면 `nil`
     private func validateAttendancePolicy() -> AttendancePolicyError? {
-        guard isAttendanceRequired else { return nil }
+        guard isAttendanceRequired, !isAllDay else { return nil }
         guard attendanceCheckInStartAt < attendanceOnTimeEndAt else {
             return .invalidOrder(.checkInVsOnTime)
         }
         guard attendanceOnTimeEndAt < attendanceLateEndAt else {
             return .invalidOrder(.onTimeVsLate)
+        }
+        guard attendanceCheckInStartAt < dataRange.startDate else {
+            return .checkInAfterScheduleStart
         }
         guard attendanceLateEndAt <= dataRange.endDate else {
             return .lateExceedsEnd

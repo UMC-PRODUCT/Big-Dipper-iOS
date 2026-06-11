@@ -158,6 +158,9 @@ final class StudyScheduleRegistrationViewModel {
     ///
     /// 사용자가 한 번이라도 직접 시각을 수정한 경우(`isAttendancePolicyDirty == true`)에는 덮어쓰지 않습니다.
     func prefillAttendancePolicyIfNeeded() {
+        // 일정 시작 시각에 의존하는 검증(checkInAfterScheduleStart)이 있으므로
+        // prefill 을 건너뛰는 경우(dirty)에도 검증은 항상 갱신한다.
+        defer { validateAttendancePolicy() }
         guard !isAttendancePolicyDirty else { return }
         let onTimeThreshold = TimeInterval(AttendanceGeofenceConstants.onTimeThresholdMinutes * 60)
         let lateThreshold = TimeInterval(AttendanceGeofenceConstants.lateThresholdMinutes * 60)
@@ -180,6 +183,10 @@ final class StudyScheduleRegistrationViewModel {
         }
         guard attendanceOnTimeEndAt < attendanceLateEndAt else {
             attendancePolicyError = .invalidOrder(.onTimeVsLate)
+            return
+        }
+        guard attendanceCheckInStartAt < startDate else {
+            attendancePolicyError = .checkInAfterScheduleStart
             return
         }
         attendancePolicyError = nil
