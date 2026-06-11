@@ -80,6 +80,22 @@ struct ChallengerAttendanceView: View, Equatable {
             try? await Task.sleep(for: Constants.mapLoadDelay)
             isMapReady = true
         }
+        .sheet(isPresented: $showReasonSheet) {
+            ChallengerAttendanceReasonSheet { reason in
+                guard let scheduleId = attendanceViewModel.scheduleId(for: session.info.sessionId) else {
+                    #if DEBUG
+                    print("[Attendance] scheduleId not found for reason submit")
+                    #endif
+                    return
+                }
+                await attendanceViewModel.submitAttendanceReason(
+                    userId: userId,
+                    session: session,
+                    reason: reason,
+                    scheduleId: scheduleId
+                )
+            }
+        }
     }
 
     // MARK: - View Component
@@ -178,12 +194,13 @@ struct ChallengerAttendanceView: View, Equatable {
                 for: session,
                 at: context.date
             ) {
+                let isLateWindow = attendanceViewModel.timeWindow(for: session) == .lateWindow
                 HStack(spacing: DefaultSpacing.spacing4) {
                     Image(systemName: "clock")
                         .font(.caption)
                     Text(guidance)
                 }
-                .appFont(.footnote, color: .grey600)
+                .appFont(.footnote, color: isLateWindow ? .orange : .grey600)
                 .frame(maxWidth: .infinity)
             }
         }
@@ -219,14 +236,20 @@ struct ChallengerAttendanceView: View, Equatable {
                     ))
 
             case .beforeAttendance:
-                // 출석 버튼
-                attendanceButton
-                    .glassEffectID(
-                        Constants.attendanceActionId, in: attendanceNamespace)
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.95).combined(with: .opacity),
-                        removal: .scale(scale: 0.95).combined(with: .opacity)
-                    ))
+                // 지각 시간대에는 사유 제출이 기본 액션으로 승격, 그 외에는 GPS 출석 버튼
+                Group {
+                    if attendanceViewModel.timeWindow(for: session) == .lateWindow {
+                        lateReasonPrimaryButton
+                    } else {
+                        attendanceButton
+                    }
+                }
+                .glassEffectID(
+                    Constants.attendanceActionId, in: attendanceNamespace)
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.95).combined(with: .opacity),
+                    removal: .scale(scale: 0.95).combined(with: .opacity)
+                ))
 
             case .present, .late, .absent:
                 // 확정 상태 - 버튼 비활성화
@@ -266,6 +289,19 @@ struct ChallengerAttendanceView: View, Equatable {
         )
     }
 
+    /// 지각 시간대의 기본 액션 버튼 — 사유 제출 시트 열기
+    ///
+    /// 비활성 GPS 버튼 + 보조 링크의 중복 구조를 대체합니다.
+    private var lateReasonPrimaryButton: some View {
+        MainButton("지각 사유 제출하기") {
+            triggerHaptic()
+            showReasonSheet = true
+        }
+        .buttonStyle(.glassProminent)
+        .disabled(!attendanceViewModel.isReasonSubmittable(for: session))
+    }
+
+    /// 사유 제출 보조 링크 (정시/시작 전 시간대 전용)
     private var lateReasonButton: some View {
         Button {
             showReasonSheet = true
@@ -275,26 +311,7 @@ struct ChallengerAttendanceView: View, Equatable {
                 .underline()
         }
         .buttonStyle(.plain)
-        .disabled(
-            !attendanceViewModel.isAttendanceAvailable(for: session)
-            && !attendanceViewModel.isReasonSubmittable(for: session)
-        )
-        .sheet(isPresented: $showReasonSheet) {
-            ChallengerAttendanceReasonSheet { reason in
-                guard let scheduleId = attendanceViewModel.scheduleId(for: session.info.sessionId) else {
-                    #if DEBUG
-                    print("[Attendance] scheduleId not found for reason submit")
-                    #endif
-                    return
-                }
-                await attendanceViewModel.submitAttendanceReason(
-                    userId: userId,
-                    session: session,
-                    reason: reason,
-                    scheduleId: scheduleId
-                )
-            }
-        }
+        .disabled(!attendanceViewModel.isReasonSubmittable(for: session))
     }
 
     // MARK: - Haptic Feedback

@@ -82,9 +82,10 @@ struct ToolBarCollection {
                     }
                 }, label: {
                     ZStack {
+                        // 시트 등장과 함께 정적으로 표시되는 버튼이라 drawOn 전환 효과를
+                        // 걸면 심볼이 그려지지 않은(숨김) 상태로 남는다 — 정적 렌더로 표시
                         Image(systemName: "checkmark")
                             .opacity(isLoading ? 0 : 1)
-                            .symbolDrawOn(isActive: !isLoading)
 
                         if isLoading {
                             ProgressView()

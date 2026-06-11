@@ -460,8 +460,19 @@ final class ChallengerAttendanceViewModel {
         session.canSubmitReason()
     }
 
+    /// 세션의 현재 출석 시간대 (View 분기용)
+    func timeWindow(for session: Session) -> AttendanceTimeWindow {
+        currentTimeWindow(for: session)
+    }
+
+    /// 사유 제출 보조 링크 노출 여부
+    ///
+    /// 정시/시작 전에는 GPS 출석이 기본 동작이므로 사유 제출을 보조 링크로 노출합니다.
+    /// 지각 시간대에는 사유 제출이 기본 버튼으로 승격되므로 링크를 숨기고,
+    /// 마감 후나 이미 제출한 세션에서도 숨깁니다.
     func shouldShowReasonButton(for session: Session) -> Bool {
-        currentTimeWindow(for: session) != .expired
+        let window = currentTimeWindow(for: session)
+        return (window == .tooEarly || window == .onTime) && session.canSubmitReason()
     }
 
     func buttonStyle(for session: Session) -> String {
