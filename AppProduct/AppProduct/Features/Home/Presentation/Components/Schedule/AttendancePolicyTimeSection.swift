@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// 출석 정책 3개 시각(체크인 시작 / 정시 종료 / 지각 종료) 입력 섹션입니다.
+/// 출석 정책 3개 시각(출석 시작 / 출석 인정 마감 / 지각 인정 마감) 입력 섹션입니다.
 ///
 /// `DateTimeRow` 패턴을 그대로 재사용하며, 시각 변경 시 `onTimesChanged` 콜백으로
 /// ViewModel 의 dirty flag 토글과 검증 갱신을 트리거합니다.
@@ -29,7 +29,7 @@ struct AttendancePolicyTimeSection: View {
     var body: some View {
         Group {
             row(
-                title: "체크인 시작",
+                title: "출석 시작",
                 date: $checkInStartAt,
                 isDateActive: showCheckInDatePicker,
                 isTimeActive: showCheckInTimePicker,
@@ -50,7 +50,7 @@ struct AttendancePolicyTimeSection: View {
             picker(condition: showCheckInTimePicker, date: $checkInStartAt, isTime: true)
 
             row(
-                title: "정시 종료",
+                title: "출석 인정 마감",
                 date: $onTimeEndAt,
                 isDateActive: showOnTimeDatePicker,
                 isTimeActive: showOnTimeTimePicker,
@@ -71,7 +71,7 @@ struct AttendancePolicyTimeSection: View {
             picker(condition: showOnTimeTimePicker, date: $onTimeEndAt, isTime: true)
 
             row(
-                title: "지각 종료",
+                title: "지각 인정 마감",
                 date: $lateEndAt,
                 isDateActive: showLateDatePicker,
                 isTimeActive: showLateTimePicker,

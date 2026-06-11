@@ -11,7 +11,7 @@ import SwiftUI
 
 /// 일정 상세 화면에서 출석 정책 시각을 read-only 로 표시하는 섹션 컴포넌트
 ///
-/// - 체크인 시작(`checkInStartAt`) → 정시 종료(`onTimeEndAt`) → 지각 종료(`lateEndAt`) 순서의
+/// - 출석 시작(`checkInStartAt`) → 출석 인정 마감(`onTimeEndAt`) → 지각 인정 마감(`lateEndAt`) 순서의
 ///   3개 임계값을 시간 흐름대로 **가로 3분할** 카드에 배치합니다. (세로 나열 대비 화면 점유 약 60% 절감)
 /// - 컬럼은 항상 균등 너비이므로 세 시각이 같거나 역전되거나 간격이 짧아도 레이아웃이 깨지지 않습니다.
 /// - 비대면 / 출석 비필수 일정은 `AttendancePolicy` 자체가 `nil` 이므로 호출 측에서 노출을 제어합니다.
@@ -108,7 +108,7 @@ struct AttendancePolicyDisplaySection: View, Equatable {
 
     /// 출석 정책 3개 임계값의 표시 메타데이터 (아이콘 / 라벨 / 색상 시맨틱)
     ///
-    /// 색상: green(체크인 가능) → orange(정시 마감) → red(지각 마감) 으로 시간 흐름의 위험도를 표현합니다.
+    /// 색상: green(출석 가능) → orange(출석 인정 마감) → red(지각 인정 마감) 으로 시간 흐름의 위험도를 표현합니다.
     private enum Role {
         case checkIn
         case onTime
@@ -125,9 +125,9 @@ struct AttendancePolicyDisplaySection: View, Equatable {
         /// 표시 라벨. 입력 폼(`AttendancePolicyTimeSection`) 및 도메인(`lateEndAt`)과 용어를 통일합니다.
         var label: String {
             switch self {
-            case .checkIn: "체크인 시작"
-            case .onTime: "정시 종료"
-            case .late: "지각 종료"
+            case .checkIn: "출석 시작"
+            case .onTime: "출석 인정 마감"
+            case .late: "지각 인정 마감"
             }
         }
 

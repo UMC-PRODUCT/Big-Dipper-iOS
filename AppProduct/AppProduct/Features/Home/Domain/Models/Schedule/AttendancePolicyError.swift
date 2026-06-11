@@ -22,9 +22,9 @@ enum AttendancePolicyError: Equatable, Sendable {
 
     /// 단조 증가 위반 위치
     enum OrderField: Equatable, Sendable {
-        /// 체크인 시작 ≥ 정시 종료
+        /// 출석 시작 ≥ 출석 인정 마감
         case checkInVsOnTime
-        /// 정시 종료 ≥ 지각 종료
+        /// 출석 인정 마감 ≥ 지각 인정 마감
         case onTimeVsLate
     }
 
@@ -32,11 +32,11 @@ enum AttendancePolicyError: Equatable, Sendable {
     var message: String {
         switch self {
         case .invalidOrder(.checkInVsOnTime):
-            return "체크인 시작은 정시 종료보다 빨라야 합니다."
+            return "출석 시작은 출석 인정 마감보다 빨라야 합니다."
         case .invalidOrder(.onTimeVsLate):
-            return "정시 종료는 지각 종료보다 빨라야 합니다."
+            return "출석 인정 마감은 지각 인정 마감보다 빨라야 합니다."
         case .lateExceedsEnd:
-            return "지각 종료는 일정 종료 시각을 넘을 수 없습니다."
+            return "지각 인정 마감은 일정 종료 시각을 넘을 수 없습니다."
         }
     }
 }
