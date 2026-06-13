@@ -25,8 +25,10 @@ final class ChallengerAttendanceViewModel {
 
     /// 출석 상태 변경 알림 관찰 토큰
     ///
-    /// init(MainActor)에서 1회 설정 후 deinit(nonisolated)에서 해제만 하므로
-    /// 동시 접근이 발생하지 않습니다 — `nonisolated(unsafe)` 근거.
+    /// UI 관찰 대상이 아닌 내부 구현 세부사항이라 `@ObservationIgnored` 로 추적에서 제외합니다.
+    /// deinit(nonisolated)에서 해제해야 하므로 `nonisolated(unsafe)` — init 1회 설정 + deinit
+    /// 해제만이라 동시 접근이 없습니다.
+    @ObservationIgnored
     private nonisolated(unsafe) var statusObserver: (any NSObjectProtocol)?
 
     /// 폴링 대상 세션 (View에서 주입)
