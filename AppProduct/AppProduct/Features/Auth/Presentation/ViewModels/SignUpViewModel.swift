@@ -75,6 +75,13 @@ final class SignUpViewModel {
     /// 회원가입 상태 (성공 시 서버 응답 memberId 보관)
     private(set) var registerState: Loadable<String> = .idle
 
+    /// 가입은 성공했으나 세션 복구에 실패해 수동 재로그인이 필요한지 여부
+    ///
+    /// 서버가 가입 응답에 토큰을 주지 않고 소셜 재로그인마저 실패한 경우
+    /// (예: Apple의 1회용 `authorizationCode` 소비)에 `true`가 됩니다.
+    /// 이때 화면은 모호한 오류 대신 "다시 로그인" 안내를 노출합니다.
+    private(set) var requiresManualLoginAfterRegister = false
+
     /// 폼 유효성 검증 상태
     var isFormValid: Bool {
         !name.isEmpty &&
@@ -247,13 +254,28 @@ final class SignUpViewModel {
         #endif
 
         do {
-            let memberId = try await registerUseCase
+            let result = try await registerUseCase
                 .execute(request: request)
-            try await restoreSessionAfterRegisterIfNeeded()
+
+            // 서버가 가입 응답에 토큰을 제공했다면 UseCase가 이미 저장했으므로 재로그인 생략.
+            // 토큰이 없을 때만 기존 소셜 재로그인으로 세션을 복구하되, 가입은 성공했는데
+            // 복구만 실패한 경우(예: Apple의 1회용 authorizationCode 소비)에는 가입 자체는
+            // 성공으로 처리하고 화면에서 수동 재로그인을 안내합니다.
+            if result.tokenPair == nil {
+                do {
+                    try await restoreSessionAfterRegisterIfNeeded()
+                } catch {
+                    #if DEBUG
+                    print("[Auth] register 성공 / 세션 복구 실패: \(error)")
+                    #endif
+                    requiresManualLoginAfterRegister = true
+                }
+            }
+
             #if DEBUG
-            print("[Auth] register 성공: memberId=\(memberId)")
+            print("[Auth] register 성공: memberId=\(result.memberId)")
             #endif
-            registerState = .loaded(memberId)
+            registerState = .loaded(result.memberId)
         } catch let error as AppError {
             #if DEBUG
             print("[Auth] register 실패: \(error)")

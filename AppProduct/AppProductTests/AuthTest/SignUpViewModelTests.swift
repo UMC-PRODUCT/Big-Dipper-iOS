@@ -167,8 +167,8 @@ private actor MockLoginUseCase: LoginUseCaseProtocol {
 }
 
 private struct MockRegisterUseCase: RegisterUseCaseProtocol {
-    func execute(request: RegisterRequestDTO) async throws -> String {
-        "1"
+    func execute(request: RegisterRequestDTO) async throws -> RegisterResult {
+        RegisterResult(memberId: "1", tokenPair: nil)
     }
 }
 
