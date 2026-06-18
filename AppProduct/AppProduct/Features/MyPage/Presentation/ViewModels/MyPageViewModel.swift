@@ -25,7 +25,7 @@ class MyPageViewModel {
     private let kakaoLoginManager = KakaoLoginManager()
     /// 애플 소셜 로그인 매니저 (연동 시 authorization code 발급용)
     private let appleLoginManager = AppleLoginManager()
-    /// 구글 소셜 로그인 매니저 (연동 시 idToken 발급용)
+    /// 구글 소셜 로그인 매니저 (연동 시 OAuth accessToken 발급용)
     private let googleLoginManager = GoogleLoginManager()
 
     // MARK: - Init
@@ -160,9 +160,9 @@ class MyPageViewModel {
                 fullName: nil
             )
         case .google:
-            let idToken = try await googleLoginManager.login()
+            let accessToken = try await googleLoginManager.fetchAccessToken()
             result = try await authProvider.loginUseCase.executeGoogle(
-                idToken: idToken
+                accessToken: accessToken
             )
         case .email:
             throw AuthError.socialLoginFailed(

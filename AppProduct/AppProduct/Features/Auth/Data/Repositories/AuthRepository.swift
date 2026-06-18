@@ -97,16 +97,16 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
 
     /// Google 소셜 로그인을 수행합니다.
     ///
-    /// - Parameter idToken: GoogleSignIn에서 발급받은 idToken
+    /// - Parameter accessToken: GoogleSignIn에서 발급받은 OAuth accessToken
     /// - Returns: 기존 회원/신규 회원 분기 결과
-    /// - Important: 서버 요청 바디의 `accessToken` 필드에 **idToken**을 담습니다.
+    /// - Important: 서버 요청 바디의 `accessToken` 필드에 **구글 OAuth accessToken**을 담습니다.
     func loginGoogle(
-        idToken: String
+        accessToken: String
     ) async throws -> OAuthLoginResult {
         let response = try await adapter.requestWithoutAuth(
             AuthRouter.loginGoogle(
                 body: LoginGoogleRequestDTO(
-                    accessToken: idToken,
+                    accessToken: accessToken,
                     clientType: "IOS"
                 )
             )

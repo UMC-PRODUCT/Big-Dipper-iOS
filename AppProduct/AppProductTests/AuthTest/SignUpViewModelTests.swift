@@ -117,7 +117,7 @@ private actor MockLoginUseCase: LoginUseCaseProtocol {
     }
 
     func executeGoogle(
-        idToken: String
+        accessToken: String
     ) async throws -> OAuthLoginResult {
         return .existingMember(
             tokenPair: TokenPair(

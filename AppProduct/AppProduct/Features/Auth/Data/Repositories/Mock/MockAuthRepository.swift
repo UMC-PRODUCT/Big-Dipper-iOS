@@ -43,7 +43,7 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
     }
 
     func loginGoogle(
-        idToken: String
+        accessToken: String
     ) async throws -> OAuthLoginResult {
         try await Task.sleep(for: .milliseconds(500))
 

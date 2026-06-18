@@ -44,7 +44,7 @@ private struct PreviewLoginUseCase: LoginUseCaseProtocol {
         )
     }
 
-    func executeGoogle(idToken: String) async throws -> OAuthLoginResult {
+    func executeGoogle(accessToken: String) async throws -> OAuthLoginResult {
         .existingMember(
             tokenPair: TokenPair(
                 accessToken: "preview",

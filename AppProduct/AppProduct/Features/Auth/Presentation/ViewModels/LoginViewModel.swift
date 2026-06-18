@@ -164,16 +164,16 @@ final class LoginViewModel {
         destination = nil
 
         do {
-            let idToken = try await googleLoginManager.login()
+            let accessToken = try await googleLoginManager.fetchAccessToken()
             #if DEBUG
-            print("[Auth] 구글 idToken: \(idToken)")
+            print("[Auth] 구글 accessToken: \(accessToken)")
             #endif
-            let result = try await loginUseCase.executeGoogle(idToken: idToken)
+            let result = try await loginUseCase.executeGoogle(accessToken: accessToken)
             SocialType.addConnected(.google)
             loginState = .loaded(result)
             destination = try await resolveDestination(
                 from: result,
-                postRegisterLoginContext: .google(idToken: idToken)
+                postRegisterLoginContext: .google(accessToken: accessToken)
             )
         } catch {
             loginState = .idle

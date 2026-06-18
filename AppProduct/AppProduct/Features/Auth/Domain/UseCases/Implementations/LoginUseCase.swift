@@ -55,9 +55,9 @@ final class LoginUseCase: LoginUseCaseProtocol {
     }
 
     func executeGoogle(
-        idToken: String
+        accessToken: String
     ) async throws -> OAuthLoginResult {
-        let result = try await repository.loginGoogle(idToken: idToken)
+        let result = try await repository.loginGoogle(accessToken: accessToken)
         try await saveTokenIfNeeded(result)
         return result
     }

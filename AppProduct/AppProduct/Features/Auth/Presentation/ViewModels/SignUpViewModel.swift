@@ -304,8 +304,8 @@ final class SignUpViewModel {
                 email: email,
                 fullName: fullName
             )
-        case .google(let idToken):
-            loginResult = try await loginUseCase.executeGoogle(idToken: idToken)
+        case .google(let accessToken):
+            loginResult = try await loginUseCase.executeGoogle(accessToken: accessToken)
         }
 
         guard case .existingMember = loginResult else {

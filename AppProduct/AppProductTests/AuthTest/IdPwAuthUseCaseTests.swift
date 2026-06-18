@@ -280,7 +280,7 @@ private actor StubAuthRepository: AuthRepositoryProtocol {
     }
 
     func loginGoogle(
-        idToken: String
+        accessToken: String
     ) async throws -> OAuthLoginResult {
         fatalError("loginGoogle not used in these tests")
     }
