@@ -39,6 +39,13 @@ private struct SymbolDrawOnModifier: ViewModifier {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// 등장 직후 `false → true` 전환을 주기 위한 내부 상태.
+    ///
+    /// `.drawOn`은 `isActive`가 `false → true`로 **전환되는 순간**에만 그리기 애니메이션을
+    /// 재생합니다. 심볼이 이미 `isActive == true`인 상태로 새로 삽입되면 전환 트리거가
+    /// 없어 "그려지지 않은(=비표시)" 상태로 남으므로, 등장 시점에 직접 토글합니다.
+    @State private var hasDrawn = false
+
     let isActive: Bool
 
     // MARK: - Body
@@ -46,7 +53,8 @@ private struct SymbolDrawOnModifier: ViewModifier {
     func body(content: Content) -> some View {
         if isActive && !reduceMotion {
             content
-                .symbolEffect(.drawOn, isActive: true)
+                .symbolEffect(.drawOn, isActive: hasDrawn)
+                .onAppear { hasDrawn = true }
         } else {
             content
         }
