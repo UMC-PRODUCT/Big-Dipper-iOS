@@ -36,6 +36,11 @@ struct SignUpEmailSection: View {
     /// 이메일 필드 제출(return) 시 포커스를 다음 필드로 이동시키는 콜백
     let onSubmit: () -> Void
 
+    /// 인증 완료 시 "인증되었습니다" 성공 메시지 표시 여부 (기본값: true)
+    ///
+    /// 부모가 인증 이후 중복 확인 결과 행을 직접 노출하는 경우 `false`로 주어 메시지 중복을 피합니다.
+    var showsVerifiedMessage: Bool = true
+
     // MARK: - Body
 
     var body: some View {
@@ -46,6 +51,7 @@ struct SignUpEmailSection: View {
             onVerificationRequested: onVerificationRequested,
             onVerificationComplete: onVerificationComplete,
             onResend: onResend,
+            showsVerifiedMessage: showsVerifiedMessage,
             submitLabel: .next,
             onSubmit: onSubmit,
             onEmailChanged: onEmailChanged

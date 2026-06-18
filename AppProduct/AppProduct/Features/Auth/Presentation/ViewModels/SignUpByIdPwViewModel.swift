@@ -249,7 +249,7 @@ final class SignUpByIdPwViewModel {
         registerState = .loading
 
         let agreements = termsAgreements.map { key, value in
-            EmailRegisterTermsAgreementDTO(termsId: key, agreed: value)
+            EmailRegisterTermsAgreementDTO(termsId: key, isAgreed: value)
         }
 
         let request = EmailRegisterRequestDTO(

@@ -36,5 +36,5 @@ struct EmailRegisterTermsAgreementDTO: Encodable {
     /// 약관 ID (서버 응답 String 기준)
     let termsId: String
     /// 동의 여부
-    let agreed: Bool
+    let isAgreed: Bool
 }

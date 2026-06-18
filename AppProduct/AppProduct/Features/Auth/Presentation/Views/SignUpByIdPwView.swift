@@ -72,23 +72,27 @@ struct SignUpByIdPwView: View {
     var body: some View {
         ScrollView(.vertical) {
             VStack(spacing: Constants.spacerSize) {
-                SignUpEmailSection(
-                    email: $viewModel.emailInput,
-                    onVerificationRequested: {
-                        try await viewModel.requestEmailVerification()
-                    },
-                    onVerificationComplete: { code in
-                        try await viewModel.verifyEmailCode(code)
-                    },
-                    onResend: {
-                        try await viewModel.resendEmailVerification()
-                    },
-                    onEmailChanged: handleEmailChange,
-                    onSubmit: { focusedField = .password }
-                )
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
+                    SignUpEmailSection(
+                        email: $viewModel.emailInput,
+                        onVerificationRequested: {
+                            try await viewModel.requestEmailVerification()
+                        },
+                        onVerificationComplete: { code in
+                            try await viewModel.verifyEmailCode(code)
+                        },
+                        onResend: {
+                            try await viewModel.resendEmailVerification()
+                        },
+                        onEmailChanged: handleEmailChange,
+                        onSubmit: { focusedField = .password },
+                        // 인증 직후 아래 중복 확인 행이 상태를 대신 보여주므로 "인증되었습니다" 중복 표시는 생략
+                        showsVerifiedMessage: false
+                    )
 
-                if viewModel.isEmailVerified {
-                    emailAvailabilityStatusRow
+                    if viewModel.isEmailVerified {
+                        emailAvailabilityStatusRow
+                    }
                 }
 
                 SignUpPasswordSection(

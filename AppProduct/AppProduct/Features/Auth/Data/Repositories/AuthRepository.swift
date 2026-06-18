@@ -330,6 +330,10 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         emailVerificationToken: String,
         newPassword: String
     ) async throws {
+        #if DEBUG
+        print("[Auth] 비밀번호 재설정 요청 ▶︎ PATCH /api/v1/auth/password/reset")
+        print("[Auth] 전송 필드 → emailVerificationToken(len=\(emailVerificationToken.count)), newPassword(len=\(newPassword.count))")
+        #endif
         do {
             let response = try await adapter.requestWithoutAuth(
                 AuthRouter.resetPassword(
@@ -339,12 +343,27 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
                     )
                 )
             )
+            #if DEBUG
+            // HTTP 200 + isSuccess:false(서버 실패 메시지) 경로까지 본문을 그대로 남깁니다.
+            if let json = String(data: response.data, encoding: .utf8) {
+                print("[Auth] 비밀번호 재설정 응답(\(response.statusCode)): \(json)")
+            }
+            #endif
             let apiResponse = try decoder.decode(
                 APIResponse<EmptyResult>.self,
                 from: response.data
             )
             try apiResponse.validateSuccess()
         } catch let error as NetworkError {
+            #if DEBUG
+            // 4xx/5xx 경로의 원시 응답 본문(code/message 포함)을 남깁니다.
+            if case .requestFailed(let statusCode, let data) = error {
+                let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? "<no data>"
+                print("[Auth] 비밀번호 재설정 에러 응답(\(statusCode)): \(body)")
+            } else {
+                print("[Auth] 비밀번호 재설정 네트워크 에러: \(error)")
+            }
+            #endif
             throw Self.parseServerError(from: error) ?? error
         }
     }

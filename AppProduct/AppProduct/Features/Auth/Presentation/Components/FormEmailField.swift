@@ -58,6 +58,12 @@ struct FormEmailField: View {
     /// 필수 입력 여부 (기본값: true)
     var isRequired: Bool = true
 
+    /// 인증 완료 시 "인증되었습니다" 성공 메시지 표시 여부 (기본값: true)
+    ///
+    /// 부모 화면이 인증 이후 별도의 상태 행(예: 이메일 중복 확인 결과)을 직접 노출하는 경우,
+    /// 같은 의미의 메시지가 중복되지 않도록 `false`를 주어 이 성공 메시지를 숨깁니다.
+    var showsVerifiedMessage: Bool = true
+
     /// 키보드 완료 버튼 타입 (기본값: .return)
     var submitLabel: SubmitLabel = .return
 
@@ -165,7 +171,7 @@ struct FormEmailField: View {
             }
 
             // 성공 메시지
-            if verificationState == .verified {
+            if verificationState == .verified && showsVerifiedMessage {
                 successMessage
             }
         })

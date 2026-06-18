@@ -146,8 +146,8 @@ struct RegisterByEmailUseCaseTests {
             emailVerificationToken: "email-token",
             schoolId: "1",
             termsAgreements: [
-                EmailRegisterTermsAgreementDTO(termsId: "1", agreed: true),
-                EmailRegisterTermsAgreementDTO(termsId: "2", agreed: true)
+                EmailRegisterTermsAgreementDTO(termsId: "1", isAgreed: true),
+                EmailRegisterTermsAgreementDTO(termsId: "2", isAgreed: true)
             ]
         )
     }
