@@ -54,6 +54,22 @@ final class GoogleLoginManager {
         return result.user.accessToken.tokenString
     }
 
+    /// 구글 로그인을 수행하고 서버 전송용 OAuth `accessToken`과 계정 이메일을 함께 반환합니다.
+    ///
+    /// 이메일은 신규 회원가입 진입 시 인증 필드 프리필에 사용합니다.
+    ///
+    /// - Returns: (OAuth accessToken, 계정 이메일) 튜플. 이메일은 프로필 스코프 미동의 등으로
+    ///   제공되지 않을 수 있어 옵셔널입니다.
+    /// - Throws: `GoogleLoginError.presentationContextNotFound` 또는 GoogleSignIn SDK 에러
+    @MainActor
+    func login() async throws -> (accessToken: String, email: String?) {
+        let result = try await signIn()
+        return (
+            result.user.accessToken.tokenString,
+            result.user.profile?.email
+        )
+    }
+
     // MARK: - Private Function
 
     /// GoogleSignIn 로그인을 수행하고 결과를 반환합니다.
