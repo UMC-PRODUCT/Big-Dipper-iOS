@@ -9,6 +9,8 @@ import Foundation
 import Testing
 @testable import ActivityDomain
 
+#if DEBUG
+
 // MARK: - Helpers
 
 private func makeScheduleInfo(
@@ -64,8 +66,6 @@ private func makeUseCase(
 }
 
 // MARK: - Mocks
-
-#if DEBUG
 
 private final class MockOperatorAttendanceRepository: @unchecked Sendable,
     OperatorAttendanceRepositoryProtocol {
@@ -156,8 +156,6 @@ private final class MockOperatorAttendanceRepository: @unchecked Sendable,
 private enum TestError: Error, Equatable {
     case boom
 }
-
-#endif
 
 // MARK: - 조회 위임
 
@@ -293,6 +291,20 @@ struct OperatorAttendanceUseCaseErrorTests {
         }
     }
 
+    @Test("Repository 결정 에러는 삼키지 않고 그대로 전파된다")
+    func decideAttendancesPropagatesRepositoryError() async {
+        let repository = MockOperatorAttendanceRepository()
+        repository.errorToThrow = TestError.boom
+        let useCase = makeUseCase(repository: repository)
+
+        await #expect(throws: TestError.boom) {
+            _ = try await useCase.decideAttendances(
+                scheduleId: "1",
+                decisions: []
+            )
+        }
+    }
+
     @Test("Repository 위치변경 에러는 삼키지 않고 그대로 전파된다 (try? 회귀 가드)")
     func updateLocationPropagatesRepositoryError() async {
         let repository = MockOperatorAttendanceRepository()
@@ -309,3 +321,5 @@ struct OperatorAttendanceUseCaseErrorTests {
         }
     }
 }
+
+#endif
