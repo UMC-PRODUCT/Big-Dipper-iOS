@@ -72,6 +72,7 @@ final class LoginViewModel {
             loginState = .loaded(result)
             destination = try await resolveDestination(
                 from: result,
+                email: email,
                 postRegisterLoginContext: .kakao(
                     accessToken: accessToken,
                     email: email
@@ -128,6 +129,9 @@ final class LoginViewModel {
                     )
                     SocialType.addConnected(.apple)
                     self.loginState = .loaded(result)
+                    // Apple은 최초 1회 인증 시에만 email을 제공하고 이후엔 nil입니다.
+                    // 신규 회원이라면 첫 인증이므로 email이 있어 가입 화면 프리필이 가능하고,
+                    // nil인 경우엔 가입 화면에서 빈 필드로 폴백되어 수동 입력합니다.
                     self.destination = try await self.resolveDestination(
                         from: result,
                         email: email,
@@ -164,15 +168,17 @@ final class LoginViewModel {
         destination = nil
 
         do {
-            let accessToken = try await googleLoginManager.fetchAccessToken()
+            let (accessToken, email) = try await googleLoginManager.login()
             #if DEBUG
             print("[Auth] 구글 accessToken: \(accessToken)")
+            print("[Auth] 구글 email: \(email ?? "nil")")
             #endif
             let result = try await loginUseCase.executeGoogle(accessToken: accessToken)
             SocialType.addConnected(.google)
             loginState = .loaded(result)
             destination = try await resolveDestination(
                 from: result,
+                email: email,
                 postRegisterLoginContext: .google(accessToken: accessToken)
             )
         } catch {
