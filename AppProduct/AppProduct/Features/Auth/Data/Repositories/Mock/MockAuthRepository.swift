@@ -197,9 +197,9 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
 
     func register(
         request: RegisterRequestDTO
-    ) async throws -> String {
+    ) async throws -> RegisterResult {
         try await Task.sleep(for: .milliseconds(500))
-        return "1"
+        return RegisterResult(memberId: "1", tokenPair: nil)
     }
 
     func registerExistingChallenger(

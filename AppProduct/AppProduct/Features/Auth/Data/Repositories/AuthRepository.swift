@@ -377,10 +377,10 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
     /// 회원가입을 수행합니다.
     ///
     /// - Parameter request: 회원가입 요청 DTO
-    /// - Returns: 생성된 회원 ID (서버 응답 String 기준)
+    /// - Returns: 회원 ID + (서버가 제공할 경우) 토큰 쌍
     func register(
         request: RegisterRequestDTO
-    ) async throws -> String {
+    ) async throws -> RegisterResult {
         do {
             let response = try await adapter.requestWithoutAuth(
                 AuthRouter.register(body: request)
@@ -390,7 +390,7 @@ final class AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
                 from: response.data
             )
             let dto = try apiResponse.unwrap()
-            return dto.memberId
+            return dto.toDomain()
         } catch let NetworkError.requestFailed(statusCode, data) {
             #if DEBUG
             if let data,

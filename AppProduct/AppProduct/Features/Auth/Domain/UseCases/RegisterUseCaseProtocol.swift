@@ -12,7 +12,10 @@ import Foundation
 /// 회원가입 UseCase Protocol
 protocol RegisterUseCaseProtocol {
     /// 회원가입 실행
+    ///
+    /// 서버가 가입 응답에 토큰을 함께 내려주면 즉시 저장하여 별도 재로그인 없이
+    /// 세션을 복구합니다.
     /// - Parameter request: 회원가입 요청 DTO
-    /// - Returns: 생성된 회원 ID (서버 응답 String 기준)
-    func execute(request: RegisterRequestDTO) async throws -> String
+    /// - Returns: 회원 ID + (서버가 제공할 경우) 토큰 쌍
+    func execute(request: RegisterRequestDTO) async throws -> RegisterResult
 }

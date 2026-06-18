@@ -105,7 +105,11 @@ struct SignUpView: View {
                         false,
                         forKey: AppStorageKey.canAutoLogin
                     )
-                    appFlow.showPendingApproval()
+                    if viewModel.requiresManualLoginAfterRegister {
+                        promptManualLoginAfterRegister()
+                    } else {
+                        appFlow.showPendingApproval()
+                    }
                     return
                 }
 
@@ -475,6 +479,19 @@ extension SignUpView {
         }
     }
 
+    /// 가입은 완료됐으나 세션 복구에 실패한 경우, 모호한 오류 대신 명확한 재로그인을 안내합니다.
+    @MainActor
+    private func promptManualLoginAfterRegister() {
+        alertPrompt = AlertPrompt(
+            title: "가입이 완료됐어요",
+            message: "로그인 화면에서 다시 로그인하면 바로 이용할 수 있어요.",
+            positiveBtnTitle: "로그인으로 이동",
+            positiveBtnAction: {
+                appFlow.showLogin()
+            }
+        )
+    }
+
     @MainActor
     private func handleRegisterFailure(_ error: AppError) {
         if error.isOAuthVerificationExpired {
@@ -589,8 +606,8 @@ private struct SignUpPreviewVerifyCodeUseCase: VerifyEmailCodeUseCaseProtocol {
 }
 
 private struct SignUpPreviewRegisterUseCase: RegisterUseCaseProtocol {
-    func execute(request: RegisterRequestDTO) async throws -> String {
-        "1"
+    func execute(request: RegisterRequestDTO) async throws -> RegisterResult {
+        RegisterResult(memberId: "1", tokenPair: nil)
     }
 }
 

@@ -338,7 +338,7 @@ private actor StubAuthRepository: AuthRepositoryProtocol {
 
     func register(
         request: RegisterRequestDTO
-    ) async throws -> String {
+    ) async throws -> RegisterResult {
         fatalError("register not used in these tests")
     }
 

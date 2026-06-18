@@ -112,7 +112,8 @@ final class AuthUseCaseProvider: AuthUseCaseProviding {
             repository: repository
         )
         self.registerUseCase = RegisterUseCase(
-            repository: repository
+            repository: repository,
+            tokenStore: tokenStore
         )
         self.registerExistingChallengerUseCase = RegisterExistingChallengerUseCase(
             repository: repository
