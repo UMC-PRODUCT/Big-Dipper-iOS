@@ -151,7 +151,7 @@ struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
     let challengerId: String
     let memberId: String
     let name: String
-    let profileImageUrl: String?
+    let profileImageURL: String?
     let bestWorkbookPoint: Int?
 
     // MARK: - CodingKeys
@@ -160,7 +160,7 @@ struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
         case challengerId
         case memberId
         case name
-        case profileImageUrl
+        case profileImageURL = "profileImageUrl"
         case bestWorkbookPoint
     }
 
@@ -171,7 +171,7 @@ struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
         challengerId = try container.decodeFlexibleStringIfPresent(forKey: .challengerId) ?? ""
         memberId = try container.decodeFlexibleStringIfPresent(forKey: .memberId) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
-        profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
+        profileImageURL = try container.decodeIfPresent(String.self, forKey: .profileImageURL)
         bestWorkbookPoint = try container.decodeIntFlexibleIfPresent(forKey: .bestWorkbookPoint)
     }
 
@@ -182,7 +182,7 @@ struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
         try container.encode(challengerId, forKey: .challengerId)
         try container.encode(memberId, forKey: .memberId)
         try container.encode(name, forKey: .name)
-        try container.encodeIfPresent(profileImageUrl, forKey: .profileImageUrl)
+        try container.encodeIfPresent(profileImageURL, forKey: .profileImageURL)
         try container.encodeIfPresent(bestWorkbookPoint, forKey: .bestWorkbookPoint)
     }
 }
@@ -245,7 +245,7 @@ extension StudyGroupDetailDTO {
             memberID: challenger.memberId.isEmpty ? nil : challenger.memberId,
             name: challenger.name,
             university: university,
-            profileImageURL: normalizedURL(challenger.profileImageUrl),
+            profileImageURL: normalizedURL(challenger.profileImageURL),
             role: role,
             bestWorkbookPoint: bestWorkbookPointByMemberID[challenger.memberId]
                 ?? challenger.bestWorkbookPoint
@@ -261,9 +261,11 @@ extension StudyGroupDetailDTO {
 
 // MARK: - StudyGroupDateParser
 
+// TODO: Core 승격 시 ISO8601DateParser 등 범용 이름으로 변경 - [26.06.19] jaewon
 /// ISO 8601 날짜 문자열 파서.
 ///
 /// 밀리초(fractional seconds) 포함 포맷을 먼저 시도하고, 실패하면 표준 포맷으로 재시도한다.
+/// ``CurriculumDTO`` 의 `parsedStartsAt` / `parsedEndsAt` 에서도 쓰여 DTO 범위를 넘어선다.
 enum StudyGroupDateParser {
     static func parse(_ value: String) -> Date? {
         ISO8601DateFormatter.withFractionalSeconds.date(from: value)

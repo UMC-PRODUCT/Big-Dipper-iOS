@@ -42,6 +42,10 @@ extension KeyedDecodingContainer {
     }
 
     /// 키가 nil 이거나 변환 불가하면 nil 을 반환하는 ``decodeFlexibleString(forKey:)`` 의 Optional 버전.
+    ///
+    /// - Important: 필드 누락과 타입 불일치를 모두 `nil` 로 동일하게 처리한다.
+    ///   `decodeNil` 선검사 후 `try?` 로 변환을 시도하므로, 키가 존재해도 변환 불가능한
+    ///   타입(`Bool`·배열 등)이 오면 오류를 던지지 않고 조용히 `nil` 로 폴백한다.
     func decodeFlexibleStringIfPresent(forKey key: Key) throws -> String? {
         if (try? decodeNil(forKey: key)) == true {
             return nil

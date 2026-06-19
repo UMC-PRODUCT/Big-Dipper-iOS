@@ -110,6 +110,11 @@ struct WeeklyCurriculumOptionsResponseDTO: Codable, Sendable, Equatable {
 
     // MARK: - Encodable
 
+    /// 항상 `content` 키로 직렬화한다 (디코딩-인코딩 비대칭).
+    ///
+    /// 디코딩은 최상위 배열 / `content` / `weeklyCurriculums` 3가지 포맷을 흡수하지만,
+    /// 인코딩은 단일 정규 포맷(`content`)만 사용한다. `weeklyCurriculums` 포맷으로 받은
+    /// 데이터를 encode → decode 하면 `content` 경로로 복원되며 값은 동일하게 보존된다.
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(options, forKey: .content)
