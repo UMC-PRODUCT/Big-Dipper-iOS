@@ -33,7 +33,7 @@ private func makeGroupInfo(
     StudyGroupInfo(
         serverID: serverID,
         name: "iOS 스터디",
-        part: .front(type: .ios),
+        part: .front(type: .ios), // 테스트 결과와 무관 — 임의 고정값
         createdDate: Date(timeIntervalSince1970: 1_000),
         mentors: mentors,
         members: members
@@ -177,29 +177,24 @@ struct FetchStudyMembersUseCaseTests {
         #expect(repository.fetchStudyGroupDetailCalls == ["G-7"])
     }
 
-    @Test("멘토가 없고 스터디원만 있을 때 — 스터디원만 반환")
-    func returnsMembersOnlyWhenNoMentors() async throws {
+    @Test(
+        "멘토 없을 때 — 스터디원만 반환 (빈 그룹 포함)",
+        arguments: [
+            (members: [makeMember(serverID: "C-1", name: "챌린저A")], expected: ["C-1"]),
+            (members: [], expected: [String]())
+        ]
+    )
+    func returnsMembersOnlyWhenNoMentors(
+        members: [StudyGroupMember],
+        expected: [String]
+    ) async throws {
         let repository = MockStudyRepository()
-        repository.fetchStudyGroupDetailResult = makeGroupInfo(
-            mentors: [],
-            members: [makeMember(serverID: "C-1", name: "챌린저A")]
-        )
+        repository.fetchStudyGroupDetailResult = makeGroupInfo(mentors: [], members: members)
         let useCase = makeUseCase(repository: repository)
 
         let result = try await useCase.fetchStudyGroupMembers(groupId: "G-1")
 
-        #expect(result.map(\.serverID) == ["C-1"])
-    }
-
-    @Test("멘토·스터디원 모두 비었을 때 — 빈 배열 반환")
-    func returnsEmptyWhenGroupHasNoMembers() async throws {
-        let repository = MockStudyRepository()
-        repository.fetchStudyGroupDetailResult = makeGroupInfo(mentors: [], members: [])
-        let useCase = makeUseCase(repository: repository)
-
-        let result = try await useCase.fetchStudyGroupMembers(groupId: "G-1")
-
-        #expect(result.isEmpty)
+        #expect(result.map(\.serverID) == expected)
     }
 
     @Test("Repository 가 에러를 던지면 그대로 전파")
