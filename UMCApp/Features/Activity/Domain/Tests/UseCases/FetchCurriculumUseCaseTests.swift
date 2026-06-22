@@ -10,6 +10,9 @@ import Testing
 import UMCFoundation
 @testable import ActivityDomain
 
+// 이 테스트 파일은 전부 #if DEBUG 전용 Mock 에 의존하므로 본문 전체를 가드한다.
+#if DEBUG
+
 // MARK: - Helpers
 
 private func makeProgress(
@@ -33,8 +36,6 @@ private func makeUseCase(
 }
 
 // MARK: - Mocks
-
-#if DEBUG
 
 private enum MockStudyRepositoryError: Error {
     case fetchFailed
@@ -135,8 +136,6 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
     }
 }
 
-#endif
-
 // MARK: - 커리큘럼 진행률 조회
 
 @Suite("FetchCurriculumUseCase — 커리큘럼 진행률 조회 (도메인 규칙)")
@@ -176,3 +175,5 @@ struct FetchCurriculumUseCaseTests {
         }
     }
 }
+
+#endif
