@@ -16,5 +16,6 @@ let project = featureProject(
         // 에러 enum(DomainError/RepositoryError/NetworkError)을 직접 참조하므로 명시 주입.
         .target(name: "ActivityDomain"),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
-    ]
+    ],
+    includesPresentationTests: true
 )
