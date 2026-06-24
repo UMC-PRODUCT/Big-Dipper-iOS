@@ -68,14 +68,14 @@ struct ScheduleAttendanceInfoDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        scheduleId = try container.decodeStringFlexibleIfPresent(forKey: .scheduleId) ?? ""
+        scheduleId = try container.decodeFlexibleStringIfPresent(forKey: .scheduleId) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
         startsAt = try container.decodeIfPresent(String.self, forKey: .startsAt) ?? ""
         endsAt = try container.decodeIfPresent(String.self, forKey: .endsAt) ?? ""
         isOnline = try container.decodeIfPresent(Bool.self, forKey: .isOnline) ?? false
         location = try container.decodeIfPresent(ScheduleLocationDTO.self, forKey: .location)
-        authorMemberId = try container.decodeStringFlexibleIfPresent(forKey: .authorMemberId) ?? ""
+        authorMemberId = try container.decodeFlexibleStringIfPresent(forKey: .authorMemberId) ?? ""
         attendancePolicy = try container.decodeIfPresent(
             ScheduleAttendancePolicyDTO.self, forKey: .attendancePolicy
         )

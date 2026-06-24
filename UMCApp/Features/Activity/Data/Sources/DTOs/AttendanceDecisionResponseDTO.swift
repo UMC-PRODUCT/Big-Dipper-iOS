@@ -105,10 +105,10 @@ extension AttendanceDecisionResponseDTO {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            memberId = try container.decodeStringFlexibleIfPresent(forKey: .memberId) ?? ""
+            memberId = try container.decodeFlexibleStringIfPresent(forKey: .memberId) ?? ""
             name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
             nickname = try container.decodeIfPresent(String.self, forKey: .nickname) ?? ""
-            schoolId = try container.decodeStringFlexibleIfPresent(forKey: .schoolId) ?? ""
+            schoolId = try container.decodeFlexibleStringIfPresent(forKey: .schoolId) ?? ""
             schoolName = try container.decodeIfPresent(String.self, forKey: .schoolName) ?? ""
         }
 
