@@ -182,12 +182,7 @@ extension DIContainer {
                 tokenStore: container.resolve(TokenStore.self)
             )
         }
-        
-        // MARK: - Token Store
-        container.register(TokenStore.self) {
-            KeychainTokenStore()
-        }
-        
+
         // MARK: - Moya Network Adapter
         container.register(MoyaNetworkAdapter.self) {
             MoyaNetworkAdapter(

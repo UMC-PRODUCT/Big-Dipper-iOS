@@ -22,6 +22,6 @@ public struct ResourcePermission {
 public protocol AuthorizationUseCaseProtocol {
     func getResourcePermission(
         resourceType: AuthorizationResourceType,
-        resourceId: Int
+        resourceId: String
     ) async throws -> ResourcePermission
 }

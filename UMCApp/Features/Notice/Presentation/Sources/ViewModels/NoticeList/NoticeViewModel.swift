@@ -19,24 +19,17 @@ final class NoticeViewModel {
     /// DI Container
     private let container: DIContainer
 
-    /// UseCase
-    var noticeUseCase: NoticeUseCaseProtocol {
-        container.resolve(NoticeUseCaseProtocol.self)
-    }
+    /// UseCase (init에서 1회 resolve 후 보관)
+    let noticeUseCase: NoticeUseCaseProtocol
 
     /// 기수 Repository
-    var genRepository: ChallengerGenRepositoryProtocol {
-        container.resolve(ChallengerGenRepositoryProtocol.self)
-    }
+    let genRepository: ChallengerGenRepositoryProtocol
 
-    var noticeReadRepository: NoticeReadRepositoryProtocol {
-        container.resolve(NoticeReadRepositoryProtocol.self)
-    }
+    /// 읽음 상태 로컬 저장소
+    let noticeReadRepository: NoticeReadRepositoryProtocol
 
     /// 공지 타겟(지부/학교) 조회 UseCase
-    var noticeEditorTargetUseCase: NoticeEditorTargetUseCaseProtocol {
-        container.resolve(NoticeEditorTargetUseCaseProtocol.self)
-    }
+    let noticeEditorTargetUseCase: NoticeEditorTargetUseCaseProtocol
 
     /// ViewModel 기능을 extension 파일로 분리해 관리하므로,
     /// 동일 타입 extension에서도 상태 변경이 가능하도록 내부 공개합니다.
@@ -103,6 +96,10 @@ final class NoticeViewModel {
     init(container: DIContainer, errorHandler: ErrorHandler) {
         self.container = container
         self.errorHandler = errorHandler
+        self.noticeUseCase = container.resolve(NoticeUseCaseProtocol.self)
+        self.genRepository = container.resolve(ChallengerGenRepositoryProtocol.self)
+        self.noticeReadRepository = container.resolve(NoticeReadRepositoryProtocol.self)
+        self.noticeEditorTargetUseCase = container.resolve(NoticeEditorTargetUseCaseProtocol.self)
     }
 
     // MARK: - Helper

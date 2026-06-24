@@ -1,5 +1,5 @@
 //
-//  NoticeDetail+Tags.swift
+//  NoticeItemModel+Tags.swift
 //  NoticePresentation
 //
 //  Created by 이예지 on 5/8/26.

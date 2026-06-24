@@ -89,8 +89,8 @@ extension NoticeDetailViewModel {
     public func fetchAuthorProfileIfNeeded(for detail: NoticeDetail) async {
         hasResolvedAuthorProfile = false
 
-        guard let rawMemberId = detail.authorMemberId,
-              let memberId = Int(rawMemberId) else {
+        guard let memberId = detail.authorMemberId,
+              !memberId.isEmpty else {
             isAuthorProfileLoading = false
             authorProfileSummary = nil
             hasResolvedAuthorProfile = true
@@ -197,7 +197,7 @@ extension NoticeDetailViewModel {
         do {
             let permission = try await authorizationUseCase.getResourcePermission(
                 resourceType: .notice,
-                resourceId: Int(noticeID) ?? 0
+                resourceId: noticeID
             )
             canEditNotice = permission.hasAny([.write, .edit, .manage])
             canDeleteNotice = permission.hasAny([.delete, .manage])

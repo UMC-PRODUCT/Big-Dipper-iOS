@@ -203,7 +203,7 @@ extension NoticeEditorViewModel {
         guard let modelContext else { return }
 
         let today = Calendar.current.startOfDay(for: Date())
-        let currentMemberId = memberId
+        let currentMemberId = String(memberId)
 
         do {
             let descriptor = FetchDescriptor<AITokenDailyUsageRecord>()
@@ -224,7 +224,7 @@ extension NoticeEditorViewModel {
         guard let modelContext, lastRunTokens > 0 else { return }
 
         let today = Calendar.current.startOfDay(for: Date())
-        let currentMemberId = memberId
+        let currentMemberId = String(memberId)
 
         do {
             let descriptor = FetchDescriptor<AITokenDailyUsageRecord>()

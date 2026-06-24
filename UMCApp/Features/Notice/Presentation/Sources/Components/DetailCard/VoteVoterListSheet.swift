@@ -112,9 +112,9 @@ public struct VoteVoterListSheet: View {
 
         await withTaskGroup(of: MemberProfileSummary?.self) { group in
             for memberId in memberIds {
-                guard let id = Int(memberId) else { continue }
+                guard !memberId.isEmpty else { continue }
                 group.addTask {
-                    try? await repository.fetchMemberProfile(memberId: id)
+                    try? await repository.fetchMemberProfile(memberId: memberId)
                 }
             }
 

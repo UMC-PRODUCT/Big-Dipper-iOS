@@ -17,14 +17,14 @@ public final class AITokenDailyUsageRecord {
 
     // MARK: - Property
 
-    public var memberId: Int = 0
+    public var memberId: String = ""
     public var date: Date = Date()
     public var usedTokens: Int = 0
 
     // MARK: - Init
 
     public init(
-        memberId: Int,
+        memberId: String,
         date: Date,
         usedTokens: Int
     ) {

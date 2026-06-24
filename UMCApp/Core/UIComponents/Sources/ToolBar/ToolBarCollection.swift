@@ -219,8 +219,14 @@ public struct ToolBarCollection {
     public struct BellBtn: ToolbarContent {
         public let action: () -> Void
         public var tintColor: Color = .grey900
-        public let recentPush: Bool = false
-        
+        public let recentPush: Bool
+
+        public init(action: @escaping () -> Void, tintColor: Color = .grey900, recentPush: Bool = false) {
+            self.action = action
+            self.tintColor = tintColor
+            self.recentPush = recentPush
+        }
+
         public var body: some ToolbarContent {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: { action() }, label: {

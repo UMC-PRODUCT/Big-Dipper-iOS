@@ -54,8 +54,8 @@ public enum NoticeMainFilterType: Identifiable, Equatable, Hashable {
         switch self {
         case .all: return "all"
         case .central: return "central"
-        case .branch(let name): return "\(name)"
-        case .school(let name): return "\(name)"
+        case .branch(let name): return "branch_\(name)"
+        case .school(let name): return "school_\(name)"
         case .part(let part): return part.id
         }
     }

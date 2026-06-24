@@ -171,7 +171,7 @@ public struct NoticeAttachmentImage: Equatable, Hashable, Identifiable {
 }
 
 
-// MARK: - TargetAudienc
+// MARK: - TargetAudience
 /// 공지 수신 대상
 public struct TargetAudience: Equatable, Hashable {
     public let generation: String
@@ -328,7 +328,7 @@ public struct VoteOption: Equatable, Identifiable, Hashable {
 }
 
 /// 투표 상태 (서버 enum 매핑)
-public enum VoteStatus: String {
+public enum VoteStatus: String, Equatable, Hashable {
     case notStarted = "NOT_STARTED"
     case active = "OPEN"
     case ended = "CLOSED"
@@ -370,7 +370,7 @@ public struct NoticeReadStatus: Equatable {
     
     /// 전체 대상자 수
     public var totalCount: String {
-        confirmedCount + unconfirmedCount
+        String(confirmedUsers.count + unconfirmedUsers.count)
     }
     
     /// 하단 메시지 (예: "이미 3명이 공지를 확인했습니다.")

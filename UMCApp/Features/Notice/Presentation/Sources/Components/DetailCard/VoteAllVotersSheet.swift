@@ -161,10 +161,10 @@ public struct VoteAllVotersSheet: View {
             of: (String, MemberProfileSummary?).self
         ) { group in
             for memberId in allMemberIds {
-                guard let id = Int(memberId) else { continue }
+                guard !memberId.isEmpty else { continue }
                 group.addTask {
                     let profile = try? await repository.fetchMemberProfile(
-                        memberId: id
+                        memberId: memberId
                     )
                     return (memberId, profile)
                 }

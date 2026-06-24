@@ -173,10 +173,8 @@ public enum NoticeRouter: BaseTargetType {
                 encoding: URLEncoding.queryString
             )
         case .searchNotice(let keyword, let request):
-            var params = request.toParameters
-            params["keyword"] = keyword
             return .requestParameters(
-                parameters: params,
+                parameters: request.toParameters(addingKeyword: keyword),
                 encoding: URLEncoding.queryString
             )
         case .postNotice(let body):

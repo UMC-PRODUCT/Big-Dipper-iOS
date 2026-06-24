@@ -60,6 +60,13 @@ public struct NoticeListQuery: Encodable {
         }
         return params
     }
+
+    /// 검색 키워드를 추가한 조회 파라미터를 반환합니다.
+    public func toParameters(addingKeyword keyword: String) -> [String: Any] {
+        var params = toParameters
+        params["keyword"] = keyword
+        return params
+    }
 }
 
 extension NoticeListQuery {

@@ -24,7 +24,7 @@ public struct NoticeDetailVoteDTO: Codable {
     public let options: [NoticeDetailVoteOptionDTO]
     public let mySelectedOptionIds: [String]
     public let status: String?
-    public let totalParticipants: Int?
+    public let totalParticipants: String?
 
     private enum CodingKeys: String, CodingKey {
         case voteId
@@ -50,7 +50,7 @@ public struct NoticeDetailVoteDTO: Codable {
         self.options = try container.decode([NoticeDetailVoteOptionDTO].self, forKey: .options)
         self.mySelectedOptionIds = try container.decodeStringArrayFlexible(forKey: .mySelectedOptionIds)
         self.status = try container.decodeIfPresent(String.self, forKey: .status)
-        self.totalParticipants = try container.decodeIntFlexibleIfPresent(forKey: .totalParticipants)
+        self.totalParticipants = try container.decodeStringFlexibleIfPresent(forKey: .totalParticipants)
     }
 
     /// DTO → `NoticeVote` 도메인 모델 변환
@@ -71,7 +71,7 @@ public struct NoticeDetailVoteDTO: Codable {
             isAnonymous: isAnonymous,
             userVotedOptionIds: mySelectedOptionIds,
             status: resolvedStatus,
-            totalParticipants: totalParticipants.map(String.init)
+            totalParticipants: totalParticipants
         )
     }
 }

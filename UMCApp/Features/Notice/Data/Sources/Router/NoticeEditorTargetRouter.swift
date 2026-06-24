@@ -54,7 +54,7 @@ public enum NoticeEditorTargetRouter: BaseTargetType {
             return .requestPlain
         case .getChaptersWithSchools(let gisuId):
             return .requestParameters(
-                parameters: ["gisuId": gisuId],
+                parameters: ChaptersWithSchoolsQuery(gisuId: gisuId).toParameters,
                 encoding: URLEncoding.queryString
             )
         case .getChapter:
