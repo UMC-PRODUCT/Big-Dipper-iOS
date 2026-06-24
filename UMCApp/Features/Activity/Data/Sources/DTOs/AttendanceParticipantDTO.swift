@@ -67,7 +67,9 @@ struct AttendanceParticipantDTO: Codable, Sendable, Equatable {
         schoolId = try container.decodeStringFlexibleIfPresent(forKey: .schoolId) ?? ""
         schoolName = try container.decodeIfPresent(String.self, forKey: .schoolName) ?? ""
         attendanceStatus = try container.decodeIfPresent(String.self, forKey: .attendanceStatus)
-        isLocationVerified = try container.decodeIfPresent(Bool.self, forKey: .isLocationVerified) ?? false
+        isLocationVerified = try container.decodeIfPresent(
+            Bool.self, forKey: .isLocationVerified
+        ) ?? false
         excuseReason = try container.decodeIfPresent(String.self, forKey: .excuseReason)
     }
 

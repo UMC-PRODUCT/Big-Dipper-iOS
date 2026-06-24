@@ -18,6 +18,8 @@ import Foundation
 ///   필요로 하면 Core 로 승격합니다.
 extension KeyedDecodingContainer {
 
+    // TODO: 2번째 Feature 가 동일 헬퍼를 요구하면 Core 모듈로 승격 (그 전까진 모듈-internal 유지) - [26.06.19] 이재원
+
     // MARK: - String (서버 식별자)
 
     /// 식별자 필드를 `String` 으로 유연 디코딩합니다.

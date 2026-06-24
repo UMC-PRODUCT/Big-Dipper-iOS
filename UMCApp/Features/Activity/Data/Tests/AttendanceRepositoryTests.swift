@@ -177,7 +177,9 @@ private enum Fixture {
     }
 }
 
-private func makeRepository(_ outcome: StubNetworkRequesting.Outcome) -> (AttendanceRepository, StubNetworkRequesting) {
+private typealias RepositoryPair = (AttendanceRepository, StubNetworkRequesting)
+
+private func makeRepository(_ outcome: StubNetworkRequesting.Outcome) -> RepositoryPair {
     let stub = StubNetworkRequesting(outcome)
     let repository = AttendanceRepository(networkRequesting: stub)
     return (repository, stub)
@@ -185,6 +187,44 @@ private func makeRepository(_ outcome: StubNetworkRequesting.Outcome) -> (Attend
 
 private func utcDate(_ iso: String) -> Date? {
     ServerDateTimeConverter.parseUTCDateTime(iso)
+}
+
+/// 챌린저 단일 출석 액션 — `requestAttendance`(GPS) 와 `submitExcuse`(사유).
+///
+/// 두 메서드는 동일한 `performAttendanceAction` 을 공유하므로 성공 매핑·엔드포인트·
+/// 에러 승격을 하나의 파라미터화 테스트로 함께 검증한다.
+private enum ChallengerAction: CaseIterable, CustomTestStringConvertible {
+    case request
+    case excuse
+
+    var expectedPath: String {
+        switch self {
+        case .request: "/api/v2/schedules/42/attendances/request"
+        case .excuse: "/api/v2/schedules/42/attendances/excuse"
+        }
+    }
+
+    var testDescription: String {
+        switch self {
+        case .request: "requestAttendance"
+        case .excuse: "submitExcuse"
+        }
+    }
+
+    /// 고정 좌표/사유로 해당 액션을 호출한다 (성공·실패 outcome 은 stub 가 결정).
+    func invoke(on sut: AttendanceRepository) async throws -> AttendanceDecisionResult {
+        switch self {
+        case .request:
+            try await sut.requestAttendance(
+                scheduleId: "42", latitude: 37.5, longitude: 127.0, locationVerified: true
+            )
+        case .excuse:
+            try await sut.submitExcuse(
+                scheduleId: "42", excuseReason: "사유", isVerified: true,
+                latitude: 37.5, longitude: 127.0
+            )
+        }
+    }
 }
 
 // MARK: - Suite: 조회 매핑 계약
@@ -315,7 +355,7 @@ struct AttendanceRepositoryDecisionTests {
         #expect(result.status == .present)
         #expect(result.decisionMakerMemberInfo?.memberId == "7")
         #expect(result.hasDecisionMakerMember == true)
-        #expect(result.decidedAt == ServerDateTimeConverter.parseUTCDateTime("2026-06-01T09:05:00.000Z"))
+        #expect(result.decidedAt == utcDate("2026-06-01T09:05:00.000Z"))
         #expect(stub.lastPath == "/api/v2/schedules/42/attendances/decide")
         #expect(stub.lastMethod == .post)
     }
@@ -352,20 +392,21 @@ struct AttendanceRepositoryDecisionTests {
         #expect(result.status == .unknown)
     }
 
-    // MARK: - requestAttendance (성공)
+    // MARK: - 챌린저 출석 액션 (성공)
 
-    @Test("requestAttendance — 성공 응답을 매핑하고 GPS 요청 엔드포인트를 호출한다")
-    func requestAttendanceMapsSuccess() async throws {
+    @Test(
+        "챌린저 출석 액션 — 성공 응답을 매핑하고 올바른 엔드포인트를 호출한다",
+        arguments: ChallengerAction.allCases
+    )
+    fileprivate func challengerActionMapsSuccess(_ action: ChallengerAction) async throws {
         let (sut, stub) = makeRepository(
             .success(Fixture.success(Fixture.decisionWithMakerObject))
         )
 
-        let result = try await sut.requestAttendance(
-            scheduleId: "42", latitude: 37.5, longitude: 127.0, locationVerified: true
-        )
+        let result = try await action.invoke(on: sut)
 
         #expect(result.status == .present)
-        #expect(stub.lastPath == "/api/v2/schedules/42/attendances/request")
+        #expect(stub.lastPath == action.expectedPath)
         #expect(stub.lastMethod == .post)
     }
 }
@@ -375,36 +416,25 @@ struct AttendanceRepositoryDecisionTests {
 @Suite("AttendanceRepository — 출석 액션 에러 매핑 (서버 contract)")
 struct AttendanceRepositoryErrorMappingTests {
 
-    @Test("requestAttendance — '이미 출석' 본문(requestFailed)을 DomainError.attendanceAlreadySubmitted 로 승격한다")
-    func requestAttendanceMapsAlreadySubmitted() async {
+    @Test(
+        "챌린저 출석 액션 — '이미 출석' 본문(requestFailed)을 attendanceAlreadySubmitted 로 승격한다",
+        arguments: zip(
+            ChallengerAction.allCases,
+            ["이미 출석 처리된 일정입니다.", "이미 출석 처리되었습니다."]
+        )
+    )
+    fileprivate func challengerActionMapsAlreadySubmitted(
+        _ action: ChallengerAction, resultMessage: String
+    ) async {
         let body = Fixture.failureBody(
-            code: "ATTEND409", message: "출석 처리 실패", result: "이미 출석 처리된 일정입니다."
+            code: "ATTEND409", message: "출석 처리 실패", result: resultMessage
         )
         let (sut, _) = makeRepository(
             .failure(NetworkError.requestFailed(statusCode: 409, data: body))
         )
 
         await #expect(throws: DomainError.attendanceAlreadySubmitted) {
-            try await sut.requestAttendance(
-                scheduleId: "42", latitude: 37.5, longitude: 127.0, locationVerified: false
-            )
-        }
-    }
-
-    @Test("submitExcuse — '이미 출석' 본문(requestFailed)을 DomainError.attendanceAlreadySubmitted 로 승격한다")
-    func submitExcuseMapsAlreadySubmitted() async {
-        let body = Fixture.failureBody(
-            code: "ATTEND409", message: "출석 처리 실패", result: "이미 출석 처리되었습니다."
-        )
-        let (sut, _) = makeRepository(
-            .failure(NetworkError.requestFailed(statusCode: 409, data: body))
-        )
-
-        await #expect(throws: DomainError.attendanceAlreadySubmitted) {
-            try await sut.submitExcuse(
-                scheduleId: "42", excuseReason: "사유", isVerified: false,
-                latitude: 37.5, longitude: 127.0
-            )
+            try await action.invoke(on: sut)
         }
     }
 
@@ -414,8 +444,9 @@ struct AttendanceRepositoryErrorMappingTests {
         let (sut, _) = makeRepository(
             .failure(NetworkError.requestFailed(statusCode: 400, data: body))
         )
+        let expected = RepositoryError.serverError(code: "ATTEND400", message: "잘못된 요청입니다.")
 
-        await #expect(throws: RepositoryError.serverError(code: "ATTEND400", message: "잘못된 요청입니다.")) {
+        await #expect(throws: expected) {
             try await sut.requestAttendance(
                 scheduleId: "42", latitude: 37.5, longitude: 127.0, locationVerified: true
             )
