@@ -268,7 +268,7 @@ struct AttendanceRepositoryFetchTests {
         #expect(present.excuseReason == nil)        // 빈 문자열 → nil 정규화
         #expect(pending.attendanceStatus == .excusedPending)
         #expect(pending.excuseReason == "병결")
-        #expect(pending.profileImageUrl == "")      // null → "" 정규화
+        #expect(pending.profileImageURL == "")      // null → "" 정규화
     }
 
     @Test("fetchAttendanceList — 일시·장소·정책을 파싱해 매핑한다")

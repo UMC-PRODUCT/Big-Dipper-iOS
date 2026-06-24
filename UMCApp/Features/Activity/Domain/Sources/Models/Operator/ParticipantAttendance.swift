@@ -25,7 +25,7 @@ public struct ParticipantAttendance: Equatable, Sendable, Identifiable {
     public let nickname: String
 
     /// 프로필 이미지 URL (없으면 빈 문자열)
-    public let profileImageUrl: String
+    public let profileImageURL: String
 
     /// 학교 식별자 (서버 응답)
     public let schoolId: String
@@ -48,7 +48,7 @@ public struct ParticipantAttendance: Equatable, Sendable, Identifiable {
         memberId: String,
         name: String,
         nickname: String,
-        profileImageUrl: String,
+        profileImageURL: String,
         schoolId: String,
         schoolName: String,
         attendanceStatus: ParticipantAttendanceStatus,
@@ -58,7 +58,7 @@ public struct ParticipantAttendance: Equatable, Sendable, Identifiable {
         self.memberId = memberId
         self.name = name
         self.nickname = nickname
-        self.profileImageUrl = profileImageUrl
+        self.profileImageURL = profileImageURL
         self.schoolId = schoolId
         self.schoolName = schoolName
         self.attendanceStatus = attendanceStatus

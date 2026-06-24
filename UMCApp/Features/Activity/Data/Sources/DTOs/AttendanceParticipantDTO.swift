@@ -26,7 +26,7 @@ struct AttendanceParticipantDTO: Codable, Sendable, Equatable {
     let nickname: String
 
     /// 프로필 이미지 URL (없으면 `nil`)
-    let profileImageUrl: String?
+    let profileImageURL: String?
 
     /// 학교 식별자 (서버 응답 — 전 레이어 String 통일)
     let schoolId: String
@@ -50,7 +50,7 @@ struct AttendanceParticipantDTO: Codable, Sendable, Equatable {
         case memberId
         case name
         case nickname
-        case profileImageUrl
+        case profileImageURL = "profileImageUrl"
         case schoolId
         case schoolName
         case attendanceStatus
@@ -63,7 +63,7 @@ struct AttendanceParticipantDTO: Codable, Sendable, Equatable {
         memberId = try container.decodeStringFlexibleIfPresent(forKey: .memberId) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         nickname = try container.decodeIfPresent(String.self, forKey: .nickname) ?? ""
-        profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
+        profileImageURL = try container.decodeIfPresent(String.self, forKey: .profileImageURL)
         schoolId = try container.decodeStringFlexibleIfPresent(forKey: .schoolId) ?? ""
         schoolName = try container.decodeIfPresent(String.self, forKey: .schoolName) ?? ""
         attendanceStatus = try container.decodeIfPresent(String.self, forKey: .attendanceStatus)
@@ -78,7 +78,7 @@ struct AttendanceParticipantDTO: Codable, Sendable, Equatable {
         try container.encode(memberId, forKey: .memberId)
         try container.encode(name, forKey: .name)
         try container.encode(nickname, forKey: .nickname)
-        try container.encodeIfPresent(profileImageUrl, forKey: .profileImageUrl)
+        try container.encodeIfPresent(profileImageURL, forKey: .profileImageURL)
         try container.encode(schoolId, forKey: .schoolId)
         try container.encode(schoolName, forKey: .schoolName)
         try container.encodeIfPresent(attendanceStatus, forKey: .attendanceStatus)
@@ -105,7 +105,7 @@ extension AttendanceParticipantDTO {
             memberId: memberId,
             name: name,
             nickname: nickname,
-            profileImageUrl: profileImageUrl ?? "",
+            profileImageURL: profileImageURL ?? "",
             schoolId: schoolId,
             schoolName: schoolName,
             attendanceStatus: status,
