@@ -19,7 +19,7 @@ private func makeParticipant(
         memberId: memberId,
         name: "참여자\(memberId)",
         nickname: "닉\(memberId)",
-        profileImageUrl: "",
+        profileImageURL: "",
         schoolId: "1",
         schoolName: "한성대",
         attendanceStatus: status,
