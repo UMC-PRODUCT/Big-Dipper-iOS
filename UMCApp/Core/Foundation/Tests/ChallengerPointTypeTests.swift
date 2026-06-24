@@ -148,4 +148,18 @@ struct ChallengerPointTypeTests {
     func level0HasNoAvailableTypes() {
         #expect(ChallengerPointType.availableTypes(for: 0).isEmpty)
     }
+
+    // MARK: - 레거시 예외 동작 (warning / out)
+
+    @Test(
+        "warning/out 은 벌점 개념이지만 레거시 호환으로 양수 배점 → isReward=true (의도적 보존)",
+        arguments: [
+            ChallengerPointType.warning,
+            ChallengerPointType.out
+        ]
+    )
+    func warningAndOutHavePositiveDefaultForLegacy(type: ChallengerPointType) {
+        #expect(type.defaultPointValue > 0)
+        #expect(type.isReward == true)
+    }
 }

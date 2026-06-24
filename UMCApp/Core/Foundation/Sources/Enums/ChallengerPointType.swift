@@ -58,6 +58,10 @@ public enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identi
     }
 
     /// 유형별 기본 배점 (상점은 양수, 벌점은 음수)
+    ///
+    /// - Note: `.warning`/`.out` 은 벌점 개념이지만 레거시 호환을 위해 양수(1)로 유지됩니다.
+    ///   (이 때문에 `isReward` 가 `true` 로 평가되는 예외) 두 유형은 `availableTypes(for:)` 에서
+    ///   이미 제외되므로 일반 부여 흐름에는 영향이 없습니다.
     public var defaultPointValue: Int {
         switch self {
         case .bestWorkbook: return 2
@@ -94,9 +98,11 @@ public enum ChallengerPointType: String, Codable, Sendable, CaseIterable, Identi
     /// 부여에 필요한 최소 권한 레벨 (``ManagementTeam/level`` 기준)
     public var minimumRequiredLevel: Int {
         switch self {
+        // 상점 유형 (일반 운영진 부여 가능)
         case .bestWorkbook, .bestWorkbookV2, .blogChallenge,
              .umcEventReview, .peerReviewSubmission:
             return 20
+        // 벌점 유형 (일반 운영진 부여 가능)
         case .noWorkbookMission, .studyLate, .studyAbsent,
              .eventLate, .eventEarlyLeave, .eventLateCancel, .eventNoShow:
             return 20

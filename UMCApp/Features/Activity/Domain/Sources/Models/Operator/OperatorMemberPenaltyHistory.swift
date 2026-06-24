@@ -27,7 +27,10 @@ public struct OperatorMemberPenaltyHistory: Identifiable, Equatable {
     /// 사유
     public let reason: String
 
-    /// 포인트 점수 (절대값)
+    /// 포인트 점수의 절대값 (부호 없음)
+    ///
+    /// 상점/벌점 구분은 이 값의 부호가 아니라 ``pointType`` 의 ``ChallengerPointType/isReward`` 로만 판별합니다.
+    /// 따라서 항상 0 이상의 절대값을 보관합니다.
     public let penaltyScore: Double
 
     /// 포인트 유형
@@ -41,7 +44,7 @@ public struct OperatorMemberPenaltyHistory: Identifiable, Equatable {
         date: Date,
         reason: String,
         penaltyScore: Double,
-        pointType: ChallengerPointType = .out
+        pointType: ChallengerPointType
     ) {
         self.id = id
         self.challengerPointId = challengerPointId
