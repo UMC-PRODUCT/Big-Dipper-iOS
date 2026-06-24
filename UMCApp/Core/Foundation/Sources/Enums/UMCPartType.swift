@@ -2,7 +2,7 @@
 //  UMCPartType.swift
 //  UMCFoundation
 //
-//  Created by jaewon Lee on 5/11/26.
+//  Created by 이예지 on 5/8/26.
 //
 
 import Foundation
@@ -13,7 +13,15 @@ import Foundation
 /// 이 열거형은 각 파트와 세부 기술 스택을 타입 안전하게 표현합니다.
 ///
 /// - Note: Associated Value를 사용하여 서버/프론트 파트의 세부 기술 스택을 구분합니다.
-///   UI 매핑(Color/Icon)은 Presentation 레이어에서 extension으로 제공합니다.
+///
+/// - Usage:
+/// ```swift
+/// let userPart: UMCPartType = .front(type: .ios)
+/// print(userPart.name)  // "iOS"
+///
+/// let serverPart: UMCPartType = .server(type: .spring)
+/// print(serverPart.name)  // "Spring"
+/// ```
 public enum UMCPartType: Codable, Equatable, Hashable {
     // MARK: - Cases
 
@@ -27,14 +35,24 @@ public enum UMCPartType: Codable, Equatable, Hashable {
     case design
 
     /// 서버 파트 (Backend Developer)
+    ///
+    /// - Parameter type: 서버 기술 스택 (Spring, Node.js)
     case server(type: ServerType)
 
     /// 프론트 파트 (Frontend Developer)
+    ///
+    /// - Parameter type: 프론트 기술 스택 (Web, Android, iOS)
     case front(type: FrontType)
 
     // MARK: - Property
 
-    /// 파트의 표시 이름
+    /// 파트의 표시 이름을 반환합니다.
+    ///
+    /// - Returns:
+    ///   - PM: "PM"
+    ///   - Design: "Design"
+    ///   - Server: "Spring" 또는 "NodeJS"
+    ///   - Front: "Web", "Android", "iOS"
     public var name: String {
         switch self {
         case .admin:
@@ -49,8 +67,8 @@ public enum UMCPartType: Codable, Equatable, Hashable {
             return type.rawValue
         }
     }
-
-    /// 파트의 정렬 순서
+    
+    /// 파트의 정렬 순서를 반환합니다.
     ///
     /// 정렬 순서: PM(0) > Design(1) > Web(2) > iOS(3) > Android(4) > Spring(5) > NodeJS(6)
     public var sortOrder: Int {
@@ -79,6 +97,20 @@ public enum UMCPartType: Codable, Equatable, Hashable {
             }
         }
     }
+   
+    /// 파트별 아이콘
+    public var icon: String {
+        switch self {
+        case .admin: return "person.badge.key.fill"
+        case .pm: return "doc.text.fill"
+        case .design: return "paintpalette.fill"
+        case .server(type: .spring): return "leaf.fill"
+        case .server(type: .node): return "hexagon.fill"
+        case .front(type: .web): return "globe"
+        case .front(type: .android): return "inset.filled.applewatch.case"
+        case .front(type: .ios): return "apple.logo"
+        }
+    }
 
     /// 모든 파트 조합 (Associated Value로 CaseIterable 불가하여 직접 정의)
     public static let allCases: [UMCPartType] = [
@@ -90,16 +122,24 @@ public enum UMCPartType: Codable, Equatable, Hashable {
 
     // MARK: - Nested Types
 
-    /// 서버 파트의 기술 스택
+    /// 서버 파트의 기술 스택을 정의하는 열거형입니다.
     public enum ServerType: String, Codable, Equatable, Hashable {
+        /// Spring Framework 기반 백엔드 개발
         case spring = "Spring"
+
+        /// Node.js 기반 백엔드 개발
         case node = "NodeJS"
     }
 
-    /// 프론트 파트의 기술 스택
+    /// 프론트 파트의 기술 스택을 정의하는 열거형입니다.
     public enum FrontType: String, Codable, Equatable, Hashable {
+        /// 웹 프론트엔드 개발 (React, Vue 등)
         case web = "Web"
+
+        /// Android 네이티브 앱 개발 (Kotlin/Java)
         case android = "Android"
+
+        /// iOS 네이티브 앱 개발 (Swift)
         case ios = "iOS"
     }
 
