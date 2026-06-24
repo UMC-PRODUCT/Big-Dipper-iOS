@@ -14,7 +14,10 @@ internal import Alamofire
 ///
 /// 조회 계열 case 만 정의합니다. CRUD case(생성/수정/삭제/멤버·멘토/일정 연결)는
 /// 후속 작업에서 동일 enum 에 case 추가만으로 확장합니다.
-enum StudyRouter {
+///
+/// 연관값(Query DTO·식별자 String)이 모두 `Sendable` 이므로 라우터도 `Sendable`.
+/// 동시성 경계를 넘어 안전하게 전달되며, 테스트의 파라미터화(`@Test(arguments:)`)도 가능.
+enum StudyRouter: Sendable {
     /// 커리큘럼 개요 조회 — `GET /api/v2/curriculums/overview`
     case getCurriculum(query: CurriculumOverviewQuery)
     /// 운영 스터디 그룹 페이지 조회 — `GET /api/v1/study-groups/managed`

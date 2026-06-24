@@ -48,22 +48,19 @@ struct StudyRouterTests {
 
     // MARK: - Method
 
-    @Test("모든 조회 case 의 HTTP method 는 GET 이다")
-    func methodIsGetForAllCases() {
-        // Given
-        let routers: [StudyRouter] = [
-            .getCurriculum(
+    @Test(
+        "모든 조회 case 의 HTTP method 는 GET 이다",
+        arguments: [
+            StudyRouter.getCurriculum(
                 query: CurriculumOverviewQuery(gisuId: "7", part: "BE", weekNo: nil)
             ),
-            .getMyStudyGroups(query: MyStudyGroupsQuery(cursor: 10, size: 20)),
-            .getStudyGroupDetail(groupId: "42"),
-            .getMemberProfile(memberId: "99")
+            StudyRouter.getMyStudyGroups(query: MyStudyGroupsQuery(cursor: 10, size: 20)),
+            StudyRouter.getStudyGroupDetail(groupId: "42"),
+            StudyRouter.getMemberProfile(memberId: "99")
         ]
-
-        // Then
-        for router in routers {
-            #expect(router.method == .get)
-        }
+    )
+    func methodIsGet(router: StudyRouter) {
+        #expect(router.method == .get)
     }
 
     // MARK: - Task
@@ -106,16 +103,12 @@ struct StudyRouterTests {
         // Given
         let router = StudyRouter.getStudyGroupDetail(groupId: "42")
 
-        // When
-        let isPlain: Bool
-        if case .requestPlain = router.task {
-            isPlain = true
-        } else {
-            isPlain = false
-        }
-
         // Then
-        #expect(isPlain)
+        if case .requestPlain = router.task {
+            // 기대하는 case
+        } else {
+            Issue.record("task가 .requestPlain 여야 함 — 실제: \(router.task)")
+        }
     }
 
     @Test("getMemberProfile 의 task 는 requestPlain 이다")
@@ -123,16 +116,12 @@ struct StudyRouterTests {
         // Given
         let router = StudyRouter.getMemberProfile(memberId: "99")
 
-        // When
-        let isPlain: Bool
-        if case .requestPlain = router.task {
-            isPlain = true
-        } else {
-            isPlain = false
-        }
-
         // Then
-        #expect(isPlain)
+        if case .requestPlain = router.task {
+            // 기대하는 case
+        } else {
+            Issue.record("task가 .requestPlain 여야 함 — 실제: \(router.task)")
+        }
     }
 
     // MARK: - CurriculumOverviewQuery.toParameters
@@ -164,6 +153,20 @@ struct StudyRouterTests {
         #expect(parameters["gisuId"] as? String == "7")
     }
 
+    @Test("CurriculumOverviewQuery 는 part 가 빈 문자열이어도 파라미터에 그대로 포함한다 (경계값)")
+    func curriculumQueryIncludesEmptyPart() {
+        // Given — part 빈 문자열 경계값. 서버 필수 필드 빈 값 허용 여부는 미확정이라
+        // 추측 기반 가드(assert) 대신 현재 DTO 계약(가공 없이 그대로 전달)을 박제한다.
+        let query = CurriculumOverviewQuery(gisuId: "7", part: "", weekNo: nil)
+
+        // When
+        let parameters = query.toParameters
+
+        // Then
+        #expect(parameters["part"] as? String == "")
+        #expect(parameters.count == 2)
+    }
+
     // MARK: - MyStudyGroupsQuery.toParameters
 
     @Test("MyStudyGroupsQuery 는 cursor 가 있으면 파라미터에 포함한다")
@@ -192,5 +195,20 @@ struct StudyRouterTests {
         #expect(parameters.count == 1)
         #expect(parameters["cursor"] == nil)
         #expect(parameters["size"] as? Int == 20)
+    }
+
+    @Test("MyStudyGroupsQuery 는 size 가 0 이어도 파라미터에 그대로 포함한다 (경계값)")
+    func myStudyGroupsQueryIncludesZeroSize() {
+        // Given — size: 0 경계값. 서버 size=0 허용 여부가 미확정이라 DTO 레벨
+        // precondition 등 추측 기반 변경 대신 현재 계약(그대로 전달)을 박제한다.
+        // (#814 Repository 이식 전 서버 계약 확인 시 본 테스트를 근거로 정책 결정)
+        let query = MyStudyGroupsQuery(cursor: nil, size: 0)
+
+        // When
+        let parameters = query.toParameters
+
+        // Then
+        #expect(parameters["size"] as? Int == 0)
+        #expect(parameters.count == 1)
     }
 }
