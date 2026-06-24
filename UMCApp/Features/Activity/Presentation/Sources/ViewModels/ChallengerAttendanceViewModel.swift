@@ -148,17 +148,18 @@ final class ChallengerAttendanceViewModel {
 
     /// 세션 진행 중일 때 주기적으로 상태를 갱신합니다.
     ///
+    /// 진행 중인 세션이 있으면 즉시 1회 갱신한 뒤 간격을 두고 반복하므로,
+    /// 화면 진입 직후 첫 갱신까지 대기 구간이 생기지 않습니다.
     /// `.task` 모디파이어에서 호출하면 뷰 사라질 때 자동 취소됩니다.
     /// 세션 시간 기반으로 진행 중 여부를 판단합니다.
     func startPollingIfNeeded(sessions: [Session]) async {
         while !Task.isCancelled {
             guard hasActiveSession(in: sessions) else { return }
+            await refreshAvailableSchedules()
+            await refreshMyHistory()
             try? await Task.sleep(for: .seconds(
                 PollingConfig.intervalSeconds
             ))
-            guard !Task.isCancelled else { break }
-            await refreshAvailableSchedules()
-            await refreshMyHistory()
         }
     }
 
@@ -176,7 +177,7 @@ final class ChallengerAttendanceViewModel {
     // MARK: - Action
 
     /// GPS 기반 출석 버튼 탭 처리
-    func attendanceBtnTapped(
+    func attendanceButtonTapped(
         userId: UserID,
         session: Session,
         scheduleId: String
@@ -210,9 +211,9 @@ final class ChallengerAttendanceViewModel {
             }
             errorHandler.handle(error, context: .init(
                 feature: "Activity",
-                action: "attendanceBtnTapped",
+                action: "attendanceButtonTapped",
                 retryAction: { [weak self] in
-                    await self?.attendanceBtnTapped(
+                    await self?.attendanceButtonTapped(
                         userId: userId,
                         session: session,
                         scheduleId: scheduleId
@@ -343,7 +344,7 @@ final class ChallengerAttendanceViewModel {
     }
 
     /// 출석 버튼에 표시할 텍스트
-    func buttonStyle(for session: Session) -> String {
+    func buttonTitle(for session: Session) -> String {
         session.buttonTitle(
             isLocationAuthorized: challengerAttendanceUseCase.isLocationAuthorized,
             isInsideGeofence: challengerAttendanceUseCase.isInsideGeofence,

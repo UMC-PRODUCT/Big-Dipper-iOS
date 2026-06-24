@@ -203,7 +203,7 @@ struct ChallengerAttendanceViewModelGPSTests {
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
 
-        await viewModel.attendanceBtnTapped(
+        await viewModel.attendanceButtonTapped(
             userId: UserID(value: "U-1"),
             session: session,
             scheduleId: "42"
@@ -222,7 +222,7 @@ struct ChallengerAttendanceViewModelGPSTests {
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
 
-        await viewModel.attendanceBtnTapped(
+        await viewModel.attendanceButtonTapped(
             userId: UserID(value: "U-3"),
             session: session,
             scheduleId: "42"
@@ -244,7 +244,7 @@ struct ChallengerAttendanceViewModelGPSTests {
         let viewModel = makeViewModel(useCase: useCase, errorHandler: errorHandler)
         let session = makeSession()
 
-        await viewModel.attendanceBtnTapped(
+        await viewModel.attendanceButtonTapped(
             userId: UserID(value: "U-1"),
             session: session,
             scheduleId: "42"
@@ -263,7 +263,7 @@ struct ChallengerAttendanceViewModelGPSTests {
         let viewModel = makeViewModel(useCase: useCase, errorHandler: errorHandler)
         let session = makeSession()
 
-        await viewModel.attendanceBtnTapped(
+        await viewModel.attendanceButtonTapped(
             userId: UserID(value: "U-1"),
             session: session,
             scheduleId: "42"
@@ -281,7 +281,7 @@ struct ChallengerAttendanceViewModelGPSTests {
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession(initialAttendance: previous)
 
-        await viewModel.attendanceBtnTapped(
+        await viewModel.attendanceButtonTapped(
             userId: UserID(value: "U-1"),
             session: session,
             scheduleId: "42"
@@ -662,7 +662,7 @@ struct ChallengerAttendanceViewModelDelegationTests {
         useCase.timeWindowToReturn = .onTime
         let viewModel = makeViewModel(useCase: useCase)
 
-        #expect(viewModel.buttonStyle(for: makeSession()) == "현 위치로 출석체크")
+        #expect(viewModel.buttonTitle(for: makeSession()) == "현 위치로 출석체크")
     }
 
     @Test("위치 권한 없음 → '위치 권한 필요'")
@@ -672,7 +672,7 @@ struct ChallengerAttendanceViewModelDelegationTests {
         useCase.isLocationAuthorized = false
         let viewModel = makeViewModel(useCase: useCase)
 
-        #expect(viewModel.buttonStyle(for: makeSession()) == "위치 권한 필요")
+        #expect(viewModel.buttonTitle(for: makeSession()) == "위치 권한 필요")
     }
 
     @Test("정시 + 권한 + 지오펜스 내부 → 출석 요청 가능")
