@@ -42,3 +42,29 @@ Git Flow + **연속 브랜치 파생** 지원
 - main/develop 직접 푸시 금지
 - Squash and Merge 사용
 - **배포 PR 예외**: `testFlight`, `release` 브랜치로의 PR은 **Merge Commit** 사용 (커밋 히스토리 동기화를 위해)
+
+## 이슈 생성 규칙
+
+이슈는 **제목 접두사 + 라벨 + 이슈 Type**을 함께 채워서 생성한다. (`/create-issue` 스킬이 자동화)
+
+| 템플릿 | 제목 접두사 | 라벨 | 이슈 Type |
+|--------|------------|------|-----------|
+| 버그 수정 | `🐛 Bug: ` | `:bug: Bug` | `Bug` |
+| 기능 추가 | `✨ Feature: ` | `:sparkles: Feature` | `Feature` |
+| 디자인 반영 | `🎨 Design: ` | `:lipstick: UI` | `Task` |
+| 리팩토링 | `♻️ Refactor: ` | `:hammer: Refactor` | `Task` |
+| 문서 작업 | `📄 Docs: ` | `:page_facing_up: Docs` | `Task` |
+| 기타 작업 | `🍀 ETC: ` | `:wrench: chore` | `Task` |
+
+### Type / Priority / Projects
+
+- **이슈 Type** (조직 레벨): 현재 `Task` / `Bug` / `Feature` 3종만 존재 → Bug/Feature 외 템플릿은 `Task`로 매핑.
+  `gh issue create`엔 `--type` 플래그가 없으므로(gh 2.83.1) **생성 직후 REST로 설정**한다:
+  ```bash
+  gh api --method PATCH repos/UMC-PRODUCT/umc-product-iOS/issues/{번호} -f type=Feature
+  ```
+- **Priority / Projects**: GitHub **Projects v2** 기능이라 토큰에 `project` 스코프가 있어야 설정 가능.
+  없으면 자동 생성 시 건너뛰고(Type/라벨만 적용), `gh auth refresh -s project` 후 보드 추가 + 우선순위 지정.
+  - iOS 보드 = 조직 Projects **#3 `iOS 개발 프로젝트 템플릿`**, 우선순위 필드명은 영어가 아닌 한글 **`우선순위`**.
+  - `gh project item-list` JSON은 한글 단일선택 필드를 노출하지 않음 → 설정 검증은 GraphQL `fieldValueByName("우선순위")` 사용.
+- 기본 assignee는 `@me`. 다른 담당자 지정 또는 미지정은 명시적으로 요청된 경우만.
