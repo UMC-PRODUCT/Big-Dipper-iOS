@@ -36,10 +36,10 @@ public struct NoticeReadStaticsDTO: Codable {
     /// 커스텀 디코더: 서버 응답의 숫자/문자열 타입 불일치를 유연하게 처리합니다.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.totalCount = container.decodeFlexibleString(forKey: .totalCount)
-        self.readCount = container.decodeFlexibleString(forKey: .readCount)
-        self.unreadCount = container.decodeFlexibleString(forKey: .unreadCount)
-        self.readRate = container.decodeFlexibleString(forKey: .readRate)
+        self.totalCount = container.decodeFlexibleStringOrEmpty(forKey: .totalCount)
+        self.readCount = container.decodeFlexibleStringOrEmpty(forKey: .readCount)
+        self.unreadCount = container.decodeFlexibleStringOrEmpty(forKey: .unreadCount)
+        self.readRate = container.decodeFlexibleStringOrEmpty(forKey: .readRate)
     }
 }
 
@@ -76,7 +76,7 @@ public struct NoticeReadStatusUserDTO: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.challengerId = container.decodeFlexibleString(forKey: .challengerId)
+        self.challengerId = container.decodeFlexibleStringOrEmpty(forKey: .challengerId)
         self.name = try container.decode(String.self, forKey: .name)
         self.nickname = try Self.decodeNickname(
             from: decoder,
@@ -84,9 +84,9 @@ public struct NoticeReadStatusUserDTO: Codable {
         )
         self.profileImageUrl = try? container.decodeIfPresent(String.self, forKey: .profileImageUrl)
         self.part = try container.decode(String.self, forKey: .part)
-        self.schoolId = container.decodeFlexibleString(forKey: .schoolId)
+        self.schoolId = container.decodeFlexibleStringOrEmpty(forKey: .schoolId)
         self.schoolName = try container.decode(String.self, forKey: .schoolName)
-        self.chapterId = container.decodeFlexibleString(forKey: .chapterId)
+        self.chapterId = container.decodeFlexibleStringOrEmpty(forKey: .chapterId)
         self.chapterName = try container.decode(String.self, forKey: .chapterName)
     }
 
@@ -152,7 +152,7 @@ extension NoticeReadStatusUserDTO {
 
 private extension KeyedDecodingContainer {
     /// String, Int, Double 타입 중 하나로 디코딩하여 String으로 반환 (실패 시 빈 문자열)
-    func decodeFlexibleString(forKey key: Key) -> String {
+    func decodeFlexibleStringOrEmpty(forKey key: Key) -> String {
         if let value = try? decode(String.self, forKey: key) {
             return value
         }

@@ -41,11 +41,11 @@ public struct NoticeDTO: Codable {
     /// 커스텀 디코더: 서버 응답의 타입 불일치(Int/String)를 유연하게 처리합니다.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decodeFlexibleString(forKey: .id)
+        id = try container.decodeFlexibleStringValue(forKey: .id)
         title = try container.decode(String.self, forKey: .title)
         content = try container.decode(String.self, forKey: .content)
         shouldSendNotification = try container.decodeIfPresent(Bool.self, forKey: .shouldSendNotification) ?? false
-        viewCount = try container.decodeFlexibleString(forKey: .viewCount)
+        viewCount = try container.decodeFlexibleStringValue(forKey: .viewCount)
         createdAt = try container.decode(String.self, forKey: .createdAt)
         targetInfo = try container.decode(NoticeTargetInfoDTO.self, forKey: .targetInfo)
         authorChallengerId = try? container.decode(String.self, forKey: .authorChallengerId)
@@ -201,7 +201,7 @@ private extension String {
 
 private extension KeyedDecodingContainer {
     /// String/Int/Double 타입을 모두 String으로 디코딩합니다.
-    func decodeFlexibleString(forKey key: Key) throws -> String {
+    func decodeFlexibleStringValue(forKey key: Key) throws -> String {
         if let value = try? decode(String.self, forKey: key) {
             return value
         }
