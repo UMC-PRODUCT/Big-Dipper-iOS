@@ -11,8 +11,8 @@ import SwiftUI
 // MARK: - Generation
 /// 기수 모델
 struct Generation: Identifiable, Equatable, Hashable {
-    let value: String
-    var id: String { value }
+    let value: Int
+    var id: Int { value }
     var title: String { "\(value)기" }
 }
 
