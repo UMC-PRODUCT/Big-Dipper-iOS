@@ -14,8 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **목적**: 동아리 운영 도구 일원화 (디스코드/구글시트/노션 분산 문제 해결)
 - **주요 모듈**: 인증/온보딩, 홈 대시보드, 공지사항, 운영/학교 관리, 스터디/활동, 커뮤니티, 마이페이지
 - **Killer Features**: The Ping (공지 수신 확인), Mobile-First Admin, GPS 기반 스마트 출석
-- **현재 버전**: 1.7.0
-- **두 빌드 축**: `AppProduct/`(레거시 xcodeproj) + `UMCApp/`(Tuist) — **신규 작업은 `UMCApp/` 기본**
+- **현재 버전**: 2.2.0 (최신 릴리즈 태그 `v2.2.0`)
+- **두 빌드 축**: `AppProduct/`(레거시 xcodeproj, **`v2.2.0`에 동결 — 수정 금지**) + `UMCApp/`(Tuist) — **모든 신규·유지보수·이식 작업은 `UMCApp/`에서만 수행** (절대 규칙 #9 참조)
 
 ## 아키텍처 한눈에
 
@@ -46,6 +46,11 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
 6. **Network Router에 인라인 딕셔너리 금지** — 파라미터는 Query/Body DTO로 캡슐화.
 7. **식별자에 의미 없는 숫자 접미사 금지** — `text1`/`btn2Color` 등 금지, 역할이 드러나는 이름 부여.
 8. **커밋 메시지에 `Co-Authored-By` 라인 절대 추가 금지.**
+9. **`AppProduct/`(레거시)는 `v2.2.0` 릴리즈 상태로 동결 — 절대 수정 금지.**
+   PR 피드백 반영·버그 수정·리팩터·이식·마이그레이션 등 **어떤 작업에서도 `AppProduct/` 하위 파일을 절대 건드리지 않는다.** 모든 작업은 `UMCApp/`(Tuist)에서만 수행한다.
+   - 위 절대 규칙·코딩 규약(특히 #2 서버 정수 `String` 통일 등)은 **`UMCApp/`(활성 코드베이스)에만** 적용된다. AppProduct는 동결 상태이므로 이런 규칙을 소급 적용하려고 손대서도 안 된다.
+   - 실수로 `AppProduct/`가 변경되면 즉시 `git restore --source=v2.2.0 -- AppProduct/<경로>` 로 릴리즈 상태로 되돌린다.
+   - 유일한 예외: 메인테이너가 **명시적으로 AppProduct 수정을 지시한 경우에만** 진행. 그 외에는 예외 없음.
 
 ## 코딩 스타일 (요약)
 
@@ -65,10 +70,10 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
 ## 빌드 명령 (요약)
 
 ```bash
-# AppProduct (xcodeproj)
+# AppProduct (xcodeproj) — v2.2.0 동결. 열람/참고 전용, 수정 금지 (절대 규칙 #9)
 open AppProduct/AppProduct.xcodeproj
 
-# UMCApp (Tuist) — 표준 진입점은 Makefile
+# UMCApp (Tuist) — 표준 진입점은 Makefile. 모든 작업은 여기서.
 cd UMCApp && make open      # generate + Xcode 열기
 cd UMCApp && make test      # 테스트
 cd UMCApp && make doctor    # 환경 진단
