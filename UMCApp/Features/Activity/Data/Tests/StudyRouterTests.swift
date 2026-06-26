@@ -212,3 +212,207 @@ struct StudyRouterTests {
         #expect(parameters.count == 1)
     }
 }
+
+// MARK: - CRUD Helpers
+
+private func makeCreateBody() -> StudyGroupCreateRequestDTO {
+    StudyGroupCreateRequestDTO(
+        gisuId: "7",
+        name: "iOS 스터디",
+        part: "IOS",
+        memberIds: ["1", "2"],
+        mentorIds: ["3"]
+    )
+}
+
+private func makeScheduleBody() -> StudyGroupScheduleCreateRequestDTO {
+    StudyGroupScheduleCreateRequestDTO(
+        scheduleId: "10",
+        studyGroupId: "42",
+        weeklyCurriculumId: "5"
+    )
+}
+
+private func encodeToJSON(_ value: some Encodable) throws -> [String: Any] {
+    let data = try JSONEncoder().encode(value)
+    let obj = try JSONSerialization.jsonObject(with: data)
+    return try #require(obj as? [String: Any])
+}
+
+// MARK: - Suite: CRUD/연결 path·method 계약
+
+@Suite("StudyRouter — CRUD/연결 엔드포인트 매핑 (API 계약)")
+struct StudyRouterCRUDPathMethodTests {
+
+    // MARK: - Path
+
+    @Test("각 CRUD/연결 case 는 명세된 path 로 매핑된다")
+    func crudPathMapsEachCase() {
+        // Given
+        let create = StudyRouter.createStudyGroup(body: makeCreateBody())
+        let update = StudyRouter.updateStudyGroup(
+            groupId: "42", body: StudyGroupUpdateRequestDTO(name: "n")
+        )
+        let delete = StudyRouter.deleteStudyGroup(groupId: "42")
+        let addMember = StudyRouter.addStudyGroupMember(groupId: "42", memberId: "7")
+        let removeMember = StudyRouter.removeStudyGroupMember(groupId: "42", memberId: "7")
+        let addMentor = StudyRouter.addStudyGroupMentor(groupId: "42", mentorId: "9")
+        let removeMentor = StudyRouter.removeStudyGroupMentor(groupId: "42", mentorId: "9")
+        let link = StudyRouter.linkStudyGroupSchedule(body: makeScheduleBody())
+
+        // Then
+        #expect(create.path == "/api/v1/study-groups")
+        #expect(update.path == "/api/v1/study-groups/42")
+        #expect(delete.path == "/api/v1/study-groups/42")
+        #expect(addMember.path == "/api/v1/study-groups/42/members/7")
+        #expect(removeMember.path == "/api/v1/study-groups/42/members/7")
+        #expect(addMentor.path == "/api/v1/study-groups/42/mentors/9")
+        #expect(removeMentor.path == "/api/v1/study-groups/42/mentors/9")
+        #expect(link.path == "/api/v1/study-groups/schedules")
+    }
+
+    // MARK: - Method
+
+    @Test(
+        "POST case 의 HTTP method 는 POST 이다",
+        arguments: [
+            StudyRouter.createStudyGroup(body: makeCreateBody()),
+            StudyRouter.linkStudyGroupSchedule(body: makeScheduleBody())
+        ]
+    )
+    func methodIsPost(router: StudyRouter) {
+        #expect(router.method == .post)
+    }
+
+    @Test(
+        "PATCH case 의 HTTP method 는 PATCH 이다",
+        arguments: [
+            StudyRouter.updateStudyGroup(
+                groupId: "42", body: StudyGroupUpdateRequestDTO(name: "n")
+            ),
+            StudyRouter.addStudyGroupMember(groupId: "42", memberId: "7"),
+            StudyRouter.addStudyGroupMentor(groupId: "42", mentorId: "9")
+        ]
+    )
+    func methodIsPatch(router: StudyRouter) {
+        #expect(router.method == .patch)
+    }
+
+    @Test(
+        "DELETE case 의 HTTP method 는 DELETE 이다",
+        arguments: [
+            StudyRouter.deleteStudyGroup(groupId: "42"),
+            StudyRouter.removeStudyGroupMember(groupId: "42", memberId: "7"),
+            StudyRouter.removeStudyGroupMentor(groupId: "42", mentorId: "9")
+        ]
+    )
+    func methodIsDelete(router: StudyRouter) {
+        #expect(router.method == .delete)
+    }
+}
+
+// MARK: - Suite: CRUD/연결 task 형태 계약
+
+@Suite("StudyRouter — CRUD/연결 task 형태 계약")
+struct StudyRouterCRUDTaskTests {
+
+    @Test("createStudyGroup 의 task 는 requestJSONEncodable 이다")
+    func createStudyGroupTaskIsJSONEncodable() {
+        let router = StudyRouter.createStudyGroup(body: makeCreateBody())
+        if case .requestJSONEncodable = router.task {
+            // 기대하는 case
+        } else {
+            Issue.record("task가 .requestJSONEncodable 여야 함 — 실제: \(router.task)")
+        }
+    }
+
+    @Test("updateStudyGroup 의 task 는 requestJSONEncodable 이다")
+    func updateStudyGroupTaskIsJSONEncodable() {
+        let router = StudyRouter.updateStudyGroup(
+            groupId: "42", body: StudyGroupUpdateRequestDTO(name: "n")
+        )
+        if case .requestJSONEncodable = router.task {
+            // 기대하는 case
+        } else {
+            Issue.record("task가 .requestJSONEncodable 여야 함 — 실제: \(router.task)")
+        }
+    }
+
+    @Test("linkStudyGroupSchedule 의 task 는 requestJSONEncodable 이다")
+    func linkStudyGroupScheduleTaskIsJSONEncodable() {
+        let router = StudyRouter.linkStudyGroupSchedule(body: makeScheduleBody())
+        if case .requestJSONEncodable = router.task {
+            // 기대하는 case
+        } else {
+            Issue.record("task가 .requestJSONEncodable 여야 함 — 실제: \(router.task)")
+        }
+    }
+
+    @Test(
+        "결과 없는 변경(delete/멤버·멘토) case 의 task 는 requestPlain 이다",
+        arguments: [
+            StudyRouter.deleteStudyGroup(groupId: "42"),
+            StudyRouter.addStudyGroupMember(groupId: "42", memberId: "7"),
+            StudyRouter.removeStudyGroupMember(groupId: "42", memberId: "7"),
+            StudyRouter.addStudyGroupMentor(groupId: "42", mentorId: "9"),
+            StudyRouter.removeStudyGroupMentor(groupId: "42", mentorId: "9")
+        ]
+    )
+    func voidMutationTaskIsPlain(router: StudyRouter) {
+        if case .requestPlain = router.task {
+            // 기대하는 case
+        } else {
+            Issue.record("task가 .requestPlain 여야 함 — 실제: \(router.task)")
+        }
+    }
+}
+
+// MARK: - Suite: Request DTO JSON 인코딩 계약
+
+@Suite("StudyRouter — Request DTO JSON 인코딩 계약")
+struct StudyRouterRequestDTOEncodingTests {
+
+    @Test("StudyGroupCreateRequestDTO — 식별자를 문자열/문자열 배열로 직렬화한다 (정수 아님)")
+    func createDTOEncodesIdentifiersAsStrings() throws {
+        let dto = StudyGroupCreateRequestDTO(
+            gisuId: "7",
+            name: "iOS 스터디",
+            part: "IOS",
+            memberIds: ["1", "2"],
+            mentorIds: ["3"]
+        )
+        let json = try encodeToJSON(dto)
+
+        // 핵심 계약: 식별자는 String/[String] 이며 숫자가 아님
+        #expect(json["gisuId"] as? String == "7")
+        #expect(json["gisuId"] as? Int == nil)
+        #expect(json["memberIds"] as? [String] == ["1", "2"])
+        #expect(json["mentorIds"] as? [String] == ["3"])
+        #expect(json["name"] as? String == "iOS 스터디")
+        #expect(json["part"] as? String == "IOS")
+        #expect(json.keys.count == 5)
+    }
+
+    @Test("StudyGroupUpdateRequestDTO — name 키만 인코딩한다")
+    func updateDTOEncodesNameOnly() throws {
+        let dto = StudyGroupUpdateRequestDTO(name: "새 이름")
+        let json = try encodeToJSON(dto)
+        #expect(json["name"] as? String == "새 이름")
+        #expect(json.keys.count == 1)
+    }
+
+    @Test("StudyGroupScheduleCreateRequestDTO — 세 식별자를 문자열로 직렬화한다 (정수 아님)")
+    func scheduleDTOEncodesIdentifiersAsStrings() throws {
+        let dto = StudyGroupScheduleCreateRequestDTO(
+            scheduleId: "10",
+            studyGroupId: "42",
+            weeklyCurriculumId: "5"
+        )
+        let json = try encodeToJSON(dto)
+        #expect(json["scheduleId"] as? String == "10")
+        #expect(json["studyGroupId"] as? String == "42")
+        #expect(json["weeklyCurriculumId"] as? String == "5")
+        #expect(json["scheduleId"] as? Int == nil)
+        #expect(json.keys.count == 3)
+    }
+}
