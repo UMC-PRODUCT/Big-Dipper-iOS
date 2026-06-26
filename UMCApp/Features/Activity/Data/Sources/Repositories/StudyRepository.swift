@@ -14,10 +14,10 @@ import Moya
 /// 스터디 Repository 구현체
 ///
 /// ``StudyRepositoryProtocol`` 전체를 채택한다. 조회 계열(커리큘럼/미션/주차 옵션, 운영진
-/// 스터디 그룹 조회, 챌린저 ID 해석)은 ``StudyRouter`` 조회 case 로 실구현하고, 운영진 스터디
-/// 그룹 CRUD·일정 연결은 라우터 case 가 아직 없어 미구현 에러를 던지는 스텁으로 둔다(8차에서
-/// 실구현). ``NetworkRequesting`` 으로 요청을 보낸 뒤 `APIResponse<DTO>` 를 디코딩하고
-/// `toDomain()` 으로 도메인 모델에 매핑한다.
+/// 스터디 그룹 조회, 챌린저 ID 해석)과 운영진 스터디 그룹 CRUD·일정 연결을 모두 ``StudyRouter``
+/// case 로 실구현한다. ``NetworkRequesting`` 으로 요청을 보낸 뒤 조회는 `APIResponse<DTO>` 를
+/// 디코딩해 `toDomain()` 으로 매핑하고, 결과 없는 변경(CRUD/연결)은 `APIResponse<EmptyResult>`
+/// 의 성공 여부만 검증한다.
 ///
 /// - Note: 서버 식별자는 전 레이어 `String` 으로 통일된다. 커리큘럼 조회에 필요한 현재
 ///   기수·담당 파트는 ``StudyContextProviding`` 에서 읽는다(신규 모듈에는 레거시
@@ -178,7 +178,7 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
         return records.first?.challengerId
     }
 
-    // MARK: - 운영진 스터디 그룹 CRUD (8차 실구현 — 미구현 스텁)
+    // MARK: - 운영진 스터디 그룹 CRUD / 일정 연결
 
     public func createStudyGroup(
         gisuId: String,
@@ -187,38 +187,54 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
         memberIds: [String],
         mentorIds: [String]
     ) async throws {
-        // TODO: 8차 CRUD 구현 - [26.06.24] jaewon
-        throw StudyRepositoryError.unimplemented(operation: "createStudyGroup")
+        try await performVoidRequest(
+            .createStudyGroup(
+                body: StudyGroupCreateRequestDTO(
+                    gisuId: gisuId,
+                    name: name,
+                    part: part.apiValue,
+                    memberIds: memberIds,
+                    mentorIds: mentorIds
+                )
+            )
+        )
     }
 
     public func updateStudyGroup(groupId: String, name: String) async throws {
-        // TODO: 8차 CRUD 구현 - [26.06.24] jaewon
-        throw StudyRepositoryError.unimplemented(operation: "updateStudyGroup")
+        try await performVoidRequest(
+            .updateStudyGroup(
+                groupId: groupId,
+                body: StudyGroupUpdateRequestDTO(name: name)
+            )
+        )
     }
 
     public func deleteStudyGroup(groupId: String) async throws {
-        // TODO: 8차 CRUD 구현 - [26.06.24] jaewon
-        throw StudyRepositoryError.unimplemented(operation: "deleteStudyGroup")
+        try await performVoidRequest(.deleteStudyGroup(groupId: groupId))
     }
 
     public func addStudyGroupMember(groupId: String, memberId: String) async throws {
-        // TODO: 8차 CRUD 구현 - [26.06.24] jaewon
-        throw StudyRepositoryError.unimplemented(operation: "addStudyGroupMember")
+        try await performVoidRequest(
+            .addStudyGroupMember(groupId: groupId, memberId: memberId)
+        )
     }
 
     public func removeStudyGroupMember(groupId: String, memberId: String) async throws {
-        // TODO: 8차 CRUD 구현 - [26.06.24] jaewon
-        throw StudyRepositoryError.unimplemented(operation: "removeStudyGroupMember")
+        try await performVoidRequest(
+            .removeStudyGroupMember(groupId: groupId, memberId: memberId)
+        )
     }
 
     public func addStudyGroupMentor(groupId: String, mentorId: String) async throws {
-        // TODO: 8차 CRUD 구현 - [26.06.24] jaewon
-        throw StudyRepositoryError.unimplemented(operation: "addStudyGroupMentor")
+        try await performVoidRequest(
+            .addStudyGroupMentor(groupId: groupId, mentorId: mentorId)
+        )
     }
 
     public func removeStudyGroupMentor(groupId: String, mentorId: String) async throws {
-        // TODO: 8차 CRUD 구현 - [26.06.24] jaewon
-        throw StudyRepositoryError.unimplemented(operation: "removeStudyGroupMentor")
+        try await performVoidRequest(
+            .removeStudyGroupMentor(groupId: groupId, mentorId: mentorId)
+        )
     }
 
     public func linkStudyGroupSchedule(
@@ -226,8 +242,15 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
         studyGroupId: String,
         weeklyCurriculumId: String
     ) async throws {
-        // TODO: 8차 CRUD 구현 - [26.06.24] jaewon
-        throw StudyRepositoryError.unimplemented(operation: "linkStudyGroupSchedule")
+        try await performVoidRequest(
+            .linkStudyGroupSchedule(
+                body: StudyGroupScheduleCreateRequestDTO(
+                    scheduleId: scheduleId,
+                    studyGroupId: studyGroupId,
+                    weeklyCurriculumId: weeklyCurriculumId
+                )
+            )
+        )
     }
 }
 
@@ -262,16 +285,23 @@ private extension StudyRepository {
         )
         return (try apiResponse.unwrap(), part)
     }
-}
 
-// MARK: - StudyRepositoryError
-
-/// ``StudyRepository`` 의 미구현 스텁 메서드가 호출됐음을 알리는 에러.
-///
-/// 운영진 스터디 그룹 CRUD·일정 연결은 라우터 case 가 추가되는 8차에서 실구현된다.
-/// 그 전까지 호출되면 본 에러를 던져 "아직 미구현" 임을 명확히 한다.
-enum StudyRepositoryError: Error, Equatable {
-
-    /// 아직 구현되지 않은 운영진 스터디 CRUD/연결 작업 (`operation`: 메서드 이름)
-    case unimplemented(operation: String)
+    /// 결과 본문이 없는 변경(CRUD/연결) 요청의 공통 호출·검증.
+    ///
+    /// 비-2xx 는 네트워크 계층(``NetworkRequesting``)에서 이미 throw 되므로, 여기 도달한
+    /// `response` 는 2xx 다. DELETE 등 일부 엔드포인트는 본문 없이 2xx 만 반환하므로 빈 본문은
+    /// 성공으로 처리하고, 본문이 있으면 `APIResponse<EmptyResult>` 로 디코딩해 `isSuccess` 만
+    /// 검증한다. 실패 응답은 ``CoreNetwork/RepositoryError/serverError(code:message:)`` 로
+    /// 승격된다.
+    func performVoidRequest(_ target: StudyRouter) async throws {
+        let response = try await networkRequesting.request(target)
+        guard !response.data.isEmpty else {
+            return
+        }
+        let apiResponse = try decoder.decode(
+            APIResponse<EmptyResult>.self,
+            from: response.data
+        )
+        try apiResponse.validateSuccess()
+    }
 }
