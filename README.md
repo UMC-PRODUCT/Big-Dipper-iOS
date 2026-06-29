@@ -49,7 +49,7 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 <img src="https://github.com/user-attachments/assets/04b68ba4-27ab-4c0c-9f72-9a2c4c6e3f9e" width="800" alt="iOS 1기 조직도">
 </div>
 
-### 🥈 2기 · 진행 예정
+### 🥈 2기 · 진행 중
 
 <div align="center">
 <img src="https://github.com/user-attachments/assets/de36bd93-9c6d-44cd-bbd1-2843103e878f" width="800" alt="iOS 2기 조직도">
@@ -72,6 +72,7 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 | 🧱 모듈 구조 (Tuist) | [Module Structure](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Module-Structure) |
 | ⚙️ 빌드 & 실행 | [Build & Run](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Build-and-Run) |
 | 🔀 Git 워크플로우 | [Git Workflow](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Git-Workflow) |
+| 🛰️ API 커버리지 (Stella) | [Stella](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Stella) |
 
 > 신규 합류자는 [Wiki Home](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki) → **빌드 & 실행** 순서로 시작하세요.
 
