@@ -29,17 +29,9 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 
 ## 🛠️ 기술 스택
 
-| 구분 | 사용 기술 |
-|------|-----------|
-| 언어 | Swift 6.3 |
-| UI | SwiftUI · iOS 26 Liquid Glass |
-| 아키텍처 | Feature-based Modular + Clean Architecture + Observation |
-| 상태 관리 | `@Observable` · `Loadable` |
-| 네트워크 | Moya 15 |
-| 이미지 | Kingfisher 8 |
-| 저장소 | SwiftData (+ CloudKit 폴백) |
-| 모듈 · 빌드 | Tuist (mise로 버전 고정) |
-| 최소 사양 | iOS 26.0+ · Xcode 26.2 |
+<div align="center">
+<img src="https://github.com/user-attachments/assets/40c891f7-9e6c-4f02-990c-a2e5f2891c2a" width="100%" alt="기술 스택">
+</div>
 
 ## 🏢 iOS 팀 조직도
 
