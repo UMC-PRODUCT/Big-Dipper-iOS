@@ -43,11 +43,16 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 
 ## 🏢 iOS 팀 조직도
 
+### 🥇 1기 · 2025.12.27 – 2026.02.20
+
 <div align="center">
+<img src="https://github.com/user-attachments/assets/04b68ba4-27ab-4c0c-9f72-9a2c4c6e3f9e" width="800" alt="iOS 1기 조직도">
+</div>
 
-<!-- TODO(#922): 조직도 이미지 URL 확정 시 아래 자리에 <img> 삽입 -->
-> 🏢 **iOS 팀 조직도 이미지 추가 예정** — URL 확정 시 이 자리에 삽입됩니다.
+### 🥈 2기 · 진행 예정
 
+<div align="center">
+<img src="https://github.com/user-attachments/assets/de36bd93-9c6d-44cd-bbd1-2843103e878f" width="800" alt="iOS 2기 조직도">
 </div>
 
 > 기수별 팀원 구성(사진·역할·GitHub)은 [Wiki › Team](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Team)에서,
