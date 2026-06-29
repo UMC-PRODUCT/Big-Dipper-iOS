@@ -41,25 +41,17 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 | 모듈 · 빌드 | Tuist (mise로 버전 고정) |
 | 최소 사양 | iOS 26.0+ · Xcode 26.2 |
 
-## 👬 팀원 소개
+## 🏢 iOS 팀 조직도
 
-### 🥇 1기 · 2025.12.27 – 2026.02.20
+<div align="center">
 
-| 리버 / 이재원 | 제옹 / 정의찬 | 마티 / 김미주 | 소피 / 이예지 |
-|:---:|:---:|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/a4ddee14-419e-41da-a89a-e2c2fb23a03f" width="200"> | <img src="https://github.com/user-attachments/assets/00ba6ec3-d252-4e93-b467-b0d0ba654fb4" width="200"> | <img src="https://github.com/user-attachments/assets/7842f405-80c3-4394-8978-617c020f47d5" width="200"> | <img src="https://github.com/user-attachments/assets/1749df32-f292-4613-916d-b88cf2390cd2" width="200"> |
-| PL | iOS · PM | iOS | iOS |
-| [@jwon0523](https://github.com/jwon0523) | [@JEONG-J](https://github.com/JEONG-J) | [@alwn8918](https://github.com/alwn8918) | [@LeeYeJi546](https://github.com/LeeYeJi546) |
+<!-- TODO(#922): 조직도 이미지 URL 확정 시 아래 자리에 <img> 삽입 -->
+> 🏢 **iOS 팀 조직도 이미지 추가 예정** — URL 확정 시 이 자리에 삽입됩니다.
 
-### 🥈 2기 · 진행 예정
+</div>
 
-| 제옹 / 정의찬 | 리버 / 이재원 | 소피 / 이예지 | 원 / 김동민 | 도도 / 김도연 |
-|:---:|:---:|:---:|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/00ba6ec3-d252-4e93-b467-b0d0ba654fb4" width="200"> | <img src="https://github.com/user-attachments/assets/a4ddee14-419e-41da-a89a-e2c2fb23a03f" width="200"> | <img src="https://github.com/user-attachments/assets/1749df32-f292-4613-916d-b88cf2390cd2" width="200"> | _사진 추후 추가_ | _사진 추후 추가_ |
-| PL | iOS | iOS | iOS | iOS |
-| [@JEONG-J](https://github.com/JEONG-J) | [@jwon0523](https://github.com/jwon0523) | [@LeeYeJi546](https://github.com/LeeYeJi546) | _추후 추가_ | _추후 추가_ |
-
-> 기수별 신규 기능·운영 기록은 [기수 & 릴리스 히스토리](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Release-History)에서 누적 관리합니다.
+> 기수별 팀원 구성(사진·역할·GitHub)은 [Wiki › Team](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Team)에서,
+> 신규 기능·운영 기록은 [Wiki › Release History](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Release-History)에서 확인하세요.
 
 ## 📚 개발 문서 (Wiki)
 
