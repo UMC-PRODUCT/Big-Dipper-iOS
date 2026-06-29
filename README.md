@@ -30,7 +30,7 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 ## 🛠️ 기술 스택
 
 <div align="center">
-<img src="https://github.com/user-attachments/assets/40c891f7-9e6c-4f02-990c-a2e5f2891c2a" width="100%" alt="기술 스택">
+<img src="https://github.com/user-attachments/assets/a50a7bd2-cf78-4d35-a6a2-a62637311270" width="100%" alt="기술 스택">
 </div>
 
 ## 🏢 iOS 팀 조직도
