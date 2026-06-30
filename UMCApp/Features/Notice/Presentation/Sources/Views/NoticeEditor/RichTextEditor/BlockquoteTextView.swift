@@ -8,7 +8,7 @@
 import UIKit
 
 /// 인용구 속성이 적용된 단락에 왼쪽 세로 경계선을 렌더링하는 UITextView 서브클래스입니다.
-final class BlockquoteTextView: UITextView {
+public final class BlockquoteTextView: UITextView {
 
     // MARK: - Property
 
@@ -30,7 +30,7 @@ final class BlockquoteTextView: UITextView {
 
     // MARK: - Layout
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         if needsBlockquoteRefresh {
             needsBlockquoteRefresh = false
@@ -41,7 +41,7 @@ final class BlockquoteTextView: UITextView {
     // MARK: - Blockquote Rendering
 
     /// 다음 레이아웃 패스에서 인용구 경계선을 갱신하도록 예약합니다.
-    func setNeedsBlockquoteRefresh() {
+    public func setNeedsBlockquoteRefresh() {
         needsBlockquoteRefresh = true
         setNeedsLayout()
     }
@@ -49,7 +49,7 @@ final class BlockquoteTextView: UITextView {
     /// 텍스트 스토리지에서 인용구 속성을 읽어 왼쪽 경계선 레이어를 즉시 업데이트합니다.
     ///
     /// 연속된 인용구 단락을 하나의 그룹으로 병합하여 단일 경계선을 그립니다.
-    func refreshBlockquoteBorders() {
+    public func refreshBlockquoteBorders() {
         needsBlockquoteRefresh = false
         CATransaction.begin()
         CATransaction.setDisableActions(true)
