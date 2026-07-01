@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 
 /// TokenRefreshService 프로토콜의 실제 구현체입니다.
 ///
@@ -58,7 +59,13 @@ struct TokenRefreshServiceImpl: TokenRefreshService {
         )
 
         // 3. 네트워크 요청 실행
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let urlError as URLError where urlError.code != .cancelled {
+            throw NetworkError.from(urlError: urlError)
+        }
 
         // 4. HTTPURLResponse 형변환
         guard let httpResponse = response as? HTTPURLResponse else {
