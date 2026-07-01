@@ -153,6 +153,19 @@ struct NetworkClientTests {
         }
     }
 
+    @Test("refresh 중 발생한 NetworkError(noNetwork)는 tokenRefreshFailed 로 감싸지 않고 그대로 전파된다")
+    func refreshPassthroughNetworkError() async {
+        let store = MockTokenStore(accessToken: "OLD", refreshToken: "REFRESH")
+        let refresh = MockTokenRefreshService(behavior: .failureError(.noNetwork))
+        let client = makeClient(store: store, refresh: refresh)
+
+        StubURLProtocol.handler = { _ in (Data(), 401, nil) }
+
+        await #expect(throws: NetworkError.noNetwork) {
+            _ = try await client.request(URLRequest(url: self.testURL))
+        }
+    }
+
     @Test("리프레시 토큰이 없으면 NetworkError.noRefreshToken을 throw한다")
     func noRefreshTokenError() async {
         let store = MockTokenStore(accessToken: "OLD", refreshToken: nil)
@@ -253,6 +266,45 @@ struct NetworkClientTests {
         StubURLProtocol.handler = { _ in (Data(), 500, nil) }
 
         await #expect(throws: NetworkError.requestFailed(statusCode: 500, data: nil)) {
+            _ = try await client.request(URLRequest(url: self.testURL))
+        }
+    }
+
+    @Test("연결 없음 URLError 는 NetworkError.noNetwork 로 흡수된다")
+    func absorbsNoNetwork() async {
+        let store = MockTokenStore(accessToken: "A", refreshToken: "R")
+        let refresh = MockTokenRefreshService(behavior: .success(TokenPair(accessToken: "A", refreshToken: "R")))
+        let client = makeClient(store: store, refresh: refresh)
+
+        StubURLProtocol.handler = { _ in throw URLError(.notConnectedToInternet) }
+
+        await #expect(throws: NetworkError.noNetwork) {
+            _ = try await client.request(URLRequest(url: self.testURL))
+        }
+    }
+
+    @Test("타임아웃 URLError 는 NetworkError.timeout 로 흡수된다")
+    func absorbsTimeout() async {
+        let store = MockTokenStore(accessToken: "A", refreshToken: "R")
+        let refresh = MockTokenRefreshService(behavior: .success(TokenPair(accessToken: "A", refreshToken: "R")))
+        let client = makeClient(store: store, refresh: refresh)
+
+        StubURLProtocol.handler = { _ in throw URLError(.timedOut) }
+
+        await #expect(throws: NetworkError.timeout) {
+            _ = try await client.request(URLRequest(url: self.testURL))
+        }
+    }
+
+    @Test("요청 취소(URLError.cancelled)는 흡수하지 않고 URLError 그대로 전파한다")
+    func doesNotAbsorbCancellation() async {
+        let store = MockTokenStore(accessToken: "A", refreshToken: "R")
+        let refresh = MockTokenRefreshService(behavior: .success(TokenPair(accessToken: "A", refreshToken: "R")))
+        let client = makeClient(store: store, refresh: refresh)
+
+        StubURLProtocol.handler = { _ in throw URLError(.cancelled) }
+
+        await #expect(throws: URLError.self) {
             _ = try await client.request(URLRequest(url: self.testURL))
         }
     }
