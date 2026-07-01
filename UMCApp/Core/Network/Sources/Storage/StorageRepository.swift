@@ -16,15 +16,18 @@ public final class StorageRepository: StorageRepositoryProtocol, @unchecked Send
     // MARK: - Property
 
     private let adapter: MoyaNetworkAdapter
+    private let session: URLSession
     private let decoder: JSONDecoder
 
     // MARK: - Init
 
     public init(
         adapter: MoyaNetworkAdapter,
+        session: URLSession = .shared,
         decoder: JSONDecoder = JSONDecoder()
     ) {
         self.adapter = adapter
+        self.session = session
         self.decoder = decoder
     }
 
@@ -81,7 +84,12 @@ public final class StorageRepository: StorageRepositoryProtocol, @unchecked Send
             request.setValue(contentType ?? "application/octet-stream", forHTTPHeaderField: "Content-Type")
         }
 
-        let (_, response) = try await URLSession.shared.upload(for: request, from: data)
+        let response: URLResponse
+        do {
+            (_, response) = try await session.upload(for: request, from: data)
+        } catch let urlError as URLError where urlError.code != .cancelled {
+            throw NetworkError.from(urlError: urlError)
+        }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
