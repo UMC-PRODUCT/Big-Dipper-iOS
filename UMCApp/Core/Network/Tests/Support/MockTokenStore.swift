@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 @testable import CoreNetwork
 
 /// 메모리 기반 Mock TokenStore — Keychain을 거치지 않고 동작 확인용
@@ -45,6 +46,8 @@ actor MockTokenRefreshService: TokenRefreshService {
         case failure(MockRefreshError)
         /// 호출 시 sleep 후 success — single-flight 테스트에 사용
         case delayedSuccess(TokenPair, nanoseconds: UInt64)
+        /// NetworkError 를 던짐 — NetworkClient passthrough 검증용
+        case failureError(NetworkError)
     }
 
     private var behavior: Behavior
@@ -71,6 +74,8 @@ actor MockTokenRefreshService: TokenRefreshService {
         case .delayedSuccess(let pair, let nanoseconds):
             try? await Task.sleep(nanoseconds: nanoseconds)
             return pair
+        case .failureError(let error):
+            throw error
         }
     }
 }
