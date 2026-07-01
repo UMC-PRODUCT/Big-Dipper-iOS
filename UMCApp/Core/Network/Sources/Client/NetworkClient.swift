@@ -103,7 +103,13 @@ extension NetworkClient {
         }
 
         // 2. 네트워크 요청 실행
-        let (data, response) = try await session.data(for: authenticatedRequest)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: authenticatedRequest)
+        } catch let urlError as URLError where urlError.code != .cancelled {
+            throw NetworkError.from(urlError: urlError)
+        }
 
         // 3. HTTPURLResponse로 형변환
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -150,6 +156,8 @@ extension NetworkClient {
                     refreshToken: tokenPair.refreshToken
                 )
                 return tokenPair
+            } catch let networkError as NetworkError {
+                throw networkError  // 전송 계층 에러(noNetwork/timeout 등)는 그대로 전파
             } catch {
                 throw NetworkError.tokenRefreshFailed(reason: error.localizedDescription)
             }
