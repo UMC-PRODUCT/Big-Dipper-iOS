@@ -202,14 +202,7 @@ public final class ErrorHandler {
     }
 
     private func convertURLError(_ error: URLError) -> NetworkError {
-        switch error.code {
-        case .notConnectedToInternet, .networkConnectionLost:
-            return .noNetwork
-        case .timedOut:
-            return .timeout
-        default:
-            return .requestFailed(statusCode: error.errorCode, data: nil)
-        }
+        .from(urlError: error)
     }
 
     private func describeGenerationError(_ error: LanguageModelSession.GenerationError) -> String {
