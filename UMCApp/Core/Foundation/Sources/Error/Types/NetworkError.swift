@@ -103,6 +103,27 @@ public enum NetworkError: Error, Sendable, Equatable {
     /// - 해결 방법: 네트워크 상태 확인 후 재시도
     case timeout
 
+    /// 400 Bad Request — 요청 형식/파라미터 오류
+    case badRequest(data: Data?)
+
+    /// 403 Forbidden — 권한 없음
+    case forbidden(data: Data?)
+
+    /// 404 Not Found — 리소스 없음
+    case notFound(data: Data?)
+
+    /// 409 Conflict — 상태 충돌(중복 등)
+    case conflict(data: Data?)
+
+    /// 422 Unprocessable Content — 검증 실패
+    case unprocessable(data: Data?)
+
+    /// 5xx — 서버 내부 오류(공통)
+    case serverError(statusCode: Int, data: Data?)
+
+    /// 분류 불가 전송 계층 오류(URLError 중 noNetwork/timeout 외)
+    case transport(reason: String)
+
     // MARK: - Equatable
 
     /// Equatable 비교 구현
@@ -126,6 +147,20 @@ public enum NetworkError: Error, Sendable, Equatable {
             return true
         case (.timeout, .timeout):
             return true
+        case (.badRequest, .badRequest):
+            return true
+        case (.forbidden, .forbidden):
+            return true
+        case (.notFound, .notFound):
+            return true
+        case (.conflict, .conflict):
+            return true
+        case (.unprocessable, .unprocessable):
+            return true
+        case (.serverError(let lCode, _), .serverError(let rCode, _)):
+            return lCode == rCode  // Data는 비교 제외
+        case (.transport(let lReason), .transport(let rReason)):
+            return lReason == rReason
         default:
             return false
         }
@@ -156,6 +191,20 @@ extension NetworkError: LocalizedError {
             return "네트워크 연결이 없습니다."
         case .timeout:
             return "요청 시간이 초과되었습니다."
+        case .badRequest:
+            return "잘못된 요청입니다. (400)"
+        case .forbidden:
+            return "권한이 없습니다. (403)"
+        case .notFound:
+            return "리소스를 찾을 수 없습니다. (404)"
+        case .conflict:
+            return "요청이 충돌했습니다. (409)"
+        case .unprocessable:
+            return "요청을 처리할 수 없습니다. (422)"
+        case .serverError(let statusCode, _):
+            return "서버 오류 status: \(statusCode)"
+        case .transport(let reason):
+            return "전송 오류: \(reason)"
         }
     }
 
@@ -186,6 +235,17 @@ extension NetworkError: LocalizedError {
             return "인터넷 연결을 확인해주세요."
         case .timeout:
             return "서버 응답이 늦어지고 있어요. 잠시 후 다시 시도해주세요."
+        case .badRequest(let data), .notFound(let data),
+             .conflict(let data), .unprocessable(let data):
+            return Self.parseServerMessage(from: data)
+                ?? "요청을 처리할 수 없습니다. 다시 시도해주세요."
+        case .forbidden(let data):
+            return Self.parseServerMessage(from: data) ?? "접근 권한이 없습니다."
+        case .serverError(_, let data):
+            return Self.parseServerMessage(from: data)
+                ?? "서버에 일시적인 오류가 발생했습니다."
+        case .transport:
+            return "네트워크 연결이 원활하지 않습니다."
         }
     }
 
@@ -218,6 +278,10 @@ extension NetworkError: LocalizedError {
             return .warning
         case .noNetwork, .timeout:
             return .warning
+        case .serverError:
+            return .critical
+        case .badRequest, .forbidden, .notFound, .conflict, .unprocessable, .transport:
+            return .warning
         }
     }
 
@@ -239,6 +303,10 @@ extension NetworkError: LocalizedError {
             return true  // 네트워크 연결 재시도 가능
         case .noNetwork, .timeout:
             return true
+        case .serverError, .transport:
+            return true
+        case .badRequest, .forbidden, .notFound, .conflict, .unprocessable:
+            return false
         }
     }
 }
