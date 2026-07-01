@@ -24,12 +24,14 @@ public struct MoyaNetworkAdapter {
 
     private let networkClient: NetworkClient
     private let baseURL: URL
+    private let session: URLSession
 
     // MARK: - Init
 
-    public init(networkClient: NetworkClient, baseURL: URL) {
+    public init(networkClient: NetworkClient, baseURL: URL, session: URLSession = .shared) {
         self.networkClient = networkClient
         self.baseURL = baseURL
+        self.session = session
     }
 
     // MARK: - Public API
@@ -69,17 +71,20 @@ public struct MoyaNetworkAdapter {
         NetworkVerboseLogger.logRequest(urlRequest, authRequired: false, requestID: requestID)
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: urlRequest)
+            let data: Data
+            let response: URLResponse
+            do {
+                (data, response) = try await session.data(for: urlRequest)
+            } catch let urlError as URLError where urlError.code != .cancelled {
+                throw NetworkError.from(urlError: urlError)
+            }
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.invalidResponse
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
-                throw NetworkError.requestFailed(
-                    statusCode: httpResponse.statusCode,
-                    data: data
-                )
+                throw NetworkError.requestFailed(statusCode: httpResponse.statusCode, data: data)
             }
 
             let moyaResponse = Response(
@@ -300,9 +305,9 @@ private enum NetworkVerboseLogger {
         print("  url: \(url)")
         printSection("error", String(describing: error))
 
-        if case let NetworkError.requestFailed(statusCode, data) = error {
+        if let networkError = error as? NetworkError, let statusCode = networkError.httpStatusCode {
             print("  status: \(statusCode)")
-            if let data, !data.isEmpty {
+            if let data = networkError.responseBody, !data.isEmpty {
                 printSection("error body", formattedBody(from: data, shortenLongStrings: true))
             } else {
                 printSection("error body", "(empty)")
