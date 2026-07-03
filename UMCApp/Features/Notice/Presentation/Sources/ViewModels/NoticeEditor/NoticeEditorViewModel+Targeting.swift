@@ -41,7 +41,7 @@ extension NoticeEditorViewModel {
     }
 
     /// 뷰에서 사용자 컨텍스트(AppStorage)를 전달받아 반영합니다.
-    public func updateUserContext(gisuId: Int, chapterId: Int) {
+    public func updateUserContext(gisuId: String, chapterId: String) {
         userGisuId = gisuId
         userChapterId = chapterId
         refreshSelectedGenerationValue()
@@ -70,7 +70,7 @@ extension NoticeEditorViewModel {
             case .central:
                 let canSelectBranch = visibleSubCategories.contains(.branch)
                 let canSelectSchool = visibleSubCategories.contains(.school)
-                let hasResolvedGisu = resolvedGisuId > 0
+                let hasResolvedGisu = (Int(resolvedGisuId) ?? 0) > 0
 
                 if canSelectBranch, canSelectSchool {
                     async let branches = hasResolvedGisu
@@ -101,9 +101,9 @@ extension NoticeEditorViewModel {
                 }
             case .branch:
                 if visibleSubCategories.contains(.branch) {
-                    if memberRole == .chapterPresident, let chapterId = userChapterId, chapterId > 0 {
+                    if memberRole == .chapterPresident, let chapterId = userChapterId, (Int(chapterId) ?? 0) > 0 {
                         let allBranches = try await (
-                            resolvedGisuId > 0
+                            (Int(resolvedGisuId) ?? 0) > 0
                             ? targetUseCase.fetchBranches(gisuId:  String(resolvedGisuId))
                             : targetUseCase.fetchAllBranches()
                         )
@@ -115,7 +115,7 @@ extension NoticeEditorViewModel {
                         }
                     } else {
                         branchOptions = try await (
-                            resolvedGisuId > 0
+                            (Int(resolvedGisuId) ?? 0) > 0
                             ? targetUseCase.fetchBranches(gisuId:  String(resolvedGisuId))
                             : targetUseCase.fetchAllBranches()
                         )
@@ -135,7 +135,7 @@ extension NoticeEditorViewModel {
                 branchOptions = []
                 if visibleSubCategories.contains(.school) {
                     schoolOptions = try await (
-                        resolvedGisuId > 0
+                        (Int(resolvedGisuId) ?? 0) > 0
                         ? targetUseCase.fetchSchools(gisuId: String(resolvedGisuId))
                         : targetUseCase.fetchAllSchools()
                     )
@@ -517,7 +517,7 @@ private extension NoticeEditorViewModel {
         }
 
         // 기수 미선택 시 금지 조합 방지
-        if resolvedGisuId <= 0 && !subCategorySelection.selectedParts.isEmpty {
+        if (Int(resolvedGisuId) ?? 0) <= 0 && !subCategorySelection.selectedParts.isEmpty {
             subCategorySelection.selectedParts = []
             subCategorySelection.selectedSubCategories.remove(.part)
         }

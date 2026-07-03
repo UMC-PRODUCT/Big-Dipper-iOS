@@ -69,16 +69,16 @@ public final class NoticeEditorViewModel {
     public var memberRole: ManagementTeam?
 
     /// 뷰에서 전달받는 사용자 컨텍스트(우선 적용)
-    public var userGisuId: Int?
-    public var userChapterId: Int?
-    public var selectedGenerationValue: Int?
+    public var userGisuId: String?
+    public var userChapterId: String?
+    public var selectedGenerationValue: String?
 
-    public var resolvedGisuId: Int {
-        userGisuId ?? gisuId
+    public var resolvedGisuId: String {
+        userGisuId ?? String(gisuId)
     }
 
-    public var resolvedChapterId: Int {
-        userChapterId ?? organizationId
+    public var resolvedChapterId: String {
+        userChapterId ?? String(organizationId)
     }
 
     public var selectedGenerationTitle: String? {
@@ -179,6 +179,29 @@ public final class NoticeEditorViewModel {
 
     /// AI 개선 완료 후 확인 버튼 대기 중 상태 (오버레이 유지용)
     public var showAICompletionSummary: Bool = false
+    
+    // MARK: - AI Summary State
+
+    /// 외부 텍스트 붙여넣기 + AI 요약 시트 표시 여부
+    var showAISummaryInput: Bool = false
+
+    /// 붙여넣기 시트의 입력 텍스트 버퍼 (시트 닫힐 때 초기화)
+    var summarySourceText: String = ""
+
+    /// AI 요약 요청 전 확인 다이얼로그 표시 여부
+    var showAISummaryConfirmation: Bool = false
+
+    /// AI 요약 처리 중 여부
+    var isAISummaryProcessing: Bool = false
+
+    /// AI 요약 스트리밍 진행 중 현재까지 생성된 텍스트 (진행 상황 표시용)
+    var aiSummaryStreamingText: String = ""
+
+    /// AI 요약 완료 후 초안 검토 대기 중 상태
+    var showAISummaryDraftReview: Bool = false
+
+    /// AI 요약으로 생성된 제목 + 본문 초안 (검토 후 수락 or 기각)
+    var pendingSummaryDraft: AISummaryDraft?
 
     // MARK: - Edit Snapshot
 
@@ -222,7 +245,7 @@ public final class NoticeEditorViewModel {
         switch mode {
         case .create:
             // 서버 스펙: 운영진 공지는 기수 필수
-            if case .management = selectedCategory, resolvedGisuId <= 0 {
+            if case .management = selectedCategory, (Int(resolvedGisuId) ?? 0) <= 0 {
                 return false
             }
             return hasRequiredFields
@@ -236,13 +259,13 @@ public final class NoticeEditorViewModel {
     public init(
         container: DIContainer,
         mode: NoticeEditorMode = .create,
-        selectedGisuId: Int? = nil,
+        selectedGisuId: String? = nil,
         initialCategory: EditorMainCategory? = nil,
         memberRoleRaw: String? = nil
     ) {
         self.container = container
         self.mode = mode
-        self.userGisuId = selectedGisuId
+        self.userGisuId = selectedGisuId.map { String($0) }
 
         let role = memberRoleRaw.flatMap { ManagementTeam(rawValue: $0) }
         let categories = Self.availableCategories(for: nil, memberRole: role)
@@ -261,7 +284,7 @@ public final class NoticeEditorViewModel {
     /// 선택된 gisuId를 사용자 표시용 기수 값으로 역매핑합니다.
     public func refreshSelectedGenerationValue() {
         let currentGisuId = resolvedGisuId
-        guard currentGisuId > 0 else {
+        guard let idInt = Int(currentGisuId), idInt > 0 else {
             selectedGenerationValue = nil
             return
         }
@@ -271,7 +294,7 @@ public final class NoticeEditorViewModel {
                 .fetchGenGisuIdPairs()
                 .first(where: { $0.gisuId == String(currentGisuId) })?
                 .gen
-            selectedGenerationValue = selectedGeneration.flatMap { Int($0) } ?? currentGisuId
+            selectedGenerationValue = selectedGeneration ?? currentGisuId
         } catch {
             selectedGenerationValue = currentGisuId
         }
