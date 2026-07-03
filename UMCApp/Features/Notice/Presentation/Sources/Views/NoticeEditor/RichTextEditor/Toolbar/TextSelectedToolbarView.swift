@@ -1,6 +1,6 @@
 //
 //  TextSelectedToolbarView.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 7/1/26.
 //

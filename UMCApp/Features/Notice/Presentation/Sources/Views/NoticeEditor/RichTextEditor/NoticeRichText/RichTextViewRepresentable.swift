@@ -1,6 +1,6 @@
 //
 //  RichTextViewRepresentable.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 6/30/26.
 //

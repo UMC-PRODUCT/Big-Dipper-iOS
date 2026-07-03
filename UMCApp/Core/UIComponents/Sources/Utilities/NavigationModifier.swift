@@ -1,6 +1,6 @@
 //
 //  NavigationModifier.swift
-//  CoreDesignSystem
+//  CoreUIComponents
 //
 //  Created by 이예지 on 6/1/26.
 //

@@ -1,6 +1,6 @@
 //
 //  EditorToolbarTypes.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 5/30/26.
 //

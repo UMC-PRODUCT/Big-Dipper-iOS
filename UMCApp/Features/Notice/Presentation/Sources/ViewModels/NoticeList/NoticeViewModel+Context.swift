@@ -1,6 +1,6 @@
 //
 //  NoticeViewModel+Context.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 5/26/26.
 //
