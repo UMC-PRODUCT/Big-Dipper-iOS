@@ -54,17 +54,17 @@ final class MockMyPageRepository: MyPageRepositoryProtocol, @unchecked Sendable 
         return try fetchMemberProfileResult.get()
     }
 
-    // MARK: - addChallnegerRecord
+    // MARK: - addChallengerRecord
 
-    var addChallnegerRecordError: Error?
-    private(set) var addChallnegerRecordCallCount = 0
-    private(set) var addChallnegerRecordReceivedCode: String?
+    var addChallengerRecordError: Error?
+    private(set) var addChallengerRecordCallCount = 0
+    private(set) var addChallengerRecordReceivedCode: String?
 
-    func addChallnegerRecord(code: String) async throws {
-        addChallnegerRecordCallCount += 1
-        addChallnegerRecordReceivedCode = code
-        if let addChallnegerRecordError {
-            throw addChallnegerRecordError
+    func addChallengerRecord(code: String) async throws {
+        addChallengerRecordCallCount += 1
+        addChallengerRecordReceivedCode = code
+        if let addChallengerRecordError {
+            throw addChallengerRecordError
         }
     }
 

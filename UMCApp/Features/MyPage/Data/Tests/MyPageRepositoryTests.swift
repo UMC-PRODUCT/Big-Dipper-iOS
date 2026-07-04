@@ -379,18 +379,18 @@ struct MyPageRepositoryTermsTests {
 @Suite("MyPageRepository — 챌린저 기록 추가 에러 매핑")
 struct MyPageRepositoryAddRecordTests {
 
-    @Test("addChallnegerRecord — 성공 응답이면 throw 없이 완료하고 POST 엔드포인트를 호출한다")
+    @Test("addChallengerRecord — 성공 응답이면 throw 없이 완료하고 POST 엔드포인트를 호출한다")
     func addRecordSucceeds() async throws {
         let (sut, stub) = makeRepository(.success(Fixture.successVoid()))
 
-        try await sut.addChallnegerRecord(code: "INVITE-42")
+        try await sut.addChallengerRecord(code: "INVITE-42")
 
         #expect(stub.requestCount == 1)
         #expect(stub.lastPath == "/api/v1/challenger-record/member")
         #expect(stub.lastMethod == .post)
     }
 
-    @Test("addChallnegerRecord — 서버 에러 본문(requestFailed)을 RepositoryError.serverError로 승격한다")
+    @Test("addChallengerRecord — 서버 에러 본문(requestFailed)을 RepositoryError.serverError로 승격한다")
     func addRecordMapsServerError() async {
         let body = Fixture.failureBody(code: "REC409", message: "이미 등록된 기록입니다.")
         let (sut, _) = makeRepository(
@@ -400,16 +400,16 @@ struct MyPageRepositoryAddRecordTests {
         await #expect(throws: RepositoryError.serverError(
             code: "REC409", message: "이미 등록된 기록입니다."
         )) {
-            try await sut.addChallnegerRecord(code: "X")
+            try await sut.addChallengerRecord(code: "X")
         }
     }
 
-    @Test("addChallnegerRecord — 파싱 불가한 NetworkError는 원본 그대로 전파한다")
+    @Test("addChallengerRecord — 파싱 불가한 NetworkError는 원본 그대로 전파한다")
     func addRecordPropagatesNonMappableError() async {
         let (sut, _) = makeRepository(.failure(NetworkError.timeout))
 
         await #expect(throws: NetworkError.timeout) {
-            try await sut.addChallnegerRecord(code: "X")
+            try await sut.addChallengerRecord(code: "X")
         }
     }
 }

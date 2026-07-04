@@ -88,7 +88,7 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
     }
     
     /// 특정 챌린저 포르필 조회
-    public func addChallnegerRecord(code: String) async throws {
+    public func addChallengerRecord(code: String) async throws {
         do {
             let response = try await adapter.request(
                 MyPageRouter.addChallengerRecord(code: code)

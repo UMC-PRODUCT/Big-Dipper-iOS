@@ -18,7 +18,7 @@ public protocol MyPageRepositoryProtocol: Sendable {
     func fetchMemberProfile(memberId: Int) async throws -> MemberProfileSummary
     
     /// 운영진 발급 코드로 챌린저 기록을 추가합니다.
-    func addChallnegerRecord(code: String) async throws
+    func addChallengerRecord(code: String) async throws
     
     /// 프로필 이미지를 업로드하고 회원 프로필에 반영합니다.
     ///

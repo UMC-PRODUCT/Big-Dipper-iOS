@@ -21,6 +21,6 @@ public final class AddChallengerRecordUseCase: AddChallengerRecordUseCaseProtoco
     }
     
     public func execute(code: String) async throws {
-        try await repository.addChallnegerRecord(code: code)
+        try await repository.addChallengerRecord(code: code)
     }
 }
