@@ -26,6 +26,11 @@ public struct SectionHeaderView: View {
     /// 섹션 헤더에 표시할 타이틀 텍스트
     private let title: String
     
+    // MARK: - Function
+    public init(title: String) {
+        self.title = title
+    }
+    
     // MARK: - Body
     
     public var body: some View {
