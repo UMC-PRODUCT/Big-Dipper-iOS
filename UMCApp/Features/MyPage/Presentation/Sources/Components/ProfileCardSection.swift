@@ -9,6 +9,7 @@ import SwiftUI
 import MyPageDomain
 import CoreDI
 import CoreDesignSystem
+import CoreUIComponents
 
 /// MyPage 상단에 표시되는 사용자 프로필 카드 컴포넌트
 ///
