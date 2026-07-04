@@ -45,7 +45,7 @@ struct ProfileCardSection: View {
                 profileImage
                 profileInfo
                 Spacer()
-//                SectionRightImage(rightImage: Constants.chevron)
+                SectionRightImage(rightImage: Constants.chevron)
             })
         })
         

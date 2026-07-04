@@ -16,6 +16,11 @@ public struct SectionRightImage: View {
     /// 심볼 아이콘의 크기
     private let simbolSize: CGFloat = 15
     
+    // MARK: - Function
+    public init(rightImage: String) {
+        self.rightImage = rightImage
+    }
+    
     // MARK: - Body
     
     public var body: some View {
