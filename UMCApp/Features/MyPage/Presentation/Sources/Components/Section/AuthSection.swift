@@ -59,6 +59,7 @@ public struct AuthSection: View {
         switch auth {
         case .changePassword:
             //비밀번호 변경 View로 이동
+            print("비밀번호 변경 View로 이동")
         case .logout:
             alertPrompt = .init(
                 title: "로그아웃",
