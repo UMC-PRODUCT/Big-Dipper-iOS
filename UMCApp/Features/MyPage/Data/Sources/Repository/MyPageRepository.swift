@@ -15,23 +15,38 @@ import MyPageDomain
 /// MyPage Repository 구현체
 ///
 /// 프로필 조회/활동 게시글 조회/약관 조회를 처리합니다.
-/// (수정·삭제 계열은 다음 이슈에서 추가됩니다 — `MyPageRepositoryProtocol`의 보류 메서드 참고)
 public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendable {
     
     // MARK: - Property
 
-    private let adapter: MoyaNetworkAdapter
+    private let adapter: any MyPageNetworkRequesting
     private let storageRepository: StorageRepositoryProtocol
     private let decoder: JSONDecoder
 
     // MARK: - Init
 
-    public init(
+    /// 운영 이니셜라이저 — 구체 `MoyaNetworkAdapter` 를 주입받습니다.
+    public convenience init(
         adapter: MoyaNetworkAdapter,
         storageRepository: StorageRepositoryProtocol,
         decoder: JSONDecoder = JSONDecoder()
     ) {
-        self.adapter = adapter
+        self.init(
+            networkRequesting: adapter,
+            storageRepository: storageRepository,
+            decoder: decoder
+        )
+    }
+
+    /// 테스트 seam — `MyPageNetworkRequesting` 가짜 구현을 주입하기 위한 지정 이니셜라이저.
+    /// (`MoyaNetworkAdapter` 는 `NetworkConfig.baseURL` `fatalError` 로 테스트 번들에서
+    /// 직접 사용할 수 없으므로, 테스트는 이 이니셜라이저로 stub 을 주입합니다.)
+    init(
+        networkRequesting: any MyPageNetworkRequesting,
+        storageRepository: StorageRepositoryProtocol,
+        decoder: JSONDecoder = JSONDecoder()
+    ) {
+        self.adapter = networkRequesting
         self.storageRepository = storageRepository
         self.decoder = decoder
     }
