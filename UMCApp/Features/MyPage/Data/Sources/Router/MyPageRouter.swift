@@ -25,7 +25,7 @@ public enum MyPageRouter {
     /// 회원 정보 수정(프로필 이미지 ID 반영)
     case patchMember(request: UpdateMemberProfileImageRequestDTO)
     /// 회원 정보 수정(외부 링크 반영)
-    case patchMemberProfileLinks(request: UpdateMemberProfileLinkRequestDTO)
+    case patchMemberProfileLinks(request: UpdateMemberProfileLinksRequestDTO)
     /// 회원 탈퇴
     case deleteMember
     /// 내가 쓴 글 목록 (`GET /api/v1/posts/my`)
