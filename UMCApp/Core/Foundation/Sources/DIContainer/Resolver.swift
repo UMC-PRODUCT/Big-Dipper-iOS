@@ -18,8 +18,52 @@ import Foundation
 /// @Environment(\.di) private var di            // any Resolver
 /// let useCase = di.resolve(LoginUseCaseProtocol.self)
 /// ```
+///
+/// ### ViewModel — 생성자 주입
+///
+/// `ViewModel` 은 `@Environment` 를 쓸 수 없으므로 **생성자로** `any Resolver` 를 받는다.
+///
+/// ```swift
+/// import UMCFoundation
+/// import NoticeDomain
+/// // import CoreDI  ← 불필요
+///
+/// @Observable
+/// public final class NoticeViewModel {
+///
+///     // MARK: - Dependency
+///     private let container: any Resolver
+///
+///     // MARK: - Lifecycle
+///     public init(container: any Resolver, errorHandler: ErrorHandler) {
+///         self.container = container
+///         self.errorHandler = errorHandler
+///         self.noticeUseCase = container.resolve(NoticeUseCaseProtocol.self)
+///     }
+/// }
+/// ```
+///
+/// ### View — 루트에서 `\.di` 를 한 번 읽어 전달
+///
+/// 컨테이너의 소스는 `\.di` 다. **루트 View 가 한 번 읽어** 생성자 체인으로 흘려보낸다.
+///
+/// ```swift
+/// import SwiftUI
+/// import UMCFoundation
+/// import NoticePresentation
+///
+/// struct ContentView: View {
+///     @Environment(\.di) private var di        // any Resolver
+///     private let errorHandler = ErrorHandler()
+///
+///     var body: some View {
+///         NoticeView(container: di, errorHandler: errorHandler)
+///     }
+/// }
+/// ```
 public protocol Resolver {
 
+    
     /// 등록된 의존성을 조회한다.
     /// - Parameter type: 조회할 프로토콜/타입 (예: `LoginUseCaseProtocol.self`)
     /// - Returns: 등록된 타입의 인스턴스
