@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import os
 
 // MARK: - Resolver
 
@@ -62,14 +63,20 @@ import Foundation
 /// }
 /// ```
 public protocol Resolver {
-
+    
     
     /// 등록된 의존성을 조회한다.
     /// - Parameter type: 조회할 프로토콜/타입 (예: `LoginUseCaseProtocol.self`)
     /// - Returns: 등록된 타입의 인스턴스
     /// - Warning: 미등록·미주입 시 `fatalError`.
     func resolve<T>(_ type: T.Type) -> T
+    
 }
+
+private let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier ?? "UMCApp",
+    category: "DI"
+)
 
 // MARK: - UnregisteredResolver
 
@@ -81,9 +88,9 @@ public protocol Resolver {
 /// 이 타입의 `resolve`가 불렸다는 건 곧 주입 누락을 의미한다.
 public struct UnregisteredResolver: Resolver {
     public func resolve<T>(_ type: T.Type) -> T {
-        fatalError(
-            "\\.di has no injected container. Inject "
-            + "DIContainer.configured(...) at the app root before resolving \(T.self)."
-        )
+        let reason = "\\.di has no injected container. "
+                + "Inject DIContainer.configured(...) at the app root before resolving \(T.self)."
+            logger.fault("\(reason, privacy: .public)")   // Console(category: "DI")에 원인 기록
+            fatalError(reason)
     }
 }
