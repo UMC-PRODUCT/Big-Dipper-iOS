@@ -30,7 +30,7 @@ public struct AuthSection: View {
     
     public var body: some View {
         Section(content: {
-//            sectionContent
+            sectionContent
         }, header: {
 //            SectionHeaderView(title: sectionType.rawValue)
         })
@@ -45,7 +45,7 @@ public struct AuthSection: View {
     
     private func content(_ auth: AuthType) -> some View {
         Button(action: {
-//            typeAction(auth)
+            typeAction(auth)
         }, label: {
             // 회원 탈퇴는 빨간색으로 표시
 //            MyPageSectionRow()
