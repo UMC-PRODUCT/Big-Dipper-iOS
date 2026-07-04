@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// 스크랩한 글들 조회 UseCase 구현체
 public final class FetchMyScrappedPostsUseCase: FetchMyScrappedPostsUseCaseProtocol {
     
     // MARK: - Property

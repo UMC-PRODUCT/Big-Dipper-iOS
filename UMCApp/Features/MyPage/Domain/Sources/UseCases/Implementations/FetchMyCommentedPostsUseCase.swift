@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// 댓글 단 글들 조회 UseCase 구현체
 public final class FetchMyCommentedPostsUseCase: FetchMyCommentedPostsUseCaseProtocol {
     
     // MARK: - Property

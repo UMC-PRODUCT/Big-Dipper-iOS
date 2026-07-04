@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// 회원 탈퇴 UseCase 구현체
 public final class DeleteMemberUseCase: DeleteMemberUseCaseProtocol {
     
     // MARK: - Property

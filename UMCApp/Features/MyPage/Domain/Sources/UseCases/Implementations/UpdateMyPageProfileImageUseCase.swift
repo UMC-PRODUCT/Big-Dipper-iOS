@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// 프로필 이미지 변경 UseCase 구현체
 public final class UpdateMyPageProfileImageUseCase: UpdateMyPageProfileImageUseCaseProtocol {
     
     // MARK: - Property

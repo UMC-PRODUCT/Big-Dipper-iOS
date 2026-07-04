@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// 내 글들 조회 구현체
 public final class FetchMyPostsUseCase: FetchMyPostsUseCaseProtocol {
     
     // MARK: - Property
