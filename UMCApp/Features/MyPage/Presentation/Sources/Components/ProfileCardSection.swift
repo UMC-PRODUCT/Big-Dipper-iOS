@@ -22,7 +22,7 @@ struct ProfileCardSection: View {
     
     private enum Constants {
         static let chevronSize: CGFloat = 9
-        static let imageSize: CGSize = .init(width: 64, height: 64)
+        static let profileImageSize: CGSize = .init(width: 64, height: 64)
         static let chevron: String = "chevron.right"
     }
     
@@ -55,8 +55,7 @@ struct ProfileCardSection: View {
     
     /// 프로필 이미지 뷰(무지개 태두리 효과 포함)
     private var profileImage: some View {
-//        RemoteImage()
-        EmptyView()
+        RemoteImage(urlString: profileData.challengerInfo.profileImage ?? "", size: Constants.profileImageSize)
     }
     
     /// 프로필 정보(이름/닉네임, 학교/기수/파트)전체를 담는 VStack
