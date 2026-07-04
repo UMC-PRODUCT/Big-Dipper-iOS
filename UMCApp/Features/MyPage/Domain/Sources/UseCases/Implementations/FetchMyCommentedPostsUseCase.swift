@@ -1,5 +1,5 @@
 //
-//  DeleteMemberUseCase.swift
+//  FetchMyCommentedPostsUseCase.swift
 //  MyPage
 //
 //  Created by 김동민 on 7/4/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-public final class DeleteMemberUseCase: DeleteMemberUseCaseProtocol {
+public final class FetchMyCommentedPostsUseCase: FetchMyCommentedPostsUseCaseProtocol {
     
     // MARK: - Property
     
@@ -19,7 +19,7 @@ public final class DeleteMemberUseCase: DeleteMemberUseCaseProtocol {
         self.repository = repository
     }
     
-    public func execute() async throws {
-        try await repository.deleteMember()
+    public func execute(query: MyPagePostListQuery) async throws -> MyActivePostPage {
+        try await repository.fetchCommentedPosts(query: query)
     }
 }
