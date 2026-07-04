@@ -48,7 +48,7 @@ public struct AuthSection: View {
             typeAction(auth)
         }, label: {
             // 회원 탈퇴는 빨간색으로 표시
-//            MyPageSectionRow()
+            MyPageSectionRow(systemIcon: auth.icon, title: auth.rawValue, rightText: "", iconBackgroundColor: auth.color, titleColor: auth == .accountDelete ? .red : .black)
         })
     }
     

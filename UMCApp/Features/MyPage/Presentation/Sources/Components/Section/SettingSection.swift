@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import CoreUIComponents
 
 /// 마이페이지 설정 섹션
 ///
@@ -20,7 +21,16 @@ public struct SettingSection: View {
     
     public var body: some View {
         Section(content: {
-//            sectionRow
+            sectionRow
+        }, header: {
+            SectionHeaderView(title: sectionType.rawValue)
         })
+    }
+    
+    // MARK: - Function
+    
+    @ViewBuilder
+    private var sectionRow: some View {
+        ForEach(SettingType.allCases, id: \.hashValue)
     }
 }
