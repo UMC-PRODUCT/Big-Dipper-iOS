@@ -1,6 +1,6 @@
 //
 //  DIEnvironmentKey.swift
-//  CoreDI
+//  UMCFoundation
 //
 //  Created by 김동민 on 7/4/26.
 //
@@ -22,11 +22,11 @@ import SwiftUI
 ///     }
 /// }
 public struct DIEnvironmentKey: EnvironmentKey {
-    public static let defaultValue: DIContainer = .init()
+    public static let defaultValue: any Resolver = UnregisteredResolver()
 }
 
 extension EnvironmentValues {
-    public var di: DIContainer {
+    public var di: any Resolver {
         get { self[DIEnvironmentKey.self] }
         set { self[DIEnvironmentKey.self] = newValue }
     }
