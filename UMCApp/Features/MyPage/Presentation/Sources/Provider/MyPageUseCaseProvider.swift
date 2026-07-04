@@ -21,6 +21,8 @@ public protocol MyPageUseCaseProviding {
     var addChallngerRecordUseCase: AddChallengerRecordUseCaseProtocol { get }
     /// 프로필 이미지변경 UseCase
     var updateMyPageProfileImageUseCase: UpdateMyPageProfileImageUseCaseProtocol { get }
+    /// 프로필 외부 링크 수정 UseCase
+    var updateMyPageProfileLinksUseCase: UpdateMyPageProfileLinksUseCaseProtocol { get }
     /// 회원 탈퇴 UseCase
     var deletMemberUseCase: DeleteMemberUseCaseProtocol { get }
     /// 내 글 조회 UseCase
@@ -49,6 +51,8 @@ public final class MyPageUseCaseProvider: MyPageUseCaseProviding {
     
     public let updateMyPageProfileImageUseCase: UpdateMyPageProfileImageUseCaseProtocol
     
+    public let updateMyPageProfileLinksUseCase: UpdateMyPageProfileLinksUseCaseProtocol
+    
     public let deletMemberUseCase: DeleteMemberUseCaseProtocol
     
     public let fetchMypostsUseCase: FetchMyPostsUseCaseProtocol
@@ -62,13 +66,14 @@ public final class MyPageUseCaseProvider: MyPageUseCaseProviding {
     // MARK: - Function
 
     public init(repository: MyPageRepositoryProtocol) {
-//        self.fetchMyPageProfileUseCase = FetchMyPageProfileUseCase(repository: repository)
-//        self.addChallngerRecordUseCase = AddChallengerRecordUseCase(repository: repository)
-//        self.updateMyPageProfileImageUseCase = UpdateMyPageProfileImageUseCase(repository: repository)
-//        self.deletMemberUseCase = DeleteMemberUseCase(repository: repository)
-//        self.fetchMypostsUseCase = FetchMyPostsUseCase(repository: repository)
-//        self.fetchMyCommentedPostsUseCase = FetchMyCommentedPostsUseCase(repository: repository)
-//        self.fetchMyScrappedPostsUseCase = FetchMyScrappedPostsUseCase(repository: repository)
-//        self.fetchTermsUseCase = FetchTermsUseCase(repository: repository)
+        self.fetchMyPageProfileUseCase = FetchMyPageProfileUseCase(repository: repository)
+        self.addChallngerRecordUseCase = AddChallengerRecordUseCase(repository: repository)
+        self.updateMyPageProfileImageUseCase = UpdateMyPageProfileImageUseCase(repository: repository)
+        self.updateMyPageProfileLinksUseCase = UpdateMyPageProfileLinksUseCase(repository: repository)
+        self.deletMemberUseCase = DeleteMemberUseCase(repository: repository)
+        self.fetchMypostsUseCase = FetchMyPostsUseCase(repository: repository)
+        self.fetchMyCommentedPostsUseCase = FetchMyCommentedPostsUseCase(repository: repository)
+        self.fetchMyScrappedPostsUseCase = FetchMyScrappedPostsUseCase(repository: repository)
+        self.fetchTermsUseCase = FetchTermsUseCase(repository: repository)
     }
 }
