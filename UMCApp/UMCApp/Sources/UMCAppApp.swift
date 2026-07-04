@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreDI
 
 @main
 struct UMCAppApp: App {
@@ -11,6 +12,7 @@ struct UMCAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+//                .environment(\.di, DIContainer.configured(modelContext:))
         }
     }
 }
