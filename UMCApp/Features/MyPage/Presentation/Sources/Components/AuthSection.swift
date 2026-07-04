@@ -7,6 +7,8 @@
 
 import Foundation
 import SwiftUI
+import UMCFoundation
+import CoreUIComponents
 
 /// 마이페이지의 인증 관련 섹션 (로그아웃, 회원탈퇴)
 ///
@@ -15,4 +17,27 @@ public struct AuthSection: View {
     // MARK: - Property
     
     private let sectionType: MyPageSectionType
+    @Binding private var alertPrompt: AlertPrompt?
+    @Environment(\.di) private var di
+//    @Environment(\.appFlow) private var appFlow
+    @Environment(ErrorHandler.self) private var errorHandler
+    
+//    private var pahtStore: PathStore {
+//        di.resolve(PathStore.self)
+//    }
+    
+    // MARK: - Body
+    
+    public var body: some View {
+        Section(content: {
+//            sectionContent
+        }, header: {
+//            SectionHeaderView(title: sectionType.rawValue)
+        })
+    }
+    
+    // MARK: - Function
+    private var sectionContent: some View {
+//        ForEach(AuthType.allCases, id: \.rawValue)
+    }
 }
