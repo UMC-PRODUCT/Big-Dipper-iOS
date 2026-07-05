@@ -15,7 +15,8 @@ public enum ServerDateTimeConverter {
     // MARK: - TimeZone
 
     public nonisolated static let utcTimeZone: TimeZone = .init(secondsFromGMT: 0) ?? .current
-    public nonisolated static let kstTimeZone: TimeZone = .init(identifier: "Asia/Seoul") ?? .current
+    public nonisolated static let kstTimeZone: TimeZone =
+        .init(identifier: "Asia/Seoul") ?? .current
 
     // MARK: - Cached Formatter
 

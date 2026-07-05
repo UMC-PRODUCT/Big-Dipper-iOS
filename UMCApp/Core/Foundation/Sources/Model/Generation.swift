@@ -13,7 +13,7 @@ public struct Generation: Identifiable, Equatable, Hashable {
     public let value: String
     public var id: String { value }
     public var title: String { "\(value)기" }
-    
+
     public init(value: String) {
         self.value = value
     }
