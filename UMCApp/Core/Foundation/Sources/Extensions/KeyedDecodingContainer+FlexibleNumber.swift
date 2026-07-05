@@ -107,26 +107,14 @@ public extension KeyedDecodingContainer {
         )
     }
 
-    /// JSON 숫자/문자열 숫자 모두 허용하여 Optional `Int`로 디코딩합니다.
+    /// 키가 없거나 명시적 null이면 `nil`, 값이 있으면 ``decodeIntFlexible(forKey:)``.
+    ///
+    /// - Important: 키가 존재하지만 숫자로 해석 불가하면 **throw**합니다.
+    ///   (오염된 count/id를 조용히 누락으로 처리하지 않도록 fail-loud — 다른 `*IfPresent`와 동일 규약)
     func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
         guard contains(key) else { return nil }
         if try decodeNil(forKey: key) { return nil }
-
-        if let intValue = try? decode(Int.self, forKey: key) {
-            return intValue
-        }
-        if let stringValue = try? decode(String.self, forKey: key) {
-            return Int(stringValue)
-        }
-        if let doubleValue = try? decode(Double.self, forKey: key) {
-            return Int(doubleValue)
-        }
-
-        throw DecodingError.dataCorruptedError(
-            forKey: key,
-            in: self,
-            debugDescription: "Expected Optional Int or String-convertible Int for \(key.stringValue)"
-        )
+        return try decodeIntFlexible(forKey: key)
     }
 
     // MARK: - Double
