@@ -89,12 +89,13 @@ cd UMCApp && make doctor    # 환경 진단
 | 주제 | 문서 | 언제 읽나 |
 |------|------|----------|
 | 빌드 & Tuist 모듈 구조 | `docs/claude/build-and-modules.md` | 모듈 추가, 빌드 설정, 의존성 |
+| Tuist 파일별 이관 매핑 | `docs/claude/tuist-file-mapping.md` | 레거시 파일을 어느 모듈/레이어로 옮길지 확인할 때 (필수 참조) |
 | 아키텍처 / Observation / 에러 | `docs/claude/architecture.md` | ViewModel·UseCase·에러 처리 작업 |
 | Network Router (Moya) | `docs/claude/network-router.md` | API 엔드포인트/DTO 추가 |
 | Response DTO 디코딩 | `docs/claude/response-dto-decoding.md` | Response DTO 작성/수정 |
 | 디자인 시스템 & 성능 | `docs/claude/design-system.md` | UI/토큰/Glass/렌더링 최적화 |
 | 코딩 스타일 & 네이밍 | `docs/claude/coding-style.md` | 네이밍 판단이 필요할 때 |
-| Git Workflow | `docs/claude/git-workflow.md` | 브랜치/커밋/PR/배포 |
+| Git Workflow | `docs/claude/git-workflow.md` | 브랜치/커밋/PR/이슈(템플릿·Type·Priority)/배포 |
 | 프로젝트 구조(AppProduct) | `docs/claude/project-structure.md` | 레거시 디렉터리 탐색 |
 | PR 리뷰 규칙 & 체크리스트 | `docs/claude/pr-review.md` | PR 리뷰 작성 시 |
 
