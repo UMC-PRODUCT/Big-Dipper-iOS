@@ -8,7 +8,6 @@
 import Foundation
 import SwiftData
 import CoreNetwork
-import UMCFoundation
 
 // MARK: - DIContainer 사용 예시
 /// DIContainer는 의존성 주입(Dependency Injection)을 관리하는 컨테이너입니다.
@@ -194,8 +193,4 @@ extension DIContainer {
         return container
     }
 
-}
-
-extension DIContainer: Resolver {
-    
 }
