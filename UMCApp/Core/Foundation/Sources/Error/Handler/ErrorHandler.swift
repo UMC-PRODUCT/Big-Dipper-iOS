@@ -84,7 +84,7 @@ public final class ErrorHandler {
 
     /// 에러 로깅에 사용되는 Logger.
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "AppProduct",
+        subsystem: Bundle.main.bundleIdentifier ?? "UMCApp",
         category: "ErrorHandler"
     )
 
@@ -201,7 +201,12 @@ public final class ErrorHandler {
         }
         #endif
 
-        // 10. 알 수 없는 에러
+        // 10. LocationError → DomainError 변환 (인라인 상태로 처리 가능한 도메인 에러)
+        if let locationError = error as? LocationError {
+            return .domain(.custom(message: locationError.errorDescription ?? "위치 오류가 발생했습니다."))
+        }
+
+        // 11. 알 수 없는 에러
         return .unknown(message: error.localizedDescription)
     }
 

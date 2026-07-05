@@ -89,7 +89,9 @@ public enum AppStorageKey {
     ///
     /// 로그아웃 / 회원 탈퇴 / 세션 만료 처리 시 호출해야 합니다.
     /// `UserDefaults` 접근은 thread-safe하므로 actor 격리 없이 호출 가능합니다.
-    public nonisolated static func clearSessionScopedValues(in defaults: UserDefaults = .standard) {
+    public nonisolated static func clearSessionScopedValues(
+        in defaults: UserDefaults = .standard
+    ) {
         sessionScopedKeys.forEach { defaults.removeObject(forKey: $0) }
     }
 }

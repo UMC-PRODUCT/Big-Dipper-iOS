@@ -170,11 +170,12 @@ struct KeyedDecodingContainerFlexibleNumberTests {
             #expect(decoded.value == 777)
         }
 
-        @Test("숫자 형변환 불가한 String → nil")
-        func returnsNilWhenStringNotNumeric() throws {
+        @Test("값이 존재하지만 숫자 형변환 불가한 String 이면 throw 한다 (fail-loud)")
+        func throwsWhenStringNotNumeric() {
             let data = #"{ "value": "abc" }"#.data(using: .utf8)!
-            let decoded = try JSONDecoder().decode(OptionalIntWrapper.self, from: data)
-            #expect(decoded.value == nil)
+            #expect(throws: DecodingError.self) {
+                _ = try JSONDecoder().decode(OptionalIntWrapper.self, from: data)
+            }
         }
     }
 
