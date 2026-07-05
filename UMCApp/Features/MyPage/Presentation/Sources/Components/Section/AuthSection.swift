@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import UMCFoundation
+import CoreDI
 import CoreUIComponents
 
 /// 마이페이지의 인증 관련 섹션 (로그아웃, 회원탈퇴)
