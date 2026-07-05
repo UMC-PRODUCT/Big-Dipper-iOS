@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 import NoticeDomain
 
 // MARK: - NoticeDetailDTO
@@ -68,27 +69,27 @@ public struct NoticeDetailDTO: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        id = try container.decodeStringFlexible(forKey: .id)
-        title = try container.decodeStringOrEmpty(forKey: .title)
-        content = try container.decodeStringOrEmpty(forKey: .content)
+        id = try container.decodeFlexibleString(forKey: .id)
+        title = container.decodeFlexibleStringOrEmpty(forKey: .title)
+        content = container.decodeFlexibleStringOrEmpty(forKey: .content)
         shouldSendNotification = try? container.decode(Bool.self, forKey: .shouldSendNotification)
-        viewCount = try container.decodeStringFlexible(forKey: .viewCount)
-        createdAt = try container.decodeStringOrEmpty(forKey: .createdAt)
+        viewCount = try container.decodeFlexibleString(forKey: .viewCount)
+        createdAt = container.decodeFlexibleStringOrEmpty(forKey: .createdAt)
         updatedAt = try? container.decodeIfPresent(String.self, forKey: .updatedAt)
         targetInfo = (try? container.decode(NoticeTargetInfoDTO.self, forKey: .targetInfo))
             ?? NoticeTargetInfoDTO(targetGisuId: "0", targetChapterId: nil, targetSchoolId: nil, targetParts: nil)
-        authorChallengerId = try? container.decodeStringOrNil(forKey: .authorChallengerId)
-        authorMemberId = try? container.decodeStringOrNil(forKey: .authorMemberId)
-        authorNickname = try? container.decodeStringOrNil(forKey: .authorNickname)
-        authorName = try? container.decodeStringOrNil(forKey: .authorName)
-        authorProfileImageUrl = try? container.decodeStringOrNil(forKey: .authorProfileImageUrl)
+        authorChallengerId = container.decodeFlexibleStringOrNil(forKey: .authorChallengerId)
+        authorMemberId = container.decodeFlexibleStringOrNil(forKey: .authorMemberId)
+        authorNickname = container.decodeFlexibleStringOrNil(forKey: .authorNickname)
+        authorName = container.decodeFlexibleStringOrNil(forKey: .authorName)
+        authorProfileImageUrl = container.decodeFlexibleStringOrNil(forKey: .authorProfileImageUrl)
 
         vote = try? container.decodeIfPresent(NoticeDetailVoteDTO.self, forKey: .vote)
         images = (try? container.decode([NoticeDetailImageDTO].self, forKey: .images)) ?? []
         links = (try? container.decode([NoticeDetailLinkDTO].self, forKey: .links)) ?? []
 
-        scope = try? container.decodeStringOrNil(forKey: .scope)
-        category = try? container.decodeStringOrNil(forKey: .category)
+        scope = container.decodeFlexibleStringOrNil(forKey: .scope)
+        category = container.decodeFlexibleStringOrNil(forKey: .category)
         isMustRead = try? container.decodeIfPresent(Bool.self, forKey: .isMustRead)
         hasPermission = try? container.decodeIfPresent(Bool.self, forKey: .hasPermission)
     }
@@ -184,42 +185,5 @@ private extension String {
         }
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: self) ?? Date()
-    }
-}
-
-// MARK: - Flexible Decoding Helpers
-
-private extension KeyedDecodingContainer {
-    /// String/Int/Double 타입을 모두 String으로 디코딩합니다.
-    func decodeStringFlexible(forKey key: Key) throws -> String {
-        if let value = try? decode(String.self, forKey: key) {
-            return value
-        }
-        if let value = try? decode(Int.self, forKey: key) {
-            return String(value)
-        }
-        if let value = try? decode(Double.self, forKey: key) {
-            return String(value)
-        }
-        throw DecodingError.valueNotFound(
-            String.self,
-            DecodingError.Context(
-                codingPath: codingPath + [key],
-                debugDescription: "Expected String value for key '\(key.stringValue)'"
-            )
-        )
-    }
-
-    /// 디코딩 실패 시 빈 문자열을 반환합니다.
-    func decodeStringOrEmpty(forKey key: Key) throws -> String {
-        return (try? decodeStringFlexible(forKey: key)) ?? ""
-    }
-
-    /// 명시적 null 또는 디코딩 실패 시 nil을 반환합니다.
-    func decodeStringOrNil(forKey key: Key) throws -> String? {
-        if try decodeNil(forKey: key) {
-            return nil
-        }
-        return try? decodeStringFlexible(forKey: key)
     }
 }

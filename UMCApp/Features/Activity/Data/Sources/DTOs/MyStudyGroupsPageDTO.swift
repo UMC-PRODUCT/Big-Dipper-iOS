@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 import ActivityDomain
 
 // MARK: - MyStudyGroupsPageDTO
@@ -58,7 +59,7 @@ struct MyStudyGroupsPageDTO: Codable, Sendable, Equatable {
             forKey: .content
         ) {
             studyGroups = content
-            nextCursor = try container.decodeFlexibleStringIfPresent(forKey: .nextCursor)
+            nextCursor = container.decodeFlexibleStringOrNil(forKey: .nextCursor)
             hasNext = try container.decodeBoolFlexibleIfPresent(forKey: .hasNext) ?? false
             return
         }
@@ -68,7 +69,7 @@ struct MyStudyGroupsPageDTO: Codable, Sendable, Equatable {
             [StudyGroupDetailDTO].self,
             forKey: .studyGroups
         ) ?? []
-        nextCursor = try container.decodeFlexibleStringIfPresent(forKey: .nextCursor)
+        nextCursor = container.decodeFlexibleStringOrNil(forKey: .nextCursor)
         hasNext = try container.decodeBoolFlexibleIfPresent(forKey: .hasNext) ?? false
     }
 
@@ -120,7 +121,7 @@ private struct MyStudyGroupsCursorDTO: Codable, Sendable, Equatable {
             [StudyGroupDetailDTO].self,
             forKey: .content
         ) ?? []
-        nextCursor = try container.decodeFlexibleStringIfPresent(forKey: .nextCursor)
+        nextCursor = container.decodeFlexibleStringOrNil(forKey: .nextCursor)
         hasNext = try container.decodeBoolFlexibleIfPresent(forKey: .hasNext) ?? false
     }
 

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 import NoticeDomain
 
 // MARK: - Vote DTO
@@ -41,16 +42,16 @@ public struct NoticeDetailVoteDTO: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.voteId = try container.decodeStringFlexible(forKey: .voteId)
+        self.voteId = try container.decodeFlexibleString(forKey: .voteId)
         self.title = try container.decode(String.self, forKey: .title)
         self.isAnonymous = try container.decode(Bool.self, forKey: .isAnonymous)
         self.allowMultipleChoice = try container.decode(Bool.self, forKey: .allowMultipleChoice)
         self.startsAt = try container.decode(String.self, forKey: .startsAt)
         self.endsAtExclusive = try container.decode(String.self, forKey: .endsAtExclusive)
         self.options = try container.decode([NoticeDetailVoteOptionDTO].self, forKey: .options)
-        self.mySelectedOptionIds = try container.decodeStringArrayFlexible(forKey: .mySelectedOptionIds)
+        self.mySelectedOptionIds = container.decodeFlexibleStringArray(forKey: .mySelectedOptionIds)
         self.status = try container.decodeIfPresent(String.self, forKey: .status)
-        self.totalParticipants = try container.decodeStringFlexibleIfPresent(forKey: .totalParticipants)
+        self.totalParticipants = container.decodeFlexibleStringOrNil(forKey: .totalParticipants)
     }
 
     /// DTO → `NoticeVote` 도메인 모델 변환
@@ -96,11 +97,11 @@ public struct NoticeDetailVoteOptionDTO: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.optionId = try container.decodeStringFlexible(forKey: .optionId)
+        self.optionId = try container.decodeFlexibleString(forKey: .optionId)
         self.content = try container.decode(String.self, forKey: .content)
-        self.voteCount = try container.decodeStringFlexible(forKey: .voteCount)
-        self.selectedMemberIds = (try? container.decodeStringArrayFlexible(forKey: .selectedMemberIds)) ?? []
-        self.voteRate = try container.decodeStringFlexibleIfPresent(forKey: .voteRate)
+        self.voteCount = try container.decodeFlexibleString(forKey: .voteCount)
+        self.selectedMemberIds = container.decodeFlexibleStringArray(forKey: .selectedMemberIds)
+        self.voteRate = container.decodeFlexibleStringOrNil(forKey: .voteRate)
     }
     
     /// DTO → `VoteOption` 도메인 모델 변환
@@ -131,9 +132,9 @@ public struct NoticeDetailImageDTO: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decodeStringFlexible(forKey: .id)
+        self.id = try container.decodeFlexibleString(forKey: .id)
         self.url = try container.decode(String.self, forKey: .url)
-        self.displayOrder = try container.decodeStringFlexible(forKey: .displayOrder)
+        self.displayOrder = try container.decodeFlexibleString(forKey: .displayOrder)
     }
 }
 
@@ -153,74 +154,13 @@ public struct NoticeDetailLinkDTO: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decodeStringFlexible(forKey: .id)
+        self.id = try container.decodeFlexibleString(forKey: .id)
         self.url = try container.decode(String.self, forKey: .url)
-        self.displayOrder = try container.decodeStringFlexible(forKey: .displayOrder)
+        self.displayOrder = try container.decodeFlexibleString(forKey: .displayOrder)
     }
 }
 
-// MARK: - Decoding Helpers
-
-private extension KeyedDecodingContainer {
-    /// String / Int / Double 타입을 모두 String으로 디코딩
-    func decodeStringFlexible(forKey key: Key) throws -> String {
-        if let value = try? decode(String.self, forKey: key) {
-            return value
-        }
-        if let value = try? decode(Int.self, forKey: key) {
-            return String(value)
-        }
-        if let value = try? decode(Double.self, forKey: key) {
-            return String(Int(value))
-        }
-        throw DecodingError.typeMismatch(
-            String.self,
-            DecodingError.Context(
-                codingPath: codingPath + [key],
-                debugDescription: "Expected String/Int/Double for key '\(key.stringValue)'"
-            )
-        )
-    }
-
-    /// String / Int 배열을 모두 [String]으로 디코딩
-    func decodeStringArrayFlexible(forKey key: Key) throws -> [String] {
-        if let values = try? decode([String].self, forKey: key) {
-            return values
-        }
-        if let values = try? decode([Int].self, forKey: key) {
-            return values.map(String.init)
-        }
-        return []
-    }
-
-    /// Int / Double / String 중 하나로 디코딩하여 Int?를 반환
-    func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
-        if let value = try? decodeIfPresent(Int.self, forKey: key) {
-            return value
-        }
-        if let value = try? decodeIfPresent(Double.self, forKey: key) {
-            return Int(value)
-        }
-        if let value = try? decodeIfPresent(String.self, forKey: key) {
-            return Int(value)
-        }
-        return nil
-    }
-
-    /// String / Int / Double 중 하나로 디코딩하여 String?을 반환
-    func decodeStringFlexibleIfPresent(forKey key: Key) throws -> String? {
-        if let value = try? decodeIfPresent(String.self, forKey: key) {
-            return value
-        }
-        if let value = try? decodeIfPresent(Int.self, forKey: key) {
-            return String(value)
-        }
-        if let value = try? decodeIfPresent(Double.self, forKey: key) {
-            return String(value)
-        }
-        return nil
-    }
-}
+// MARK: - Helpers
 
 private func parseISO8601(_ value: String) -> Date {
     let formatter = ISO8601DateFormatter()
