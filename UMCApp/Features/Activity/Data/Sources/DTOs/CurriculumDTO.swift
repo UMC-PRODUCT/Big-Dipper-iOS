@@ -36,7 +36,7 @@ struct CurriculumDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        curriculumId = try container.decodeFlexibleStringIfPresent(forKey: .curriculumId) ?? ""
+        curriculumId = container.decodeFlexibleStringOrNil(forKey: .curriculumId) ?? ""
         title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         weeks = try container.decodeIfPresent([WeeklyCurriculumDTO].self, forKey: .weeks) ?? []
     }
@@ -81,7 +81,7 @@ struct WeeklyCurriculumDTO: Codable, Sendable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         weeklyCurriculumId =
-            try container.decodeFlexibleStringIfPresent(forKey: .weeklyCurriculumId) ?? ""
+            container.decodeFlexibleStringOrNil(forKey: .weeklyCurriculumId) ?? ""
         weekNo = try container.decodeIntFlexibleIfPresent(forKey: .weekNo) ?? 0
         title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         startsAt = try container.decodeIfPresent(String.self, forKey: .startsAt) ?? ""

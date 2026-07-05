@@ -50,7 +50,7 @@ struct StudyGroupDetailDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        groupId = try container.decodeFlexibleStringIfPresent(forKey: .groupId) ?? ""
+        groupId = container.decodeFlexibleStringOrNil(forKey: .groupId) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         part = try container.decodeIfPresent(String.self, forKey: .part) ?? ""
         partDisplayName = try container.decodeIfPresent(String.self, forKey: .partDisplayName)
@@ -120,9 +120,9 @@ struct StudyGroupSchoolDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schoolId = try container.decodeFlexibleStringIfPresent(forKey: .schoolId) ?? ""
+        schoolId = container.decodeFlexibleStringOrNil(forKey: .schoolId) ?? ""
         schoolName = try container.decodeIfPresent(String.self, forKey: .schoolName) ?? ""
-        logoImageId = try container.decodeFlexibleStringIfPresent(forKey: .logoImageId)
+        logoImageId = container.decodeFlexibleStringOrNil(forKey: .logoImageId)
         totalStudyGroupCount =
             try container.decodeIntFlexibleIfPresent(forKey: .totalStudyGroupCount) ?? 0
         totalMemberCount =
@@ -168,8 +168,8 @@ struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        challengerId = try container.decodeFlexibleStringIfPresent(forKey: .challengerId) ?? ""
-        memberId = try container.decodeFlexibleStringIfPresent(forKey: .memberId) ?? ""
+        challengerId = container.decodeFlexibleStringOrNil(forKey: .challengerId) ?? ""
+        memberId = container.decodeFlexibleStringOrNil(forKey: .memberId) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         profileImageURL = try container.decodeIfPresent(String.self, forKey: .profileImageURL)
         bestWorkbookPoint = try container.decodeIntFlexibleIfPresent(forKey: .bestWorkbookPoint)

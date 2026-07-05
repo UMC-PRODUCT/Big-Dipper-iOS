@@ -36,7 +36,7 @@ struct KeyedDecodingContainerFlexibleNumberTests {
         let value: Int
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            value = try container.decodeFlexibleInt(forKey: .value)
+            value = try container.decodeIntFlexible(forKey: .value)
         }
         enum CodingKeys: String, CodingKey { case value }
     }
@@ -45,7 +45,7 @@ struct KeyedDecodingContainerFlexibleNumberTests {
         let value: Int?
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            value = try container.decodeFlexibleIntIfPresent(forKey: .value)
+            value = try container.decodeIntFlexibleIfPresent(forKey: .value)
         }
         enum CodingKeys: String, CodingKey { case value }
     }
@@ -54,7 +54,7 @@ struct KeyedDecodingContainerFlexibleNumberTests {
         let value: Double
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            value = try container.decodeFlexibleDouble(forKey: .value)
+            value = try container.decodeDoubleFlexible(forKey: .value)
         }
         enum CodingKeys: String, CodingKey { case value }
     }
@@ -65,12 +65,13 @@ struct KeyedDecodingContainerFlexibleNumberTests {
     struct StringDecodingTests {
 
         @Test(
-            "JSON 표현 다양성을 모두 String으로 흡수한다",
+            "JSON 표현 다양성을 모두 String으로 흡수한다 (숫자는 정수로 절삭)",
             arguments: [
                 (#"{ "value": "abc" }"#,   "abc"),
                 (#"{ "value": 42 }"#,      "42"),
                 (#"{ "value": "42" }"#,    "42"),
-                (#"{ "value": 3.14 }"#,    "3.14")
+                // ID/카운트 의미이므로 실수는 정수로 절삭한다: 3.14 → "3"
+                (#"{ "value": 3.14 }"#,    "3")
             ]
         )
         func decodesVariousNumberShapes(json: String, expected: String) throws {
@@ -115,9 +116,9 @@ struct KeyedDecodingContainerFlexibleNumberTests {
         }
     }
 
-    // MARK: - decodeFlexibleInt
+    // MARK: - decodeIntFlexible
 
-    @Suite("decodeFlexibleInt")
+    @Suite("decodeIntFlexible")
     struct IntDecodingTests {
 
         @Test(
@@ -143,9 +144,9 @@ struct KeyedDecodingContainerFlexibleNumberTests {
         }
     }
 
-    // MARK: - decodeFlexibleIntIfPresent
+    // MARK: - decodeIntFlexibleIfPresent
 
-    @Suite("decodeFlexibleIntIfPresent")
+    @Suite("decodeIntFlexibleIfPresent")
     struct OptionalIntDecodingTests {
 
         @Test("키 누락 → nil")
@@ -177,9 +178,9 @@ struct KeyedDecodingContainerFlexibleNumberTests {
         }
     }
 
-    // MARK: - decodeFlexibleDouble
+    // MARK: - decodeDoubleFlexible
 
-    @Suite("decodeFlexibleDouble")
+    @Suite("decodeDoubleFlexible")
     struct DoubleDecodingTests {
 
         @Test(

@@ -139,12 +139,3 @@ public struct TargetInfoDTO: Codable {
     }
 }
 
-private extension KeyedDecodingContainer {
-    func decodeIntFlexibleIfPresent(forKey key: Key) throws -> Int? {
-        if (try? decodeNil(forKey: key)) == true { return nil }
-        if let value = try? decode(Int.self, forKey: key) { return value }
-        if let value = try? decode(Double.self, forKey: key) { return Int(value) }
-        if let value = try? decode(String.self, forKey: key) { return Int(value) }
-        return nil
-    }
-}

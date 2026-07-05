@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 import ActivityDomain
 
 /// 출석 현황 응답의 `location` 객체 DTO

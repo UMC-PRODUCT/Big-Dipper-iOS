@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 import ActivityDomain
 
 // MARK: - WeeklyCurriculumOptionDTO
@@ -35,8 +36,8 @@ struct WeeklyCurriculumOptionDTO: Codable, Sendable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         weeklyCurriculumId =
-            try container.decodeFlexibleStringIfPresent(forKey: .weeklyCurriculumId) ?? ""
-        weekNo = try container.decodeFlexibleStringIfPresent(forKey: .weekNo) ?? ""
+            container.decodeFlexibleStringOrNil(forKey: .weeklyCurriculumId) ?? ""
+        weekNo = container.decodeFlexibleStringOrNil(forKey: .weekNo) ?? ""
         title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
     }
 

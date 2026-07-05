@@ -285,7 +285,7 @@ public struct MyPageChallengerPointDTO: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeFlexibleString(forKey: .id)
         pointType = try container.decode(String.self, forKey: .pointType)
-        point = try container.decodeFlexibleDouble(forKey: .point)
+        point = try container.decodeDoubleFlexible(forKey: .point)
         description = try container.decode(String.self, forKey: .description)
         createdAt = try container.decode(String.self, forKey: .createdAt)
     }

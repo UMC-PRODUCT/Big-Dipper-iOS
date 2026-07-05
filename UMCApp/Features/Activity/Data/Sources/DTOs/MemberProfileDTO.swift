@@ -6,7 +6,7 @@
 //
 
 import Foundation
-
+import UMCFoundation
 // MARK: - MemberProfileDTO
 
 /// 멤버 프로필 응답 DTO (챌린저 ID 해석 전용)
@@ -71,10 +71,10 @@ struct MemberChallengerRecordDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        challengerId = try container.decodeFlexibleStringIfPresent(forKey: .challengerId) ?? ""
-        memberId = try container.decodeFlexibleStringIfPresent(forKey: .memberId) ?? ""
+        challengerId = container.decodeFlexibleStringOrNil(forKey: .challengerId) ?? ""
+        memberId = container.decodeFlexibleStringOrNil(forKey: .memberId) ?? ""
         gisu = try container.decodeIntFlexibleIfPresent(forKey: .gisu) ?? 0
-        gisuId = try container.decodeFlexibleStringIfPresent(forKey: .gisuId) ?? ""
+        gisuId = container.decodeFlexibleStringOrNil(forKey: .gisuId) ?? ""
     }
 
     // MARK: - Encodable
