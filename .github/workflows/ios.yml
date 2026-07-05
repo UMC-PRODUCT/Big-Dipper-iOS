@@ -3,8 +3,14 @@ name: iOS CI
 on:
   push:
     branches: [ "develop" ]
+    paths:
+      - "AppProduct/**"
+      - ".github/workflows/ios.yml"
   pull_request:
     branches: [ "develop" ]
+    paths:
+      - "AppProduct/**"
+      - ".github/workflows/ios.yml"
 
 jobs:
   build:
