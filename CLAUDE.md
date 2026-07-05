@@ -89,6 +89,7 @@ cd UMCApp && make doctor    # 환경 진단
 | 주제 | 문서 | 언제 읽나 |
 |------|------|----------|
 | 빌드 & Tuist 모듈 구조 | `docs/claude/build-and-modules.md` | 모듈 추가, 빌드 설정, 의존성 |
+| Tuist 파일별 이관 매핑 | `docs/claude/tuist-file-mapping.md` | 레거시 파일을 어느 모듈/레이어로 옮길지 확인할 때 (필수 참조) |
 | 아키텍처 / Observation / 에러 | `docs/claude/architecture.md` | ViewModel·UseCase·에러 처리 작업 |
 | Network Router (Moya) | `docs/claude/network-router.md` | API 엔드포인트/DTO 추가 |
 | Response DTO 디코딩 | `docs/claude/response-dto-decoding.md` | Response DTO 작성/수정 |
