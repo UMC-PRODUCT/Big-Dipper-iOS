@@ -77,3 +77,70 @@ jobs:
 
       - name: Build & Test (make test)
         run: make test
+
+  notify:
+    name: Notify Discord
+    needs: build-test
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DISCORD_MENTION_ROLE_ID: ${{ secrets.DISCORD_MENTION_ROLE_ID }}
+      BUILD_RESULT: ${{ needs.build-test.result }}
+      REPOSITORY: ${{ github.repository }}
+      REF_NAME: ${{ github.ref_name }}
+      ACTOR: ${{ github.actor }}
+      COMMIT_SHA: ${{ github.sha }}
+      WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+
+    steps:
+      - name: Send build result to Discord
+        run: |
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "DISCORD_WEBHOOK_URL is not configured. Skipping Discord notification."
+            exit 0
+          fi
+
+          python3 - << 'PY' > payload.json
+          import json
+          import os
+
+          build_result = os.environ["BUILD_RESULT"]
+          short_sha = os.environ["COMMIT_SHA"][:7]
+          pr_url = os.environ.get("PR_URL") or "N/A"
+          mention_role_id = os.environ.get("DISCORD_MENTION_ROLE_ID", "").strip()
+
+          if build_result == "success":
+              status_text = "SUCCESS ✅"
+              color = 5763719  # green
+              mention = ""
+          else:
+              status_text = "FAILED ❌"
+              color = 15548997  # red
+              mention = f"<@&{mention_role_id}>" if mention_role_id else "@here"
+
+          payload = {
+              "content": mention,
+              "embeds": [
+                  {
+                      "title": "UMCApp (Tuist) CI Build Result",
+                      "url": os.environ["WORKFLOW_URL"],
+                      "color": color,
+                      "fields": [
+                          {"name": "Build Status", "value": status_text, "inline": True},
+                          {"name": "Branch", "value": os.environ["REF_NAME"], "inline": True},
+                          {"name": "Commit", "value": f"`{short_sha}` by {os.environ['ACTOR']}", "inline": True},
+                          {"name": "PR", "value": pr_url, "inline": False},
+                      ],
+                      "footer": {"text": os.environ["REPOSITORY"]},
+                  }
+              ],
+          }
+
+          print(json.dumps(payload))
+          PY
+
+          curl -sS -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data @payload.json
