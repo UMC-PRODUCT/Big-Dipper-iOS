@@ -88,7 +88,7 @@ private extension Date {
 
     static let hourMinuteFormatter: Foundation.DateFormatter = {
         let formatter = Foundation.DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR_POSIX")
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = .current
         formatter.dateFormat = "HH:mm"
         return formatter

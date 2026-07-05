@@ -1,6 +1,6 @@
 //
 //  MemberStatus.swift
-//  CoreEnum
+//  UMCFoundation
 //
 
 import Foundation
