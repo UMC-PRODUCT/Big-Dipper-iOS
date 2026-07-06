@@ -43,7 +43,7 @@ public protocol SinglePhotoPickerManageable: AnyObject {
     var selectedPhotoItem: PhotosPickerItem? { get set }
     
     /// 로드된 이미지 데이터(UIImage)
-    var selectedImsge: UIImage? { get set }
+    var selectedImage: UIImage? { get set }
     
     /// 선택한 `selectedPhotoItem`으로부터 실제 이미지를 로드하는 메서드
     ///
@@ -77,21 +77,21 @@ public extension SinglePhotoPickerManageable {
     @MainActor
     func loadSelectedImage() async {
         guard let item = selectedPhotoItem else {
-            selectedImsge = nil
+            selectedImage = nil
             return
         }
         
         do {
             if let data = try await item.loadTransferable(type: Data.self),
                let uiImage = UIImage(data: data) {
-                selectedImsge = uiImage
+                selectedImage = uiImage
                 await didLoadImage(image: uiImage)
             } else {
-                selectedImsge = nil
+                selectedImage = nil
                 print("[SinglePhotoPickerManageable] 이미지 데이터 변환 실패")
             }
         } catch {
-            selectedImsge = nil
+            selectedImage = nil
             print("[SinglePhotoPickerManageable] 이미지 업로드 실패: \(error.localizedDescription)" )
         }
     }
