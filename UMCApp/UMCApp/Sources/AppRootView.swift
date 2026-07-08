@@ -2,14 +2,13 @@ import AuthPresentation
 import CoreDesignSystem
 import CoreDI
 import CoreNetwork
-import HomePresentation
 import SwiftUI
 import UMCFoundation
 
 /// 앱 루트 화면.
 ///
 /// `AppFlowViewModel`의 상태에 따라 Bootstrap / Login / Main(탭 셸)을 스위칭한다.
-/// 탭 셸·실제 로그인 화면은 후속 이슈(#910, #912)에서 이 스위치의 각 분기를 교체한다.
+/// 실제 로그인 화면은 후속 이슈(#912)에서 이 스위치의 분기를 교체한다.
 struct AppRootView: View {
 
     // MARK: - Property
@@ -29,7 +28,7 @@ struct AppRootView: View {
                 AuthFeatureView()
 
             case .main:
-                HomeFeatureView()
+                RootTabView()
             }
         }
         .animation(.easeInOut(duration: DefaultConstant.animationTime), value: viewModel.state)
