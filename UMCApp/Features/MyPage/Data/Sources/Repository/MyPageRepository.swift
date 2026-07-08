@@ -15,20 +15,39 @@ import MyPageDomain
 /// MyPage Repository 구현체
 ///
 /// 프로필 조회/활동 게시글 조회/약관 조회를 처리합니다.
-/// (수정·삭제 계열은 다음 이슈에서 추가됩니다 — `MyPageRepositoryProtocol`의 보류 메서드 참고)
 public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendable {
+    
     // MARK: - Property
 
-    private let adapter: MoyaNetworkAdapter
+    private let adapter: any MyPageNetworkRequesting
+    private let storageRepository: StorageRepositoryProtocol
     private let decoder: JSONDecoder
 
     // MARK: - Init
 
-    public init(
+    /// 운영 이니셜라이저 — 구체 `MoyaNetworkAdapter` 를 주입받습니다.
+    public convenience init(
         adapter: MoyaNetworkAdapter,
+        storageRepository: StorageRepositoryProtocol,
         decoder: JSONDecoder = JSONDecoder()
     ) {
-        self.adapter = adapter
+        self.init(
+            networkRequesting: adapter,
+            storageRepository: storageRepository,
+            decoder: decoder
+        )
+    }
+
+    /// 테스트 seam — `MyPageNetworkRequesting` 가짜 구현을 주입하기 위한 지정 이니셜라이저.
+    /// (`MoyaNetworkAdapter` 는 `NetworkConfig.baseURL` `fatalError` 로 테스트 번들에서
+    /// 직접 사용할 수 없으므로, 테스트는 이 이니셜라이저로 stub 을 주입합니다.)
+    init(
+        networkRequesting: any MyPageNetworkRequesting,
+        storageRepository: StorageRepositoryProtocol,
+        decoder: JSONDecoder = JSONDecoder()
+    ) {
+        self.adapter = networkRequesting
+        self.storageRepository = storageRepository
         self.decoder = decoder
     }
 
@@ -67,7 +86,95 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
         )
         return profile.toMemberProfileSummary()
     }
-
+    
+    /// 운영진 발급 코드로 기존 챌린저 기록을 추가합니다.
+    public func addChallengerRecord(code: String) async throws {
+        do {
+            let response = try await adapter.request(
+                MyPageRouter.addChallengerRecord(code: code)
+            )
+            let apiResponse = try decoder.decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
+    }
+    
+    /// 프로필 이미지 업로드 3단계 플로우: prepare → upload → confirm → patch
+    ///
+    /// - Parameters:
+    ///   - imageData: 업로드할 이미지 바이너리 데이터
+    ///   - fileName: 파일 이름 (예: "profile.jpg")
+    ///   - contentType: MIME 타입 (예: "image/jpeg")
+    /// - Returns: 갱신된 프로필 데이터
+    public func updateProfileImage(
+        imageData: Data,
+        fileName: String,
+        contentType: String
+    ) async throws -> ProfileData {
+        let prepared = try await storageRepository.prepareUpload(
+            fileName: fileName,
+            contentType: contentType,
+            fileSize: imageData.count,
+            category: .profileImage
+        )
+        
+        try await storageRepository.uploadFile(
+            to: prepared.uploadUrl,
+            data: imageData,
+            method: prepared.uploadMethod,
+            headers: prepared.headers,
+            contentType: contentType
+        )
+        
+        try await storageRepository.confirmUpload(fileId: prepared.fileId)
+        
+        return try await patchMemberProfileImage(profileImageId: prepared.fileId)
+    }
+    
+    /// 프로필 외부 링크를 정규화한 뒤 서버에 PATCH 요청으로 반영합니다.
+    ///
+    /// - Parameter links: 수정할 프로필 링크 배열
+    /// - Returns: 갱신된 프로필 데이터
+    public func updateProfileLinks(
+        _ links: [ProfileLink]
+    ) async throws -> ProfileData {
+        let request = UpdateMemberProfileLinksRequestDTO(
+            links: normalizedProfileLinks(links).map {
+                UpdateMemberProfileLinkRequestDTO(
+                    type: $0.type.apiType,
+                    link: $0.url
+                )
+            }
+        )
+        
+        let response = try await adapter.request(
+            MyPageRouter.patchMemberProfileLinks(
+                request: request
+            )
+        )
+        
+        let apiResponse = try decoder.decode(
+            APIResponse<MyPageProfileResponseDTO>.self,
+            from: response.data
+        )
+        
+        return try apiResponse.unwrap().toProfileData()
+    }
+    
+    /// 회원 탈퇴 처리
+    public func deleteMember() async throws {
+        let response = try await adapter.request(MyPageRouter.deleteMember)
+        let apiResponse = try decoder.decode(
+            APIResponse<MyPageProfileResponseDTO>.self,
+            from: response.data
+        )
+        _ = try apiResponse.unwrap()
+    }
+    
     // MARK: - Posts
 
     public func fetchMyPosts(query: MyPagePostListQuery) async throws -> MyActivePostPage {
@@ -81,8 +188,6 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
     public func fetchScrappedPosts(query: MyPagePostListQuery) async throws -> MyActivePostPage {
         try await fetchPostPage(target: .getScrappedPosts(query: MyPagePostListQueryDTO(query: query)))
     }
-
-    // MARK: - Terms
 
     /// 약관 타입으로 약관 정보를 조회합니다.
     ///
@@ -102,13 +207,74 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
 // MARK: - Private Helpers
 
 private extension MyPageRepository {
+    private static func parseServerError(from error: NetworkError) -> Error? {
+        guard case .requestFailed(_, let data) = error,
+              let data,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String:Any]
+        else {
+            return nil
+        }
+        
+        let code = json["code"] as? String
+        let message = (json["message"] as? String) ?? (json["result"] as? String)
+        
+        guard code != nil || message != nil else {
+            return nil
+        }
+
+        return RepositoryError.serverError(code: code, message: message)
+    }
+}
+
+// MARK: - Private Function
+
+private extension MyPageRepository {
     /// 게시글 페이지 API 응답을 `MyActivePostPage` 도메인으로 변환하는 공통 메서드.
-    func fetchPostPage(target: MyPageRouter) async throws -> MyActivePostPage {
+    private func fetchPostPage(target: MyPageRouter) async throws -> MyActivePostPage {
         let response = try await adapter.request(target)
         let apiResponse = try decoder.decode(
             APIResponse<MyPagePostPageDTO<MyPagePostResponseDTO>>.self,
             from: response.data
         )
-        return try apiResponse.unwrap().toDomain()
+        let result = try apiResponse.unwrap()
+        
+        return MyActivePostPage(
+            items: result.content.map { $0.toCommunityItemModel() },
+            page: Int(result.page) ?? 0,
+            hasNext: result.hasNext
+        )
+    }
+    
+    /// 업로드된 이미지 ID로 회원 프로필 이미지를 갱신합니다.
+    private func patchMemberProfileImage(profileImageId: String) async throws -> ProfileData {
+        let response = try await adapter.request(
+            MyPageRouter.patchMember(
+                request: UpdateMemberProfileImageRequestDTO(
+                    profileImageId: profileImageId
+                )
+            )
+        )
+        
+        let apiResponse = try decoder.decode(
+            APIResponse<MyPageProfileResponseDTO>.self,
+            from: response.data
+        )
+        
+        return try apiResponse.unwrap().toProfileData()
+    }
+    
+    /// 프로필 링크 배열을 정규화합니다.
+    ///
+    /// URL 앞뒤 공백을 제거하고 `SocialLinkType.allCases` 기준으로
+    /// 누락된 타입은 빈 문자열로 채워 모든 케이스가 포함되도록 보장합니다.
+    private func normalizedProfileLinks(_ links: [ProfileLink]) -> [ProfileLink] {
+        var mapped: [SocialLinkType: String] = [:]
+        links.forEach { link in
+            mapped[link.type] = link.url.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        return SocialLinkType.allCases.map {
+            ProfileLink(type: $0, url: mapped[$0] ?? "")
+        }
     }
 }
