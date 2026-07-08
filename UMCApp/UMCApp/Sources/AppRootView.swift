@@ -48,7 +48,7 @@ struct AppRootView: View {
 
     // MARK: - Function
 
-    /// 세션 만료 시 토큰 삭제 → DI 캐시 초기화 → 로그인 화면 전환을 수행한다.
+    /// 세션 만료 시 DI 캐시 초기화 → 로그인 화면 전환 → (비동기) 토큰 삭제를 수행한다.
     ///
     /// - Note: `resetCache()`보다 먼저 `NetworkClient` 참조를 동기적으로 확보한다.
     ///   순서를 바꾸면 `Task` 내부의 `resolve`가 캐시 미스로 새 인스턴스를 생성해
