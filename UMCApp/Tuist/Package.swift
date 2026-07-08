@@ -17,5 +17,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/Moya/Moya.git", from: "15.0.3"),
         .package(url: "https://github.com/onevcat/Kingfisher.git", from: "8.6.1"),
+        .package(url: "https://github.com/kakao/kakao-ios-sdk", from: "2.27.0"),
+        .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "9.1.0"),
     ]
 )

@@ -22,17 +22,26 @@ let project = Project(
                     "NFCReaderUsageDescription": "NFC로 명함 정보를 주고받습니다.",
                     "NSNearbyInteractionUsageDescription": "근거리에서 정확한 명함 교환을 위해 위치를 사용합니다.",
                     // Secrets/Shared.xcconfig(+ Secrets.xcconfig)에서 주입되는 값.
-                    // UMCFoundation의 Config가 이 키들을 읽는다. (BASE_URL / KAKAO_KEY / TMAP_SECRET_KEY)
+                    // UMCFoundation의 Config가 이 키들을 읽는다.
+                    // (BASE_URL / KAKAO_KEY / TMAP_SECRET_KEY / GOOGLE_CLIENT_ID / GOOGLE_REVERSED_CLIENT_ID)
                     "BASE_URL": "$(BASE_URL)",
                     "KAKAO_KEY": "$(KAKAO_KEY)",
                     "TMAP_SECRET_KEY": "$(TMAP_SECRET_KEY)",
-                    // Kakao SDK 인증 리다이렉트용 URL Scheme (AuthConfig.kakaoURLScheme와 동일 규칙)
+                    "GOOGLE_CLIENT_ID": "$(GOOGLE_CLIENT_ID)",
+                    "GOOGLE_REVERSED_CLIENT_ID": "$(GOOGLE_REVERSED_CLIENT_ID)",
+                    // GoogleSignIn SDK가 런타임에 직접 조회하는 키(GIDClientID)
+                    "GIDClientID": "$(GOOGLE_CLIENT_ID)",
+                    // Kakao/Google SDK 인증 리다이렉트용 URL Scheme
+                    // (AuthConfig.kakaoURLScheme, googleReversedClientId와 동일 규칙)
                     "CFBundleURLTypes": [
                         [
                             "CFBundleURLSchemes": ["kakao$(KAKAO_KEY)"],
                         ],
+                        [
+                            "CFBundleURLSchemes": ["$(GOOGLE_REVERSED_CLIENT_ID)"],
+                        ],
                     ],
-                    "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink"],
+                    "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"],
                 ]
             ),
             buildableFolders: [

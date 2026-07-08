@@ -41,3 +41,32 @@ public enum SocialType: String, CaseIterable, Hashable {
         }
     }
 }
+
+// MARK: - Connected Providers Persistence
+
+public extension SocialType {
+    /// UserDefaults에 저장된 연동 소셜 목록을 불러옵니다.
+    static func loadConnected(from defaults: UserDefaults = .standard) -> [SocialType] {
+        guard let rawValues = defaults.array(
+            forKey: AppStorageKey.connectedSocialProviders
+        ) as? [String] else {
+            return []
+        }
+
+        let set = Set(rawValues.compactMap(SocialType.init(rawValue:)))
+        return SocialType.allCases.filter { set.contains($0) }
+    }
+
+    /// UserDefaults에 연동 소셜 목록을 저장합니다.
+    static func saveConnected(_ types: [SocialType], to defaults: UserDefaults = .standard) {
+        let rawValues = Array(Set(types.map(\.rawValue))).sorted()
+        defaults.set(rawValues, forKey: AppStorageKey.connectedSocialProviders)
+    }
+
+    /// 특정 소셜 연동 상태를 UserDefaults에 추가 저장합니다.
+    static func addConnected(_ type: SocialType, to defaults: UserDefaults = .standard) {
+        var current = Set(loadConnected(from: defaults))
+        current.insert(type)
+        saveConnected(Array(current), to: defaults)
+    }
+}
