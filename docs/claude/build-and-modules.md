@@ -150,6 +150,8 @@ featureProject(
 |--------|------|--------|
 | Moya | 15.0.3 | CoreNetwork |
 | Kingfisher | 8.6.1 | CoreUIComponents |
+| KakaoSDK (kakao-ios-sdk) | 2.27.0+ | CoreNetwork (`KakaoLoginManager`) |
+| GoogleSignIn-iOS | 9.1.0+ | CoreNetwork (`GoogleLoginManager`) |
 
 ### 주요 설정
 
