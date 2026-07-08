@@ -40,6 +40,16 @@ public struct MyPageProfileView: View {
     }
     
     public var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        Form {
+//            sectionContentImpl()
+        }
+    }
+    
+    /// 섹션 구현부
+    /// - Parameter profile: 프로필 데이터 바인딩
+    @ViewBuilder
+    private func sectionConnectionImpl(_ profile: Binding<ProfileData>) -> some View {
+        // 프로필 이미지 수정
+        profilIm
     }
 }
