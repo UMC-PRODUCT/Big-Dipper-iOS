@@ -5,6 +5,7 @@ import NoticePresentation
 import SwiftData
 import SwiftUI
 import UMCFoundation
+import os.log
 
 @main
 struct UMCAppApp: App {
@@ -85,6 +86,11 @@ extension UMCAppApp {
     /// SwiftData ModelContainer를 생성합니다.
     ///
     /// - Returns: 생성된 ModelContainer. 로컬 저장소 초기화가 실패하면 인메모리로 폴백한다.
+    ///
+    /// - Note: `groupContainer: .none` — 위젯 IPC용 App Group 컨테이너를 SwiftData 기본
+    ///   스토어 위치로 쓰지 않도록 명시한다. `.automatic`(기본값)은 App Group entitlement가
+    ///   있으면 그 공유 컨테이너를 자동 선택해, 최초 실행마다 상위 디렉터리 부재로 인한
+    ///   CoreData recovery 로그가 발생했다.
     private static func makeModelContainer() -> ModelContainer {
         let schema = Schema([
             NoticeReadRecord.self,
@@ -92,16 +98,30 @@ extension UMCAppApp {
         ])
 
         do {
-            let configuration = ModelConfiguration(schema: schema)
+            let configuration = ModelConfiguration(schema: schema, groupContainer: .none)
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            print("SwiftData local init failed. Fallback to in-memory store: \(error)")
+            let reason = error.localizedDescription
+            logger.error("SwiftData local store init failed, falling back to in-memory: \(reason)")
             do {
-                let memoryConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+                let memoryConfiguration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: true,
+                    groupContainer: .none
+                )
                 return try ModelContainer(for: schema, configurations: [memoryConfiguration])
             } catch {
                 fatalError("Failed to initialize ModelContainer: \(error)")
             }
         }
     }
+}
+
+// MARK: - Logging
+
+extension UMCAppApp {
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "UMCApp",
+        category: "AppBootstrap"
+    )
 }

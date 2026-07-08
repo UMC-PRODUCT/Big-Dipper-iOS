@@ -1,5 +1,7 @@
 import AuthPresentation
 import CoreDesignSystem
+import CoreDI
+import CoreNetwork
 import HomePresentation
 import SwiftUI
 import UMCFoundation
@@ -13,6 +15,7 @@ struct AppRootView: View {
     // MARK: - Property
 
     @State private var viewModel = AppFlowViewModel()
+    @Environment(\.di) private var di
 
     // MARK: - Body
 
@@ -34,13 +37,28 @@ struct AppRootView: View {
         .onReceive(
             NotificationCenter.default.publisher(for: .authSessionExpired)
         ) { _ in
-            viewModel.logout()
+            handleAuthSessionExpired()
         }
         #if DEBUG
         .overlay(alignment: .bottom) {
             debugFlowSwitcher
         }
         #endif
+    }
+
+    // MARK: - Function
+
+    /// 세션 만료 시 토큰 삭제 → DI 캐시 초기화 → 로그인 화면 전환을 수행한다.
+    ///
+    /// - Note: 토큰 삭제는 `NetworkClient`가 `actor`라 비동기이므로 `Task`로 발행하고,
+    ///   캐시 초기화·화면 전환은 그 완료를 기다리지 않고 즉시 진행한다(레거시
+    ///   `AppProductApp.handleAuthSessionExpired()`와 동일한 순서).
+    private func handleAuthSessionExpired() {
+        Task {
+            try? await di.resolve(NetworkClient.self).logout()
+        }
+        di.resetCache()
+        viewModel.logout()
     }
 
     #if DEBUG
