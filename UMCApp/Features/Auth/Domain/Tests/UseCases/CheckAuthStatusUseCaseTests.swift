@@ -1,60 +1,6 @@
 import Testing
 @testable import AuthDomain
 
-// MARK: - Mocks
-
-#if DEBUG
-
-/// `AuthRepositoryProtocol`의 전체 계약을 컨트롤하는 Mock.
-private final class MockAuthRepository: @unchecked Sendable, AuthRepositoryProtocol {
-
-    enum MockError: Error {
-        /// 에러 전파 경로 검증용 — Repository가 의도적으로 실패할 때 던지는 스텁 에러
-        case stubbed
-    }
-
-    // MARK: 입출력 기록
-
-    var hasSessionResult: Bool = false
-    private(set) var hasSessionCallCount: Int = 0
-
-    var refreshSessionError: Error?
-    private(set) var refreshSessionCallCount: Int = 0
-
-    var fetchMyProfileResult: Profile = Profile(
-        memberId: "0",
-        name: "",
-        nickname: "",
-        generations: []
-    )
-    var fetchMyProfileError: Error?
-    private(set) var fetchMyProfileCallCount: Int = 0
-
-    // MARK: AuthRepositoryProtocol
-
-    func hasSession() async -> Bool {
-        hasSessionCallCount += 1
-        return hasSessionResult
-    }
-
-    func refreshSession() async throws {
-        refreshSessionCallCount += 1
-        if let refreshSessionError {
-            throw refreshSessionError
-        }
-    }
-
-    func fetchMyProfile() async throws -> Profile {
-        fetchMyProfileCallCount += 1
-        if let fetchMyProfileError {
-            throw fetchMyProfileError
-        }
-        return fetchMyProfileResult
-    }
-}
-
-#endif
-
 // MARK: - Helpers
 
 private func makeUseCase(repository: MockAuthRepository) -> CheckAuthStatusUseCase {
@@ -86,13 +32,13 @@ struct CheckAuthStatusUseCaseTests {
     func fallsBackToProfileFetchWhenRefreshFails() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.refreshSessionError = MockAuthRepository.MockError.stubbed
-        repository.fetchMyProfileResult = Profile(
+        repository.refreshSessionError = AuthTestError.boom
+        repository.fetchMyProfileResult = .success(Profile(
             memberId: "1",
             name: "홍길동",
             nickname: "길동이",
             generations: ["11"]
-        )
+        ))
         let useCase = makeUseCase(repository: repository)
 
         let status = await useCase.execute()
@@ -106,12 +52,12 @@ struct CheckAuthStatusUseCaseTests {
     func returnsApprovedWhenProfileHasGenerations() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileResult = Profile(
+        repository.fetchMyProfileResult = .success(Profile(
             memberId: "1",
             name: "홍길동",
             nickname: "길동이",
             generations: ["10", "11"]
-        )
+        ))
         let useCase = makeUseCase(repository: repository)
 
         let status = await useCase.execute()
@@ -125,12 +71,12 @@ struct CheckAuthStatusUseCaseTests {
     func returnsPendingApprovalWhenProfileHasNoGenerations() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileResult = Profile(
+        repository.fetchMyProfileResult = .success(Profile(
             memberId: "1",
             name: "홍길동",
             nickname: "길동이",
             generations: []
-        )
+        ))
         let useCase = makeUseCase(repository: repository)
 
         let status = await useCase.execute()
@@ -144,7 +90,7 @@ struct CheckAuthStatusUseCaseTests {
     func returnsNotLoggedInWhenProfileFetchFails() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileError = MockAuthRepository.MockError.stubbed
+        repository.fetchMyProfileResult = .failure(AuthTestError.boom)
         let useCase = makeUseCase(repository: repository)
 
         let status = await useCase.execute()

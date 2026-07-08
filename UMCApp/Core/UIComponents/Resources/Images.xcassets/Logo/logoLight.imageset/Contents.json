@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "logoLight.pdf",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

@@ -8,7 +8,8 @@ extension DIContainer {
         register(AuthRepositoryProtocol.self) {
             AuthRepository(
                 adapter: self.resolve(MoyaNetworkAdapter.self),
-                networkClient: self.resolve(NetworkClient.self)
+                networkClient: self.resolve(NetworkClient.self),
+                tokenStore: self.resolve(TokenStore.self)
             )
         }
         register(FetchMyProfileUseCaseProtocol.self) {
@@ -19,6 +20,9 @@ extension DIContainer {
                 repository: self.resolve(AuthRepositoryProtocol.self),
                 fetchMyProfileUseCase: self.resolve(FetchMyProfileUseCaseProtocol.self)
             )
+        }
+        register(LoginUseCaseProtocol.self) {
+            LoginUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
         }
     }
 }

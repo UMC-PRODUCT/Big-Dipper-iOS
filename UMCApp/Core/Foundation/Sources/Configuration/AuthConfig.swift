@@ -30,5 +30,21 @@ public extension Config {
         public static var kakaoURLScheme: String {
             "kakao\(kakaoKey)"
         }
+
+        /// GoogleSignIn 연동에 사용하는 OAuth 클라이언트 ID입니다.
+        ///
+        /// - Important: 값은 일반적으로 `Secrets.xcconfig`를 통해 주입되며,
+        ///   `Info.plist`의 `GOOGLE_CLIENT_ID` 항목에서 읽을 수 있어야 합니다.
+        public static var googleClientId: String {
+            Config.stringValue(for: "GOOGLE_CLIENT_ID")
+        }
+
+        /// GoogleSignIn 리다이렉트 URL Scheme(reversed client ID)입니다.
+        ///
+        /// `CFBundleURLSchemes`에 등록되는 값과 동일한 규칙으로 조합해,
+        /// 인증 흐름이 같은 값을 한 소스에서 재사용할 수 있게 합니다.
+        public static var googleReversedClientId: String {
+            Config.stringValue(for: "GOOGLE_REVERSED_CLIENT_ID")
+        }
     }
 }

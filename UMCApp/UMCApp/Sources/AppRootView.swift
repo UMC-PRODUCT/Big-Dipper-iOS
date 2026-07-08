@@ -8,13 +8,13 @@ import UMCFoundation
 /// 앱 루트 화면.
 ///
 /// `AppFlowViewModel`의 상태에 따라 Bootstrap / Login / Main(탭 셸)을 스위칭한다.
-/// 실제 로그인 화면은 후속 이슈(#912)에서 이 스위치의 분기를 교체한다.
 struct AppRootView: View {
 
     // MARK: - Property
 
     @State private var viewModel = AppFlowViewModel()
     @Environment(\.di) private var di
+    @Environment(ErrorHandler.self) private var errorHandler
 
     // MARK: - Body
 
@@ -25,7 +25,7 @@ struct AppRootView: View {
                 BootstrapView(container: di)
 
             case .login:
-                AuthFeatureView()
+                LoginView(container: di, errorHandler: errorHandler)
 
             case .main:
                 RootTabView()

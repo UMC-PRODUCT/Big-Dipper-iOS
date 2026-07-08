@@ -7,6 +7,10 @@ let project = coreProject(
     dependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .external(name: "Moya"),
+        .external(name: "KakaoSDKAuth"),
+        .external(name: "KakaoSDKCommon"),
+        .external(name: "KakaoSDKUser"),
+        .external(name: "GoogleSignIn"),
         .sdk(name: "Security", type: .framework),
     ],
     includesTests: true,

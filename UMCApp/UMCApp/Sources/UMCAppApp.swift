@@ -1,5 +1,8 @@
 import CoreDesignSystem
 import CoreDI
+import GoogleSignIn
+import KakaoSDKAuth
+import KakaoSDKCommon
 import NoticeData
 import NoticePresentation
 import SwiftData
@@ -21,6 +24,7 @@ struct UMCAppApp: App {
 
     init() {
         CoreDesignSystem.registerFonts()
+        KakaoSDK.initSDK(appKey: Config.Auth.kakaoKey)
 
         sharedModelContainer = Self.makeModelContainer()
 
@@ -80,9 +84,13 @@ extension UMCAppApp {
     }
 
     /// 소셜 로그인 딥링크 URL을 처리합니다.
-    ///
-    /// - Note: 실제 카카오/구글 리다이렉트 처리는 후속 이슈(#912)에서 연결된다.
-    private func handleOpenURL(_ url: URL) {}
+    private func handleOpenURL(_ url: URL) {
+        if AuthApi.isKakaoTalkLoginUrl(url) {
+            AuthController.handleOpenUrl(url: url)
+            return
+        }
+        GIDSignIn.sharedInstance.handle(url)
+    }
 
     /// SwiftData ModelContainer를 생성합니다.
     ///

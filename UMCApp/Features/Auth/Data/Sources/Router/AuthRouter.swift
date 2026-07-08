@@ -15,6 +15,12 @@ public enum AuthRouter: BaseTargetType {
 
     /// 내 프로필 조회
     case getMe
+    /// 카카오 소셜 로그인
+    case loginKakao(body: LoginKakaoRequestDTO)
+    /// Apple 소셜 로그인
+    case loginApple(body: LoginAppleRequestDTO)
+    /// Google 소셜 로그인
+    case loginGoogle(body: LoginGoogleRequestDTO)
 
     // MARK: - Path
 
@@ -22,6 +28,12 @@ public enum AuthRouter: BaseTargetType {
         switch self {
         case .getMe:
             return "/api/v1/member/me"
+        case .loginKakao:
+            return "/api/v1/auth/login/kakao"
+        case .loginApple:
+            return "/api/v1/auth/login/apple"
+        case .loginGoogle:
+            return "/api/v1/auth/login/google"
         }
     }
 
@@ -31,6 +43,8 @@ public enum AuthRouter: BaseTargetType {
         switch self {
         case .getMe:
             return .get
+        case .loginKakao, .loginApple, .loginGoogle:
+            return .post
         }
     }
 
@@ -40,6 +54,12 @@ public enum AuthRouter: BaseTargetType {
         switch self {
         case .getMe:
             return .requestPlain
+        case .loginKakao(let body):
+            return .requestJSONEncodable(body)
+        case .loginApple(let body):
+            return .requestJSONEncodable(body)
+        case .loginGoogle(let body):
+            return .requestJSONEncodable(body)
         }
     }
 }
