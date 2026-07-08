@@ -45,7 +45,8 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
 5. **Mock 데이터는 `#if DEBUG` 가드** — 릴리스 빌드 미포함.
 6. **Network Router에 인라인 딕셔너리 금지** — 파라미터는 Query/Body DTO로 캡슐화.
 7. **식별자에 의미 없는 숫자 접미사 금지** — `text1`/`btn2Color` 등 금지, 역할이 드러나는 이름 부여.
-8. **커밋 메시지에 `Co-Authored-By` 라인 절대 추가 금지.**
+8. **커밋·PR·이슈에 AI 작성 흔적(attribution) 절대 금지** — 커밋 메시지의 `Co-Authored-By` 라인,
+   PR·이슈 제목/본문의 `🤖 Generated with [Claude Code](...)` 푸터 등 AI가 작성했음을 드러내는 문구 일체 추가 금지.
 9. **`AppProduct/`(레거시)는 `v2.2.0` 릴리즈 상태로 동결 — 절대 수정 금지.**
    PR 피드백 반영·버그 수정·리팩터·이식·마이그레이션 등 **어떤 작업에서도 `AppProduct/` 하위 파일을 절대 건드리지 않는다.** 모든 작업은 `UMCApp/`(Tuist)에서만 수행한다.
    - 위 절대 규칙·코딩 규약(특히 #2 서버 정수 `String` 통일 등)은 **`UMCApp/`(활성 코드베이스)에만** 적용된다. AppProduct는 동결 상태이므로 이런 규칙을 소급 적용하려고 손대서도 안 된다.

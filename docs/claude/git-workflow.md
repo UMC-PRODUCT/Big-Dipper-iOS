@@ -35,6 +35,7 @@ Git Flow + **연속 브랜치 파생** 지원
 | `design` | UI/디자인 시스템 |
 
 **커밋 메시지에 `Co-Authored-By` 라인을 절대 추가하지 마세요.**
+"Generated with Claude Code" 등 AI가 작성했음을 드러내는 문구도 커밋 메시지에 넣지 않습니다.
 
 ## PR 규칙
 
@@ -42,11 +43,14 @@ Git Flow + **연속 브랜치 파생** 지원
 - main/develop 직접 푸시 금지
 - Squash and Merge 사용
 - **배포 PR 예외**: `testFlight`, `release` 브랜치로의 PR은 **Merge Commit** 사용 (커밋 히스토리 동기화를 위해)
+- **PR 제목·본문에 AI 작성 흔적 금지** — `🤖 Generated with [Claude Code](...)` 푸터, `Co-Authored-By` 크레딧 등
+  attribution 문구를 절대 넣지 않는다
 
 ## 이슈 생성 규칙
 
 이슈는 **제목 접두사 + 라벨 + 이슈 Type + 보드(#3)·`우선순위` + 네이티브 `Priority`·`Effort`** 를
 **기본으로 모두 채워서** 생성한다. 날짜(Start/Target date)만 팀 일정이 있을 때 채운다. (`/create-issue` 스킬이 자동화)
+이슈 제목·본문에도 "Generated with Claude Code" 등 **AI 작성 흔적(attribution) 문구를 절대 넣지 않는다.**
 
 | 템플릿 | 제목 접두사 | 라벨 | 이슈 Type |
 |--------|------------|------|-----------|
