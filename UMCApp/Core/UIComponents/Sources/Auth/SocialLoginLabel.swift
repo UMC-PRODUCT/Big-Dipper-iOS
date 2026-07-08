@@ -12,7 +12,7 @@ public struct SocialLoginLabel: View {
 
     private let loginType: SocialType
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let leadingPadding: CGFloat = 16
         static let buttonHeight: CGFloat = 48
     }

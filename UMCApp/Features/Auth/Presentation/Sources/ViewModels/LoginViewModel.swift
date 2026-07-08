@@ -53,7 +53,10 @@ final class LoginViewModel {
 
         do {
             let (accessToken, email) = try await kakaoLoginManager.login()
-            let result = try await loginUseCase.executeKakao(accessToken: accessToken, email: email)
+            let result = try await loginUseCase.executeKakao(
+                accessToken: accessToken,
+                email: email
+            )
             SocialType.addConnected(.kakao)
             await handle(result: result, action: "loginWithKakao")
         } catch {
@@ -81,7 +84,11 @@ final class LoginViewModel {
 
         appleLoginManager.onAuthorizationCompleted = { [weak self] code, email, fullName in
             Task { @MainActor in
-                await self?.completeAppleLogin(authorizationCode: code, email: email, fullName: fullName)
+                await self?.completeAppleLogin(
+                    authorizationCode: code,
+                    email: email,
+                    fullName: fullName
+                )
             }
         }
 
@@ -108,7 +115,11 @@ final class LoginViewModel {
     // MARK: - Private Function
 
     @MainActor
-    private func completeAppleLogin(authorizationCode: String, email: String?, fullName: String?) async {
+    private func completeAppleLogin(
+        authorizationCode: String,
+        email: String?,
+        fullName: String?
+    ) async {
         do {
             let result = try await loginUseCase.executeApple(
                 authorizationCode: authorizationCode,

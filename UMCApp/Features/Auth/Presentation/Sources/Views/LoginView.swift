@@ -12,6 +12,7 @@ public struct LoginView: View {
 
     @State private var viewModel: LoginViewModel
     @Environment(\.appFlow) private var appFlow
+    @AccessibilityFocusState private var isPendingApprovalMessageFocused: Bool
 
     // MARK: - Init
 
@@ -44,10 +45,21 @@ public struct LoginView: View {
             .padding(.bottom, DefaultConstant.defaultSafeBottom)
         }
         .onChange(of: viewModel.loginState) { _, newState in
-            guard case .loaded = newState else { return }
-            appFlow.showMain()
+            handle(newState: newState)
         }
         .alertPrompt(item: $viewModel.alertPrompt)
+    }
+
+    // MARK: - Function
+
+    private func handle(newState: Loadable<Profile>) {
+        if case .loaded = newState {
+            appFlow.showMain()
+        }
+        // 신규 UX(레거시 부재)라 VoiceOver 포커스를 명시적으로 옮겨 안내 문구를 announce한다.
+        if newState == .failed(.auth(.pendingApproval)) {
+            isPendingApprovalMessageFocused = true
+        }
     }
 
     // MARK: - Subviews
@@ -61,6 +73,8 @@ public struct LoginView: View {
         if case .failed(let error) = viewModel.loginState, error == .auth(.pendingApproval) {
             Text(error.userMessage)
                 .appFont(.footnote, color: .grey500)
+                .multilineTextAlignment(.center)
+                .accessibilityFocused($isPendingApprovalMessageFocused)
                 .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
                 .padding(.bottom, DefaultSpacing.spacing12)
         }

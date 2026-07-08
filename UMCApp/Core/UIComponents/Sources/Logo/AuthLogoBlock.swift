@@ -2,14 +2,14 @@ import CoreDesignSystem
 import SwiftUI
 
 /// 인증 진입 화면(LoginView 등)에서 공통으로 사용하는 로고 + 슬로건 블록.
+///
+/// 부트스트랩 화면(`BootstrapView`)은 `ProgressView` 기반의 최소 구현이라 이 블록과
+/// 픽셀 단위로 맞출 시네마틱 연출은 계획되어 있지 않다 — 정적으로 렌더링되는 로고다.
 public struct AuthLogoBlock: View, Equatable {
 
     // MARK: - Property
 
-    /// 슬로건(부제 + statement) 영역의 투명도(0~1). 기본 1.0 = 정적.
-    private let sloganOpacity: Double
-
-    private enum Constants {
+    fileprivate enum Constants {
         static let logoImageWidth: CGFloat = 160
         static let appSubtitle: String = "동아리 활동을 한 곳에서"
         static let appStatement: String = "Focus on Growth, We Handle the Ops"
@@ -17,9 +17,7 @@ public struct AuthLogoBlock: View, Equatable {
 
     // MARK: - Init
 
-    public init(sloganOpacity: Double = 1.0) {
-        self.sloganOpacity = sloganOpacity
-    }
+    public init() {}
 
     // MARK: - Body
 
@@ -38,7 +36,6 @@ public struct AuthLogoBlock: View, Equatable {
                 Text(Constants.appStatement)
                     .appFont(.subheadline, color: .grey500)
             }
-            .opacity(sloganOpacity)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(

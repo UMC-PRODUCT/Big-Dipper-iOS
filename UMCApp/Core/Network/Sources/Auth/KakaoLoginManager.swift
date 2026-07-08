@@ -96,7 +96,8 @@ public final class KakaoLoginManager {
 
     /// 카카오 로그인을 수행하고 액세스 토큰과 이메일을 반환합니다.
     ///
-    /// 액세스 토큰과 이메일을 병렬로 가져와 성능을 최적화합니다.
+    /// 로그인 세션이 성립된 후 이메일을 조회합니다(순차 실행). `getUserEmail()`은
+    /// 로그인 세션이 있어야 호출할 수 있어 `fetchAccessToken()`보다 먼저 실행할 수 없습니다.
     ///
     /// - Returns: (액세스 토큰, 이메일) 튜플
     /// - Throws: `fetchAccessToken()` 또는 `getUserEmail()`에서 발생한 에러

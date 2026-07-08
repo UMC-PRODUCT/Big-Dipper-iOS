@@ -17,7 +17,11 @@ public struct AuthRepository: AuthRepositoryProtocol {
 
     // MARK: - Init
 
-    public init(adapter: MoyaNetworkAdapter, networkClient: NetworkClient, tokenStore: TokenStore) {
+    public init(
+        adapter: MoyaNetworkAdapter,
+        networkClient: NetworkClient,
+        tokenStore: TokenStore
+    ) {
         self.adapter = adapter
         self.networkClient = networkClient
         self.tokenStore = tokenStore
@@ -108,9 +112,9 @@ public struct AuthRepository: AuthRepositoryProtocol {
             return .newMember(verificationToken: dto.oAuthVerificationToken ?? "")
         } catch let decodingError as DecodingError {
             #if DEBUG
-            let rawBody = String(data: response.data, encoding: .utf8) ?? "<invalid utf8>"
+            // 응답 body에는 accessToken/refreshToken이 포함될 수 있어 raw body는 출력하지
+            // 않고, 디코딩 에러 메시지만 남긴다.
             print("[AuthRepository] performOAuthLogin decodingError=\(decodingError)")
-            print("[AuthRepository] performOAuthLogin rawBody=\(rawBody)")
             #endif
             throw RepositoryError.decodingError(detail: "\(decodingError)")
         }

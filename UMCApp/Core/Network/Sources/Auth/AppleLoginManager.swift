@@ -206,7 +206,9 @@ extension AppleLoginManager: ASAuthorizationControllerPresentationContextProvidi
     ///
     /// - Parameter controller: ASAuthorizationController 인스턴스
     /// - Returns: Apple 인증 UI를 표시할 윈도우
-    public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+    public func presentationAnchor(
+        for controller: ASAuthorizationController
+    ) -> ASPresentationAnchor {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
             // keyWindow가 없을 경우 첫 번째 UIWindowScene으로 새 윈도우 생성
