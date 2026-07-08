@@ -3,8 +3,33 @@ import Testing
 
 struct UMCAppTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func initialStateIsBootstrap() {
+        let viewModel = AppFlowViewModel()
+
+        #expect(viewModel.state == .bootstrap)
+    }
+
+    @Test func reenteringSameStateIsNoop() {
+        let viewModel = AppFlowViewModel()
+
+        viewModel.showLogin()
+        #expect(viewModel.state == .login)
+
+        viewModel.showLogin()
+        #expect(viewModel.state == .login)
+    }
+
+    @Test func stateTransitionsUpdateAccordingly() {
+        let viewModel = AppFlowViewModel()
+
+        viewModel.showLogin()
+        #expect(viewModel.state == .login)
+
+        viewModel.showMain()
+        #expect(viewModel.state == .main)
+
+        viewModel.logout()
+        #expect(viewModel.state == .login)
     }
 
 }
