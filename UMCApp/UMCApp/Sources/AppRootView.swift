@@ -22,7 +22,7 @@ struct AppRootView: View {
         ZStack {
             switch viewModel.state {
             case .bootstrap:
-                BootstrapPlaceholderView()
+                BootstrapView(container: di)
 
             case .login:
                 AuthFeatureView()
@@ -78,13 +78,4 @@ struct AppRootView: View {
         .padding(.bottom, DefaultConstant.defaultSafeBottom)
     }
     #endif
-}
-
-/// Bootstrap 상태의 최소 자리표시 화면.
-///
-/// 자동 로그인 판단 로직은 후속 이슈(#911)에서 이 자리에 연결된다.
-private struct BootstrapPlaceholderView: View {
-    var body: some View {
-        ProgressView()
-    }
 }

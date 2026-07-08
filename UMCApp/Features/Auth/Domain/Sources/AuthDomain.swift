@@ -1,1 +1,1 @@
-public protocol AuthUseCase {}
+// public protocol AuthUseCase {}

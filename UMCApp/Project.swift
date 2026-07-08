@@ -43,6 +43,7 @@ let project = Project(
             dependencies: [
                 .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
                 .project(target: "AuthPresentation", path: .relativeToRoot("Features/Auth")),
+                .project(target: "AuthData", path: .relativeToRoot("Features/Auth")),
                 .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
                 .project(target: "NoticePresentation", path: .relativeToRoot("Features/Notice")),
                 .project(target: "NoticeData", path: .relativeToRoot("Features/Notice")),

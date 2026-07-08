@@ -28,6 +28,7 @@ struct UMCAppApp: App {
             modelContext: sharedModelContainer.mainContext
         )
         container.registerNoticeDependencies()
+        container.registerAuthDependencies()
         _container = State(initialValue: container)
     }
 
