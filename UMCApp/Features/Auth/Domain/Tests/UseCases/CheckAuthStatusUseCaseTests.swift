@@ -117,6 +117,8 @@ struct CheckAuthStatusUseCaseTests {
         let status = await useCase.execute()
 
         #expect(status == .approved)
+        #expect(repository.refreshSessionCallCount == 1)
+        #expect(repository.fetchMyProfileCallCount == 1)
     }
 
     @Test("프로필 조회는 성공했지만 소속 기수가 없으면 pendingApproval")
@@ -134,6 +136,8 @@ struct CheckAuthStatusUseCaseTests {
         let status = await useCase.execute()
 
         #expect(status == .pendingApproval)
+        #expect(repository.refreshSessionCallCount == 1)
+        #expect(repository.fetchMyProfileCallCount == 1)
     }
 
     @Test("프로필 조회 자체가 실패하면 notLoggedIn")
@@ -146,5 +150,7 @@ struct CheckAuthStatusUseCaseTests {
         let status = await useCase.execute()
 
         #expect(status == .notLoggedIn)
+        #expect(repository.refreshSessionCallCount == 1)
+        #expect(repository.fetchMyProfileCallCount == 1)
     }
 }

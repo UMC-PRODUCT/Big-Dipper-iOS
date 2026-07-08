@@ -37,6 +37,9 @@ public final class CheckAuthStatusUseCase: CheckAuthStatusUseCaseProtocol {
             let profile = try await fetchMyProfileUseCase.execute()
             return profile.isApproved ? .approved : .pendingApproval
         } catch {
+            // TODO: [후속 하드닝] 프로필 조회 최종 실패 시 Keychain 토큰 정리 필요 — 레거시
+            // AuthBootstrapViewModel.resolveAuthStatus()의 networkClient.logout() 대응.
+            // 일시적 네트워크 오류와 영구 무효(401/403) 구분 정책 포함.
             return .notLoggedIn
         }
     }

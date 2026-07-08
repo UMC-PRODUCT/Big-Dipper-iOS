@@ -35,7 +35,10 @@ public struct AuthRepository: AuthRepositoryProtocol {
         let response = try await adapter.request(AuthRouter.getMe)
 
         do {
-            let apiResponse = try JSONDecoder().decode(APIResponse<MemberMeResponseDTO>.self, from: response.data)
+            let apiResponse = try JSONDecoder().decode(
+                APIResponse<MemberMeResponseDTO>.self,
+                from: response.data
+            )
             let dto = try apiResponse.unwrap()
             return dto.toDomain()
         } catch let decodingError as DecodingError {
