@@ -112,12 +112,12 @@ public struct MyPageSectionRow: View {
     
     public var body: some View {
         HStack(spacing: DefaultSpacing.spacing8) {
-//            iconView
+            iconView
             Text(title)
                 .appFont(.subheadline, weight: .medium, color: titleColor)
-            
+
             Spacer()
-//            rightContentView
+            rightContentView
         }
     }
     

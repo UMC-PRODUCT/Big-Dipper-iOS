@@ -95,7 +95,7 @@ extension MyPageRouter: BaseTargetType {
         }
     }
 
-    public var task: Task {
+    public var task: Moya.Task {
         switch self {
         case .getMyProfile, .deleteMember:
             return .requestPlain

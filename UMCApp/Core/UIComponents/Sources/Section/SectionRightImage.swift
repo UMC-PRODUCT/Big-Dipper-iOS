@@ -23,10 +23,10 @@ import SwiftUI
 public struct SectionRightImage: View {
     // MARK: - Property
     
-    /// 표시할 SF Symbol 이미지 이동
+    /// 표시할 SF Symbol 이미지 이름
     private let rightImage: String
     /// 심볼 아이콘의 크기
-    private let simbolSize: CGFloat = 15
+    private let symbolSize: CGFloat = 15
     
     // MARK: - Function
     public init(rightImage: String) {
@@ -37,7 +37,7 @@ public struct SectionRightImage: View {
     
     public var body: some View {
         Image(systemName: rightImage)
-            .font(.system(size: simbolSize))
+            .font(.system(size: symbolSize))
             .foregroundStyle(.gray)
     }
 }

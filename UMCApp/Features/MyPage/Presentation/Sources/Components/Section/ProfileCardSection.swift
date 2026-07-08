@@ -26,20 +26,20 @@ struct ProfileCardSection: View {
         static let chevron: String = "chevron.right"
     }
     
-    //DI Container에서 주입받은 PathStore
+    // TODO(#816): PathStore 네비게이션 배선 — DIContainer에서 PathStore를 resolve해 사용
 //    private var pathStore: PathStore {
 //        di.resolve(PathStore.self)
 //    }
-    
+
     // MARK: - Function
-    
-    public init(profileData: ProfileData) {
+
+    init(profileData: ProfileData) {
         self.profileData = profileData
     }
-    
-    internal var body: some View {
+
+    var body: some View {
         Button(action: {
-            //pathStore로 myPage(.myInfo(profileData: self.profileData)) 로 이동
+            // TODO(#816): pathStore로 myPage(.myInfo(profileData: self.profileData)) 이동 배선
         }, label: {
             HStack(spacing: DefaultSpacing.spacing12, content: {
                 profileImage
@@ -48,8 +48,6 @@ struct ProfileCardSection: View {
                 SectionRightImage(rightImage: Constants.chevron)
             })
         })
-        
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
     }
     
     

@@ -87,7 +87,7 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
         return profile.toMemberProfileSummary()
     }
     
-    /// 특정 챌린저 포르필 조회
+    /// 운영진 발급 코드로 기존 챌린저 기록을 추가합니다.
     public func addChallengerRecord(code: String) async throws {
         do {
             let response = try await adapter.request(
@@ -99,7 +99,7 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
             )
             try apiResponse.validateSuccess()
         } catch let error as NetworkError {
-            throw Self.parseServerError(form: error) ?? error
+            throw Self.parseServerError(from: error) ?? error
         }
     }
     
@@ -207,7 +207,7 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
 // MARK: - Private Helpers
 
 private extension MyPageRepository {
-    private static func parseServerError(form error: NetworkError) -> Error? {
+    private static func parseServerError(from error: NetworkError) -> Error? {
         guard case .requestFailed(_, let data) = error,
               let data,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String:Any]
@@ -263,13 +263,10 @@ private extension MyPageRepository {
         return try apiResponse.unwrap().toProfileData()
     }
     
-    /// 프로필 이미지 업로드 3단계 플로우: prepare → upload → confirm → patch
+    /// 프로필 링크 배열을 정규화합니다.
     ///
-    /// - Parameters:
-    ///   - imageData: 업로드할 이미지 바이너리 데이터
-    ///   - fileName: 파일 이름 (예: "profile.jpg")
-    ///   - contentType: MIME 타입 (예: "image/jpeg")
-    /// - Returns: 갱신된 프로필 데이터
+    /// URL 앞뒤 공백을 제거하고 `SocialLinkType.allCases` 기준으로
+    /// 누락된 타입은 빈 문자열로 채워 모든 케이스가 포함되도록 보장합니다.
     private func normalizedProfileLinks(_ links: [ProfileLink]) -> [ProfileLink] {
         var mapped: [SocialLinkType: String] = [:]
         links.forEach { link in

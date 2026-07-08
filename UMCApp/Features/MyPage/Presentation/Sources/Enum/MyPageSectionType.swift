@@ -18,7 +18,7 @@ public enum MyPageSectionType: String, CaseIterable {
     /// 알림 설정, 위치 설정 등
     case settings = "설정"
     /// 개인정보처리 방침, 이용약관 등
-    case laws = "법류"
+    case laws = "법률"
     /// 앱 버전 등 앱 정보
     case info = "정보"
     /// Apple, Kakao 등 소셜 계정 연동 상태

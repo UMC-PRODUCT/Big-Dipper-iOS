@@ -22,8 +22,9 @@ public struct AuthSection: View {
     @Environment(\.di) private var di
 //    @Environment(\.appFlow) private var appFlow
     @Environment(ErrorHandler.self) private var errorHandler
-    
-//    private var pahtStore: PathStore {
+
+    // TODO(#816): PathStore 네비게이션 배선 — DIContainer에서 PathStore를 resolve해 사용
+//    private var pathStore: PathStore {
 //        di.resolve(PathStore.self)
 //    }
     
@@ -59,7 +60,7 @@ public struct AuthSection: View {
     private func typeAction(_ auth: AuthType) {
         switch auth {
         case .changePassword:
-            //비밀번호 변경 View로 이동
+            // TODO(#816): 비밀번호 변경 View로 이동 배선
             print("비밀번호 변경 View로 이동")
         case .logout:
             alertPrompt = .init(
@@ -67,7 +68,7 @@ public struct AuthSection: View {
                 message: "정말 로그아웃 하시겠습니까?",
                 positiveBtnTitle: "로그아웃",
                 positiveBtnAction: {
-                    //로그아웃 진행
+                    // TODO(#816): 로그아웃 UseCase 배선
                 },
                 negativeBtnTitle: "취소",
                 isPositiveBtnDestructive: true
@@ -79,7 +80,8 @@ public struct AuthSection: View {
                 positiveBtnTitle: "삭제",
                 positiveBtnAction: {
                     Task {
-//                        await deleteAccont()
+                        // TODO(#816): deleteMemberUseCase 배선 후 활성화
+//                        await deleteAccount()
                     }
                 },
                 negativeBtnTitle: "취소",
@@ -87,7 +89,10 @@ public struct AuthSection: View {
             )
         }
     }
-    
+
+    /// 회원 탈퇴를 수행합니다.
+    ///
+    /// - TODO(#816): `deleteMemberUseCase` 호출 및 성공/실패 처리 배선
     @MainActor
     private func deleteAccount() async {
     }

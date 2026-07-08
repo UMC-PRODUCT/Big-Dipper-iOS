@@ -1,5 +1,5 @@
 //
-//  글
+//  MyPageNetworkRequesting.swift
 //  MyPageData
 //
 //  Created by 김동민 on 7/5/26.

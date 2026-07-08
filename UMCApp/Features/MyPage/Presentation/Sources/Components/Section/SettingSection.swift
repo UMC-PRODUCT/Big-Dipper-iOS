@@ -58,7 +58,7 @@ public struct SettingSection: View {
             // iOS 알림 설정 화면으로 이동
             openAppSettings(UIApplication.openNotificationSettingsURLString)
         case .locationSetting:
-            // iOS 앱 설정 홤녀으로 이동 (위치 권한 포함)
+            // iOS 앱 설정 화면으로 이동 (위치 권한 포함)
             openAppSettings(UIApplication.openSettingsURLString)
         }
     }
