@@ -12,4 +12,28 @@ public protocol AuthRepositoryProtocol {
 
     /// 내 프로필을 조회한다.
     func fetchMyProfile() async throws -> Profile
+
+    /// 카카오 소셜 로그인을 수행한다.
+    /// - Parameters:
+    ///   - accessToken: 카카오 SDK에서 발급받은 액세스 토큰
+    ///   - email: 카카오 계정 이메일
+    /// - Returns: 기존 회원/신규 회원 분기 결과
+    func loginKakao(accessToken: String, email: String) async throws -> OAuthLoginResult
+
+    /// Apple 소셜 로그인을 수행한다.
+    /// - Parameters:
+    ///   - authorizationCode: Apple Sign In에서 발급받은 인증 코드
+    ///   - email: Apple에서 제공한 이메일(최초 로그인 시에만 제공)
+    ///   - fullName: Apple에서 제공한 이름(최초 로그인 시에만 제공)
+    /// - Returns: 기존 회원/신규 회원 분기 결과
+    func loginApple(
+        authorizationCode: String,
+        email: String?,
+        fullName: String?
+    ) async throws -> OAuthLoginResult
+
+    /// Google 소셜 로그인을 수행한다.
+    /// - Parameter accessToken: GoogleSignIn에서 발급받은 OAuth accessToken (서버 검증용)
+    /// - Returns: 기존 회원/신규 회원 분기 결과
+    func loginGoogle(accessToken: String) async throws -> OAuthLoginResult
 }
