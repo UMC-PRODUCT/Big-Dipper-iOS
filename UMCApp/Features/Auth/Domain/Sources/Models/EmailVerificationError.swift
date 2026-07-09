@@ -4,11 +4,11 @@ import Foundation
 ///
 /// 서버 코드(AUTHENTICATION-0025/0026/0027)를 Data 레이어가 매핑해 던진다.
 public enum EmailVerificationError: Error, LocalizedError, Equatable, Sendable {
-    /// 이미 가입된 이메일 (AUTHENTICATION-0025)
+    /// 이미 가입된 이메일 (AUTHENTICATION-0026)
     case emailAlreadyExists
-    /// 인증 요청이 너무 잦음 (AUTHENTICATION-0026)
+    /// 인증 요청이 너무 잦음 (AUTHENTICATION-0027)
     case throttled
-    /// 이메일 형식 오류 (AUTHENTICATION-0027)
+    /// 이메일 형식 오류 (AUTHENTICATION-0025)
     case invalidEmailFormat
 
     // MARK: - LocalizedError

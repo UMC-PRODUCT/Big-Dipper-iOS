@@ -21,6 +21,26 @@ public enum AuthRouter: BaseTargetType {
     case loginApple(body: LoginAppleRequestDTO)
     /// Google 소셜 로그인
     case loginGoogle(body: LoginGoogleRequestDTO)
+    /// 이메일 인증 코드 발송
+    case sendEmailVerification(body: SendEmailVerificationRequestDTO)
+    /// 이메일 인증 코드 재전송
+    case resendEmailVerification(body: ResendEmailVerificationRequestDTO)
+    /// 이메일 인증 코드 검증
+    case verifyEmailCode(body: VerifyEmailCodeRequestDTO)
+    /// 이메일 중복 확인
+    case checkEmailAvailability(query: CheckEmailAvailabilityQuery)
+    /// 학교 목록 조회
+    case fetchSchools
+    /// 약관 조회
+    case fetchTerms(termsType: String)
+    /// 소셜 회원가입
+    case register(body: RegisterRequestDTO)
+    /// 이메일(ID/PW) 회원가입
+    case registerByEmail(body: EmailRegisterRequestDTO)
+    /// OAuth 회원 비밀번호 추가 등록
+    case registerCredential(body: RegisterCredentialRequestDTO)
+    /// 기존 챌린저 코드 등록
+    case registerExistingChallenger(body: RegisterExistingChallengerRequestDTO)
 
     // MARK: - Path
 
@@ -34,6 +54,26 @@ public enum AuthRouter: BaseTargetType {
             return "/api/v1/auth/login/apple"
         case .loginGoogle:
             return "/api/v1/auth/login/google"
+        case .sendEmailVerification:
+            return "/api/v1/auth/email-verification"
+        case .resendEmailVerification:
+            return "/api/v1/auth/email-verification/resend"
+        case .verifyEmailCode:
+            return "/api/v1/auth/email-verification/code"
+        case .checkEmailAvailability:
+            return "/api/v1/auth/email/availability"
+        case .fetchSchools:
+            return "/api/v1/schools/all"
+        case .fetchTerms(let termsType):
+            return "/api/v1/terms/type/\(termsType)"
+        case .register:
+            return "/api/v1/member/register"
+        case .registerByEmail:
+            return "/api/v1/member/register/email"
+        case .registerCredential:
+            return "/api/v1/auth/credentials"
+        case .registerExistingChallenger:
+            return "/api/v1/challenger-record/member"
         }
     }
 
@@ -41,9 +81,11 @@ public enum AuthRouter: BaseTargetType {
 
     public var method: Moya.Method {
         switch self {
-        case .getMe:
+        case .getMe, .checkEmailAvailability, .fetchSchools, .fetchTerms:
             return .get
-        case .loginKakao, .loginApple, .loginGoogle:
+        case .loginKakao, .loginApple, .loginGoogle,
+             .sendEmailVerification, .resendEmailVerification, .verifyEmailCode,
+             .register, .registerByEmail, .registerCredential, .registerExistingChallenger:
             return .post
         }
     }
@@ -52,13 +94,34 @@ public enum AuthRouter: BaseTargetType {
 
     public var task: Moya.Task {
         switch self {
-        case .getMe:
+        case .getMe, .fetchSchools:
             return .requestPlain
         case .loginKakao(let body):
             return .requestJSONEncodable(body)
         case .loginApple(let body):
             return .requestJSONEncodable(body)
         case .loginGoogle(let body):
+            return .requestJSONEncodable(body)
+        case .sendEmailVerification(let body):
+            return .requestJSONEncodable(body)
+        case .resendEmailVerification(let body):
+            return .requestJSONEncodable(body)
+        case .verifyEmailCode(let body):
+            return .requestJSONEncodable(body)
+        case .checkEmailAvailability(let query):
+            return .requestParameters(
+                parameters: query.toParameters,
+                encoding: URLEncoding.queryString
+            )
+        case .fetchTerms:
+            return .requestPlain
+        case .register(let body):
+            return .requestJSONEncodable(body)
+        case .registerByEmail(let body):
+            return .requestJSONEncodable(body)
+        case .registerCredential(let body):
+            return .requestJSONEncodable(body)
+        case .registerExistingChallenger(let body):
             return .requestJSONEncodable(body)
         }
     }
