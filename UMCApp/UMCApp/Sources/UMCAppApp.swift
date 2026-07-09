@@ -33,6 +33,7 @@ struct UMCAppApp: App {
         )
         container.registerNoticeDependencies()
         container.registerAuthDependencies()
+        container.registerHomeDependencies()
         _container = State(initialValue: container)
     }
 

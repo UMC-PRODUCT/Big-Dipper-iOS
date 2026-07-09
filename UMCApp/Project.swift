@@ -58,6 +58,7 @@ let project = Project(
                 .project(target: "NoticeData", path: .relativeToRoot("Features/Notice")),
                 .project(target: "ActivityPresentation", path: .relativeToRoot("Features/Activity")),
                 .project(target: "HomePresentation", path: .relativeToRoot("Features/Home")),
+                .project(target: "HomeData", path: .relativeToRoot("Features/Home")),
                 .project(target: "CommunityPresentation", path: .relativeToRoot("Features/Community")),
                 .project(target: "MyPagePresentation", path: .relativeToRoot("Features/MyPage")),
                 .project(target: "BadgePresentation", path: .relativeToRoot("Features/Badge")),
