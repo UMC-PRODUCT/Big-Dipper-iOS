@@ -185,7 +185,10 @@ struct LoginViewModelOtherProvidersTests {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeAppleResult = .success(.newMember(verificationToken: "verify-token"))
         let appleLoginManager = MockAppleLoginManager()
-        let viewModel = makeViewModel(loginUseCase: loginUseCase, appleLoginManager: appleLoginManager)
+        let viewModel = makeViewModel(
+            loginUseCase: loginUseCase,
+            appleLoginManager: appleLoginManager
+        )
 
         viewModel.loginWithApple()
         appleLoginManager.simulateSuccess(

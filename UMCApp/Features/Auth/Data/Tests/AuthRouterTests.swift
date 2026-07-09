@@ -117,7 +117,9 @@ struct AuthRouterRegistrationTaskTests {
             .register(body: makeRegisterRequestDTO()),
             .registerByEmail(body: makeEmailRegisterRequestDTO()),
             .registerCredential(body: RegisterCredentialRequestDTO(rawPassword: "pw123456")),
-            .registerExistingChallenger(body: RegisterExistingChallengerRequestDTO(code: "ABC123")),
+            .registerExistingChallenger(
+                body: RegisterExistingChallengerRequestDTO(code: "ABC123")
+            ),
         ]
         for router in routers {
             guard case .requestJSONEncodable = router.task else {
@@ -133,7 +135,9 @@ struct AuthRouterRegistrationTaskTests {
         #expect(isRequestPlain(AuthRouter.fetchTerms(termsType: "SERVICE").task))
     }
 
-    @Test("checkEmailAvailability — task는 .requestParameters(URLEncoding.queryString) + email 키 포함")
+    @Test(
+        "checkEmailAvailability — task는 .requestParameters(URLEncoding.queryString) + email 키 포함"
+    )
     func checkEmailAvailabilityTask() {
         let router = AuthRouter.checkEmailAvailability(
             query: CheckEmailAvailabilityQuery(email: "a@umc.kr")

@@ -1,4 +1,5 @@
 import CoreDesignSystem
+import Foundation
 import SwiftUI
 import UMCFoundation
 
@@ -59,7 +60,7 @@ struct FormEmailField: View {
 
     // MARK: - Constant
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let errorPadding: CGFloat = 10
         static let verificationCodeLength: Int = 6
         static let requestButtonTitle: String = "인증요청"

@@ -21,7 +21,7 @@ struct SignUpSchoolSection: View {
 
     // MARK: - Constant
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let title: String = "학교"
         static let defaultPlaceholder: String = "학교를 선택하세요"
         static let failedPlaceholder: String = "학교 목록을 불러올 수 없습니다"

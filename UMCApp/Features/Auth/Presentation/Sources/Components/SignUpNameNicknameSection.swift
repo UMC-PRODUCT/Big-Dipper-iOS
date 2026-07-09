@@ -23,7 +23,7 @@ struct SignUpNameNicknameSection: View {
 
     // MARK: - Constant
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let nameTitle: String = "이름"
         static let namePlaceholder: String = "이름 입력"
         static let nicknameTitle: String = "닉네임"

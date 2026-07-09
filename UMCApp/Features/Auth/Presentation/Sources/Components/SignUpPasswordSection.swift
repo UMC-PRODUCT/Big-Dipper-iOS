@@ -30,7 +30,7 @@ struct SignUpPasswordSection: View {
 
     // MARK: - Constant
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let passwordTitle: String = "비밀번호"
         static let passwordPlaceholder: String = "8자 이상 입력"
         static let passwordConfirmTitle: String = "비밀번호 확인"

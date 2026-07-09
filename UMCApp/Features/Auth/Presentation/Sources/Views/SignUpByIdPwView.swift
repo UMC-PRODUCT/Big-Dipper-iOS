@@ -24,7 +24,7 @@ public struct SignUpByIdPwView: View {
 
     // MARK: - Constant
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let naviSubtitle: String = "동아리 활동을 위해 정보를 입력해주세요."
         static let submitTitle: String = "완료"
         static let completedTitle: String = "가입이 완료됐어요"

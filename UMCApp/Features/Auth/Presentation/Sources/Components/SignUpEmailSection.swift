@@ -20,7 +20,7 @@ struct SignUpEmailSection: View {
 
     // MARK: - Constant
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let title = "이메일"
         static let placeholder = "example@example.com"
     }

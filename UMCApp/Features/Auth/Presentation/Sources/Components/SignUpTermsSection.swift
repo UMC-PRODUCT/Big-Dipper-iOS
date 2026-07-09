@@ -31,7 +31,7 @@ struct SignUpTermsSection: View {
 
     // MARK: - Constant
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let sectionTitle: String = "약관 동의"
         static let allAgreeTitle: String = "전체 동의"
         static let loadFailedMessage: String = "약관 정보를 불러오지 못했습니다."
