@@ -15,6 +15,9 @@ struct AppRootView: View {
     @State private var viewModel = AppFlowViewModel()
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
+    #if DEBUG
+    @State private var isDebugSignUpByIdPwPresented = false
+    #endif
 
     // MARK: - Body
 
@@ -41,6 +44,9 @@ struct AppRootView: View {
         #if DEBUG
         .overlay(alignment: .bottom) {
             debugFlowSwitcher
+        }
+        .fullScreenCover(isPresented: $isDebugSignUpByIdPwPresented) {
+            SignUpByIdPwView(container: di, errorHandler: errorHandler)
         }
         #endif
     }
@@ -73,9 +79,17 @@ struct AppRootView: View {
             Button("Bootstrap") { viewModel.showBootstrap() }
             Button("Login") { viewModel.showLogin() }
             Button("Main") { viewModel.showMain() }
+            Button("SignUp") { presentDebugSignUpByIdPw() }
         }
         .buttonStyle(.bordered)
         .padding(.bottom, DefaultConstant.defaultSafeBottom)
+    }
+
+    /// `SignUpByIdPwView` 진입 전, 프로덕션 배선(`registerAuthDependencies()`)과 무관한
+    /// 디버그 전용 의존성을 추가로 등록한다. 이미 등록된 경우 재등록하지 않는다.
+    private func presentDebugSignUpByIdPw() {
+        di.registerSignUpByIdPwDebugDependencies()
+        isDebugSignUpByIdPwPresented = true
     }
     #endif
 }
