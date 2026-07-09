@@ -238,7 +238,42 @@ struct SignUpViewModelRegisterTests {
         #expect(viewModel.registerState == .idle)
     }
 
-    @Test("가입 성공 + 세션 확립 → 재로그인 없이 registerState.loaded")
+    @Test("약관 미로딩 상태에서 나머지 필드가 모두 채워져도 register()는 API를 호출하지 않는다")
+    func registerNoOpsWhenTermsNotLoadedButOtherFieldsFilled() async throws {
+        let fetchSignUpDataUseCase = MockFetchSignUpDataUseCase()
+        fetchSignUpDataUseCase.fetchSchoolsResult = .success(
+            [School(id: "1", name: "테스트대학교")]
+        )
+        let sendEmailVerificationUseCase = MockSendEmailVerificationUseCase()
+        sendEmailVerificationUseCase.result = .success("verify-id")
+        let verifyEmailCodeUseCase = MockVerifyEmailCodeUseCase()
+        verifyEmailCodeUseCase.result = .success("verify-token")
+        let registerUseCase = MockRegisterUseCase()
+
+        let viewModel = makeViewModel(
+            fetchSignUpDataUseCase: fetchSignUpDataUseCase,
+            sendEmailVerificationUseCase: sendEmailVerificationUseCase,
+            verifyEmailCodeUseCase: verifyEmailCodeUseCase,
+            registerUseCase: registerUseCase
+        )
+        await viewModel.fetchSchools()
+        // fetchTerms()를 호출하지 않아 termsState == .idle을 유지한다.
+
+        viewModel.name = "홍길동"
+        viewModel.nickname = "길동이"
+        viewModel.email = "member@umc.dev"
+        viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
+        try await viewModel.requestEmailVerification()
+        try await viewModel.verifyEmailCode("123456")
+        #expect(viewModel.isFormValid == false)
+
+        await viewModel.register()
+
+        #expect(registerUseCase.callCount == 0)
+        #expect(viewModel.registerState == .idle)
+    }
+
+    @Test("가입 성공 + 세션 확립 → 재로그인 없이 registerState.loaded, 필수 약관 동의가 전달된다")
     func registerSuccessWithSessionEstablishedSkipsRelogin() async throws {
         let registerUseCase = MockRegisterUseCase()
         registerUseCase.result = .success(
@@ -257,6 +292,13 @@ struct SignUpViewModelRegisterTests {
         #expect(loginUseCase.executeKakaoCallCount == 0)
         #expect(loginUseCase.executeAppleCallCount == 0)
         #expect(loginUseCase.executeGoogleCallCount == 0)
+
+        let receivedTermsAgreements = try #require(registerUseCase.receivedTermsAgreements)
+        let sortedAgreements = receivedTermsAgreements.sorted { $0.termsId < $1.termsId }
+        #expect(sortedAgreements == [
+            TermsAgreement(termsId: "terms-privacy", isAgreed: true),
+            TermsAgreement(termsId: "terms-service", isAgreed: true)
+        ])
     }
 
     @Test("가입 성공 + 세션 미확립 + 카카오 재로그인 성공 → 수동 로그인 불필요")
@@ -281,6 +323,52 @@ struct SignUpViewModelRegisterTests {
         #expect(viewModel.registerState == .loaded("member-2"))
         #expect(viewModel.requiresManualLoginAfterRegister == false)
         #expect(loginUseCase.executeKakaoCallCount == 1)
+    }
+
+    @Test("가입 성공 + 세션 미확립 + 애플 재로그인 성공 → 수동 로그인 불필요")
+    func registerSuccessWithoutSessionFallsBackToAppleLogin() async throws {
+        let registerUseCase = MockRegisterUseCase()
+        registerUseCase.result = .success(
+            RegisterResult(memberId: "member-7", sessionEstablished: false)
+        )
+        let loginUseCase = MockLoginUseCase()
+        loginUseCase.executeAppleResult = .success(.existingMember)
+        let viewModel = try await makeValidFormViewModel(
+            registerUseCase: registerUseCase,
+            loginUseCase: loginUseCase,
+            postRegisterLoginContext: .apple(
+                authorizationCode: "auth-code",
+                email: "member@umc.dev",
+                fullName: "홍길동"
+            )
+        )
+
+        await viewModel.register()
+
+        #expect(viewModel.registerState == .loaded("member-7"))
+        #expect(viewModel.requiresManualLoginAfterRegister == false)
+        #expect(loginUseCase.executeAppleCallCount == 1)
+    }
+
+    @Test("가입 성공 + 세션 미확립 + 구글 재로그인 성공 → 수동 로그인 불필요")
+    func registerSuccessWithoutSessionFallsBackToGoogleLogin() async throws {
+        let registerUseCase = MockRegisterUseCase()
+        registerUseCase.result = .success(
+            RegisterResult(memberId: "member-8", sessionEstablished: false)
+        )
+        let loginUseCase = MockLoginUseCase()
+        loginUseCase.executeGoogleResult = .success(.existingMember)
+        let viewModel = try await makeValidFormViewModel(
+            registerUseCase: registerUseCase,
+            loginUseCase: loginUseCase,
+            postRegisterLoginContext: .google(accessToken: "google-token")
+        )
+
+        await viewModel.register()
+
+        #expect(viewModel.registerState == .loaded("member-8"))
+        #expect(viewModel.requiresManualLoginAfterRegister == false)
+        #expect(loginUseCase.executeGoogleCallCount == 1)
     }
 
     @Test("가입 성공 + 세션 미확립 + 재로그인 응답이 신규회원 → 수동 로그인 필요")
