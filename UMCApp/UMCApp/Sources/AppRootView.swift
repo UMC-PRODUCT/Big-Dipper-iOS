@@ -40,6 +40,9 @@ struct AppRootView: View {
                     postRegisterLoginContext: context
                 )
 
+            case .pendingApproval:
+                FailedVerificationUMC(container: di, errorHandler: errorHandler)
+
             case .main:
                 RootTabView()
             }
@@ -50,6 +53,11 @@ struct AppRootView: View {
             NotificationCenter.default.publisher(for: .authSessionExpired)
         ) { _ in
             handleAuthSessionExpired()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .navigateToPendingApproval)
+        ) { _ in
+            viewModel.showPendingApproval()
         }
         #if DEBUG
         .overlay(alignment: .bottom) {

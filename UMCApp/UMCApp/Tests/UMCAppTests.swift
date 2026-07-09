@@ -65,4 +65,19 @@ struct UMCAppTests {
         ))
     }
 
+    @Test func showPendingApprovalTransitionsToPendingApprovalState() {
+        let viewModel = AppFlowViewModel()
+
+        viewModel.showPendingApproval()
+        #expect(viewModel.state == .pendingApproval)
+    }
+
+    @Test func appFlowShowPendingApprovalClosureTransitionsViewModel() {
+        let viewModel = AppFlowViewModel()
+
+        viewModel.appFlow.showPendingApproval()
+
+        #expect(viewModel.state == .pendingApproval)
+    }
+
 }

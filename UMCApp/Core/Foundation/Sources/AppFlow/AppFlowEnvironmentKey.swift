@@ -21,8 +21,6 @@ import SwiftUI
 /// }
 /// ```
 ///
-/// - Note: `pendingApproval` 등 후속 상태 전환 액션은 해당 상태가 도입되는
-///   이슈(`#945`)에서 이 구조체에 확장될 예정이다.
 /// - Warning: 기본값은 `noop` — 루트에서 주입 없이 호출해도 크래시 없이 무시된다.
 public struct AppFlow {
 
@@ -33,6 +31,8 @@ public struct AppFlow {
     /// 신규 회원 가입 화면으로 전환한다.
     /// - Parameters: (검증 토큰, 프리필 이메일, 프리필 실명, 가입 후 세션 복구용 소셜 로그인 컨텍스트)
     public let showSignUp: (String, String?, String?, PostRegisterLoginContext?) -> Void
+    /// 승인 대기 화면으로 전환한다. (`#945`)
+    public let showPendingApproval: () -> Void
     public let logout: () -> Void
 
     // MARK: - Init
@@ -41,11 +41,13 @@ public struct AppFlow {
         showLogin: @escaping () -> Void,
         showMain: @escaping () -> Void,
         showSignUp: @escaping (String, String?, String?, PostRegisterLoginContext?) -> Void,
+        showPendingApproval: @escaping () -> Void,
         logout: @escaping () -> Void
     ) {
         self.showLogin = showLogin
         self.showMain = showMain
         self.showSignUp = showSignUp
+        self.showPendingApproval = showPendingApproval
         self.logout = logout
     }
 
@@ -53,6 +55,7 @@ public struct AppFlow {
         showLogin: {},
         showMain: {},
         showSignUp: { _, _, _, _ in },
+        showPendingApproval: {},
         logout: {}
     )
 }
