@@ -25,7 +25,9 @@ public struct TermsDTO: Codable, Sendable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = container.decodeFlexibleStringOrEmpty(forKey: .id)
         link = try container.decodeIfPresent(String.self, forKey: .link) ?? ""
-        isMandatory = try container.decodeBoolFlexibleIfPresent(forKey: .isMandatory) ?? false
+        // fail-closed: 서버가 키를 누락하면 필수 약관으로 취급해 동의 검증(PM 결정 Q3)이
+        // 우회되지 않게 한다.
+        isMandatory = try container.decodeBoolFlexibleIfPresent(forKey: .isMandatory) ?? true
     }
 
     public func encode(to encoder: Encoder) throws {

@@ -3,11 +3,12 @@
 /// 세션/소셜로그인을 담당하는 `AuthRepositoryProtocol`과는 별도로 분리한다(ISP).
 /// 두 Protocol 모두 동일한 `AuthRepository` 구현체가 함께 준수할 수 있다.
 ///
-/// - Note: `AuthRepositoryProtocol`과 달리 `Sendable`을 채택한다. `AuthRepository`가 이를
-///   준수하면 `MoyaNetworkAdapter`(`CoreNetwork`)가 아직 `Sendable`을 채택하지 않아
-///   "stored property ... has non-Sendable type" 경고가 발생한다(Swift 6 언어 모드에서는 에러).
-///   이 프로토콜의 책임 범위를 벗어나므로 이번 변경에서 `MoyaNetworkAdapter`는 건드리지 않았고,
-///   Swift 6 전환 전 `CoreNetwork` 쪽에서 별도로 해소가 필요하다.
+/// - Note: `AuthRepositoryProtocol`과 달리 `Sendable`을 채택한다. `MoyaNetworkAdapter`
+///   (`CoreNetwork`)가 아직 `Sendable`을 채택하지 않아 `AuthRepository`가 컴파일러의 암묵적
+///   추론만으로는 이 요구사항을 만족할 수 없어 `@unchecked Sendable`로 명시적으로 채택한다
+///   (`MyPageRepository`와 동일 패턴). 이 프로토콜의 책임 범위를 벗어나므로 `MoyaNetworkAdapter`
+///   자체는 건드리지 않았으며, Swift 6 언어 모드 전환 시 `CoreNetwork` 쪽에서 근본 해소가
+///   필요하다.
 public protocol AuthRegistrationRepositoryProtocol: Sendable {
 
     /// 이메일로 인증 코드를 발송한다.

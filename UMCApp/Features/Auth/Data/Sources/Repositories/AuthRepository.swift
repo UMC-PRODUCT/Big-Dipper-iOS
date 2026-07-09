@@ -7,7 +7,13 @@ import UMCFoundation
 ///
 /// 세션 존재 확인·강제 갱신은 `NetworkClient`(Core 인프라)를 그대로 재사용하고,
 /// 프로필 조회만 `AuthRouter`를 통해 API를 직접 호출한다.
-public struct AuthRepository: AuthRepositoryProtocol {
+///
+/// - Note: `AuthRegistrationRepositoryProtocol`이 요구하는 `Sendable`을 채택하기 위해
+///   `@unchecked Sendable`을 사용한다. `MoyaNetworkAdapter`(`CoreNetwork`)가 아직
+///   `Sendable`을 채택하지 않아 컴파일러가 이를 추론할 수 없기 때문이다(`MyPageRepository`와
+///   동일 패턴, `Features/MyPage/Data/Sources/Repository/MyPageRepository.swift:18` 참고).
+///   저장 프로퍼티가 모두 불변(`let`)이고 값 타입 구성이라 실질적인 데이터 경쟁 위험은 없다.
+public struct AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Property
 
@@ -335,6 +341,16 @@ extension AuthRepository: AuthRegistrationRepositoryProtocol {
                 from: response.data
             )
             let dto = try apiResponse.unwrap()
+
+            // 이메일 가입은 서버가 항상 토큰을 발급한다(`RegisterByIdPwResponseDTO` 문서 참고).
+            // DTO가 누락된 토큰을 빈 문자열로 흡수하므로, 빈 토큰을 유효 세션으로 저장하지
+            // 않도록 `register()`와 동일하게 비어있지 않음을 가드한다.
+            guard !dto.accessToken.isEmpty, !dto.refreshToken.isEmpty else {
+                throw RepositoryError.decodingError(
+                    detail: "registerByEmail: 서버 응답에 accessToken/refreshToken이 없습니다"
+                )
+            }
+
             try await tokenStore.save(accessToken: dto.accessToken, refreshToken: dto.refreshToken)
             return RegisterByIdPwResult(memberId: dto.memberId)
         } catch let decodingError as DecodingError {
@@ -379,14 +395,19 @@ extension AuthRepository: AuthRegistrationRepositoryProtocol {
     }
 }
 
-// MARK: - Private Helpers (Email Verification Error Mapping)
-
-private extension AuthRepository {
+// MARK: - Helpers (Email Verification Error Mapping)
+//
+// 이 extension은 `private`가 아니라 모듈 기본 접근 수준(`internal`)을 사용한다.
+// `mapEmailVerificationError(from:)`(RepositoryError 오버로드)를
+// `@testable import AuthData`로 직접 단위 테스트하기 위함이며(Task 2 리뷰 Important 3),
+// `parseServerError`는 개별적으로 `private`를 재지정해 모듈 밖은 물론 테스트에서도
+// 노출되지 않도록 최소화한다.
+extension AuthRepository {
 
     /// `NetworkError.requestFailed`(비-2xx 응답) 본문을 파싱해 `RepositoryError.serverError`로
     /// 정규화한다. 코드/메시지 어느 쪽도 파싱할 수 없으면 `nil`을 반환해 원본 에러를 그대로
     /// 전파하도록 한다.
-    static func parseServerError(from error: NetworkError) -> RepositoryError? {
+    private static func parseServerError(from error: NetworkError) -> RepositoryError? {
         guard case .requestFailed(_, let data) = error,
               let data,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -407,7 +428,12 @@ private extension AuthRepository {
     /// - `AUTHENTICATION-0025`: 이메일 형식 오류
     /// - `AUTHENTICATION-0026`: 이미 가입된 이메일
     /// - `AUTHENTICATION-0027`: 인증 요청 과다(throttle)
-    static func mapEmailVerificationError(from error: RepositoryError) -> EmailVerificationError? {
+    ///
+    /// - Note: 이 extension이 `internal`(모듈 기본)이므로 별도 modifier 없이도
+    ///   `@testable import AuthData`로 직접 단위 테스트할 수 있다.
+    static func mapEmailVerificationError(
+        from error: RepositoryError
+    ) -> EmailVerificationError? {
         guard case .serverError(let code, _) = error else { return nil }
 
         switch code {
