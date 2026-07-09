@@ -183,7 +183,7 @@ public struct FailedVerificationUMC: View {
     /// - Note: 레거시 `KakaoPlusManager`는 `KakaoSDKTalk`에 의존해 카카오톡 설치 시
     ///   인앱 채팅방으로 바로 전환한다. `CoreFoundation`에 KakaoSDK를 끌어들이지 않기
     ///   위해 아직 이식하지 않았고, 대신 웹 채팅 URL을 직접 연다.
-    // TODO: KakaoSDKTalk 기반 인앱 채널 연결(KakaoPlusManager) 이식.
+    // TODO(#958): KakaoSDKTalk 기반 인앱 채널 연결(KakaoPlusManager) 이식.
     private func openInquiryChannel() {
         guard let url = URL(string: Constants.kakaoChannelWebChatURL) else {
             errorHandler.handle(
