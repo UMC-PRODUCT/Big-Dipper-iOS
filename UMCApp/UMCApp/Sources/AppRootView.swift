@@ -7,7 +7,7 @@ import UMCFoundation
 
 /// 앱 루트 화면.
 ///
-/// `AppFlowViewModel`의 상태에 따라 Bootstrap / Login / Main(탭 셸)을 스위칭한다.
+/// `AppFlowViewModel`의 상태에 따라 Bootstrap / Login / SignUp / Main(탭 셸)을 스위칭한다.
 struct AppRootView: View {
 
     // MARK: - Property
@@ -29,6 +29,16 @@ struct AppRootView: View {
 
             case .login:
                 LoginView(container: di, errorHandler: errorHandler)
+
+            case .signUp(let verificationToken, let email, let fullName, let context):
+                SignUpView(
+                    container: di,
+                    errorHandler: errorHandler,
+                    verificationToken: verificationToken,
+                    initialEmail: email,
+                    initialFullName: fullName,
+                    postRegisterLoginContext: context
+                )
 
             case .main:
                 RootTabView()
@@ -74,22 +84,18 @@ struct AppRootView: View {
     // MARK: - Debug
 
     /// 상태머신 강제 전환 확인용 디버그 컨트롤. 릴리스 빌드에는 포함되지 않는다.
+    ///
+    /// - Note: 이메일(ID/PW) 가입 화면(`SignUpByIdPwView`)은 프로덕션 네비게이션 배선이
+    ///   아직 없다(Q1, 후속 이슈에서 연결). 그 전까지 QA/리뷰어용 임시 진입점만 제공한다.
     private var debugFlowSwitcher: some View {
         HStack(spacing: DefaultSpacing.spacing12) {
             Button("Bootstrap") { viewModel.showBootstrap() }
             Button("Login") { viewModel.showLogin() }
             Button("Main") { viewModel.showMain() }
-            Button("SignUp") { presentDebugSignUpByIdPw() }
+            Button("SignUp(ID/PW)") { isDebugSignUpByIdPwPresented = true }
         }
         .buttonStyle(.bordered)
         .padding(.bottom, DefaultConstant.defaultSafeBottom)
-    }
-
-    /// `SignUpByIdPwView` 진입 전, 프로덕션 배선(`registerAuthDependencies()`)과 무관한
-    /// 디버그 전용 의존성을 추가로 등록한다. 이미 등록된 경우 재등록하지 않는다.
-    private func presentDebugSignUpByIdPw() {
-        di.registerSignUpByIdPwDebugDependencies()
-        isDebugSignUpByIdPwPresented = true
     }
     #endif
 }

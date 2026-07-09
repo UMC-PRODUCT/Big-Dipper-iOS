@@ -276,7 +276,7 @@
 | `Presentation/Components/UnderlineTextField.swift` | AuthPresentation |
 | `Presentation/Enum/SignUpByIdPwField.swift` | AuthPresentation |
 | `Presentation/Enum/SignUpFieldType.swift` | AuthPresentation |
-| `Presentation/Models/PostRegisterLoginContext.swift` | AuthPresentation |
+| `Presentation/Models/PostRegisterLoginContext.swift` | CoreFoundation (AppFlow) — `AppFlow.showSignUp`가 Core에서 이 타입을 요구해 이관(#944 Q6, `SocialType`과 동일 사유) |
 | `Presentation/Provider/AuthUseCaseProvider.swift` | AuthPresentation |
 | `Presentation/ViewModels/ChangePasswordViewModel.swift` | AuthPresentation |
 | `Presentation/ViewModels/FailedVerificationUMCViewModel.swift` | AuthPresentation |

@@ -18,6 +18,14 @@ final class AppFlowViewModel {
         AppFlow(
             showLogin: { [weak self] in self?.showLogin() },
             showMain: { [weak self] in self?.showMain() },
+            showSignUp: { [weak self] verificationToken, email, fullName, context in
+                self?.showSignUp(
+                    verificationToken: verificationToken,
+                    email: email,
+                    fullName: fullName,
+                    postRegisterLoginContext: context
+                )
+            },
             logout: { [weak self] in self?.logout() }
         )
     }
@@ -38,6 +46,21 @@ final class AppFlowViewModel {
 
     func showMain() {
         transition(to: .main)
+    }
+
+    /// 신규 회원 가입 화면으로 전환한다.
+    func showSignUp(
+        verificationToken: String,
+        email: String?,
+        fullName: String?,
+        postRegisterLoginContext: PostRegisterLoginContext?
+    ) {
+        transition(to: .signUp(
+            verificationToken: verificationToken,
+            email: email,
+            fullName: fullName,
+            postRegisterLoginContext: postRegisterLoginContext
+        ))
     }
 
     /// 세션 만료 등으로 로그아웃 처리 후 로그인 화면으로 되돌린다.
