@@ -14,7 +14,7 @@ struct LoginViewModelKakaoTests {
     func initialStateIsIdle() {
         let viewModel = makeViewModel()
         #expect(viewModel.loginState == .idle)
-        #expect(viewModel.alertPrompt == nil)
+        #expect(viewModel.signUpDestination == nil)
     }
 
     @Test("기존 회원 + 승인됨 → .loaded(profile)")
@@ -32,7 +32,7 @@ struct LoginViewModelKakaoTests {
         await viewModel.loginWithKakao()
 
         #expect(viewModel.loginState == .loaded(profile))
-        #expect(viewModel.alertPrompt == nil)
+        #expect(viewModel.signUpDestination == nil)
     }
 
     @Test("기존 회원 + 승인 대기(기수 없음) → .failed(.auth(.pendingApproval))")
@@ -55,21 +55,31 @@ struct LoginViewModelKakaoTests {
         #expect(errorHandler.currentError == nil)
     }
 
-    @Test("신규 회원 → 화면 전환 없이 .idle 유지 + 안내 alertPrompt 노출")
-    func newMemberPresentsGuidanceWithoutTransition() async {
+    @Test("신규 회원(카카오) → .idle 유지 + signUpDestination에 카카오 컨텍스트 노출")
+    func newMemberExposesSignUpDestinationWithKakaoContext() async {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeKakaoResult = .success(.newMember(verificationToken: "verify-token"))
         let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
+        let kakaoLoginManager = MockKakaoLoginManager()
+        kakaoLoginManager.accessToken = "kakao-access-token"
+        kakaoLoginManager.email = "kakao@umc.dev"
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            kakaoLoginManager: kakaoLoginManager
         )
 
         await viewModel.loginWithKakao()
 
         #expect(viewModel.loginState == .idle)
-        #expect(viewModel.alertPrompt != nil)
         #expect(fetchMyProfileUseCase.callCount == 0)
+        #expect(viewModel.signUpDestination?.verificationToken == "verify-token")
+        #expect(viewModel.signUpDestination?.email == "kakao@umc.dev")
+        #expect(viewModel.signUpDestination?.fullName == nil)
+        #expect(
+            viewModel.signUpDestination?.postRegisterLoginContext ==
+                .kakao(accessToken: "kakao-access-token", email: "kakao@umc.dev")
+        )
     }
 
     @Test("사용자 취소(SocialLoginError.cancelled) → .idle 복귀, ErrorHandler Alert 없음")
@@ -168,6 +178,58 @@ struct LoginViewModelOtherProvidersTests {
 
         #expect(viewModel.loginState == .loaded(profile))
         #expect(loginUseCase.executeAppleCallCount == 1)
+    }
+
+    @Test("신규 회원(Apple) → signUpDestination에 authorizationCode+email+fullName 컨텍스트 노출")
+    func newMemberExposesSignUpDestinationWithAppleContext() async throws {
+        let loginUseCase = MockLoginUseCase()
+        loginUseCase.executeAppleResult = .success(.newMember(verificationToken: "verify-token"))
+        let appleLoginManager = MockAppleLoginManager()
+        let viewModel = makeViewModel(
+            loginUseCase: loginUseCase,
+            appleLoginManager: appleLoginManager
+        )
+
+        viewModel.loginWithApple()
+        appleLoginManager.simulateSuccess(
+            authorizationCode: "auth-code",
+            email: "apple@umc.dev",
+            fullName: "홍길동"
+        )
+        try await waitUntil { viewModel.signUpDestination != nil }
+
+        #expect(viewModel.loginState == .idle)
+        #expect(viewModel.signUpDestination?.verificationToken == "verify-token")
+        #expect(viewModel.signUpDestination?.email == "apple@umc.dev")
+        #expect(viewModel.signUpDestination?.fullName == "홍길동")
+        #expect(
+            viewModel.signUpDestination?.postRegisterLoginContext ==
+                .apple(authorizationCode: "auth-code", email: "apple@umc.dev", fullName: "홍길동")
+        )
+    }
+
+    @Test("신규 회원(Google) → signUpDestination에 accessToken 컨텍스트 노출")
+    func newMemberExposesSignUpDestinationWithGoogleContext() async {
+        let loginUseCase = MockLoginUseCase()
+        loginUseCase.executeGoogleResult = .success(.newMember(verificationToken: "verify-token"))
+        let googleLoginManager = MockGoogleLoginManager()
+        googleLoginManager.accessToken = "google-access-token"
+        googleLoginManager.email = "google@umc.dev"
+        let viewModel = makeViewModel(
+            loginUseCase: loginUseCase,
+            googleLoginManager: googleLoginManager
+        )
+
+        await viewModel.loginWithGoogle()
+
+        #expect(viewModel.loginState == .idle)
+        #expect(viewModel.signUpDestination?.verificationToken == "verify-token")
+        #expect(viewModel.signUpDestination?.email == "google@umc.dev")
+        #expect(viewModel.signUpDestination?.fullName == nil)
+        #expect(
+            viewModel.signUpDestination?.postRegisterLoginContext ==
+                .google(accessToken: "google-access-token")
+        )
     }
 
     @Test("Apple 로그인 취소 → .idle 복귀, ErrorHandler Alert 없음")

@@ -12,6 +12,13 @@ let project = featureProject(
     domainTestDependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ],
+    includesDataTests: true,
+    dataTestDependencies: [
+        .external(name: "Moya"),
+        .target(name: "AuthDomain"),
+        .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+    ],
     includesPresentationTests: true,
     presentationTestDependencies: [
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),

@@ -4,10 +4,21 @@ import CoreNetwork
 import Foundation
 import UMCFoundation
 
+/// 신규 회원 소셜 로그인 시 회원가입 화면으로 전환하기 위한 목적지 정보.
+///
+/// `LoginView`가 이 값을 관찰해 `appFlow.showSignUp(...)`을 호출한다. `postRegisterLoginContext`는
+/// 가입 완료 후 서버가 세션을 확립해주지 않을 때 재로그인에 사용된다(레거시 `resolveDestination` 대응).
+struct SignUpDestination: Equatable {
+    let verificationToken: String
+    let email: String?
+    let fullName: String?
+    let postRegisterLoginContext: PostRegisterLoginContext?
+}
+
 /// 소셜 로그인 화면의 상태 및 액션을 관리하는 ViewModel.
 ///
-/// 절대규칙 #1에 따라 `@Observable`을 사용한다. 이번 슬라이스는 기존 회원 로그인만
-/// 다루므로 신규 회원 결과는 화면 전환 없이 안내만 하고(`TODO(#944)`), 승인 대기 회원은
+/// 절대규칙 #1에 따라 `@Observable`을 사용한다. 신규 회원 결과는 `signUpDestination`을 통해
+/// 노출되어 `LoginView`가 회원가입 화면으로 전환하고, 승인 대기 회원은
 /// `Loadable.failed(.auth(.pendingApproval))`로 화면에 머무르며 안내 문구를 노출한다.
 @Observable
 final class LoginViewModel {
@@ -24,8 +35,8 @@ final class LoginViewModel {
 
     /// 소셜 로그인 진행 상태. `.loaded`는 승인된 기존 회원 로그인 성공을 의미한다.
     var loginState: Loadable<Profile> = .idle
-    /// 신규 회원(가입 필요) 안내 다이얼로그.
-    var alertPrompt: AlertPrompt?
+    /// 신규 회원(가입 필요) 판정 시 노출되는 회원가입 화면 목적지.
+    var signUpDestination: SignUpDestination?
 
     // MARK: - Init
 
@@ -58,7 +69,13 @@ final class LoginViewModel {
                 email: email
             )
             SocialType.addConnected(.kakao)
-            await handle(result: result, action: "loginWithKakao")
+            await handle(
+                result: result,
+                action: "loginWithKakao",
+                prefillEmail: email,
+                prefillFullName: nil,
+                postRegisterLoginContext: .kakao(accessToken: accessToken, email: email)
+            )
         } catch {
             handleFailure(error, action: "loginWithKakao") { [weak self] in
                 await self?.loginWithKakao()
@@ -101,10 +118,16 @@ final class LoginViewModel {
         loginState = .loading
 
         do {
-            let (accessToken, _) = try await googleLoginManager.login()
+            let (accessToken, email) = try await googleLoginManager.login()
             let result = try await loginUseCase.executeGoogle(accessToken: accessToken)
             SocialType.addConnected(.google)
-            await handle(result: result, action: "loginWithGoogle")
+            await handle(
+                result: result,
+                action: "loginWithGoogle",
+                prefillEmail: email,
+                prefillFullName: nil,
+                postRegisterLoginContext: .google(accessToken: accessToken)
+            )
         } catch {
             handleFailure(error, action: "loginWithGoogle") { [weak self] in
                 await self?.loginWithGoogle()
@@ -127,7 +150,17 @@ final class LoginViewModel {
                 fullName: fullName
             )
             SocialType.addConnected(.apple)
-            await handle(result: result, action: "loginWithApple")
+            await handle(
+                result: result,
+                action: "loginWithApple",
+                prefillEmail: email,
+                prefillFullName: fullName,
+                postRegisterLoginContext: .apple(
+                    authorizationCode: authorizationCode,
+                    email: email,
+                    fullName: fullName
+                )
+            )
         } catch {
             handleFailure(error, action: "loginWithApple") { [weak self] in
                 self?.loginWithApple()
@@ -136,10 +169,21 @@ final class LoginViewModel {
     }
 
     @MainActor
-    private func handle(result: OAuthLoginResult, action: String) async {
+    private func handle(
+        result: OAuthLoginResult,
+        action: String,
+        prefillEmail: String?,
+        prefillFullName: String?,
+        postRegisterLoginContext: PostRegisterLoginContext
+    ) async {
         switch result {
-        case .newMember:
-            presentNewMemberGuidance()
+        case .newMember(let verificationToken):
+            presentSignUpDestination(
+                verificationToken: verificationToken,
+                email: prefillEmail,
+                fullName: prefillFullName,
+                postRegisterLoginContext: postRegisterLoginContext
+            )
         case .existingMember:
             await resolveApprovalStatus(action: action)
         }
@@ -162,17 +206,22 @@ final class LoginViewModel {
         }
     }
 
-    /// 신규 회원 결과 안내.
+    /// 신규 회원 판정 결과를 회원가입 화면 목적지로 노출한다.
     ///
-    /// - Note: TODO(#944) 회원가입 플로우가 구현되기 전까지, 신규 회원 소셜 로그인은
-    ///   화면 전환 없이 안내 후 로그인 화면에 머무른다.
+    /// `LoginView`가 `signUpDestination`을 관찰해 `appFlow.showSignUp(...)`을 호출한다.
     @MainActor
-    private func presentNewMemberGuidance() {
+    private func presentSignUpDestination(
+        verificationToken: String,
+        email: String?,
+        fullName: String?,
+        postRegisterLoginContext: PostRegisterLoginContext
+    ) {
         loginState = .idle
-        alertPrompt = AlertPrompt(
-            title: "가입 절차가 준비 중이에요",
-            message: "아직 지원하지 않는 신규 회원 가입 절차입니다. 운영진에게 문의해주세요.",
-            positiveBtnTitle: "확인"
+        signUpDestination = SignUpDestination(
+            verificationToken: verificationToken,
+            email: email,
+            fullName: fullName,
+            postRegisterLoginContext: postRegisterLoginContext
         )
     }
 

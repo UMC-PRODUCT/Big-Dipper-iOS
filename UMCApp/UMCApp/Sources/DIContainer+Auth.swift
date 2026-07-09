@@ -12,6 +12,14 @@ extension DIContainer {
                 tokenStore: self.resolve(TokenStore.self)
             )
         }
+        // `AuthRegistrationRepositoryProtocol`도 동일한 `AuthRepository` 구현체가 준수한다(ISP, Q7).
+        register(AuthRegistrationRepositoryProtocol.self) {
+            AuthRepository(
+                adapter: self.resolve(MoyaNetworkAdapter.self),
+                networkClient: self.resolve(NetworkClient.self),
+                tokenStore: self.resolve(TokenStore.self)
+            )
+        }
         register(FetchMyProfileUseCaseProtocol.self) {
             FetchMyProfileUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
         }
@@ -23,6 +31,54 @@ extension DIContainer {
         }
         register(LoginUseCaseProtocol.self) {
             LoginUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
+        }
+
+        // MARK: - 회원가입(SignUp) 관련 UseCase (#944)
+
+        register(FetchSignUpDataUseCaseProtocol.self) {
+            FetchSignUpDataUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
+        register(SendEmailVerificationUseCaseProtocol.self) {
+            SendEmailVerificationUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
+        register(VerifyEmailCodeUseCaseProtocol.self) {
+            VerifyEmailCodeUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
+        register(ResendEmailVerificationUseCaseProtocol.self) {
+            ResendEmailVerificationUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
+        register(CheckEmailAvailabilityUseCaseProtocol.self) {
+            CheckEmailAvailabilityUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
+        register(RegisterUseCaseProtocol.self) {
+            RegisterUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
+        register(RegisterByEmailUseCaseProtocol.self) {
+            RegisterByEmailUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
+        register(RegisterCredentialUseCaseProtocol.self) {
+            RegisterCredentialUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
+        register(RegisterExistingChallengerUseCaseProtocol.self) {
+            RegisterExistingChallengerUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
         }
     }
 }

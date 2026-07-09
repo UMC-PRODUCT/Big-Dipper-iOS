@@ -5,7 +5,10 @@ import CoreUIComponents
 import SwiftUI
 import UMCFoundation
 
-/// 소셜 로그인 진입 화면 — 기존 회원만 로그인 가능하다 (신규 회원 가입 플로우는 `#944` 스코프).
+/// 소셜 로그인 진입 화면.
+///
+/// 기존 회원은 바로 로그인되고, 신규 회원은 `appFlow.showSignUp(...)`을 통해
+/// 회원가입 화면으로 전환된다.
 public struct LoginView: View {
 
     // MARK: - Property
@@ -47,7 +50,9 @@ public struct LoginView: View {
         .onChange(of: viewModel.loginState) { _, newState in
             handle(newState: newState)
         }
-        .alertPrompt(item: $viewModel.alertPrompt)
+        .onChange(of: viewModel.signUpDestination) { _, newDestination in
+            handle(signUpDestination: newDestination)
+        }
     }
 
     // MARK: - Function
@@ -60,6 +65,16 @@ public struct LoginView: View {
         if newState == .failed(.auth(.pendingApproval)) {
             isPendingApprovalMessageFocused = true
         }
+    }
+
+    private func handle(signUpDestination: SignUpDestination?) {
+        guard let signUpDestination else { return }
+        appFlow.showSignUp(
+            signUpDestination.verificationToken,
+            signUpDestination.email,
+            signUpDestination.fullName,
+            signUpDestination.postRegisterLoginContext
+        )
     }
 
     // MARK: - Subviews
