@@ -1,0 +1,19 @@
+/// 홈 화면 내 프로필 조회 UseCase 구현체
+public final class FetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
+
+    // MARK: - Property
+
+    private let repository: HomeRepositoryProtocol
+
+    // MARK: - Init
+
+    public init(repository: HomeRepositoryProtocol) {
+        self.repository = repository
+    }
+
+    // MARK: - Function
+
+    public func execute() async throws -> HomeProfileResult {
+        try await repository.fetchMyProfile()
+    }
+}
