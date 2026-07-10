@@ -1,4 +1,5 @@
 import AuthDomain
+import CoreDomain
 import Foundation
 import UMCFoundation
 
@@ -171,7 +172,7 @@ extension MemberMeResponseDTO {
     /// 역할(roles)과 챌린저 이력(challengerRecords) 양쪽에서 기수 번호를 모아 합집합을 구성하고,
     /// 챌린저 이력 중 숫자 기수가 가장 큰 레코드를 최신 기록으로 채택한다
     /// (레거시 `MyProfileResponseDTO.toHomeProfileResult()` 대응).
-    func toDomain() -> Profile {
+    func toDomain() -> AuthDomain.Profile {
         let generations = Set(roles.map(\.gisu) + challengerRecords.map(\.gisu))
             .filter { !$0.isEmpty && $0 != "0" }
             .sorted { (Int($0) ?? 0) < (Int($1) ?? 0) }
@@ -181,7 +182,7 @@ extension MemberMeResponseDTO {
         }
 
         let profileRoles = roles.map {
-            ProfileRole(
+            AuthDomain.ProfileRole(
                 gisu: $0.gisu,
                 roleType: $0.roleType,
                 organizationType: $0.organizationType,
@@ -189,7 +190,7 @@ extension MemberMeResponseDTO {
             )
         }
 
-        return Profile(
+        return AuthDomain.Profile(
             memberId: id,
             name: name,
             nickname: nickname,

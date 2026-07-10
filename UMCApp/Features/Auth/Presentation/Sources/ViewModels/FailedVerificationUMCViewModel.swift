@@ -157,7 +157,7 @@ final class FailedVerificationUMCViewModel {
     /// 기존 챌린저 재인증 성공 프롬프트를 표시한다.
     ///
     /// 승인된 경우에만 확인 버튼에서 프로필을 로컬 저장소에 동기화하고 메인 화면으로 이동한다.
-    private func presentSuccessPrompt(profile: Profile) {
+    private func presentSuccessPrompt(profile: AuthDomain.Profile) {
         guard profile.isApproved else {
             alertPrompt = AlertPrompt(
                 title: "인증 완료",

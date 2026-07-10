@@ -352,8 +352,8 @@ private func makeAdminSessionManager() -> UserSessionManager {
     return sessionManager
 }
 
-private func makeProfile(generations: [String]) -> Profile {
-    Profile(memberId: "1", name: "홍길동", nickname: "길동이", generations: generations)
+private func makeProfile(generations: [String]) -> AuthDomain.Profile {
+    AuthDomain.Profile(memberId: "1", name: "홍길동", nickname: "길동이", generations: generations)
 }
 
 // MARK: - Mocks — UseCase
@@ -398,10 +398,10 @@ private final class SlowRegisterExistingChallengerUseCase:
 private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @unchecked Sendable {
     enum MockError: Error { case notStubbed }
 
-    var result: Result<Profile, Error> = .failure(MockError.notStubbed)
+    var result: Result<AuthDomain.Profile, Error> = .failure(MockError.notStubbed)
     private(set) var callCount = 0
 
-    func execute() async throws -> Profile {
+    func execute() async throws -> AuthDomain.Profile {
         callCount += 1
         return try result.get()
     }
@@ -409,9 +409,9 @@ private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @u
 
 private final class MockSyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol, @unchecked Sendable {
     private(set) var executeCallCount = 0
-    private(set) var receivedProfile: Profile?
+    private(set) var receivedProfile: AuthDomain.Profile?
 
-    func execute(profile: Profile) {
+    func execute(profile: AuthDomain.Profile) {
         executeCallCount += 1
         receivedProfile = profile
     }

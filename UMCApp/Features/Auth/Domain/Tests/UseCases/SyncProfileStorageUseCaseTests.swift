@@ -35,7 +35,7 @@ struct SyncProfileStorageUseCaseTests {
                 schoolName: "한국대학교"
             ),
         ]
-        let profile = Profile(
+        let profile = AuthDomain.Profile(
             memberId: "42",
             name: "김철수",
             nickname: "철수",
@@ -48,7 +48,7 @@ struct SyncProfileStorageUseCaseTests {
             chapterName: "서울",
             responsiblePart: "IOS",
             roles: [
-                ProfileRole(
+                AuthDomain.ProfileRole(
                     gisu: "11",
                     roleType: .schoolPartLeader,
                     organizationType: .school,
@@ -92,7 +92,7 @@ struct SyncProfileStorageUseCaseTests {
             userSessionManager: UserSessionManager(),
             userDefaults: userDefaults
         )
-        let profile = Profile(memberId: "1", name: "A", nickname: "a", generations: [])
+        let profile = AuthDomain.Profile(memberId: "1", name: "A", nickname: "a", generations: [])
 
         useCase.execute(profile: profile)
 
@@ -106,7 +106,7 @@ struct SyncProfileStorageUseCaseTests {
             userSessionManager: UserSessionManager(),
             userDefaults: userDefaults
         )
-        let profile = Profile(
+        let profile = AuthDomain.Profile(
             memberId: "1",
             name: "A",
             nickname: "a",
@@ -131,14 +131,14 @@ struct SyncProfileStorageUseCaseTests {
             userSessionManager: UserSessionManager(),
             userDefaults: userDefaults
         )
-        let profile = Profile(
+        let profile = AuthDomain.Profile(
             memberId: "1",
             name: "A",
             nickname: "a",
             generations: ["11"],
             chapterId: "300",
             roles: [
-                ProfileRole(
+                AuthDomain.ProfileRole(
                     gisu: "11",
                     roleType: .centralPresident,
                     organizationType: .central,
@@ -159,19 +159,19 @@ struct SyncProfileStorageUseCaseTests {
             userSessionManager: UserSessionManager(),
             userDefaults: userDefaults
         )
-        let profile = Profile(
+        let profile = AuthDomain.Profile(
             memberId: "1",
             name: "A",
             nickname: "a",
             generations: ["11"],
             roles: [
-                ProfileRole(
+                AuthDomain.ProfileRole(
                     gisu: "11",
                     roleType: .schoolEtcAdmin,
                     organizationType: .school,
                     organizationId: "100"
                 ),
-                ProfileRole(
+                AuthDomain.ProfileRole(
                     gisu: "11",
                     roleType: .schoolPresident,
                     organizationType: .school,
@@ -195,21 +195,21 @@ struct SyncProfileStorageUseCaseTests {
             userSessionManager: UserSessionManager(),
             userDefaults: userDefaults
         )
-        let profile = Profile(
+        let profile = AuthDomain.Profile(
             memberId: "1",
             name: "A",
             nickname: "a",
             generations: ["10", "11"],
             roles: [
                 // 이전 기수(10)에 더 높은 권한(지부장)을 보유하고 있다.
-                ProfileRole(
+                AuthDomain.ProfileRole(
                     gisu: "10",
                     roleType: .chapterPresident,
                     organizationType: .chapter,
                     organizationId: "500"
                 ),
                 // 최신 기수(11)에는 더 낮은 권한만 있다.
-                ProfileRole(
+                AuthDomain.ProfileRole(
                     gisu: "11",
                     roleType: .schoolPartLeader,
                     organizationType: .school,
@@ -238,19 +238,19 @@ struct SyncProfileStorageUseCaseTests {
             userSessionManager: userSessionManager,
             userDefaults: makeIsolatedUserDefaults()
         )
-        let profile = Profile(
+        let profile = AuthDomain.Profile(
             memberId: "1",
             name: "A",
             nickname: "a",
             generations: ["10", "11"],
             roles: [
-                ProfileRole(
+                AuthDomain.ProfileRole(
                     gisu: "11",
                     roleType: .chapterPresident,
                     organizationType: .chapter,
                     organizationId: "500"
                 ),
-                ProfileRole(
+                AuthDomain.ProfileRole(
                     gisu: "10",
                     roleType: .schoolPartLeader,
                     organizationType: .school,
@@ -275,7 +275,7 @@ struct SyncProfileStorageUseCaseTests {
             userSessionManager: userSessionManager,
             userDefaults: makeIsolatedUserDefaults()
         )
-        let profile = Profile(memberId: "1", name: "A", nickname: "a", generations: ["11"])
+        let profile = AuthDomain.Profile(memberId: "1", name: "A", nickname: "a", generations: ["11"])
 
         useCase.execute(profile: profile)
 
