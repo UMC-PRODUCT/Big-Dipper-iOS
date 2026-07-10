@@ -6,5 +6,9 @@ let project = coreProject(
     bundleIdSuffix: "domain",
     dependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+    ],
+    includesTests: true,
+    testDependencies: [
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ]
 )

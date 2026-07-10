@@ -231,8 +231,8 @@ struct SyncProfileStorageUseCaseTests {
         )
     }
 
-    @Test("실제 UserSessionManager의 currentRole을 해석된 역할로 갱신한다")
-    func updatesUserSessionManagerCurrentRole() {
+    @Test("실제 UserSessionManager의 currentRole과 allRoles를 해석된 역할로 갱신한다")
+    func updatesUserSessionManagerCurrentRoleAndAllRoles() {
         let userSessionManager = UserSessionManager()
         let useCase = SyncProfileStorageUseCase(
             userSessionManager: userSessionManager,
@@ -242,7 +242,7 @@ struct SyncProfileStorageUseCaseTests {
             memberId: "1",
             name: "A",
             nickname: "a",
-            generations: ["11"],
+            generations: ["10", "11"],
             roles: [
                 ProfileRole(
                     gisu: "11",
@@ -250,13 +250,36 @@ struct SyncProfileStorageUseCaseTests {
                     organizationType: .chapter,
                     organizationId: "500"
                 ),
+                ProfileRole(
+                    gisu: "10",
+                    roleType: .schoolPartLeader,
+                    organizationType: .school,
+                    organizationId: "700"
+                ),
             ]
         )
 
         #expect(userSessionManager.currentRole == .challenger)
+        #expect(userSessionManager.allRoles.isEmpty)
 
         useCase.execute(profile: profile)
 
         #expect(userSessionManager.currentRole == .chapterPresident)
+        #expect(userSessionManager.allRoles == [.chapterPresident, .schoolPartLeader])
+    }
+
+    @Test("역할이 없는 프로필은 UserSessionManager의 allRoles를 challenger 하나로 채운다")
+    func fillsAllRolesWithChallengerWhenProfileHasNoRoles() {
+        let userSessionManager = UserSessionManager()
+        let useCase = SyncProfileStorageUseCase(
+            userSessionManager: userSessionManager,
+            userDefaults: makeIsolatedUserDefaults()
+        )
+        let profile = Profile(memberId: "1", name: "A", nickname: "a", generations: ["11"])
+
+        useCase.execute(profile: profile)
+
+        #expect(userSessionManager.currentRole == .challenger)
+        #expect(userSessionManager.allRoles == [.challenger])
     }
 }

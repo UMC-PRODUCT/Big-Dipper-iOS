@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CoreDI
+import CoreDomain
 import CoreNetwork
 import AuthDomain
 import MyPageDomain
@@ -160,10 +161,14 @@ struct FailedVerificationUMCViewModelTests {
         #expect(viewModel.alertPrompt?.isPositiveBtnDestructive == true)
     }
 
-    @Test("로그아웃 확인 시 토큰을 정리하고 로그인 화면으로 이동한다")
+    @Test("로그아웃 확인 시 토큰을 정리하고 세션을 초기화한 뒤 로그인 화면으로 이동한다")
     func logoutConfirmClearsTokenAndNavigatesToLogin() async throws {
         let tokenStore = FakeTokenStore()
-        let viewModel = makeViewModel(tokenStore: tokenStore)
+        let sessionManager = makeAdminSessionManager()
+        let viewModel = makeViewModel(
+            tokenStore: tokenStore,
+            userSessionManager: sessionManager
+        )
 
         viewModel.presentLogoutPrompt()
         viewModel.alertPrompt?.positiveBtnAction?()
@@ -172,14 +177,22 @@ struct FailedVerificationUMCViewModelTests {
 
         #expect(viewModel.isLoggingOut == false)
         #expect(await tokenStore.clearCallCount == 1)
+        #expect(sessionManager.currentRole == .challenger)
+        #expect(sessionManager.allRoles.isEmpty)
+        #expect(sessionManager.isAdminModeEnabled == false)
     }
 
-    @Test("로그아웃 실패 시 ErrorHandler에 에러를 전달하고 화면을 전환하지 않는다")
+    @Test("로그아웃 실패 시 ErrorHandler에 에러를 전달하고 화면 전환과 세션 초기화를 하지 않는다")
     func logoutFailureReportsErrorWithoutNavigating() async throws {
         let tokenStore = FakeTokenStore()
         await tokenStore.setClearError(DummyError())
         let errorHandler = ErrorHandler()
-        let viewModel = makeViewModel(errorHandler: errorHandler, tokenStore: tokenStore)
+        let sessionManager = makeAdminSessionManager()
+        let viewModel = makeViewModel(
+            errorHandler: errorHandler,
+            tokenStore: tokenStore,
+            userSessionManager: sessionManager
+        )
 
         viewModel.presentLogoutPrompt()
         viewModel.alertPrompt?.positiveBtnAction?()
@@ -188,6 +201,7 @@ struct FailedVerificationUMCViewModelTests {
 
         #expect(viewModel.destination == nil)
         #expect(viewModel.isLoggingOut == false)
+        #expect(sessionManager.currentRole == .chapterPresident)
     }
 
     // MARK: - 회원 탈퇴
@@ -202,13 +216,15 @@ struct FailedVerificationUMCViewModelTests {
         #expect(viewModel.alertPrompt?.isPositiveBtnDestructive == true)
     }
 
-    @Test("회원 탈퇴 성공 시 로그아웃까지 수행하고 로그인 화면으로 이동한다")
+    @Test("회원 탈퇴 성공 시 로그아웃과 세션 초기화까지 수행하고 로그인 화면으로 이동한다")
     func deleteAccountSuccessLogsOutAndNavigatesToLogin() async throws {
         let deleteMemberUseCase = MockDeleteMemberUseCase()
         let tokenStore = FakeTokenStore()
+        let sessionManager = makeAdminSessionManager()
         let viewModel = makeViewModel(
             deleteMemberUseCase: deleteMemberUseCase,
-            tokenStore: tokenStore
+            tokenStore: tokenStore,
+            userSessionManager: sessionManager
         )
 
         viewModel.presentDeleteAccountPrompt()
@@ -219,18 +235,23 @@ struct FailedVerificationUMCViewModelTests {
         #expect(deleteMemberUseCase.callCount == 1)
         #expect(await tokenStore.clearCallCount == 1)
         #expect(viewModel.isDeletingAccount == false)
+        #expect(sessionManager.currentRole == .challenger)
+        #expect(sessionManager.allRoles.isEmpty)
+        #expect(sessionManager.isAdminModeEnabled == false)
     }
 
-    @Test("회원 탈퇴는 성공했지만 로그아웃(토큰 정리)이 실패하면 화면을 전환하지 않는다")
+    @Test("회원 탈퇴는 성공했지만 로그아웃(토큰 정리)이 실패하면 화면 전환과 세션 초기화를 하지 않는다")
     func deleteAccountSucceedsButLogoutFailsReportsErrorWithoutNavigating() async throws {
         let deleteMemberUseCase = MockDeleteMemberUseCase()
         let tokenStore = FakeTokenStore()
         await tokenStore.setClearError(DummyError())
         let errorHandler = ErrorHandler()
+        let sessionManager = makeAdminSessionManager()
         let viewModel = makeViewModel(
             errorHandler: errorHandler,
             deleteMemberUseCase: deleteMemberUseCase,
-            tokenStore: tokenStore
+            tokenStore: tokenStore,
+            userSessionManager: sessionManager
         )
 
         viewModel.presentDeleteAccountPrompt()
@@ -241,6 +262,7 @@ struct FailedVerificationUMCViewModelTests {
         #expect(deleteMemberUseCase.callCount == 1)
         #expect(viewModel.destination == nil)
         #expect(viewModel.isDeletingAccount == false)
+        #expect(sessionManager.currentRole == .chapterPresident)
     }
 
     @Test("회원 탈퇴 실패 시 로그아웃을 수행하지 않고 에러를 전달한다")
@@ -292,7 +314,8 @@ private func makeViewModel(
     fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol? = nil,
     deleteMemberUseCase: DeleteMemberUseCaseProtocol? = nil,
     tokenStore: FakeTokenStore? = nil,
-    syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol? = nil
+    syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol? = nil,
+    userSessionManager: UserSessionManager? = nil
 ) -> FailedVerificationUMCViewModel {
     let registerUseCase = registerExistingChallengerUseCase
         ?? MockRegisterExistingChallengerUseCase()
@@ -300,12 +323,14 @@ private func makeViewModel(
     let deleteUseCase = deleteMemberUseCase ?? MockDeleteMemberUseCase()
     let store = tokenStore ?? FakeTokenStore()
     let syncUseCase = syncProfileStorageUseCase ?? MockSyncProfileStorageUseCase()
+    let sessionManager = userSessionManager ?? UserSessionManager()
 
     let container = DIContainer()
     container.register(RegisterExistingChallengerUseCaseProtocol.self) { registerUseCase }
     container.register(FetchMyProfileUseCaseProtocol.self) { fetchUseCase }
     container.register(DeleteMemberUseCaseProtocol.self) { deleteUseCase }
     container.register(SyncProfileStorageUseCaseProtocol.self) { syncUseCase }
+    container.register(UserSessionManager.self) { sessionManager }
     container.register(NetworkClient.self) {
         NetworkClient(tokenStore: store, refreshService: FakeTokenRefreshService())
     }
@@ -314,6 +339,17 @@ private func makeViewModel(
         container: container,
         errorHandler: errorHandler ?? ErrorHandler()
     )
+}
+
+/// 로그아웃/탈퇴의 `reset()` 배선 검증용으로 관리자 역할이 세팅된 세션을 만든다.
+private func makeAdminSessionManager() -> UserSessionManager {
+    let sessionManager = UserSessionManager()
+    sessionManager.updateRole(
+        .chapterPresident,
+        allRoles: [.chapterPresident, .challenger]
+    )
+    sessionManager.toggleAdminMode()
+    return sessionManager
 }
 
 private func makeProfile(generations: [String]) -> Profile {

@@ -1,5 +1,6 @@
 import AuthDomain
 import CoreDI
+import CoreDomain
 import CoreNetwork
 import Foundation
 import MyPageDomain
@@ -28,6 +29,7 @@ final class FailedVerificationUMCViewModel {
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     private let deleteMemberUseCase: DeleteMemberUseCaseProtocol
     private let syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol
+    private let userSessionManager: UserSessionManager
     private let networkClient: NetworkClient
     private let container: DIContainer
     private let errorHandler: ErrorHandler
@@ -65,6 +67,7 @@ final class FailedVerificationUMCViewModel {
         self.fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
         self.deleteMemberUseCase = container.resolve(DeleteMemberUseCaseProtocol.self)
         self.syncProfileStorageUseCase = container.resolve(SyncProfileStorageUseCaseProtocol.self)
+        self.userSessionManager = container.resolve(UserSessionManager.self)
         self.networkClient = container.resolve(NetworkClient.self)
         self.container = container
         self.errorHandler = errorHandler
@@ -221,6 +224,7 @@ final class FailedVerificationUMCViewModel {
 
         do {
             try await networkClient.logout()
+            userSessionManager.reset()
             container.resetCache()
             destination = .login
         } catch {
@@ -242,6 +246,7 @@ final class FailedVerificationUMCViewModel {
             try await deleteMemberUseCase.execute()
             UserDefaults.standard.set(false, forKey: AppStorageKey.canAutoLogin)
             try await networkClient.logout()
+            userSessionManager.reset()
             container.resetCache()
             destination = .login
         } catch {
