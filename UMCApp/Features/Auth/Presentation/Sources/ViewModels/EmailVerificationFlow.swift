@@ -51,13 +51,21 @@ final class EmailVerificationFlow {
 
     // MARK: - Init
 
+    /// - Parameter initialEmail: 소셜 회원가입처럼 이전 화면에서 이미 수집한 이메일을
+    ///   프리필해야 할 때 사용한다. `email`과 변경 감지 스냅샷을 함께 초기화하므로,
+    ///   프리필 직후 사용자가 아무것도 편집하지 않아도 "이미 변경된 것으로" 오탐하지 않는다.
+    ///   프리필이 필요 없는 호출자(`SignUpByIdPwViewModel`, `ResetPasswordViewModel`)는
+    ///   생략하면 기존과 동일하게 빈 문자열로 시작한다.
     init(
         purpose: EmailVerificationPurpose,
+        initialEmail: String = "",
         sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,
         verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol,
         resendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol
     ) {
         self.purpose = purpose
+        self.email = initialEmail
+        self.lastEmailSnapshot = initialEmail
         self.sendEmailVerificationUseCase = sendEmailVerificationUseCase
         self.verifyEmailCodeUseCase = verifyEmailCodeUseCase
         self.resendEmailVerificationUseCase = resendEmailVerificationUseCase

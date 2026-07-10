@@ -13,7 +13,7 @@ final class SignUpByIdPwViewModel {
     // MARK: - Constant
 
     private enum Constants {
-        static let emailAvailabilityDebounceMilliseconds: UInt64 = 500
+        static let emailAvailabilityDebounceMilliseconds: Int64 = 500
         static let minimumPasswordLength: Int = 8
     }
 
@@ -25,8 +25,15 @@ final class SignUpByIdPwViewModel {
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     private let errorHandler: ErrorHandler
 
+    /// debounce 대기를 담당하는 sleeper. 운영 기본값은 `Task.sleep`이며, 테스트는 결정적으로
+    /// 즉시 반환되는 sleeper를 주입해 wall-clock 대기 없이 debounce 취소 로직을 검증한다.
+    private let emailAvailabilityDebounceSleep: @Sendable (Duration) async throws -> Void
+
     /// 이메일 인증(발송·검증·재전송) 상태와 액션 — `EmailVerificationFlow`에 위임한다.
     var emailVerificationFlow: EmailVerificationFlow
+
+    /// 약관 조회·동의 토글 상태와 액션 — `TermsAgreementFlow`에 위임한다.
+    var termsAgreementFlow: TermsAgreementFlow
 
     /// 사용자 실명
     var name: String = ""
@@ -43,14 +50,8 @@ final class SignUpByIdPwViewModel {
     /// 선택된 학교
     var selectedSchool: School?
 
-    /// 약관 동의 상태 (termsId → 동의 여부)
-    var termsAgreements: [String: Bool] = [:]
-
     /// 학교 목록 로딩 상태
     private(set) var schoolsState: Loadable<[School]> = .idle
-
-    /// 약관 목록 로딩 상태 (서비스·개인정보 2종, marketing 미노출)
-    private(set) var termsState: Loadable<[Terms]> = .idle
 
     /// 마지막으로 검증에 성공한 인증 코드
     private(set) var verificationCode: String = ""
@@ -67,11 +68,22 @@ final class SignUpByIdPwViewModel {
     /// `showMain()`/`showLogin()` 분기를 결정한다.
     private(set) var isApprovedAfterRegister = false
 
-    @ObservationIgnored private var emailAvailabilityTask: Task<Void, Never>?
+    /// 이메일 중복 확인 debounce/실행을 담당하는 진행 중인 Task.
+    ///
+    /// setter는 `private`지만, getter는 모듈 기본(`internal`) 접근 수준을 유지해
+    /// `@testable import AuthPresentation`에서 `await emailAvailabilityTask?.value`로
+    /// 대기함으로써 wall-clock 없이 결정적으로 debounce 완료 시점을 테스트할 수 있게 한다.
+    @ObservationIgnored private(set) var emailAvailabilityTask: Task<Void, Never>?
 
     // MARK: - Init
 
-    init(container: DIContainer, errorHandler: ErrorHandler) {
+    init(
+        container: DIContainer,
+        errorHandler: ErrorHandler,
+        emailAvailabilityDebounceSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            duration in try await Task.sleep(for: duration)
+        }
+    ) {
         self.fetchSignUpDataUseCase = container.resolve(FetchSignUpDataUseCaseProtocol.self)
         self.checkEmailAvailabilityUseCase = container.resolve(
             CheckEmailAvailabilityUseCaseProtocol.self
@@ -79,6 +91,7 @@ final class SignUpByIdPwViewModel {
         self.registerByEmailUseCase = container.resolve(RegisterByEmailUseCaseProtocol.self)
         self.fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
         self.errorHandler = errorHandler
+        self.emailAvailabilityDebounceSleep = emailAvailabilityDebounceSleep
         self.emailVerificationFlow = EmailVerificationFlow(
             purpose: .register,
             sendEmailVerificationUseCase: container.resolve(
@@ -88,6 +101,9 @@ final class SignUpByIdPwViewModel {
             resendEmailVerificationUseCase: container.resolve(
                 ResendEmailVerificationUseCaseProtocol.self
             )
+        )
+        self.termsAgreementFlow = TermsAgreementFlow(
+            fetchSignUpDataUseCase: self.fetchSignUpDataUseCase
         )
         self.emailVerificationFlow.onReset = { [weak self] in
             self?.resetEmailAvailability()
@@ -113,8 +129,9 @@ final class SignUpByIdPwViewModel {
 
     /// 최종 제출 가능 여부 — 필수 약관 동의와 이메일 중복 확인 통과를 포함한다.
     ///
-    /// 약관이 아직 로딩되지 않았다면(`termsState != .loaded`) `mandatoryTermsAgreed`가
-    /// 항상 `false`이므로 제출이 자동으로 차단된다. 하드코딩된 termsId fallback은 두지 않는다.
+    /// 약관이 아직 로딩되지 않았다면(`termsAgreementFlow.termsState != .loaded`)
+    /// `mandatoryTermsAgreed`가 항상 `false`이므로 제출이 자동으로 차단된다.
+    /// 하드코딩된 termsId fallback은 두지 않는다.
     var canSubmit: Bool {
         !name.isEmpty &&
         !nickname.isEmpty &&
@@ -124,20 +141,7 @@ final class SignUpByIdPwViewModel {
         selectedSchool != nil &&
         emailVerificationFlow.isEmailVerified &&
         isEmailAvailable &&
-        mandatoryTermsAgreed
-    }
-
-    /// 전체 약관 동의 여부
-    var isAllTermsAgreed: Bool {
-        !termsAgreements.isEmpty && termsAgreements.values.allSatisfy { $0 }
-    }
-
-    /// 필수 약관 모두 동의 여부
-    private var mandatoryTermsAgreed: Bool {
-        guard case .loaded(let terms) = termsState else { return false }
-        return terms
-            .filter(\.isMandatory)
-            .allSatisfy { termsAgreements[$0.id] == true }
+        termsAgreementFlow.mandatoryTermsAgreed
     }
 
     // MARK: - Function (Data Loading)
@@ -150,24 +154,7 @@ final class SignUpByIdPwViewModel {
             let schools = try await fetchSignUpDataUseCase.fetchSchools()
             schoolsState = .loaded(schools)
         } catch {
-            schoolsState = .failed(mapToAppError(error))
-        }
-    }
-
-    /// 약관 목록 조회 (SERVICE, PRIVACY — marketing은 미노출)
-    @MainActor
-    func fetchTerms() async {
-        termsState = .loading
-        do {
-            var terms: [Terms] = []
-            for type in [TermsType.service, TermsType.privacy] {
-                let term = try await fetchSignUpDataUseCase.fetchTerms(type: type)
-                terms.append(term)
-                termsAgreements[term.id] = false
-            }
-            termsState = .loaded(terms)
-        } catch {
-            termsState = .failed(mapToAppError(error))
+            schoolsState = .failed(AppError.from(error))
         }
     }
 
@@ -184,18 +171,6 @@ final class SignUpByIdPwViewModel {
         scheduleEmailAvailabilityCheck()
     }
 
-    // MARK: - Function (Terms)
-
-    /// 전체 약관 동의/해제 토글
-    func toggleAllTerms(_ agreed: Bool) {
-        termsAgreements = termsAgreements.mapValues { _ in agreed }
-    }
-
-    /// 개별 약관 동의 토글
-    func toggleTerm(_ termsId: String) {
-        termsAgreements[termsId, default: false].toggle()
-    }
-
     // MARK: - Function (Email Availability)
 
     /// 이메일 중복 확인을 500ms 디바운스 후 예약한다.
@@ -207,11 +182,23 @@ final class SignUpByIdPwViewModel {
     private func scheduleEmailAvailabilityCheck() {
         emailAvailabilityTask?.cancel()
         let targetEmail = emailVerificationFlow.email
+        let sleep = emailAvailabilityDebounceSleep
         emailAvailabilityTask = Task { [weak self] in
-            try? await Task.sleep(
-                for: .milliseconds(Constants.emailAvailabilityDebounceMilliseconds)
-            )
+            try? await sleep(.milliseconds(Constants.emailAvailabilityDebounceMilliseconds))
             guard !Task.isCancelled else { return }
+            await self?.performEmailAvailabilityCheck(email: targetEmail)
+        }
+    }
+
+    /// 이메일 중복 확인 실패 후 사용자가 명시적으로 요청한 즉시 재시도.
+    ///
+    /// 사용자가 직접 재시도를 요청한 액션이므로 debounce 없이 바로 확인을 수행한다.
+    @MainActor
+    func retryEmailAvailabilityCheck() {
+        guard case .failed = emailAvailabilityState else { return }
+        emailAvailabilityTask?.cancel()
+        let targetEmail = emailVerificationFlow.email
+        emailAvailabilityTask = Task { [weak self] in
             await self?.performEmailAvailabilityCheck(email: targetEmail)
         }
     }
@@ -226,7 +213,7 @@ final class SignUpByIdPwViewModel {
             emailAvailabilityState = .loaded(isAvailable)
         } catch {
             guard !Task.isCancelled else { return }
-            emailAvailabilityState = .failed(mapToAppError(error))
+            emailAvailabilityState = .failed(AppError.from(error))
         }
     }
 
@@ -255,7 +242,7 @@ final class SignUpByIdPwViewModel {
 
         registerState = .loading
 
-        let agreements = termsAgreements.map {
+        let agreements = termsAgreementFlow.termsAgreements.map {
             TermsAgreement(termsId: $0.key, isAgreed: $0.value)
         }
 
@@ -294,22 +281,5 @@ final class SignUpByIdPwViewModel {
         } catch {
             return false
         }
-    }
-
-    /// `RepositoryError`/`NetworkError`/`AuthError`를 `AppError`로 통일해 `Loadable.failed`에 담는다.
-    private func mapToAppError(_ error: Error) -> AppError {
-        if let appError = error as? AppError {
-            return appError
-        }
-        if let repositoryError = error as? RepositoryError {
-            return .repository(repositoryError)
-        }
-        if let networkError = error as? NetworkError {
-            return .network(networkError)
-        }
-        if let authError = error as? AuthError {
-            return .auth(authError)
-        }
-        return .unknown(message: error.localizedDescription)
     }
 }

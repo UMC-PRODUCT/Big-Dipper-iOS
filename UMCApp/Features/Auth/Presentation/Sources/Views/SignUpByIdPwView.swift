@@ -35,6 +35,7 @@ public struct SignUpByIdPwView: View {
         static let emailAvailableMessage: String = "사용 가능한 이메일이에요."
         static let emailUnavailableMessage: String = "이미 가입된 이메일이에요."
         static let emailAvailabilityFailedMessage: String = "중복 확인에 실패했어요."
+        static let emailAvailabilityRetryTitle: String = "재시도"
     }
 
     // MARK: - Init
@@ -99,11 +100,11 @@ public struct SignUpByIdPwView: View {
                     )
 
                     SignUpTermsSection(
-                        termsState: viewModel.termsState,
-                        termsAgreements: viewModel.termsAgreements,
-                        isAllTermsAgreed: viewModel.isAllTermsAgreed,
-                        onToggleAll: { viewModel.toggleAllTerms($0) },
-                        onToggleRow: { viewModel.toggleTerm($0) }
+                        termsState: viewModel.termsAgreementFlow.termsState,
+                        termsAgreements: viewModel.termsAgreementFlow.termsAgreements,
+                        isAllTermsAgreed: viewModel.termsAgreementFlow.isAllTermsAgreed,
+                        onToggleAll: { viewModel.termsAgreementFlow.toggleAllTerms($0) },
+                        onToggleRow: { viewModel.termsAgreementFlow.toggleTerm($0) }
                     )
                 }
                 .safeAreaPadding(.vertical, DefaultConstant.defaultContentTopMargins)
@@ -117,7 +118,7 @@ public struct SignUpByIdPwView: View {
         }
         .task {
             await viewModel.fetchSchools()
-            await viewModel.fetchTerms()
+            await viewModel.termsAgreementFlow.fetchTerms()
         }
         .onChange(of: viewModel.registerState) { _, newState in
             handleRegisterStateChange(newState)
@@ -155,6 +156,10 @@ public struct SignUpByIdPwView: View {
                     .foregroundStyle(Color.red500)
                 Text(Constants.emailAvailabilityFailedMessage)
                     .appFont(.footnote, color: .red500)
+                Button(Constants.emailAvailabilityRetryTitle) {
+                    viewModel.retryEmailAvailabilityCheck()
+                }
+                .appFont(.footnote, weight: .semibold, color: .indigo500)
             }
         }
     }

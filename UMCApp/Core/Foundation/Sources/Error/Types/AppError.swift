@@ -148,4 +148,28 @@ public enum AppError: Error, LocalizedError, Equatable {
             return true
         }
     }
+
+    // MARK: - Factory
+
+    /// 임의의 `Error`를 공통 규칙으로 `AppError`로 정규화한다.
+    ///
+    /// 여러 ViewModel(예: `SignUpViewModel`, `SignUpByIdPwViewModel`)이 각자
+    /// `catch` 블록에서 동일한 `RepositoryError`/`NetworkError`/`AuthError` 매핑 로직을
+    /// 중복 구현하던 것을 통합한 지점이다. 이미 `AppError`인 경우 그대로 반환하고,
+    /// 알려진 하위 에러 타입이 아니면 `.unknown`으로 폴백한다.
+    public static func from(_ error: Error) -> AppError {
+        if let appError = error as? AppError {
+            return appError
+        }
+        if let repositoryError = error as? RepositoryError {
+            return .repository(repositoryError)
+        }
+        if let networkError = error as? NetworkError {
+            return .network(networkError)
+        }
+        if let authError = error as? AuthError {
+            return .auth(authError)
+        }
+        return .unknown(message: error.localizedDescription)
+    }
 }
