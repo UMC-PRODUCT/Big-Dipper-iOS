@@ -14,13 +14,13 @@ struct ResetPasswordViewModelEmailVerificationTests {
         let sendEmailVerificationUseCase = MockSendEmailVerificationUseCase()
         sendEmailVerificationUseCase.result = .success("verify-id-1")
         let viewModel = makeViewModel(sendEmailVerificationUseCase: sendEmailVerificationUseCase)
-        viewModel.email = "member@umc.dev"
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
 
-        try await viewModel.requestEmailVerification()
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
 
         #expect(sendEmailVerificationUseCase.callCount == 1)
         #expect(sendEmailVerificationUseCase.receivedPurpose == .passwordReset)
-        #expect(viewModel.emailVerificationId == "verify-id-1")
+        #expect(viewModel.emailVerificationFlow.emailVerificationId == "verify-id-1")
     }
 
     @Test("인증코드 검증 성공 시 토큰이 저장되고 isEmailVerified가 true가 된다")
@@ -33,13 +33,13 @@ struct ResetPasswordViewModelEmailVerificationTests {
             sendEmailVerificationUseCase: sendEmailVerificationUseCase,
             verifyEmailCodeUseCase: verifyEmailCodeUseCase
         )
-        viewModel.email = "member@umc.dev"
-        try await viewModel.requestEmailVerification()
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
 
-        try await viewModel.verifyEmailCode("123456")
+        try await viewModel.emailVerificationFlow.verifyEmailCode("123456")
 
-        #expect(viewModel.isEmailVerified == true)
-        #expect(viewModel.emailVerificationToken == "verify-token-1")
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == true)
+        #expect(viewModel.emailVerificationFlow.emailVerificationToken == "verify-token-1")
     }
 
     @Test("이메일 변경 시 인증 상태가 초기화된다")
@@ -52,17 +52,17 @@ struct ResetPasswordViewModelEmailVerificationTests {
             sendEmailVerificationUseCase: sendEmailVerificationUseCase,
             verifyEmailCodeUseCase: verifyEmailCodeUseCase
         )
-        viewModel.email = "member@umc.dev"
-        try await viewModel.requestEmailVerification()
-        try await viewModel.verifyEmailCode("123456")
-        #expect(viewModel.isEmailVerified == true)
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
+        try await viewModel.emailVerificationFlow.verifyEmailCode("123456")
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == true)
 
-        viewModel.email = "changed@umc.dev"
-        viewModel.handleEmailChanged()
+        viewModel.emailVerificationFlow.email = "changed@umc.dev"
+        viewModel.emailVerificationFlow.handleEmailChanged()
 
-        #expect(viewModel.isEmailVerified == false)
-        #expect(viewModel.emailVerificationId == nil)
-        #expect(viewModel.emailVerificationToken == nil)
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == false)
+        #expect(viewModel.emailVerificationFlow.emailVerificationId == nil)
+        #expect(viewModel.emailVerificationFlow.emailVerificationToken == nil)
     }
 }
 
@@ -220,9 +220,9 @@ private func makeVerifiedViewModel(
         errorHandler: errorHandler
     )
 
-    viewModel.email = email
-    try await viewModel.requestEmailVerification()
-    try await viewModel.verifyEmailCode("123456")
+    viewModel.emailVerificationFlow.email = email
+    try await viewModel.emailVerificationFlow.requestEmailVerification()
+    try await viewModel.emailVerificationFlow.verifyEmailCode("123456")
 
     return viewModel
 }

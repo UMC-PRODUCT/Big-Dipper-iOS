@@ -70,24 +70,25 @@ public struct SignUpByIdPwView: View {
 
                     VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
                         SignUpEmailSection(
-                            email: $viewModel.email,
-                            isVerified: $viewModel.isEmailVerified,
+                            email: $viewModel.emailVerificationFlow.email,
+                            isVerified: $viewModel.emailVerificationFlow.isEmailVerified,
                             onVerificationRequested: {
-                                try await viewModel.requestEmailVerification()
+                                try await viewModel.emailVerificationFlow
+                                    .requestEmailVerification()
                             },
                             onVerificationComplete: { code in
                                 try await viewModel.verifyEmailCode(code)
                             },
                             onResend: {
-                                try await viewModel.resendEmailVerification()
+                                try await viewModel.emailVerificationFlow.resendEmailVerification()
                             },
                             onEmailChanged: {
-                                viewModel.handleEmailChanged()
+                                viewModel.emailVerificationFlow.handleEmailChanged()
                             },
                             showsVerifiedMessage: false
                         )
 
-                        if viewModel.isEmailVerified {
+                        if viewModel.emailVerificationFlow.isEmailVerified {
                             emailAvailabilityStatusRow
                         }
                     }

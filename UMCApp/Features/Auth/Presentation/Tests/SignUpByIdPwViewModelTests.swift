@@ -52,7 +52,7 @@ struct SignUpByIdPwViewModelEmailAvailabilityTests {
             verifyEmailCodeUseCase: verifyEmailCodeUseCase,
             checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase
         )
-        viewModel.email = "member@umc.dev"
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
         try await requestVerification(on: viewModel)
 
         // 연속 재검증(예: 코드 재입력) — 매 호출마다 이전 debounce 예약이 취소된다.
@@ -79,12 +79,12 @@ struct SignUpByIdPwViewModelEmailAvailabilityTests {
             verifyEmailCodeUseCase: verifyEmailCodeUseCase,
             checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase
         )
-        viewModel.email = "first@umc.dev"
+        viewModel.emailVerificationFlow.email = "first@umc.dev"
         try await requestVerification(on: viewModel)
         try await viewModel.verifyEmailCode("111111")
 
-        viewModel.email = "second@umc.dev"
-        viewModel.handleEmailChanged()
+        viewModel.emailVerificationFlow.email = "second@umc.dev"
+        viewModel.emailVerificationFlow.handleEmailChanged()
         try await requestVerification(on: viewModel)
         try await viewModel.verifyEmailCode("222222")
 
@@ -104,8 +104,8 @@ struct SignUpByIdPwViewModelEmailAvailabilityTests {
         try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
         #expect(viewModel.emailAvailabilityState == .loaded(true))
 
-        viewModel.email = "changed@umc.dev"
-        viewModel.handleEmailChanged()
+        viewModel.emailVerificationFlow.email = "changed@umc.dev"
+        viewModel.emailVerificationFlow.handleEmailChanged()
 
         #expect(viewModel.emailAvailabilityState == .idle)
     }
@@ -366,7 +366,7 @@ private func requestVerification(
     on viewModel: SignUpByIdPwViewModel,
     code: String = "123456"
 ) async throws {
-    try await viewModel.requestEmailVerification()
+    try await viewModel.emailVerificationFlow.requestEmailVerification()
     try await viewModel.verifyEmailCode(code)
 }
 
@@ -411,7 +411,7 @@ private func makeVerifiedEmailViewModel(
         viewModel.termsAgreements["terms-privacy"] = true
     }
 
-    viewModel.email = email
+    viewModel.emailVerificationFlow.email = email
     try await requestVerification(on: viewModel)
 
     return viewModel
@@ -458,7 +458,7 @@ private func makeValidFormViewModel(
     viewModel.nickname = "길동이"
     viewModel.password = "password1234"
     viewModel.passwordConfirm = "password1234"
-    viewModel.email = "member@umc.dev"
+    viewModel.emailVerificationFlow.email = "member@umc.dev"
     viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
 
     try await requestVerification(on: viewModel)

@@ -47,26 +47,26 @@ public struct ResetPasswordView: View {
                     FormEmailField(
                         title: "이메일",
                         placeholder: "example@example.com",
-                        text: $viewModel.email,
-                        isVerified: $viewModel.isEmailVerified,
+                        text: $viewModel.emailVerificationFlow.email,
+                        isVerified: $viewModel.emailVerificationFlow.isEmailVerified,
                         onVerificationRequested: {
-                            try await viewModel.requestEmailVerification()
+                            try await viewModel.emailVerificationFlow.requestEmailVerification()
                         },
                         onVerificationComplete: { code in
-                            try await viewModel.verifyEmailCode(code)
+                            try await viewModel.emailVerificationFlow.verifyEmailCode(code)
                         },
                         onResend: {
-                            try await viewModel.resendEmailVerification()
+                            try await viewModel.emailVerificationFlow.resendEmailVerification()
                         },
                         submitLabel: .next,
                         onSubmit: { focusedField = .password },
-                        onEmailChanged: { viewModel.handleEmailChanged() }
+                        onEmailChanged: { viewModel.emailVerificationFlow.handleEmailChanged() }
                     )
 
                     Text(Constants.deliveryNotice)
                         .appFont(.footnote, color: .grey500)
 
-                    if viewModel.isEmailVerified {
+                    if viewModel.emailVerificationFlow.isEmailVerified {
                         SignUpPasswordSection(
                             password: $viewModel.newPassword,
                             passwordConfirm: $viewModel.newPasswordConfirm,
