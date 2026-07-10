@@ -2,6 +2,7 @@ import FirebaseCore
 import FirebaseRemoteConfig
 import Foundation
 import MaintenanceDomain
+import os
 
 /// Firebase Remote Config 기반 킬스위치·강제 업데이트 정보 조회 서비스.
 ///
@@ -28,9 +29,19 @@ public final class RemoteConfigService: RemoteConfigServiceProtocol {
         static let message = "보다 나은 서비스 제공을 위해 점검 중입니다.\n잠시 후 다시 이용해 주세요."
     }
 
+    private enum Constants {
+        /// `check()` 1회당 두 UseCase가 순차 호출해도 `fetchAndActivate()`가 한 번만
+        /// 실행되도록 묶어주는 창. Firebase의 `minimumFetchInterval`(release 600초)보다
+        /// 훨씬 짧게 잡아, 정당한 재확인(포그라운드 복귀 등)은 그대로 새로 페치한다.
+        static let refreshCoalesceWindow: TimeInterval = 5
+    }
+
     // MARK: - Property
 
     private let fetchTimeout: TimeInterval
+    private let refreshCoalescer = RefreshCoalescer(
+        coalesceWindow: Constants.refreshCoalesceWindow
+    )
 
     private lazy var remoteConfig: RemoteConfig? = {
         guard FirebaseApp.app() != nil else { return nil }
@@ -98,10 +109,20 @@ extension RemoteConfigService {
         return remoteConfig
     }
 
-    /// 페치 실패는 무시한다 — 원격 설정 접근이 불가하면 마지막으로 활성화된(또는 기본) 값으로
-    /// 동작을 이어가는 fail-open 정책이다.
+    /// `RefreshCoalescer`로 묶어 중복 실행을 막고, 실제 페치는 여기서 수행한다.
+    ///
+    /// 페치 실패는 로그만 남기고 삼킨다 — 원격 설정 접근이 불가하면 마지막으로
+    /// 활성화된(또는 기본) 값으로 동작을 이어가는 fail-open 정책이다.
     private func refreshIfPossible(_ remoteConfig: RemoteConfig) async {
-        _ = try? await remoteConfig.fetchAndActivate()
+        await refreshCoalescer.run {
+            do {
+                _ = try await remoteConfig.fetchAndActivate()
+            } catch {
+                Self.logger.error(
+                    "RemoteConfig fetchAndActivate 실패, 마지막 활성값으로 계속 진행: \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
     }
 
     private func currentMaintenanceInfo(_ remoteConfig: RemoteConfig) -> MaintenanceInfo? {
@@ -115,4 +136,13 @@ extension RemoteConfigService {
             message: message.isEmpty ? DefaultValue.message : message
         )
     }
+}
+
+// MARK: - Logging
+
+extension RemoteConfigService {
+    private static let logger = Logger(
+        subsystem: "dev.umc.feature.maintenance.data",
+        category: "RemoteConfigService"
+    )
 }

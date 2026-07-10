@@ -14,6 +14,7 @@ let project = featureProject(
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
     ],
     includesDomainTests: true,
+    includesDataTests: true,
     includesPresentationTests: true,
     presentationTestDependencies: [
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
