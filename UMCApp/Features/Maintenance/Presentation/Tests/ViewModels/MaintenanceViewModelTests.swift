@@ -10,8 +10,10 @@ private func makeViewModel(
     checkMaintenanceUseCase: CheckMaintenanceUseCaseProtocol? = nil,
     checkForceUpdateUseCase: CheckForceUpdateUseCaseProtocol? = nil
 ) -> MaintenanceViewModel {
-    let checkMaintenanceUseCase = checkMaintenanceUseCase ?? StubCheckMaintenanceUseCase(result: nil)
-    let checkForceUpdateUseCase = checkForceUpdateUseCase ?? StubCheckForceUpdateUseCase(result: false)
+    let checkMaintenanceUseCase = checkMaintenanceUseCase
+        ?? StubCheckMaintenanceUseCase(result: nil)
+    let checkForceUpdateUseCase = checkForceUpdateUseCase
+        ?? StubCheckForceUpdateUseCase(result: false)
 
     let container = DIContainer()
     container.register(CheckMaintenanceUseCaseProtocol.self) { checkMaintenanceUseCase }
@@ -95,7 +97,8 @@ struct MaintenanceViewModelTests {
 
 // MARK: - Stub
 
-private final class StubCheckMaintenanceUseCase: CheckMaintenanceUseCaseProtocol, @unchecked Sendable {
+private final class StubCheckMaintenanceUseCase:
+    CheckMaintenanceUseCaseProtocol, @unchecked Sendable {
     var result: MaintenanceInfo?
 
     init(result: MaintenanceInfo?) {
@@ -107,7 +110,8 @@ private final class StubCheckMaintenanceUseCase: CheckMaintenanceUseCaseProtocol
     }
 }
 
-private final class StubCheckForceUpdateUseCase: CheckForceUpdateUseCaseProtocol, @unchecked Sendable {
+private final class StubCheckForceUpdateUseCase:
+    CheckForceUpdateUseCaseProtocol, @unchecked Sendable {
     var result: Bool
 
     init(result: Bool) {

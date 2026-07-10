@@ -5,8 +5,8 @@
 /// - Note: 디버그 메뉴 등에서 임의 시점에 값을 바꿔 쓰는 용도라 `nonisolated(unsafe)`로
 ///   선언한다. 릴리스 빌드에는 포함되지 않는다(절대 규칙 #5).
 public enum MaintenanceDebugOverride {
-    nonisolated(unsafe) public static var isMaintenanceForced = false
-    nonisolated(unsafe) public static var isForceUpdateForced = false
-    nonisolated(unsafe) public static var forcedMinimumVersion = "9999.0.0"
+    public nonisolated(unsafe) static var isMaintenanceForced = false
+    public nonisolated(unsafe) static var isForceUpdateForced = false
+    public nonisolated(unsafe) static var forcedMinimumVersion = "9999.0.0"
 }
 #endif

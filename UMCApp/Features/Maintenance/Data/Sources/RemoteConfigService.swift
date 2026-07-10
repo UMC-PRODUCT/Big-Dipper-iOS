@@ -71,6 +71,7 @@ public final class RemoteConfigService: RemoteConfigServiceProtocol {
         guard let remoteConfig else { return nil }
         await refreshIfPossible(remoteConfig)
         let minimumVersion = remoteConfig[Key.minimumVersion].stringValue
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         return minimumVersion.isEmpty ? nil : minimumVersion
     }
 }
