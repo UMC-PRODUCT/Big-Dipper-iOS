@@ -54,7 +54,7 @@ public final class SyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol 
         )
         userDefaults.set(profile.isApproved, forKey: AppStorageKey.canAutoLogin)
 
-        userSessionManager.updateRole(resolvedRole)
+        userSessionManager.updateRole(resolvedRole, allRoles: profile.roles.map(\.roleType))
     }
 
     // MARK: - Private Function
