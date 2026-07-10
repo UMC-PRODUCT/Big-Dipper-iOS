@@ -414,14 +414,26 @@ struct MyPageRepositoryAddRecordTests {
     }
 }
 
-// MARK: - Suite: 회원 탈퇴 (void 계약)
+// MARK: - Suite: 회원 탈퇴 (result 폐기 계약)
 
 @Suite("MyPageRepository — 회원 탈퇴")
 struct MyPageRepositoryDeleteTests {
 
-    @Test("deleteMember — 성공 시 throw 없이 완료하고 DELETE /member를 호출한다")
+    @Test("deleteMember — 실제 계약(result: 탈퇴 전 회원 스냅샷)에서 throw 없이 완료하고 DELETE /member를 호출한다")
     func deleteMemberSucceeds() async throws {
+        // 백엔드 MEMBER-003은 탈퇴 전 회원 정보 스냅샷을 result로 반환하지만 클라이언트는 폐기한다
         let (sut, stub) = makeRepository(.success(Fixture.success(Fixture.profileObject)))
+
+        try await sut.deleteMember()
+
+        #expect(stub.requestCount == 1)
+        #expect(stub.lastPath == "/api/v1/member")
+        #expect(stub.lastMethod == .delete)
+    }
+
+    @Test("deleteMember — result가 없는 표준 void 봉투도 성공으로 처리한다")
+    func deleteMemberSucceedsWithVoidResult() async throws {
+        let (sut, stub) = makeRepository(.success(Fixture.successVoid()))
 
         try await sut.deleteMember()
 
@@ -437,6 +449,27 @@ struct MyPageRepositoryDeleteTests {
         )
 
         await #expect(throws: RepositoryError.serverError(code: "M403", message: "권한이 없습니다.")) {
+            try await sut.deleteMember()
+        }
+    }
+
+    @Test("deleteMember — 서버 에러 본문(requestFailed)을 RepositoryError.serverError로 승격한다")
+    func deleteMemberMapsServerError() async {
+        let body = Fixture.failureBody(code: "M403", message: "권한이 없습니다.")
+        let (sut, _) = makeRepository(
+            .failure(NetworkError.requestFailed(statusCode: 403, data: body))
+        )
+
+        await #expect(throws: RepositoryError.serverError(code: "M403", message: "권한이 없습니다.")) {
+            try await sut.deleteMember()
+        }
+    }
+
+    @Test("deleteMember — 파싱 불가한 NetworkError는 원본 그대로 전파한다")
+    func deleteMemberPropagatesNonMappableError() async {
+        let (sut, _) = makeRepository(.failure(NetworkError.timeout))
+
+        await #expect(throws: NetworkError.timeout) {
             try await sut.deleteMember()
         }
     }
@@ -472,6 +505,29 @@ struct MyPageRepositoryUpdateLinksTests {
         #expect(byType["GITHUB"] == "https://github.com/me")           // trim 적용
         #expect(byType["LINKEDIN"] == "")                              // 미제공 → 빈 문자열
         #expect(byType["BLOG"] == "")
+    }
+
+    @Test("updateProfileLinks — 서버 에러 본문(requestFailed)을 RepositoryError.serverError로 승격한다")
+    func updateLinksMapsServerError() async {
+        let body = Fixture.failureBody(code: "M400", message: "잘못된 링크 형식입니다.")
+        let (sut, _) = makeRepository(
+            .failure(NetworkError.requestFailed(statusCode: 400, data: body))
+        )
+
+        await #expect(throws: RepositoryError.serverError(
+            code: "M400", message: "잘못된 링크 형식입니다."
+        )) {
+            _ = try await sut.updateProfileLinks([ProfileLink(type: .github, url: "x")])
+        }
+    }
+
+    @Test("updateProfileLinks — 파싱 불가한 NetworkError는 원본 그대로 전파한다")
+    func updateLinksPropagatesNonMappableError() async {
+        let (sut, _) = makeRepository(.failure(NetworkError.timeout))
+
+        await #expect(throws: NetworkError.timeout) {
+            _ = try await sut.updateProfileLinks([ProfileLink(type: .github, url: "x")])
+        }
     }
 }
 

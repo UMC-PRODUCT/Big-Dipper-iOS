@@ -150,29 +150,41 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
                 )
             }
         )
-        
-        let response = try await adapter.request(
-            MyPageRouter.patchMemberProfileLinks(
-                request: request
+
+        do {
+            let response = try await adapter.request(
+                MyPageRouter.patchMemberProfileLinks(
+                    request: request
+                )
             )
-        )
-        
-        let apiResponse = try decoder.decode(
-            APIResponse<MyPageProfileResponseDTO>.self,
-            from: response.data
-        )
-        
-        return try apiResponse.unwrap().toProfileData()
+
+            let apiResponse = try decoder.decode(
+                APIResponse<MyPageProfileResponseDTO>.self,
+                from: response.data
+            )
+
+            return try apiResponse.unwrap().toProfileData()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
     }
     
     /// 회원 탈퇴 처리
+    ///
+    /// - Note: 백엔드(MEMBER-003)는 탈퇴 전 회원 정보 스냅샷을 `result`로 반환하지만
+    ///   클라이언트는 사용하지 않으므로 `EmptyResult`로 성공 여부만 검증합니다.
+    ///   (`EmptyResult`는 임의 JSON 객체·`result: null` 모두 흡수)
     public func deleteMember() async throws {
-        let response = try await adapter.request(MyPageRouter.deleteMember)
-        let apiResponse = try decoder.decode(
-            APIResponse<MyPageProfileResponseDTO>.self,
-            from: response.data
-        )
-        _ = try apiResponse.unwrap()
+        do {
+            let response = try await adapter.request(MyPageRouter.deleteMember)
+            let apiResponse = try decoder.decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let error as NetworkError {
+            throw Self.parseServerError(from: error) ?? error
+        }
     }
     
     // MARK: - Posts
