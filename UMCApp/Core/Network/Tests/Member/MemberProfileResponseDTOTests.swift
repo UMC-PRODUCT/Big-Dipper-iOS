@@ -410,4 +410,69 @@ struct MemberProfileResponseDTOTests {
         #expect(summary.generation == 7)
         #expect(summary.organizationName == "강남지부")
     }
+
+    // MARK: - toMemberProfileSummary() 이름 폴백 (latestRecordName/latestRecordNickname)
+
+    @Test("challengerRecords가 비어 있으면 최상위 name/nickname으로 폴백한다")
+    func summaryFallsBackToTopLevelNameWhenRecordsEmpty() throws {
+        let dto = try Self.dto(
+            name: "탑네임",
+            nickname: "탑닉",
+            roles: [],
+            challengerRecords: []
+        )
+
+        let summary = dto.toMemberProfileSummary()
+        #expect(summary.name == "탑네임")
+        #expect(summary.nickname == "탑닉")
+    }
+
+    @Test("최신 challengerRecord에 name/nickname이 있으면 최상위 값보다 우선한다")
+    func summaryPrefersLatestRecordNameOverTopLevel() throws {
+        let dto = try Self.dto(
+            name: "탑네임",
+            nickname: "탑닉",
+            roles: [],
+            challengerRecords: [
+                Self.record(gisu: "5", name: "레코드네임", nickname: "레코드닉"),
+            ]
+        )
+
+        let summary = dto.toMemberProfileSummary()
+        #expect(summary.name == "레코드네임")
+        #expect(summary.nickname == "레코드닉")
+    }
+
+    @Test("여러 challengerRecords 중 기수가 가장 높은 레코드의 이름/닉네임을 사용한다")
+    func summaryUsesHighestGenerationRecordName() throws {
+        let dto = try Self.dto(
+            name: "탑네임",
+            nickname: "탑닉",
+            roles: [],
+            challengerRecords: [
+                Self.record(gisu: "5", name: "구버전", nickname: "구버전닉"),
+                Self.record(gisu: "9", name: "신버전", nickname: "신버전닉"),
+            ]
+        )
+
+        let summary = dto.toMemberProfileSummary()
+        #expect(summary.name == "신버전")
+        #expect(summary.nickname == "신버전닉")
+    }
+
+    @Test("최신 레코드의 name/nickname이 명시적으로 없으면 최상위 값으로 폴백한다")
+    func summaryFallsBackToTopLevelNameWhenLatestRecordNameMissing() throws {
+        let dto = try Self.dto(
+            name: "탑네임",
+            nickname: "탑닉",
+            roles: [],
+            challengerRecords: [
+                Self.record(gisu: "5", name: nil, nickname: nil),
+            ]
+        )
+
+        let summary = dto.toMemberProfileSummary()
+        #expect(summary.name == "탑네임")
+        #expect(summary.nickname == "탑닉")
+    }
 }
