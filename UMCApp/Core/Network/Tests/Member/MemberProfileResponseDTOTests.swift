@@ -314,6 +314,18 @@ struct MemberProfileResponseDTOTests {
         #expect(profile.generations == ["10", "11"])
     }
 
+    @Test("roleType/organizationType 키가 없으면 각각 challenger/central로 폴백한다")
+    func fallsBackToDefaultRoleAndOrganizationTypeWhenKeysAreMissing() throws {
+        let json = try JSONSerialization.data(withJSONObject: [
+            "gisu": "11",
+            "organizationId": NSNull(),
+        ])
+        let role = try JSONDecoder().decode(MemberProfileRoleDTO.self, from: json)
+
+        #expect(role.roleType == .challenger)
+        #expect(role.organizationType == .central)
+    }
+
     @Test("roles와 challengerRecords의 조직 정보를 기수별로 병합해 generationOrganizations를 구성한다")
     func buildsGenerationOrganizationsMergingRolesAndRecords() throws {
         let dto = try Self.dto(
@@ -340,6 +352,42 @@ struct MemberProfileResponseDTOTests {
         #expect(generationOrganization.chapterName == "서울")
         // challengerRecords의 schoolId가 "0"이라 무효 처리되고, roles의 organizationId(900)로 보강된다.
         #expect(generationOrganization.schoolId == "900")
+    }
+
+    @Test("challengerRecords가 없는 기수도 roles의 조직 정보만으로 generationOrganizations 항목을 만든다")
+    func buildsGenerationOrganizationsFromRolesOnlyGeneration() throws {
+        let dto = try Self.dto(
+            roles: [
+                Self.role(
+                    roleType: "CHAPTER_PRESIDENT", organizationType: "CHAPTER",
+                    organizationId: "310", gisu: "12", gisuId: "1"
+                ),
+                Self.role(
+                    roleType: "CHALLENGER", organizationType: "CHAPTER",
+                    organizationId: "999", gisu: "0", gisuId: "2"
+                ),
+            ],
+            challengerRecords: [
+                Self.record(
+                    gisu: "11", gisuId: "1",
+                    chapterId: "300", chapterName: "서울",
+                    schoolId: "900", schoolName: "한국대학교"
+                ),
+            ]
+        )
+
+        let profile = dto.toDomain()
+
+        // 기수 "0" 역할은 제외되고, 숫자 크기 순으로 정렬된다.
+        #expect(profile.generationOrganizations.map(\.gen) == ["11", "12"])
+
+        let rolesOnlyOrganization = try #require(
+            profile.generationOrganizations.first { $0.gen == "12" }
+        )
+        #expect(rolesOnlyOrganization.chapterId == "310")
+        #expect(rolesOnlyOrganization.chapterName == nil)
+        #expect(rolesOnlyOrganization.schoolId == nil)
+        #expect(rolesOnlyOrganization.schoolName == nil)
     }
 
     @Test("challengerRecords의 chapterId 누락을 같은 기수 chapter 역할의 organizationId로 backfill한다")
