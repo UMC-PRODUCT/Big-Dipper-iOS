@@ -27,9 +27,10 @@ public func watchAppProject(
                 destinations: [.appleWatch],
                 product: .app,
                 bundleId: bundleId,
-                deploymentTargets: .watchOS("26.3"),
+                deploymentTargets: .watchOS("26.4"),
                 infoPlist: .extendingDefault(
                     with: [
+                        "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
                         "WKCompanionAppBundleIdentifier": .string(companionBundleId),
                         "UISupportedInterfaceOrientations": .array([
                             .string("UIInterfaceOrientationPortrait"),

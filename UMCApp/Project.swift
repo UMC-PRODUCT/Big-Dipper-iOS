@@ -10,9 +10,10 @@ let project = Project(
             destinations: .iOS,
             product: .app,
             bundleId: "dev.tuist.UMCApp",
-            deploymentTargets: .iOS("26.3"),
+            deploymentTargets: .iOS("26.4"),
             infoPlist: .extendingDefault(
                 with: [
+                    "CFBundleShortVersionString": "$(MARKETING_VERSION)",
                     "UILaunchScreen": [
                         "UIColorName": "",
                         "UIImageName": "",
@@ -85,7 +86,7 @@ let project = Project(
             destinations: .iOS,
             product: .unitTests,
             bundleId: "dev.tuist.UMCAppTests",
-            deploymentTargets: .iOS("26.3"),
+            deploymentTargets: .iOS("26.4"),
             infoPlist: .default,
             buildableFolders: [
                 "UMCApp/Tests",
