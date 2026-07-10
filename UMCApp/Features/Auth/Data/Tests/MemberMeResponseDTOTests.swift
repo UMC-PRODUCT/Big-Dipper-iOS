@@ -189,4 +189,81 @@ struct MemberMeResponseDTOTests {
         // challengerRecords의 schoolId가 "0"이라 무효 처리되고, roles의 organizationId(900)로 보강된다.
         #expect(generationOrganization.schoolId == "900")
     }
+
+    @Test("challengerRecords가 없는 기수도 roles의 조직 정보만으로 generationOrganizations 항목을 만든다")
+    func buildsGenerationOrganizationsFromRolesOnlyGeneration() throws {
+        let json = """
+        {
+            "id": 1,
+            "name": "A",
+            "nickname": "a",
+            "roles": [
+                {
+                    "gisu": "12", "roleType": "CHAPTER_PRESIDENT",
+                    "organizationType": "CHAPTER", "organizationId": "310"
+                },
+                {
+                    "gisu": "0", "roleType": "CHALLENGER",
+                    "organizationType": "CHAPTER", "organizationId": "999"
+                }
+            ],
+            "challengerRecords": [
+                {
+                    "gisu": "11", "challengerId": "1", "gisuId": "1",
+                    "chapterId": "300", "chapterName": "서울",
+                    "part": "IOS", "schoolId": "900", "schoolName": "한국대학교"
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let dto = try JSONDecoder().decode(MemberMeResponseDTO.self, from: json)
+        let profile = dto.toDomain()
+
+        // 기수 "0" 역할은 제외되고, 숫자 크기 순으로 정렬된다.
+        #expect(profile.generationOrganizations.map(\.gen) == ["11", "12"])
+
+        let rolesOnlyOrganization = try #require(
+            profile.generationOrganizations.first { $0.gen == "12" }
+        )
+        #expect(rolesOnlyOrganization.chapterId == "310")
+        #expect(rolesOnlyOrganization.chapterName == nil)
+        #expect(rolesOnlyOrganization.schoolId == nil)
+        #expect(rolesOnlyOrganization.schoolName == nil)
+    }
+
+    @Test("challengerRecords의 chapterId 누락을 같은 기수 chapter 역할의 organizationId로 backfill한다")
+    func backfillsMissingChapterIdFromChapterRole() throws {
+        let json = """
+        {
+            "id": 1,
+            "name": "A",
+            "nickname": "a",
+            "roles": [
+                {
+                    "gisu": "11", "roleType": "CHAPTER_PRESIDENT",
+                    "organizationType": "CHAPTER", "organizationId": "305"
+                }
+            ],
+            "challengerRecords": [
+                {
+                    "gisu": "11", "challengerId": "1", "gisuId": "1",
+                    "chapterId": null, "chapterName": null,
+                    "part": "IOS", "schoolId": "900", "schoolName": "한국대학교"
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let dto = try JSONDecoder().decode(MemberMeResponseDTO.self, from: json)
+        let profile = dto.toDomain()
+
+        let generationOrganization = try #require(
+            profile.generationOrganizations.first { $0.gen == "11" }
+        )
+        #expect(generationOrganization.chapterId == "305")
+        // chapter 역할 backfill은 record의 학교 정보를 덮어쓰지 않고 보존한다.
+        #expect(generationOrganization.schoolId == "900")
+        #expect(generationOrganization.schoolName == "한국대학교")
+    }
 }
