@@ -45,6 +45,7 @@ public struct NavigationModifier: ViewModifier {
         case detailSchedule = "일정 상세"
         case studyScheduleRegistration = "스터디 일정 등록"
         case communityPostEdit = "게시글 수정"
+        case resetPassword = "비밀번호 재설정"
     }
 
     public func body(content: Content) -> some View {

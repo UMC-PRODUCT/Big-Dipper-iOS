@@ -17,6 +17,9 @@ struct AppRootView: View {
     @Environment(ErrorHandler.self) private var errorHandler
     #if DEBUG
     @State private var isDebugSignUpByIdPwPresented = false
+    // TODO: [#943] ID/PW 로그인 화면이 이식되면 그 화면의 "비밀번호 찾기" 링크로 대체하고
+    // 이 DEBUG 진입점은 제거한다.
+    @State private var isDebugResetPasswordPresented = false
     #endif
 
     // MARK: - Body
@@ -66,6 +69,9 @@ struct AppRootView: View {
         .fullScreenCover(isPresented: $isDebugSignUpByIdPwPresented) {
             SignUpByIdPwView(container: di, errorHandler: errorHandler)
         }
+        .fullScreenCover(isPresented: $isDebugResetPasswordPresented) {
+            ResetPasswordView(container: di, errorHandler: errorHandler)
+        }
         #endif
     }
 
@@ -93,14 +99,16 @@ struct AppRootView: View {
 
     /// 상태머신 강제 전환 확인용 디버그 컨트롤. 릴리스 빌드에는 포함되지 않는다.
     ///
-    /// - Note: 이메일(ID/PW) 가입 화면(`SignUpByIdPwView`)은 프로덕션 네비게이션 배선이
-    ///   아직 없다(Q1, 후속 이슈에서 연결). 그 전까지 QA/리뷰어용 임시 진입점만 제공한다.
+    /// - Note: 이메일(ID/PW) 가입 화면(`SignUpByIdPwView`)과 비밀번호 재설정 화면
+    ///   (`ResetPasswordView`)은 프로덕션 네비게이션 배선이 아직 없다(각각 Q1, #943 참고 —
+    ///   후속 이슈에서 연결). 그 전까지 QA/리뷰어용 임시 진입점만 제공한다.
     private var debugFlowSwitcher: some View {
         HStack(spacing: DefaultSpacing.spacing12) {
             Button("Bootstrap") { viewModel.showBootstrap() }
             Button("Login") { viewModel.showLogin() }
             Button("Main") { viewModel.showMain() }
             Button("SignUp(ID/PW)") { isDebugSignUpByIdPwPresented = true }
+            Button("Reset PW") { isDebugResetPasswordPresented = true }
         }
         .buttonStyle(.bordered)
         .padding(.bottom, DefaultConstant.defaultSafeBottom)
