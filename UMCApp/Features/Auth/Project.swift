@@ -7,10 +7,6 @@ let project = featureProject(
         // `SyncProfileStorageUseCase`가 전역 `UserSessionManager`(#957 후속)를 주입받는다.
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ],
-    dataExtraDependencies: [
-        // `MemberMeResponseDTO`가 정본 `ProfileGenerationOrganization`(#961)을 참조한다.
-        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
-    ],
     presentationExtraDependencies: [
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),

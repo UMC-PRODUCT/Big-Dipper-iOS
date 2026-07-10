@@ -41,16 +41,6 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         }
     }
 
-    // MARK: - fetchMyProfile
-
-    var fetchMyProfileResult: Result<Profile, Error> = .failure(MockError.notStubbed)
-    private(set) var fetchMyProfileCallCount = 0
-
-    func fetchMyProfile() async throws -> Profile {
-        fetchMyProfileCallCount += 1
-        return try fetchMyProfileResult.get()
-    }
-
     // MARK: - logout
 
     var logoutError: Error?

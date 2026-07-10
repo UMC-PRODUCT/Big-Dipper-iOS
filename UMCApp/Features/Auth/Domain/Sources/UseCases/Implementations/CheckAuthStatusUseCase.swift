@@ -1,3 +1,4 @@
+import CoreDomain
 import Foundation
 import UMCFoundation
 
@@ -11,7 +12,7 @@ public final class CheckAuthStatusUseCase: CheckAuthStatusUseCaseProtocol {
     // MARK: - Property
 
     private let repository: AuthRepositoryProtocol
-    private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
+    private let fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol
     private let syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol
     private let userDefaults: UserDefaults
 
@@ -19,12 +20,12 @@ public final class CheckAuthStatusUseCase: CheckAuthStatusUseCaseProtocol {
 
     public init(
         repository: AuthRepositoryProtocol,
-        fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol,
+        fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol,
         syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol,
         userDefaults: UserDefaults = .standard
     ) {
         self.repository = repository
-        self.fetchMyProfileUseCase = fetchMyProfileUseCase
+        self.fetchMemberProfileUseCase = fetchMemberProfileUseCase
         self.syncProfileStorageUseCase = syncProfileStorageUseCase
         self.userDefaults = userDefaults
     }
@@ -45,7 +46,7 @@ public final class CheckAuthStatusUseCase: CheckAuthStatusUseCaseProtocol {
         let canAutoLogin = userDefaults.bool(forKey: AppStorageKey.canAutoLogin)
 
         do {
-            let profile = try await fetchMyProfileUseCase.execute()
+            let profile = try await fetchMemberProfileUseCase.execute()
             guard profile.isApproved else {
                 return canAutoLogin ? .pendingApproval : .notLoggedIn
             }

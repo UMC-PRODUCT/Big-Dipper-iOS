@@ -29,13 +29,13 @@ struct FailedVerificationUMCViewModelTests {
     @Test("승인된 프로필이면 성공 프롬프트의 확인 액션이 프로필을 동기화하고 .main으로 이동한다")
     func successApprovedSetsMainDestinationOnConfirm() async {
         let registerUseCase = MockRegisterExistingChallengerUseCase()
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
         let profile = makeProfile(generations: ["11"])
-        fetchMyProfileUseCase.result = .success(profile)
+        fetchMemberProfileUseCase.result = .success(profile)
         let syncProfileStorageUseCase = MockSyncProfileStorageUseCase()
         let viewModel = makeViewModel(
             registerExistingChallengerUseCase: registerUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase,
             syncProfileStorageUseCase: syncProfileStorageUseCase
         )
         viewModel.challengerCode = "ABC123"
@@ -58,12 +58,12 @@ struct FailedVerificationUMCViewModelTests {
     @Test("미승인 프로필이면 대기 안내만 표시하고 화면을 전환하지 않으며, 동기화는 수행하지 않는다")
     func successPendingApprovalStaysOnScreen() async {
         let registerUseCase = MockRegisterExistingChallengerUseCase()
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
-        fetchMyProfileUseCase.result = .success(makeProfile(generations: []))
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
+        fetchMemberProfileUseCase.result = .success(makeProfile(generations: []))
         let syncProfileStorageUseCase = MockSyncProfileStorageUseCase()
         let viewModel = makeViewModel(
             registerExistingChallengerUseCase: registerUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase,
             syncProfileStorageUseCase: syncProfileStorageUseCase
         )
         viewModel.challengerCode = "ABC123"
@@ -120,11 +120,11 @@ struct FailedVerificationUMCViewModelTests {
     @Test("앞뒤 공백이 포함된 코드는 트리밍 후 재인증 API를 호출한다")
     func whitespacePaddedCodeIsTrimmedBeforeCallingUseCase() async {
         let registerUseCase = MockRegisterExistingChallengerUseCase()
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
-        fetchMyProfileUseCase.result = .success(makeProfile(generations: ["11"]))
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
+        fetchMemberProfileUseCase.result = .success(makeProfile(generations: ["11"]))
         let viewModel = makeViewModel(
             registerExistingChallengerUseCase: registerUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase
         )
         viewModel.challengerCode = " ABC123 "
 
@@ -311,7 +311,7 @@ private func waitUntil(
 private func makeViewModel(
     errorHandler: ErrorHandler? = nil,
     registerExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol? = nil,
-    fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol? = nil,
+    fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol? = nil,
     deleteMemberUseCase: DeleteMemberUseCaseProtocol? = nil,
     tokenStore: FakeTokenStore? = nil,
     syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol? = nil,
@@ -319,7 +319,7 @@ private func makeViewModel(
 ) -> FailedVerificationUMCViewModel {
     let registerUseCase = registerExistingChallengerUseCase
         ?? MockRegisterExistingChallengerUseCase()
-    let fetchUseCase = fetchMyProfileUseCase ?? MockFetchMyProfileUseCase()
+    let fetchUseCase = fetchMemberProfileUseCase ?? MockFetchMemberProfileUseCase()
     let deleteUseCase = deleteMemberUseCase ?? MockDeleteMemberUseCase()
     let store = tokenStore ?? FakeTokenStore()
     let syncUseCase = syncProfileStorageUseCase ?? MockSyncProfileStorageUseCase()
@@ -327,7 +327,7 @@ private func makeViewModel(
 
     let container = DIContainer()
     container.register(RegisterExistingChallengerUseCaseProtocol.self) { registerUseCase }
-    container.register(FetchMyProfileUseCaseProtocol.self) { fetchUseCase }
+    container.register(FetchMemberProfileUseCaseProtocol.self) { fetchUseCase }
     container.register(DeleteMemberUseCaseProtocol.self) { deleteUseCase }
     container.register(SyncProfileStorageUseCaseProtocol.self) { syncUseCase }
     container.register(UserSessionManager.self) { sessionManager }
@@ -352,8 +352,8 @@ private func makeAdminSessionManager() -> UserSessionManager {
     return sessionManager
 }
 
-private func makeProfile(generations: [String]) -> AuthDomain.Profile {
-    AuthDomain.Profile(memberId: "1", name: "홍길동", nickname: "길동이", generations: generations)
+private func makeProfile(generations: [String]) -> Profile {
+    Profile(memberId: "1", name: "홍길동", nickname: "길동이", generations: generations)
 }
 
 // MARK: - Mocks — UseCase
@@ -395,13 +395,13 @@ private final class SlowRegisterExistingChallengerUseCase:
     }
 }
 
-private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @unchecked Sendable {
+private final class MockFetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol, @unchecked Sendable {
     enum MockError: Error { case notStubbed }
 
-    var result: Result<AuthDomain.Profile, Error> = .failure(MockError.notStubbed)
+    var result: Result<Profile, Error> = .failure(MockError.notStubbed)
     private(set) var callCount = 0
 
-    func execute() async throws -> AuthDomain.Profile {
+    func execute() async throws -> Profile {
         callCount += 1
         return try result.get()
     }
@@ -409,9 +409,9 @@ private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @u
 
 private final class MockSyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol, @unchecked Sendable {
     private(set) var executeCallCount = 0
-    private(set) var receivedProfile: AuthDomain.Profile?
+    private(set) var receivedProfile: Profile?
 
-    func execute(profile: AuthDomain.Profile) {
+    func execute(profile: Profile) {
         executeCallCount += 1
         receivedProfile = profile
     }

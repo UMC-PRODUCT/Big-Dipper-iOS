@@ -1,3 +1,4 @@
+import CoreDomain
 import Foundation
 import Testing
 import UMCFoundation
@@ -12,14 +13,26 @@ private func makeIsolatedUserDefaults() -> UserDefaults {
     return defaults
 }
 
+/// `FetchMemberProfileUseCaseProtocol`의 테스트용 Mock 구현체
+final class MockFetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol, @unchecked Sendable {
+    var result: Result<Profile, Error> = .failure(AuthTestError.boom)
+    private(set) var executeCallCount = 0
+
+    func execute() async throws -> Profile {
+        executeCallCount += 1
+        return try result.get()
+    }
+}
+
 private func makeUseCase(
     repository: MockAuthRepository,
+    fetchMemberProfileUseCase: MockFetchMemberProfileUseCase = MockFetchMemberProfileUseCase(),
     syncProfileStorageSpy: SyncProfileStorageSpy = SyncProfileStorageSpy(),
     userDefaults: UserDefaults = makeIsolatedUserDefaults()
 ) -> CheckAuthStatusUseCase {
     CheckAuthStatusUseCase(
         repository: repository,
-        fetchMyProfileUseCase: FetchMyProfileUseCase(repository: repository),
+        fetchMemberProfileUseCase: fetchMemberProfileUseCase,
         syncProfileStorageUseCase: syncProfileStorageSpy,
         userDefaults: userDefaults
     )
@@ -34,14 +47,19 @@ struct CheckAuthStatusUseCaseTests {
     func returnsNotLoggedInWhenNoSession() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = false
+        let fetchProfile = MockFetchMemberProfileUseCase()
         let syncSpy = SyncProfileStorageSpy()
-        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            syncProfileStorageSpy: syncSpy
+        )
 
         let status = await useCase.execute()
 
         #expect(status == .notLoggedIn)
         #expect(repository.refreshSessionCallCount == 0)
-        #expect(repository.fetchMyProfileCallCount == 0)
+        #expect(fetchProfile.executeCallCount == 0)
         #expect(syncSpy.executeCallCount == 0)
     }
 
@@ -50,20 +68,25 @@ struct CheckAuthStatusUseCaseTests {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
         repository.refreshSessionError = AuthTestError.boom
-        repository.fetchMyProfileResult = .success(Profile(
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .success(Profile(
             memberId: "1",
             name: "홍길동",
             nickname: "길동이",
             generations: ["11"]
         ))
         let syncSpy = SyncProfileStorageSpy()
-        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            syncProfileStorageSpy: syncSpy
+        )
 
         let status = await useCase.execute()
 
         #expect(status == .approved)
         #expect(repository.refreshSessionCallCount == 1)
-        #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(fetchProfile.executeCallCount == 1)
         #expect(syncSpy.executeCallCount == 1)
     }
 
@@ -77,15 +100,20 @@ struct CheckAuthStatusUseCaseTests {
             nickname: "길동이",
             generations: ["10", "11"]
         )
-        repository.fetchMyProfileResult = .success(profile)
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .success(profile)
         let syncSpy = SyncProfileStorageSpy()
-        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            syncProfileStorageSpy: syncSpy
+        )
 
         let status = await useCase.execute()
 
         #expect(status == .approved)
         #expect(repository.refreshSessionCallCount == 1)
-        #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(fetchProfile.executeCallCount == 1)
         #expect(syncSpy.executeCallCount == 1)
         #expect(syncSpy.receivedProfile == profile)
     }
@@ -94,7 +122,8 @@ struct CheckAuthStatusUseCaseTests {
     func returnsPendingApprovalWhenProfileHasNoGenerations() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileResult = .success(Profile(
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .success(Profile(
             memberId: "1",
             name: "홍길동",
             nickname: "길동이",
@@ -105,6 +134,7 @@ struct CheckAuthStatusUseCaseTests {
         userDefaults.set(true, forKey: AppStorageKey.canAutoLogin)
         let useCase = makeUseCase(
             repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
             syncProfileStorageSpy: syncSpy,
             userDefaults: userDefaults
         )
@@ -113,7 +143,7 @@ struct CheckAuthStatusUseCaseTests {
 
         #expect(status == .pendingApproval)
         #expect(repository.refreshSessionCallCount == 1)
-        #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(fetchProfile.executeCallCount == 1)
         #expect(syncSpy.executeCallCount == 0)
     }
 
@@ -121,7 +151,8 @@ struct CheckAuthStatusUseCaseTests {
     func returnsNotLoggedInWhenNoGenerationsAndCanAutoLoginIsFalse() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileResult = .success(Profile(
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .success(Profile(
             memberId: "1",
             name: "홍길동",
             nickname: "길동이",
@@ -129,7 +160,11 @@ struct CheckAuthStatusUseCaseTests {
         ))
         let syncSpy = SyncProfileStorageSpy()
         // canAutoLogin 미설정(false) 상태의 격리 UserDefaults.
-        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            syncProfileStorageSpy: syncSpy
+        )
 
         let status = await useCase.execute()
 
@@ -141,15 +176,20 @@ struct CheckAuthStatusUseCaseTests {
     func returnsNotLoggedInWhenProfileFetchFails() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileResult = .failure(AuthTestError.boom)
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .failure(AuthTestError.boom)
         let syncSpy = SyncProfileStorageSpy()
-        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            syncProfileStorageSpy: syncSpy
+        )
 
         let status = await useCase.execute()
 
         #expect(status == .notLoggedIn)
         #expect(repository.refreshSessionCallCount == 1)
-        #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(fetchProfile.executeCallCount == 1)
         #expect(syncSpy.executeCallCount == 0)
     }
 
@@ -157,10 +197,15 @@ struct CheckAuthStatusUseCaseTests {
     func logsOutWhenProfileFetchFailsAndCanAutoLoginIsTrue() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileResult = .failure(AuthTestError.boom)
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .failure(AuthTestError.boom)
         let userDefaults = makeIsolatedUserDefaults()
         userDefaults.set(true, forKey: AppStorageKey.canAutoLogin)
-        let useCase = makeUseCase(repository: repository, userDefaults: userDefaults)
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            userDefaults: userDefaults
+        )
 
         let status = await useCase.execute()
 
@@ -172,8 +217,9 @@ struct CheckAuthStatusUseCaseTests {
     func doesNotLogOutWhenProfileFetchFailsAndCanAutoLoginIsFalse() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileResult = .failure(AuthTestError.boom)
-        let useCase = makeUseCase(repository: repository)
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .failure(AuthTestError.boom)
+        let useCase = makeUseCase(repository: repository, fetchMemberProfileUseCase: fetchProfile)
 
         let status = await useCase.execute()
 

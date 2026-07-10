@@ -5,8 +5,9 @@ import UMCFoundation
 
 /// 인증/세션 관련 Repository 구현체
 ///
-/// 세션 존재 확인·강제 갱신은 `NetworkClient`(Core 인프라)를 그대로 재사용하고,
-/// 프로필 조회만 `AuthRouter`를 통해 API를 직접 호출한다.
+/// 세션 존재 확인·강제 갱신은 `NetworkClient`(Core 인프라)를 그대로 재사용한다. 프로필 조회는
+/// `CoreDomain.MemberProfileRepositoryProtocol`(정본 파이프라인)로 이관되어 이 타입은 더 이상
+/// 책임지지 않는다.
 ///
 /// - Note: `AuthRegistrationRepositoryProtocol`이 요구하는 `Sendable`을 채택하기 위해
 ///   `@unchecked Sendable`을 사용한다. `MoyaNetworkAdapter`(`CoreNetwork`)가 아직
@@ -41,26 +42,6 @@ public struct AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
 
     public func refreshSession() async throws {
         _ = try await networkClient.forceRefreshToken()
-    }
-
-    public func fetchMyProfile() async throws -> Profile {
-        let response = try await adapter.request(AuthRouter.getMe)
-
-        do {
-            let apiResponse = try JSONDecoder().decode(
-                APIResponse<MemberMeResponseDTO>.self,
-                from: response.data
-            )
-            let dto = try apiResponse.unwrap()
-            return dto.toDomain()
-        } catch let decodingError as DecodingError {
-            #if DEBUG
-            let rawBody = String(data: response.data, encoding: .utf8) ?? "<invalid utf8>"
-            print("[AuthRepository] fetchMyProfile decodingError=\(decodingError)")
-            print("[AuthRepository] fetchMyProfile rawBody=\(rawBody)")
-            #endif
-            throw RepositoryError.decodingError(detail: "\(decodingError)")
-        }
     }
 
     public func logout() async throws {

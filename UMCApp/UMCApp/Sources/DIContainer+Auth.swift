@@ -25,16 +25,13 @@ extension DIContainer {
         register(UserSessionManager.self) {
             UserSessionManager()
         }
-        register(FetchMyProfileUseCaseProtocol.self) {
-            FetchMyProfileUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
-        }
         register(SyncProfileStorageUseCaseProtocol.self) {
             SyncProfileStorageUseCase(userSessionManager: self.resolve(UserSessionManager.self))
         }
         register(CheckAuthStatusUseCaseProtocol.self) {
             CheckAuthStatusUseCase(
                 repository: self.resolve(AuthRepositoryProtocol.self),
-                fetchMyProfileUseCase: self.resolve(FetchMyProfileUseCaseProtocol.self),
+                fetchMemberProfileUseCase: self.resolve(FetchMemberProfileUseCaseProtocol.self),
                 syncProfileStorageUseCase: self.resolve(SyncProfileStorageUseCaseProtocol.self)
             )
         }

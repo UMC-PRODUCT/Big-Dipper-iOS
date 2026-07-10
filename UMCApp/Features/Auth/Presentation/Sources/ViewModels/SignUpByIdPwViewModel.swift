@@ -1,5 +1,6 @@
 import AuthDomain
 import CoreDI
+import CoreDomain
 import Foundation
 import UMCFoundation
 
@@ -22,7 +23,7 @@ final class SignUpByIdPwViewModel {
     private let fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol
     private let checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol
     private let registerByEmailUseCase: RegisterByEmailUseCaseProtocol
-    private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
+    private let fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol
     private let errorHandler: ErrorHandler
 
     /// 이메일 인증(발송·검증·재전송) 상태와 액션 — `EmailVerificationFlow`에 위임한다.
@@ -77,7 +78,7 @@ final class SignUpByIdPwViewModel {
             CheckEmailAvailabilityUseCaseProtocol.self
         )
         self.registerByEmailUseCase = container.resolve(RegisterByEmailUseCaseProtocol.self)
-        self.fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
+        self.fetchMemberProfileUseCase = container.resolve(FetchMemberProfileUseCaseProtocol.self)
         self.errorHandler = errorHandler
         self.emailVerificationFlow = EmailVerificationFlow(
             purpose: .register,
@@ -289,7 +290,7 @@ final class SignUpByIdPwViewModel {
     /// 승인 대기(미승인)로 안전하게 폴백한다.
     private func resolveApprovalStatus() async -> Bool {
         do {
-            let profile = try await fetchMyProfileUseCase.execute()
+            let profile = try await fetchMemberProfileUseCase.execute()
             return profile.isApproved
         } catch {
             return false

@@ -1,3 +1,4 @@
+import CoreDomain
 @testable import AuthDomain
 
 /// `SyncProfileStorageUseCaseProtocol`의 테스트용 Spy 구현체

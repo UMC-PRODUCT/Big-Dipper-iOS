@@ -1,6 +1,7 @@
 import AuthDomain
 import CoreDesignSystem
 import CoreDI
+import CoreDomain
 import CoreUIComponents
 import SwiftUI
 import UMCFoundation
