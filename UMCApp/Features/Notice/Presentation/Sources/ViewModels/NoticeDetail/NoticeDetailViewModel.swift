@@ -8,6 +8,7 @@
 import SwiftUI
 import UMCFoundation
 import CoreDI
+import CoreDomain
 import NoticeDomain
 
 /// 공지사항 상세 화면 ViewModel

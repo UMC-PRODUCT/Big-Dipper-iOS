@@ -51,6 +51,18 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         return try fetchMyProfileResult.get()
     }
 
+    // MARK: - logout
+
+    var logoutError: Error?
+    private(set) var logoutCallCount = 0
+
+    func logout() async throws {
+        logoutCallCount += 1
+        if let logoutError {
+            throw logoutError
+        }
+    }
+
     // MARK: - loginKakao
 
     var loginKakaoResult: Result<OAuthLoginResult, Error> = .failure(MockError.notStubbed)

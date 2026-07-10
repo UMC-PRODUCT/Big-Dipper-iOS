@@ -13,6 +13,9 @@ public protocol AuthRepositoryProtocol {
     /// 내 프로필을 조회한다.
     func fetchMyProfile() async throws -> Profile
 
+    /// 로그아웃 처리를 수행한다. (토큰 정리 등 세션 종료 책임을 Repository로 위임)
+    func logout() async throws
+
     /// 카카오 소셜 로그인을 수행한다.
     /// - Parameters:
     ///   - accessToken: 카카오 SDK에서 발급받은 액세스 토큰

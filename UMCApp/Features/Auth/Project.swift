@@ -3,14 +3,21 @@ import ProjectDescriptionHelpers
 
 let project = featureProject(
     name: "Auth",
+    domainExtraDependencies: [
+        // `SyncProfileStorageUseCase`가 전역 `UserSessionManager`(#957 후속)를 주입받는다.
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
+    ],
     presentationExtraDependencies: [
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
+        // 승인 대기(#945) 화면의 회원 탈퇴 액션이 MyPageDomain의 UseCase를 직접 사용한다.
+        .project(target: "MyPageDomain", path: .relativeToRoot("Features/MyPage")),
     ],
     includesDomainTests: true,
     domainTestDependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ],
     includesDataTests: true,
     dataTestDependencies: [
@@ -24,5 +31,7 @@ let project = featureProject(
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        // 승인 대기(#945) ViewModel 테스트에서 DeleteMemberUseCaseProtocol 목을 직접 구성한다.
+        .project(target: "MyPageDomain", path: .relativeToRoot("Features/MyPage")),
     ]
 )

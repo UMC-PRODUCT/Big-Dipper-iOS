@@ -43,9 +43,7 @@ public struct BootstrapView: View {
         case .approved:
             appFlow.showMain()
         case .pendingApproval:
-            // TODO(#945): pendingApproval 전용 상태가 AppFlowState에 추가되면 그쪽으로 분기.
-            // 아직 케이스가 없으므로 안전하게 로그인 화면으로 보낸다.
-            appFlow.showLogin()
+            appFlow.showPendingApproval()
         case .notLoggedIn:
             appFlow.showLogin()
         }

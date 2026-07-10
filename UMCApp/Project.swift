@@ -61,6 +61,7 @@ let project = Project(
                 .project(target: "HomeData", path: .relativeToRoot("Features/Home")),
                 .project(target: "CommunityPresentation", path: .relativeToRoot("Features/Community")),
                 .project(target: "MyPagePresentation", path: .relativeToRoot("Features/MyPage")),
+                .project(target: "MyPageData", path: .relativeToRoot("Features/MyPage")),
                 .project(target: "BadgePresentation", path: .relativeToRoot("Features/Badge")),
                 .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
                 .project(target: "UMCAppWidget", path: "UMCAppWidget"),

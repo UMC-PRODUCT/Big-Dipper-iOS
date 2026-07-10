@@ -26,6 +26,7 @@ final class AppFlowViewModel {
                     postRegisterLoginContext: context
                 )
             },
+            showPendingApproval: { [weak self] in self?.showPendingApproval() },
             logout: { [weak self] in self?.logout() }
         )
     }
@@ -61,6 +62,11 @@ final class AppFlowViewModel {
             fullName: fullName,
             postRegisterLoginContext: postRegisterLoginContext
         ))
+    }
+
+    /// 승인 대기 화면으로 전환한다.
+    func showPendingApproval() {
+        transition(to: .pendingApproval)
     }
 
     /// 세션 만료 등으로 로그아웃 처리 후 로그인 화면으로 되돌린다.
