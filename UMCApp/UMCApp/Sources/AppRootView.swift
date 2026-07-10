@@ -2,6 +2,9 @@ import AuthPresentation
 import CoreDesignSystem
 import CoreDI
 import CoreNetwork
+#if DEBUG
+import MaintenanceData
+#endif
 import SwiftUI
 import UMCFoundation
 
@@ -97,6 +100,19 @@ struct AppRootView: View {
     #if DEBUG
     // MARK: - Debug
 
+    /// `MaintenanceDebugOverride`로 점검·강제 업데이트 오버레이가 강제 ON인 동안에는
+    /// `true`.
+    ///
+    /// - Note: 이 상태에서 `SignUp(ID/PW)`·`Reset PW` 버튼으로 디버그
+    ///   `fullScreenCover`를 켜면, 앱 루트(`UMCAppApp`)의 점검 오버레이
+    ///   `fullScreenCover`와 이 화면의 `fullScreenCover`가 동시에 표시를 시도해
+    ///   SwiftUI 프레젠테이션이 깨진다. 두 오버레이가 같은 화면에 동시에 뜰 일이
+    ///   없도록 진입 자체를 막는다.
+    private var isMaintenanceOverlayDebugForced: Bool {
+        MaintenanceDebugOverride.isMaintenanceForced
+            || MaintenanceDebugOverride.isForceUpdateForced
+    }
+
     /// 상태머신 강제 전환 확인용 디버그 컨트롤. 릴리스 빌드에는 포함되지 않는다.
     ///
     /// - Note: 이메일(ID/PW) 가입 화면(`SignUpByIdPwView`)과 비밀번호 재설정 화면
@@ -107,8 +123,22 @@ struct AppRootView: View {
             Button("Bootstrap") { viewModel.showBootstrap() }
             Button("Login") { viewModel.showLogin() }
             Button("Main") { viewModel.showMain() }
-            Button("SignUp(ID/PW)") { isDebugSignUpByIdPwPresented = true }
-            Button("Reset PW") { isDebugResetPasswordPresented = true }
+            Button(
+                isMaintenanceOverlayDebugForced
+                    ? "SignUp(ID/PW) — 점검 오버레이 중 비활성"
+                    : "SignUp(ID/PW)"
+            ) {
+                isDebugSignUpByIdPwPresented = true
+            }
+            .disabled(isMaintenanceOverlayDebugForced)
+            Button(
+                isMaintenanceOverlayDebugForced
+                    ? "Reset PW — 점검 오버레이 중 비활성"
+                    : "Reset PW"
+            ) {
+                isDebugResetPasswordPresented = true
+            }
+            .disabled(isMaintenanceOverlayDebugForced)
         }
         .buttonStyle(.bordered)
         .padding(.bottom, DefaultConstant.defaultSafeBottom)

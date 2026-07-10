@@ -63,7 +63,13 @@ let project = Project(
                 .project(target: "MyPagePresentation", path: .relativeToRoot("Features/MyPage")),
                 .project(target: "MyPageData", path: .relativeToRoot("Features/MyPage")),
                 .project(target: "BadgePresentation", path: .relativeToRoot("Features/Badge")),
+                .project(
+                    target: "MaintenancePresentation",
+                    path: .relativeToRoot("Features/Maintenance")
+                ),
+                .project(target: "MaintenanceData", path: .relativeToRoot("Features/Maintenance")),
                 .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
+                .external(name: "FirebaseCore"),
                 .project(target: "UMCAppWidget", path: "UMCAppWidget"),
                 .project(target: "UMCWatchApp", path: "UMCWatchApp"),
             ],

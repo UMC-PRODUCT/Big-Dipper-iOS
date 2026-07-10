@@ -1,8 +1,10 @@
 import CoreDesignSystem
 import CoreDI
+import FirebaseCore
 import GoogleSignIn
 import KakaoSDKAuth
 import KakaoSDKCommon
+import MaintenancePresentation
 import NoticeData
 import NoticePresentation
 import SwiftData
@@ -18,6 +20,7 @@ struct UMCAppApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var container: DIContainer
     @State private var errorHandler: ErrorHandler = .init()
+    @State private var maintenanceViewModel: MaintenanceViewModel
     private let sharedModelContainer: ModelContainer
 
     // MARK: - Init
@@ -25,6 +28,7 @@ struct UMCAppApp: App {
     init() {
         CoreDesignSystem.registerFonts()
         KakaoSDK.initSDK(appKey: Config.Auth.kakaoKey)
+        Self.configureFirebaseIfNeeded()
 
         sharedModelContainer = Self.makeModelContainer()
 
@@ -35,7 +39,11 @@ struct UMCAppApp: App {
         container.registerAuthDependencies()
         container.registerHomeDependencies()
         container.registerMyPageDependencies()
+        container.registerMaintenanceDependencies()
         _container = State(initialValue: container)
+        // RemoteConfig 접근은 lazy이므로, FirebaseApp.configure() 이전에 이 ViewModel을
+        // 만들어도 실제 RemoteConfig 인스턴스는 생성되지 않는다.
+        _maintenanceViewModel = State(initialValue: MaintenanceViewModel(container: container))
     }
 
     // MARK: - Body
@@ -48,9 +56,17 @@ struct UMCAppApp: App {
                 .modelContainer(sharedModelContainer)
                 .alertPrompt(item: errorAlertBinding)
                 .onOpenURL(perform: handleOpenURL)
+                .fullScreenCover(isPresented: maintenanceOverlayBinding) {
+                    if let overlayKind = maintenanceViewModel.overlayKind {
+                        MaintenanceView(kind: overlayKind)
+                    }
+                }
+                .task {
+                    await maintenanceViewModel.check()
+                }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
-                    // TODO: 후속 이슈(#946) - 포그라운드 복귀 시 킬스위치 재확인
+                    Task { await maintenanceViewModel.check() }
                 }
         }
     }
@@ -85,6 +101,17 @@ extension UMCAppApp {
         )
     }
 
+    /// 킬스위치·강제 업데이트 오버레이의 `fullScreenCover` 바인딩.
+    ///
+    /// 사용자가 스와이프 등으로 임의로 닫을 수 없도록 `set`을 no-op으로 둔다. 오버레이는
+    /// 서버 재확인 결과 `overlayKind`가 `nil`이 될 때만 ViewModel에 의해 자동으로 사라진다.
+    private var maintenanceOverlayBinding: Binding<Bool> {
+        Binding(
+            get: { maintenanceViewModel.overlayKind != nil },
+            set: { _ in }
+        )
+    }
+
     /// 소셜 로그인 딥링크 URL을 처리합니다.
     private func handleOpenURL(_ url: URL) {
         if AuthApi.isKakaoTalkLoginUrl(url) {
@@ -92,6 +119,27 @@ extension UMCAppApp {
             return
         }
         GIDSignIn.sharedInstance.handle(url)
+    }
+
+    /// `GoogleService-Info.plist`가 유효할 때만 `FirebaseApp`을 구성합니다.
+    ///
+    /// - Note: CI 등 시크릿(plist)이 배포되지 않은 환경에서도 빌드·실행이 깨지지 않도록,
+    ///   plist 부재/파싱 실패/플레이스홀더 값(`GOOGLE_APP_ID`가 `__`로 시작)이면 조용히
+    ///   건너뛴다. 이 경우 RemoteConfig는 항상 fail-open으로 동작한다
+    ///   (`MaintenanceData.RemoteConfigService` 참고).
+    private static func configureFirebaseIfNeeded() {
+        guard FirebaseApp.app() == nil else { return }
+        guard
+            let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+            let plistData = NSDictionary(contentsOfFile: plistPath),
+            let googleAppID = plistData["GOOGLE_APP_ID"] as? String,
+            !googleAppID.isEmpty,
+            !googleAppID.hasPrefix("__")
+        else {
+            logger.error("GoogleService-Info.plist가 없거나 유효하지 않아 Firebase 구성을 건너뜁니다.")
+            return
+        }
+        FirebaseApp.configure()
     }
 
     /// SwiftData ModelContainer를 생성합니다.
