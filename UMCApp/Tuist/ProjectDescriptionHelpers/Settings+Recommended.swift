@@ -12,12 +12,14 @@ import ProjectDescription
 /// - `ENABLE_MODULE_VERIFIER`: Clang 모듈 헤더 검증
 /// - `ENABLE_USER_SCRIPT_SANDBOXING`: Run Script Phase 샌드박스
 /// - `LOCALIZED_STRING_SWIFTUI_SUPPORT` / `STRING_CATALOG_GENERATE_SYMBOLS`: String Catalog 심볼 생성
+/// - `MARKETING_VERSION`: 앱 마케팅 버전(이슈 #948). 앱-노출 타겟의 CFBundleShortVersionString이 이 값을 참조한다.
 public let recommendedSettings: SettingsDictionary = [
     "ENABLE_MODULE_VERIFIER": "YES",
     "MODULE_VERIFIER_SUPPORTED_LANGUAGES": "objective-c objective-c++",
     "MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS": "gnu17 gnu++20",
     "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
     "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
+    "MARKETING_VERSION": "3.0.0",
 ]
 
 /// 프로젝트 전역에 권장 빌드 설정을 적용한 Settings

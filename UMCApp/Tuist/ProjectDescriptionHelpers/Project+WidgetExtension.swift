@@ -1,6 +1,6 @@
 import ProjectDescription
 
-private let deploymentTargets: DeploymentTargets = .iOS("26.3")
+private let deploymentTargets: DeploymentTargets = .iOS("26.4")
 private let destinations: Destinations = .iOS
 
 /// Widget Extension 타겟용 Project 생성 헬퍼
@@ -31,6 +31,7 @@ public func widgetExtensionProject(
                 deploymentTargets: deploymentTargets,
                 infoPlist: .extendingDefault(
                     with: [
+                        "CFBundleShortVersionString": "$(MARKETING_VERSION)",
                         "NSExtension": [
                             "NSExtensionPointIdentifier": "com.apple.widgetkit-extension",
                         ],

@@ -15,7 +15,7 @@ private let bundleIdBase = "dev.umc.feature"
 /// - Parameters:
 ///   - name: Feature 이름 (예: "Auth", "Home"). 타겟명 및 bundleId 생성에 사용됩니다.
 ///   - domainDestinations: Domain 타겟의 지원 플랫폼 (기본값: `.iOS`). watchOS 공유가 필요한 경우 `[.iPhone, .appleWatch]`로 지정.
-///   - domainDeploymentTargets: Domain 타겟의 배포 대상 (기본값: iOS 26.3). watchOS 공유 시 `.multiplatform(iOS:watchOS:)` 로 지정.
+///   - domainDeploymentTargets: Domain 타겟의 배포 대상 (기본값: iOS 26.4). watchOS 공유 시 `.multiplatform(iOS:watchOS:)` 로 지정.
 ///   - domainExtraDependencies: Domain 타겟에 추가할 의존성
 ///   - dataExtraDependencies: Data 타겟에 추가할 의존성
 ///   - presentationExtraDependencies: Presentation 타겟에 추가할 의존성
@@ -28,7 +28,7 @@ private let bundleIdBase = "dev.umc.feature"
 public func featureProject(
     name: String,
     domainDestinations: Destinations = .iOS,
-    domainDeploymentTargets: DeploymentTargets = .iOS("26.3"),
+    domainDeploymentTargets: DeploymentTargets = .iOS("26.4"),
     domainExtraDependencies: [TargetDependency] = [],
     dataExtraDependencies: [TargetDependency] = [],
     presentationExtraDependencies: [TargetDependency] = [],
@@ -58,7 +58,7 @@ public func featureProject(
             destinations: .iOS,
             product: .staticFramework,
             bundleId: "\(bundleIdBase).\(nameLowered).data",
-            deploymentTargets: .iOS("26.3"),
+            deploymentTargets: .iOS("26.4"),
             sources: ["Data/Sources/**"],
             dependencies: [
                 .target(name: "\(name)Domain"),
@@ -71,7 +71,7 @@ public func featureProject(
             destinations: .iOS,
             product: .staticFramework,
             bundleId: "\(bundleIdBase).\(nameLowered).presentation",
-            deploymentTargets: .iOS("26.3"),
+            deploymentTargets: .iOS("26.4"),
             sources: ["Presentation/Sources/**"],
             dependencies: [
                 .target(name: "\(name)Domain"),
@@ -103,7 +103,7 @@ public func featureProject(
                 destinations: .iOS,
                 product: .unitTests,
                 bundleId: "\(bundleIdBase).\(nameLowered).data.tests",
-                deploymentTargets: .iOS("26.3"),
+                deploymentTargets: .iOS("26.4"),
                 sources: ["Data/Tests/**"],
                 dependencies: [.target(name: "\(name)Data")] + dataTestDependencies
             )
@@ -117,7 +117,7 @@ public func featureProject(
                 destinations: .iOS,
                 product: .unitTests,
                 bundleId: "\(bundleIdBase).\(nameLowered).presentation.tests",
-                deploymentTargets: .iOS("26.3"),
+                deploymentTargets: .iOS("26.4"),
                 sources: ["Presentation/Tests/**"],
                 dependencies: [.target(name: "\(name)Presentation")] + presentationTestDependencies
             )

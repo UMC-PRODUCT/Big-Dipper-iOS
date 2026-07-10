@@ -4,7 +4,7 @@ import ProjectDescriptionHelpers
 let project = featureProject(
     name: "Activity",
     domainDestinations: [.iPhone, .appleWatch],
-    domainDeploymentTargets: .multiplatform(iOS: "26.3", watchOS: "26.3"),
+    domainDeploymentTargets: .multiplatform(iOS: "26.4", watchOS: "26.4"),
     presentationExtraDependencies: [
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
     ],

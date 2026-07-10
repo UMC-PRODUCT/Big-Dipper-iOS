@@ -80,7 +80,7 @@ cd UMCApp && make test      # 테스트
 cd UMCApp && make doctor    # 환경 진단
 ```
 
-- Tuist 버전은 `UMCApp/mise.toml`(`4.155.0`)로 고정 · Deployment Target iOS 26.3
+- Tuist 버전은 `UMCApp/mise.toml`(`4.155.0`)로 고정 · Deployment Target iOS 26.4
 - 상세: `docs/claude/build-and-modules.md`, `UMCApp/MAKEFILE_GUIDE.md`
 
 ## 상세 레퍼런스 (필요 시 Read)
