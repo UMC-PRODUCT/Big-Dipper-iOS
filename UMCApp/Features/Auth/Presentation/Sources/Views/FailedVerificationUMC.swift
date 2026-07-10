@@ -1,5 +1,6 @@
 import CoreDesignSystem
 import CoreDI
+import CoreNetwork
 import CoreUIComponents
 import SwiftUI
 import UMCFoundation
@@ -18,6 +19,7 @@ public struct FailedVerificationUMC: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.appFlow) private var appFlow
     @Environment(ErrorHandler.self) private var errorHandler
+    private let kakaoPlusManager = KakaoPlusManager()
 
     // MARK: - Constant
 
@@ -39,10 +41,6 @@ public struct FailedVerificationUMC: View {
         static let submitButtonTitle: String = "전송"
 
         static let homePageURL: String = "https://umc.it.kr"
-        /// UMC 동아리 카카오톡 채널 ID (카카오톡 채널 관리자 페이지에서 확인 가능).
-        static let kakaoChannelWebChatURL: String = "https://pf.kakao.com/_MDxhqX/chat"
-        static let inquiryChannelFailureMessage: String =
-            "카카오톡 문의 채널을 열 수 없습니다. 잠시 후 다시 시도해주세요."
     }
 
     // MARK: - Init
@@ -180,19 +178,10 @@ public struct FailedVerificationUMC: View {
 
     /// 카카오톡 문의 채널을 연다.
     ///
-    /// - Note: 레거시 `KakaoPlusManager`는 `KakaoSDKTalk`에 의존해 카카오톡 설치 시
-    ///   인앱 채팅방으로 바로 전환한다. `CoreFoundation`에 KakaoSDK를 끌어들이지 않기
-    ///   위해 아직 이식하지 않았고, 대신 웹 채팅 URL을 직접 연다.
-    // TODO(#958): KakaoSDKTalk 기반 인앱 채널 연결(KakaoPlusManager) 이식.
+    /// 카카오톡이 설치돼 있고 채널 채팅이 가능하면 인앱으로 전환하고, 그렇지 않거나
+    /// SDK 호출이 실패하면 `KakaoPlusManager`가 내부적으로 웹 채팅 URL로 폴백한다.
     private func openInquiryChannel() {
-        guard let url = URL(string: Constants.kakaoChannelWebChatURL) else {
-            errorHandler.handle(
-                DomainError.custom(message: Constants.inquiryChannelFailureMessage),
-                context: ErrorContext(feature: "Auth", action: "openInquiryChannel")
-            )
-            return
-        }
-        openURL(url)
+        kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
     }
 
     private func submitChallengerCode() {

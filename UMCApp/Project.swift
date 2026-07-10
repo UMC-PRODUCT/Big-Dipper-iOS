@@ -42,7 +42,9 @@ let project = Project(
                             "CFBundleURLSchemes": ["$(GOOGLE_REVERSED_CLIENT_ID)"],
                         ],
                     ],
-                    "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"],
+                    "LSApplicationQueriesSchemes": [
+                        "kakaokompassauth", "kakaolink", "kakaotalk", "kakaoplus",
+                    ],
                 ]
             ),
             buildableFolders: [
