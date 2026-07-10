@@ -1,12 +1,27 @@
+import Foundation
 import Testing
+import UMCFoundation
 @testable import AuthDomain
 
 // MARK: - Helpers
 
-private func makeUseCase(repository: MockAuthRepository) -> CheckAuthStatusUseCase {
+private func makeIsolatedUserDefaults() -> UserDefaults {
+    let suiteName = "CheckAuthStatusUseCaseTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    return defaults
+}
+
+private func makeUseCase(
+    repository: MockAuthRepository,
+    syncProfileStorageSpy: SyncProfileStorageSpy = SyncProfileStorageSpy(),
+    userDefaults: UserDefaults = makeIsolatedUserDefaults()
+) -> CheckAuthStatusUseCase {
     CheckAuthStatusUseCase(
         repository: repository,
-        fetchMyProfileUseCase: FetchMyProfileUseCase(repository: repository)
+        fetchMyProfileUseCase: FetchMyProfileUseCase(repository: repository),
+        syncProfileStorageUseCase: syncProfileStorageSpy,
+        userDefaults: userDefaults
     )
 }
 
@@ -19,13 +34,15 @@ struct CheckAuthStatusUseCaseTests {
     func returnsNotLoggedInWhenNoSession() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = false
-        let useCase = makeUseCase(repository: repository)
+        let syncSpy = SyncProfileStorageSpy()
+        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
 
         let status = await useCase.execute()
 
         #expect(status == .notLoggedIn)
         #expect(repository.refreshSessionCallCount == 0)
         #expect(repository.fetchMyProfileCallCount == 0)
+        #expect(syncSpy.executeCallCount == 0)
     }
 
     @Test("세션 갱신이 실패해도 기존 토큰으로 프로필 조회를 시도해 승인 판정")
@@ -39,35 +56,41 @@ struct CheckAuthStatusUseCaseTests {
             nickname: "길동이",
             generations: ["11"]
         ))
-        let useCase = makeUseCase(repository: repository)
+        let syncSpy = SyncProfileStorageSpy()
+        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
 
         let status = await useCase.execute()
 
         #expect(status == .approved)
         #expect(repository.refreshSessionCallCount == 1)
         #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(syncSpy.executeCallCount == 1)
     }
 
-    @Test("프로필에 소속 기수가 있으면 approved")
+    @Test("프로필에 소속 기수가 있으면 approved이고 프로필 동기화를 1회 수행한다")
     func returnsApprovedWhenProfileHasGenerations() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
-        repository.fetchMyProfileResult = .success(Profile(
+        let profile = Profile(
             memberId: "1",
             name: "홍길동",
             nickname: "길동이",
             generations: ["10", "11"]
-        ))
-        let useCase = makeUseCase(repository: repository)
+        )
+        repository.fetchMyProfileResult = .success(profile)
+        let syncSpy = SyncProfileStorageSpy()
+        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
 
         let status = await useCase.execute()
 
         #expect(status == .approved)
         #expect(repository.refreshSessionCallCount == 1)
         #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(syncSpy.executeCallCount == 1)
+        #expect(syncSpy.receivedProfile == profile)
     }
 
-    @Test("프로필 조회는 성공했지만 소속 기수가 없으면 pendingApproval")
+    @Test("프로필 조회는 성공했지만 소속 기수가 없고 canAutoLogin이 true면 pendingApproval, 동기화는 없음")
     func returnsPendingApprovalWhenProfileHasNoGenerations() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
@@ -77,17 +100,76 @@ struct CheckAuthStatusUseCaseTests {
             nickname: "길동이",
             generations: []
         ))
-        let useCase = makeUseCase(repository: repository)
+        let syncSpy = SyncProfileStorageSpy()
+        let userDefaults = makeIsolatedUserDefaults()
+        userDefaults.set(true, forKey: AppStorageKey.canAutoLogin)
+        let useCase = makeUseCase(
+            repository: repository,
+            syncProfileStorageSpy: syncSpy,
+            userDefaults: userDefaults
+        )
 
         let status = await useCase.execute()
 
         #expect(status == .pendingApproval)
         #expect(repository.refreshSessionCallCount == 1)
         #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(syncSpy.executeCallCount == 0)
+    }
+
+    @Test("소속 기수가 없고 canAutoLogin이 false이면 notLoggedIn (회귀 테스트)")
+    func returnsNotLoggedInWhenNoGenerationsAndCanAutoLoginIsFalse() async {
+        let repository = MockAuthRepository()
+        repository.hasSessionResult = true
+        repository.fetchMyProfileResult = .success(Profile(
+            memberId: "1",
+            name: "홍길동",
+            nickname: "길동이",
+            generations: []
+        ))
+        let syncSpy = SyncProfileStorageSpy()
+        // canAutoLogin 미설정(false) 상태의 격리 UserDefaults.
+        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
+
+        let status = await useCase.execute()
+
+        #expect(status == .notLoggedIn)
+        #expect(syncSpy.executeCallCount == 0)
     }
 
     @Test("프로필 조회 자체가 실패하면 notLoggedIn")
     func returnsNotLoggedInWhenProfileFetchFails() async {
+        let repository = MockAuthRepository()
+        repository.hasSessionResult = true
+        repository.fetchMyProfileResult = .failure(AuthTestError.boom)
+        let syncSpy = SyncProfileStorageSpy()
+        let useCase = makeUseCase(repository: repository, syncProfileStorageSpy: syncSpy)
+
+        let status = await useCase.execute()
+
+        #expect(status == .notLoggedIn)
+        #expect(repository.refreshSessionCallCount == 1)
+        #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(syncSpy.executeCallCount == 0)
+    }
+
+    @Test("프로필 조회 실패 + canAutoLogin이 true이면 로그아웃을 1회 수행한다")
+    func logsOutWhenProfileFetchFailsAndCanAutoLoginIsTrue() async {
+        let repository = MockAuthRepository()
+        repository.hasSessionResult = true
+        repository.fetchMyProfileResult = .failure(AuthTestError.boom)
+        let userDefaults = makeIsolatedUserDefaults()
+        userDefaults.set(true, forKey: AppStorageKey.canAutoLogin)
+        let useCase = makeUseCase(repository: repository, userDefaults: userDefaults)
+
+        let status = await useCase.execute()
+
+        #expect(status == .notLoggedIn)
+        #expect(repository.logoutCallCount == 1)
+    }
+
+    @Test("프로필 조회 실패 + canAutoLogin이 false이면 로그아웃을 호출하지 않는다")
+    func doesNotLogOutWhenProfileFetchFailsAndCanAutoLoginIsFalse() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
         repository.fetchMyProfileResult = .failure(AuthTestError.boom)
@@ -96,7 +178,6 @@ struct CheckAuthStatusUseCaseTests {
         let status = await useCase.execute()
 
         #expect(status == .notLoggedIn)
-        #expect(repository.refreshSessionCallCount == 1)
-        #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(repository.logoutCallCount == 0)
     }
 }

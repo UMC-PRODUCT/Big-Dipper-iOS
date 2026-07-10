@@ -25,14 +25,17 @@ struct FailedVerificationUMCViewModelTests {
         #expect(viewModel.alertPrompt?.title == "인증 실패")
     }
 
-    @Test("승인된 프로필이면 성공 프롬프트의 확인 액션이 .main으로 이동한다")
+    @Test("승인된 프로필이면 성공 프롬프트의 확인 액션이 프로필을 동기화하고 .main으로 이동한다")
     func successApprovedSetsMainDestinationOnConfirm() async {
         let registerUseCase = MockRegisterExistingChallengerUseCase()
         let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
-        fetchMyProfileUseCase.result = .success(makeProfile(generations: ["11"]))
+        let profile = makeProfile(generations: ["11"])
+        fetchMyProfileUseCase.result = .success(profile)
+        let syncProfileStorageUseCase = MockSyncProfileStorageUseCase()
         let viewModel = makeViewModel(
             registerExistingChallengerUseCase: registerUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            syncProfileStorageUseCase: syncProfileStorageUseCase
         )
         viewModel.challengerCode = "ABC123"
 
@@ -42,19 +45,25 @@ struct FailedVerificationUMCViewModelTests {
         #expect(registerUseCase.lastCode == "ABC123")
         #expect(viewModel.challengerCode == "")
         #expect(viewModel.destination == nil)
+        #expect(syncProfileStorageUseCase.executeCallCount == 0)
 
         viewModel.alertPrompt?.positiveBtnAction?()
+
         #expect(viewModel.destination == .main)
+        #expect(syncProfileStorageUseCase.executeCallCount == 1)
+        #expect(syncProfileStorageUseCase.receivedProfile == profile)
     }
 
-    @Test("미승인 프로필이면 대기 안내만 표시하고 화면을 전환하지 않는다")
+    @Test("미승인 프로필이면 대기 안내만 표시하고 화면을 전환하지 않으며, 동기화는 수행하지 않는다")
     func successPendingApprovalStaysOnScreen() async {
         let registerUseCase = MockRegisterExistingChallengerUseCase()
         let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
         fetchMyProfileUseCase.result = .success(makeProfile(generations: []))
+        let syncProfileStorageUseCase = MockSyncProfileStorageUseCase()
         let viewModel = makeViewModel(
             registerExistingChallengerUseCase: registerUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            syncProfileStorageUseCase: syncProfileStorageUseCase
         )
         viewModel.challengerCode = "ABC123"
 
@@ -63,6 +72,7 @@ struct FailedVerificationUMCViewModelTests {
         #expect(viewModel.alertPrompt?.message == "코드가 등록되었습니다. 운영진의 최종 승인을 기다려주세요.")
         #expect(viewModel.alertPrompt?.positiveBtnAction == nil)
         #expect(viewModel.destination == nil)
+        #expect(syncProfileStorageUseCase.executeCallCount == 0)
     }
 
     @Test("알려진 서버 에러 코드는 사용자 메시지로 매핑된다")
@@ -281,18 +291,21 @@ private func makeViewModel(
     registerExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol? = nil,
     fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol? = nil,
     deleteMemberUseCase: DeleteMemberUseCaseProtocol? = nil,
-    tokenStore: FakeTokenStore? = nil
+    tokenStore: FakeTokenStore? = nil,
+    syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol? = nil
 ) -> FailedVerificationUMCViewModel {
     let registerUseCase = registerExistingChallengerUseCase
         ?? MockRegisterExistingChallengerUseCase()
     let fetchUseCase = fetchMyProfileUseCase ?? MockFetchMyProfileUseCase()
     let deleteUseCase = deleteMemberUseCase ?? MockDeleteMemberUseCase()
     let store = tokenStore ?? FakeTokenStore()
+    let syncUseCase = syncProfileStorageUseCase ?? MockSyncProfileStorageUseCase()
 
     let container = DIContainer()
     container.register(RegisterExistingChallengerUseCaseProtocol.self) { registerUseCase }
     container.register(FetchMyProfileUseCaseProtocol.self) { fetchUseCase }
     container.register(DeleteMemberUseCaseProtocol.self) { deleteUseCase }
+    container.register(SyncProfileStorageUseCaseProtocol.self) { syncUseCase }
     container.register(NetworkClient.self) {
         NetworkClient(tokenStore: store, refreshService: FakeTokenRefreshService())
     }
@@ -355,6 +368,16 @@ private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @u
     func execute() async throws -> Profile {
         callCount += 1
         return try result.get()
+    }
+}
+
+private final class MockSyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol, @unchecked Sendable {
+    private(set) var executeCallCount = 0
+    private(set) var receivedProfile: Profile?
+
+    func execute(profile: Profile) {
+        executeCallCount += 1
+        receivedProfile = profile
     }
 }
 

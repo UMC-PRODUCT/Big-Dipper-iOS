@@ -1,6 +1,7 @@
 import AuthData
 import AuthDomain
 import CoreDI
+import CoreDomain
 import CoreNetwork
 
 extension DIContainer {
@@ -20,13 +21,21 @@ extension DIContainer {
                 tokenStore: self.resolve(TokenStore.self)
             )
         }
+        // Notice 등 여러 Feature가 공유하는 전역 역할 상태(#957 후속) — 싱글톤으로 등록한다.
+        register(UserSessionManager.self) {
+            UserSessionManager()
+        }
         register(FetchMyProfileUseCaseProtocol.self) {
             FetchMyProfileUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
+        }
+        register(SyncProfileStorageUseCaseProtocol.self) {
+            SyncProfileStorageUseCase(userSessionManager: self.resolve(UserSessionManager.self))
         }
         register(CheckAuthStatusUseCaseProtocol.self) {
             CheckAuthStatusUseCase(
                 repository: self.resolve(AuthRepositoryProtocol.self),
-                fetchMyProfileUseCase: self.resolve(FetchMyProfileUseCaseProtocol.self)
+                fetchMyProfileUseCase: self.resolve(FetchMyProfileUseCaseProtocol.self),
+                syncProfileStorageUseCase: self.resolve(SyncProfileStorageUseCaseProtocol.self)
             )
         }
         register(LoginUseCaseProtocol.self) {

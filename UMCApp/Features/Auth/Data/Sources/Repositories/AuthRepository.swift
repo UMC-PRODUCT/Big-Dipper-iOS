@@ -63,6 +63,10 @@ public struct AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         }
     }
 
+    public func logout() async throws {
+        try await networkClient.logout()
+    }
+
     public func loginKakao(accessToken: String, email: String) async throws -> OAuthLoginResult {
         try await performOAuthLogin(
             AuthRouter.loginKakao(

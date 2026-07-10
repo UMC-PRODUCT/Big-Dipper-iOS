@@ -17,35 +17,41 @@ struct LoginViewModelKakaoTests {
         #expect(viewModel.signUpDestination == nil)
     }
 
-    @Test("기존 회원 + 승인됨 → .loaded(profile)")
+    @Test("기존 회원 + 승인됨 → .loaded(profile), 프로필 로컬 저장소 동기화 1회 수행")
     func successApprovedSetsLoaded() async {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeKakaoResult = .success(.existingMember)
         let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
         let profile = makeProfile(generations: ["11"])
         fetchMyProfileUseCase.result = .success(profile)
+        let syncProfileStorageUseCase = MockSyncProfileStorageUseCase()
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            syncProfileStorageUseCase: syncProfileStorageUseCase
         )
 
         await viewModel.loginWithKakao()
 
         #expect(viewModel.loginState == .loaded(profile))
         #expect(viewModel.signUpDestination == nil)
+        #expect(syncProfileStorageUseCase.executeCallCount == 1)
+        #expect(syncProfileStorageUseCase.receivedProfile == profile)
     }
 
-    @Test("기존 회원 + 승인 대기(기수 없음) → .failed(.auth(.pendingApproval))")
+    @Test("기존 회원 + 승인 대기(기수 없음) → .failed(.auth(.pendingApproval)), 동기화는 수행하지 않는다")
     func pendingApprovalSetsFailedPendingApproval() async {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeKakaoResult = .success(.existingMember)
         let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
         fetchMyProfileUseCase.result = .success(makeProfile(generations: []))
         let errorHandler = ErrorHandler()
+        let syncProfileStorageUseCase = MockSyncProfileStorageUseCase()
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
             fetchMyProfileUseCase: fetchMyProfileUseCase,
-            errorHandler: errorHandler
+            errorHandler: errorHandler,
+            syncProfileStorageUseCase: syncProfileStorageUseCase
         )
 
         await viewModel.loginWithKakao()
@@ -53,6 +59,7 @@ struct LoginViewModelKakaoTests {
         #expect(viewModel.loginState == .failed(.auth(.pendingApproval)))
         // #911 임시 정책 — pendingApproval은 인라인 상태로만 표현하고 Alert는 띄우지 않는다.
         #expect(errorHandler.currentError == nil)
+        #expect(syncProfileStorageUseCase.executeCallCount == 0)
     }
 
     @Test("신규 회원(카카오) → .idle 유지 + signUpDestination에 카카오 컨텍스트 노출")
@@ -274,7 +281,8 @@ private func makeViewModel(
     errorHandler: ErrorHandler? = nil,
     kakaoLoginManager: KakaoLoginManaging? = nil,
     appleLoginManager: AppleLoginManaging? = nil,
-    googleLoginManager: GoogleLoginManaging? = nil
+    googleLoginManager: GoogleLoginManaging? = nil,
+    syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol? = nil
 ) -> LoginViewModel {
     // 기본값 초기화 자체가 MainActor 격리(예: GoogleLoginManaging)를 요구하므로
     // 파라미터 기본값이 아닌 함수 본문(@MainActor 컨텍스트)에서 생성한다.
@@ -284,10 +292,12 @@ private func makeViewModel(
     let kakaoLoginManager = kakaoLoginManager ?? MockKakaoLoginManager()
     let appleLoginManager = appleLoginManager ?? MockAppleLoginManager()
     let googleLoginManager = googleLoginManager ?? MockGoogleLoginManager()
+    let syncProfileStorageUseCase = syncProfileStorageUseCase ?? MockSyncProfileStorageUseCase()
 
     let container = DIContainer()
     container.register(LoginUseCaseProtocol.self) { loginUseCase }
     container.register(FetchMyProfileUseCaseProtocol.self) { fetchMyProfileUseCase }
+    container.register(SyncProfileStorageUseCaseProtocol.self) { syncProfileStorageUseCase }
     return LoginViewModel(
         container: container,
         errorHandler: errorHandler,
@@ -344,6 +354,16 @@ private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @u
     func execute() async throws -> Profile {
         callCount += 1
         return try result.get()
+    }
+}
+
+private final class MockSyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol, @unchecked Sendable {
+    private(set) var executeCallCount = 0
+    private(set) var receivedProfile: Profile?
+
+    func execute(profile: Profile) {
+        executeCallCount += 1
+        receivedProfile = profile
     }
 }
 

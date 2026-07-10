@@ -3,6 +3,10 @@ import ProjectDescriptionHelpers
 
 let project = featureProject(
     name: "Auth",
+    domainExtraDependencies: [
+        // `SyncProfileStorageUseCase`가 전역 `UserSessionManager`(#957 후속)를 주입받는다.
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
+    ],
     presentationExtraDependencies: [
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
@@ -13,6 +17,7 @@ let project = featureProject(
     includesDomainTests: true,
     domainTestDependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ],
     includesDataTests: true,
     dataTestDependencies: [

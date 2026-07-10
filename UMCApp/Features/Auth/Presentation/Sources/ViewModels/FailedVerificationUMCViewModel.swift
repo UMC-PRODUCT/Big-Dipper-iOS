@@ -27,6 +27,7 @@ final class FailedVerificationUMCViewModel {
     private let registerExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     private let deleteMemberUseCase: DeleteMemberUseCaseProtocol
+    private let syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol
     private let networkClient: NetworkClient
     private let container: DIContainer
     private let errorHandler: ErrorHandler
@@ -63,6 +64,7 @@ final class FailedVerificationUMCViewModel {
         )
         self.fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
         self.deleteMemberUseCase = container.resolve(DeleteMemberUseCaseProtocol.self)
+        self.syncProfileStorageUseCase = container.resolve(SyncProfileStorageUseCaseProtocol.self)
         self.networkClient = container.resolve(NetworkClient.self)
         self.container = container
         self.errorHandler = errorHandler
@@ -105,7 +107,7 @@ final class FailedVerificationUMCViewModel {
             try await registerExistingChallengerUseCase.execute(code: trimmedCode)
             let profile = try await fetchMyProfileUseCase.execute()
             challengerCode = ""
-            presentSuccessPrompt(isApproved: profile.isApproved)
+            presentSuccessPrompt(profile: profile)
         } catch let error as RepositoryError {
             challengerCode = ""
             presentCodeFailurePrompt(for: error)
@@ -151,9 +153,9 @@ final class FailedVerificationUMCViewModel {
 
     /// 기존 챌린저 재인증 성공 프롬프트를 표시한다.
     ///
-    /// 승인된 경우에만 확인 버튼에서 자동 로그인 플래그를 켜고 메인 화면으로 이동한다.
-    private func presentSuccessPrompt(isApproved: Bool) {
-        guard isApproved else {
+    /// 승인된 경우에만 확인 버튼에서 프로필을 로컬 저장소에 동기화하고 메인 화면으로 이동한다.
+    private func presentSuccessPrompt(profile: Profile) {
+        guard profile.isApproved else {
             alertPrompt = AlertPrompt(
                 title: "인증 완료",
                 message: "코드가 등록되었습니다. 운영진의 최종 승인을 기다려주세요.",
@@ -167,7 +169,7 @@ final class FailedVerificationUMCViewModel {
             message: "기존 챌린저로 인증되었습니다.",
             positiveBtnTitle: "확인",
             positiveBtnAction: { [weak self] in
-                UserDefaults.standard.set(true, forKey: AppStorageKey.canAutoLogin)
+                self?.syncProfileStorageUseCase.execute(profile: profile)
                 self?.destination = .main
             }
         )

@@ -27,6 +27,7 @@ final class LoginViewModel {
 
     private let loginUseCase: LoginUseCaseProtocol
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
+    private let syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol
     private let errorHandler: ErrorHandler
 
     private let kakaoLoginManager: KakaoLoginManaging
@@ -49,6 +50,7 @@ final class LoginViewModel {
     ) {
         self.loginUseCase = container.resolve(LoginUseCaseProtocol.self)
         self.fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
+        self.syncProfileStorageUseCase = container.resolve(SyncProfileStorageUseCaseProtocol.self)
         self.errorHandler = errorHandler
         self.kakaoLoginManager = kakaoLoginManager
         self.appleLoginManager = appleLoginManager
@@ -193,7 +195,12 @@ final class LoginViewModel {
     private func resolveApprovalStatus(action: String) async {
         do {
             let profile = try await fetchMyProfileUseCase.execute()
-            loginState = profile.isApproved ? .loaded(profile) : .failed(.auth(.pendingApproval))
+            guard profile.isApproved else {
+                loginState = .failed(.auth(.pendingApproval))
+                return
+            }
+            syncProfileStorageUseCase.execute(profile: profile)
+            loginState = .loaded(profile)
         } catch {
             loginState = .idle
             errorHandler.handle(error, context: ErrorContext(
