@@ -219,6 +219,50 @@ struct AuthRouterRequestDTOEncodingTests {
     }
 }
 
+// MARK: - Suite: 비밀번호 재설정(ResetPassword) 케이스 계약
+
+@Suite("AuthRouter — 비밀번호 재설정(ResetPassword) 케이스 계약")
+struct AuthRouterResetPasswordTests {
+
+    @Test("resetPassword — path는 /api/v1/auth/password/reset, method는 .patch")
+    func resetPasswordPathMethod() {
+        let router = AuthRouter.resetPassword(
+            body: ResetPasswordRequestDTO(
+                emailVerificationToken: "email-token",
+                newPassword: "newPassword123"
+            )
+        )
+        #expect(router.path == "/api/v1/auth/password/reset")
+        #expect(router.method == .patch)
+    }
+
+    @Test("resetPassword — task는 .requestJSONEncodable")
+    func resetPasswordTask() {
+        let router = AuthRouter.resetPassword(
+            body: ResetPasswordRequestDTO(
+                emailVerificationToken: "email-token",
+                newPassword: "newPassword123"
+            )
+        )
+        guard case .requestJSONEncodable = router.task else {
+            Issue.record("task가 .requestJSONEncodable 이어야 함 — 실제: \(router.task)")
+            return
+        }
+    }
+
+    @Test("ResetPasswordRequestDTO — { emailVerificationToken, newPassword } 로 인코딩")
+    func resetPasswordRequestDTOEncoding() throws {
+        let dto = ResetPasswordRequestDTO(
+            emailVerificationToken: "email-token",
+            newPassword: "newPassword123"
+        )
+        let json = try encodeToJSON(dto)
+        #expect(json["emailVerificationToken"] as? String == "email-token")
+        #expect(json["newPassword"] as? String == "newPassword123")
+        #expect(json.keys.count == 2)
+    }
+}
+
 // MARK: - Test Helpers
 
 private func makeRegisterRequestDTO(profileImageId: String? = "img-1") -> RegisterRequestDTO {

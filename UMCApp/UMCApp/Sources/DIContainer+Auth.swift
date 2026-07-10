@@ -89,5 +89,13 @@ extension DIContainer {
                 repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
             )
         }
+
+        // MARK: - 비밀번호 재설정(ResetPassword) 관련 UseCase (#947)
+
+        register(ResetPasswordUseCaseProtocol.self) {
+            ResetPasswordUseCase(
+                repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
+            )
+        }
     }
 }

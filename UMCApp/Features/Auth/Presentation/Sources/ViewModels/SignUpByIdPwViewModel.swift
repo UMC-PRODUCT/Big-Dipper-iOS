@@ -20,22 +20,19 @@ final class SignUpByIdPwViewModel {
     // MARK: - Property
 
     private let fetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol
-    private let sendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol
-    private let verifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol
-    private let resendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol
     private let checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol
     private let registerByEmailUseCase: RegisterByEmailUseCaseProtocol
     private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
     private let errorHandler: ErrorHandler
+
+    /// 이메일 인증(발송·검증·재전송) 상태와 액션 — `EmailVerificationFlow`에 위임한다.
+    var emailVerificationFlow: EmailVerificationFlow
 
     /// 사용자 실명
     var name: String = ""
 
     /// 사용자 닉네임
     var nickname: String = ""
-
-    /// 이메일 주소
-    var email: String = ""
 
     /// 비밀번호
     var password: String = ""
@@ -55,15 +52,6 @@ final class SignUpByIdPwViewModel {
     /// 약관 목록 로딩 상태 (서비스·개인정보 2종, marketing 미노출)
     private(set) var termsState: Loadable<[Terms]> = .idle
 
-    /// 이메일 인증 완료 여부 — `FormEmailField`와 양방향 바인딩된다.
-    var isEmailVerified: Bool = false
-
-    /// 이메일 인증 발송 후 발급되는 요청 식별자
-    private(set) var emailVerificationId: String?
-
-    /// 이메일 인증 코드 검증 완료 후 발급되는 토큰
-    private(set) var emailVerificationToken: String?
-
     /// 마지막으로 검증에 성공한 인증 코드
     private(set) var verificationCode: String = ""
 
@@ -79,30 +67,31 @@ final class SignUpByIdPwViewModel {
     /// `showMain()`/`showLogin()` 분기를 결정한다.
     private(set) var isApprovedAfterRegister = false
 
-    private var lastEmailSnapshot: String = ""
-
-    @ObservationIgnored private var isRequestingEmailVerification = false
-    @ObservationIgnored private var isVerifyingEmailCode = false
-    @ObservationIgnored private var isResendingEmailVerification = false
     @ObservationIgnored private var emailAvailabilityTask: Task<Void, Never>?
 
     // MARK: - Init
 
     init(container: DIContainer, errorHandler: ErrorHandler) {
         self.fetchSignUpDataUseCase = container.resolve(FetchSignUpDataUseCaseProtocol.self)
-        self.sendEmailVerificationUseCase = container.resolve(
-            SendEmailVerificationUseCaseProtocol.self
-        )
-        self.verifyEmailCodeUseCase = container.resolve(VerifyEmailCodeUseCaseProtocol.self)
-        self.resendEmailVerificationUseCase = container.resolve(
-            ResendEmailVerificationUseCaseProtocol.self
-        )
         self.checkEmailAvailabilityUseCase = container.resolve(
             CheckEmailAvailabilityUseCaseProtocol.self
         )
         self.registerByEmailUseCase = container.resolve(RegisterByEmailUseCaseProtocol.self)
         self.fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
         self.errorHandler = errorHandler
+        self.emailVerificationFlow = EmailVerificationFlow(
+            purpose: .register,
+            sendEmailVerificationUseCase: container.resolve(
+                SendEmailVerificationUseCaseProtocol.self
+            ),
+            verifyEmailCodeUseCase: container.resolve(VerifyEmailCodeUseCaseProtocol.self),
+            resendEmailVerificationUseCase: container.resolve(
+                ResendEmailVerificationUseCaseProtocol.self
+            )
+        )
+        self.emailVerificationFlow.onReset = { [weak self] in
+            self?.resetEmailAvailability()
+        }
     }
 
     // MARK: - Computed Property
@@ -129,11 +118,11 @@ final class SignUpByIdPwViewModel {
     var canSubmit: Bool {
         !name.isEmpty &&
         !nickname.isEmpty &&
-        !email.isEmpty &&
+        !emailVerificationFlow.email.isEmpty &&
         isPasswordValid &&
         isPasswordConfirmed &&
         selectedSchool != nil &&
-        isEmailVerified &&
+        emailVerificationFlow.isEmailVerified &&
         isEmailAvailable &&
         mandatoryTermsAgreed
     }
@@ -184,69 +173,15 @@ final class SignUpByIdPwViewModel {
 
     // MARK: - Function (Email Verification)
 
-    /// 이메일 인증번호 발송 요청.
-    ///
-    /// `FormEmailField`가 bare `Task {}`로 호출하므로 중복 탭에 대비해 재진입을 막는다.
-    @MainActor
-    func requestEmailVerification() async throws {
-        guard !isRequestingEmailVerification else { return }
-        isRequestingEmailVerification = true
-        defer { isRequestingEmailVerification = false }
-
-        let id = try await sendEmailVerificationUseCase.execute(email: email, purpose: .register)
-        emailVerificationId = id
-    }
-
     /// 이메일 인증번호 검증. 성공 시 이메일 중복 확인을 이어서 예약한다.
+    ///
+    /// 공통 흐름(`EmailVerificationFlow`)에 위임하되, 검증이 실제로 완료된 경우에만 이 화면
+    /// 전용 파생 동작(이메일 중복 확인 예약)을 수행한다.
     @MainActor
     func verifyEmailCode(_ code: String) async throws {
-        guard !isVerifyingEmailCode else { return }
-        guard let emailVerificationId else { return }
-        isVerifyingEmailCode = true
-        defer { isVerifyingEmailCode = false }
-
-        let token = try await verifyEmailCodeUseCase.execute(
-            emailVerificationId: emailVerificationId,
-            verificationCode: code
-        )
-        emailVerificationToken = token
+        guard try await emailVerificationFlow.verifyEmailCode(code) else { return }
         verificationCode = code
-        isEmailVerified = true
-
         scheduleEmailAvailabilityCheck()
-    }
-
-    /// 이메일 인증번호 재전송
-    @MainActor
-    func resendEmailVerification() async throws {
-        guard !isResendingEmailVerification else { return }
-        guard let emailVerificationId else { return }
-        isResendingEmailVerification = true
-        defer { isResendingEmailVerification = false }
-
-        try await resendEmailVerificationUseCase.execute(emailVerificationId: emailVerificationId)
-    }
-
-    /// 이메일 텍스트 변경 콜백 — 실제로 값이 바뀐 경우에만 인증 상태를 리셋한다.
-    @MainActor
-    func handleEmailChanged() {
-        guard email != lastEmailSnapshot else { return }
-        lastEmailSnapshot = email
-        resetEmailVerification()
-    }
-
-    /// 이메일 변경 시 이메일 인증/중복 확인 상태를 초기화한다.
-    ///
-    /// 기존 인증번호/토큰은 이전 이메일 기준이므로 폐기되어야 한다.
-    @MainActor
-    func resetEmailVerification() {
-        isEmailVerified = false
-        emailVerificationId = nil
-        emailVerificationToken = nil
-        verificationCode = ""
-        emailAvailabilityTask?.cancel()
-        emailAvailabilityTask = nil
-        emailAvailabilityState = .idle
     }
 
     // MARK: - Function (Terms)
@@ -271,7 +206,7 @@ final class SignUpByIdPwViewModel {
     @MainActor
     private func scheduleEmailAvailabilityCheck() {
         emailAvailabilityTask?.cancel()
-        let targetEmail = email
+        let targetEmail = emailVerificationFlow.email
         emailAvailabilityTask = Task { [weak self] in
             try? await Task.sleep(
                 for: .milliseconds(Constants.emailAvailabilityDebounceMilliseconds)
@@ -295,6 +230,17 @@ final class SignUpByIdPwViewModel {
         }
     }
 
+    /// 이메일 인증 상태가 리셋될 때(이메일 변경) 이메일 중복 확인 관련 파생 상태도 초기화한다.
+    ///
+    /// `EmailVerificationFlow.onReset` 훅으로 연결된다.
+    @MainActor
+    private func resetEmailAvailability() {
+        verificationCode = ""
+        emailAvailabilityTask?.cancel()
+        emailAvailabilityTask = nil
+        emailAvailabilityState = .idle
+    }
+
     // MARK: - Function (Register)
 
     /// 회원가입 실행 — 성공 시 프로필을 재조회해 승인 여부를 확정한다.
@@ -303,7 +249,7 @@ final class SignUpByIdPwViewModel {
         guard !registerState.isLoading else { return }
         guard canSubmit,
               let selectedSchool,
-              let emailVerificationToken else {
+              let emailVerificationToken = emailVerificationFlow.emailVerificationToken else {
             return
         }
 

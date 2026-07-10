@@ -20,6 +20,9 @@ struct AppRootView: View {
     @Environment(ErrorHandler.self) private var errorHandler
     #if DEBUG
     @State private var isDebugSignUpByIdPwPresented = false
+    // TODO: [#943] ID/PW 로그인 화면이 이식되면 그 화면의 "비밀번호 찾기" 링크로 대체하고
+    // 이 DEBUG 진입점은 제거한다.
+    @State private var isDebugResetPasswordPresented = false
     #endif
 
     // MARK: - Body
@@ -69,6 +72,9 @@ struct AppRootView: View {
         .fullScreenCover(isPresented: $isDebugSignUpByIdPwPresented) {
             SignUpByIdPwView(container: di, errorHandler: errorHandler)
         }
+        .fullScreenCover(isPresented: $isDebugResetPasswordPresented) {
+            ResetPasswordView(container: di, errorHandler: errorHandler)
+        }
         #endif
     }
 
@@ -97,10 +103,11 @@ struct AppRootView: View {
     /// `MaintenanceDebugOverride`로 점검·강제 업데이트 오버레이가 강제 ON인 동안에는
     /// `true`.
     ///
-    /// - Note: 이 상태에서 `SignUp(ID/PW)` 버튼으로 `isDebugSignUpByIdPwPresented`를
-    ///   켜면, 앱 루트(`UMCAppApp`)의 점검 오버레이 `fullScreenCover`와 이 화면의
-    ///   `fullScreenCover`가 동시에 표시를 시도해 SwiftUI 프레젠테이션이 깨진다.
-    ///   두 오버레이가 같은 화면에 동시에 뜰 일이 없도록 진입 자체를 막는다.
+    /// - Note: 이 상태에서 `SignUp(ID/PW)`·`Reset PW` 버튼으로 디버그
+    ///   `fullScreenCover`를 켜면, 앱 루트(`UMCAppApp`)의 점검 오버레이
+    ///   `fullScreenCover`와 이 화면의 `fullScreenCover`가 동시에 표시를 시도해
+    ///   SwiftUI 프레젠테이션이 깨진다. 두 오버레이가 같은 화면에 동시에 뜰 일이
+    ///   없도록 진입 자체를 막는다.
     private var isMaintenanceOverlayDebugForced: Bool {
         MaintenanceDebugOverride.isMaintenanceForced
             || MaintenanceDebugOverride.isForceUpdateForced
@@ -108,8 +115,9 @@ struct AppRootView: View {
 
     /// 상태머신 강제 전환 확인용 디버그 컨트롤. 릴리스 빌드에는 포함되지 않는다.
     ///
-    /// - Note: 이메일(ID/PW) 가입 화면(`SignUpByIdPwView`)은 프로덕션 네비게이션 배선이
-    ///   아직 없다(Q1, 후속 이슈에서 연결). 그 전까지 QA/리뷰어용 임시 진입점만 제공한다.
+    /// - Note: 이메일(ID/PW) 가입 화면(`SignUpByIdPwView`)과 비밀번호 재설정 화면
+    ///   (`ResetPasswordView`)은 프로덕션 네비게이션 배선이 아직 없다(각각 Q1, #943 참고 —
+    ///   후속 이슈에서 연결). 그 전까지 QA/리뷰어용 임시 진입점만 제공한다.
     private var debugFlowSwitcher: some View {
         HStack(spacing: DefaultSpacing.spacing12) {
             Button("Bootstrap") { viewModel.showBootstrap() }
@@ -121,6 +129,14 @@ struct AppRootView: View {
                     : "SignUp(ID/PW)"
             ) {
                 isDebugSignUpByIdPwPresented = true
+            }
+            .disabled(isMaintenanceOverlayDebugForced)
+            Button(
+                isMaintenanceOverlayDebugForced
+                    ? "Reset PW — 점검 오버레이 중 비활성"
+                    : "Reset PW"
+            ) {
+                isDebugResetPasswordPresented = true
             }
             .disabled(isMaintenanceOverlayDebugForced)
         }
