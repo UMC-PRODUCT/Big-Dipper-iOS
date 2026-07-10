@@ -6,6 +6,7 @@ let project = coreProject(
     bundleIdSuffix: "network",
     dependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         .external(name: "Moya"),
         .external(name: "KakaoSDKAuth"),
         .external(name: "KakaoSDKCommon"),
@@ -16,5 +17,6 @@ let project = coreProject(
     includesTests: true,
     testDependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ]
 )
