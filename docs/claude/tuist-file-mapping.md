@@ -811,7 +811,7 @@
 | `Manager/Auth/AppleLoginManager.swift` | CoreNetwork (Auth) |
 | `Manager/Auth/GoogleLoginManager.swift` | CoreNetwork (Auth) |
 | `Manager/Auth/KakaoLoginManager.swift` | CoreNetwork (Auth) |
-| `Manager/Auth/KakaoPlusManager.swift` | CoreFoundation (신규 Support 서브폴더) |
+| `Manager/Auth/KakaoPlusManager.swift` | CoreNetwork (Auth) |
 | `Manager/Auth/SocialLoginError.swift` | CoreNetwork (Auth) |
 | `Manager/Location/LocationManager.swift` | 신규 CoreLocation 모듈 |
 | `Manager/User/UserSessionManager.swift` | CoreDomain (또는 App 소유 세션) |

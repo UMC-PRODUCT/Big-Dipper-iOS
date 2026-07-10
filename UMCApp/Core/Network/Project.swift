@@ -10,6 +10,7 @@ let project = coreProject(
         .external(name: "KakaoSDKAuth"),
         .external(name: "KakaoSDKCommon"),
         .external(name: "KakaoSDKUser"),
+        .external(name: "KakaoSDKTalk"),
         .external(name: "GoogleSignIn"),
         .sdk(name: "Security", type: .framework),
     ],
