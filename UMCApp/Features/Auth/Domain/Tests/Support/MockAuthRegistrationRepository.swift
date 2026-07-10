@@ -183,4 +183,20 @@ final class MockAuthRegistrationRepository:
             throw registerExistingChallengerError
         }
     }
+
+    // MARK: - resetPassword
+
+    var resetPasswordError: Error?
+    private(set) var resetPasswordCallCount = 0
+    private(set) var resetPasswordReceivedEmailVerificationToken: String?
+    private(set) var resetPasswordReceivedNewPassword: String?
+
+    func resetPassword(emailVerificationToken: String, newPassword: String) async throws {
+        resetPasswordCallCount += 1
+        resetPasswordReceivedEmailVerificationToken = emailVerificationToken
+        resetPasswordReceivedNewPassword = newPassword
+        if let resetPasswordError {
+            throw resetPasswordError
+        }
+    }
 }

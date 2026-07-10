@@ -92,4 +92,10 @@ public protocol AuthRegistrationRepositoryProtocol: Sendable {
     /// 운영진이 발급한 6자리 코드로 기존 챌린저 기록을 등록한다.
     /// - Parameter code: 운영진 발급 코드
     func registerExistingChallenger(code: String) async throws
+
+    /// 이메일 인증을 완료한 뒤 비밀번호를 재설정한다.
+    /// - Parameters:
+    ///   - emailVerificationToken: 이메일 인증 완료 토큰(`PASSWORD_RESET` 목적)
+    ///   - newPassword: 새로 설정할 평문 비밀번호
+    func resetPassword(emailVerificationToken: String, newPassword: String) async throws
 }
