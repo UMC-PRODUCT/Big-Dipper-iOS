@@ -397,6 +397,29 @@ extension AuthRepository: AuthRegistrationRepositoryProtocol {
             throw RepositoryError.decodingError(detail: "\(decodingError)")
         }
     }
+
+    // MARK: - Reset Password
+
+    public func resetPassword(emailVerificationToken: String, newPassword: String) async throws {
+        let response = try await adapter.requestWithoutAuth(
+            AuthRouter.resetPassword(
+                body: ResetPasswordRequestDTO(
+                    emailVerificationToken: emailVerificationToken,
+                    newPassword: newPassword
+                )
+            )
+        )
+
+        do {
+            let apiResponse = try JSONDecoder().decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let decodingError as DecodingError {
+            throw RepositoryError.decodingError(detail: "\(decodingError)")
+        }
+    }
 }
 
 // MARK: - Helpers (Email Verification Error Mapping)

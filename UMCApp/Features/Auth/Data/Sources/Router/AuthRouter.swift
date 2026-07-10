@@ -41,6 +41,8 @@ public enum AuthRouter: BaseTargetType {
     case registerCredential(body: RegisterCredentialRequestDTO)
     /// 기존 챌린저 코드 등록
     case registerExistingChallenger(body: RegisterExistingChallengerRequestDTO)
+    /// 비밀번호 재설정
+    case resetPassword(body: ResetPasswordRequestDTO)
 
     // MARK: - Path
 
@@ -74,6 +76,8 @@ public enum AuthRouter: BaseTargetType {
             return "/api/v1/auth/credentials"
         case .registerExistingChallenger:
             return "/api/v1/challenger-record/member"
+        case .resetPassword:
+            return "/api/v1/auth/password/reset"
         }
     }
 
@@ -87,6 +91,8 @@ public enum AuthRouter: BaseTargetType {
              .sendEmailVerification, .resendEmailVerification, .verifyEmailCode,
              .register, .registerByEmail, .registerCredential, .registerExistingChallenger:
             return .post
+        case .resetPassword:
+            return .patch
         }
     }
 
@@ -122,6 +128,8 @@ public enum AuthRouter: BaseTargetType {
         case .registerCredential(let body):
             return .requestJSONEncodable(body)
         case .registerExistingChallenger(let body):
+            return .requestJSONEncodable(body)
+        case .resetPassword(let body):
             return .requestJSONEncodable(body)
         }
     }
