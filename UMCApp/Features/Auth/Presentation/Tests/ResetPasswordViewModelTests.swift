@@ -98,6 +98,16 @@ struct ResetPasswordViewModelCanSubmitTests {
         #expect(viewModel.canSubmit == false)
     }
 
+    @Test("비밀번호가 정확히 8자면 isPasswordValid가 true다 (경계값)")
+    func exactlyMinimumLengthPasswordIsValid() async throws {
+        let viewModel = try await makeVerifiedViewModel()
+        viewModel.newPassword = "exactly8"
+        viewModel.newPasswordConfirm = "exactly8"
+
+        #expect(viewModel.isPasswordValid == true)
+        #expect(viewModel.canSubmit == true)
+    }
+
     @Test("비밀번호 확인이 일치하지 않으면 canSubmit이 false다")
     func passwordMismatchBlocksSubmit() async throws {
         let viewModel = try await makeVerifiedViewModel()

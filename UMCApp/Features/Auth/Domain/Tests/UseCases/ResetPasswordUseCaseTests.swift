@@ -10,12 +10,12 @@ struct ResetPasswordUseCaseTests {
         let useCase = ResetPasswordUseCase(repository: repository)
 
         try await useCase.execute(
-            emailVerificationToken: "email-verification-token",
+            emailVerificationToken: "email-token",
             newPassword: "newPassword123"
         )
 
         #expect(repository.resetPasswordCallCount == 1)
-        #expect(repository.resetPasswordReceivedEmailVerificationToken == "email-verification-token")
+        #expect(repository.resetPasswordReceivedEmailVerificationToken == "email-token")
         #expect(repository.resetPasswordReceivedNewPassword == "newPassword123")
     }
 
@@ -27,7 +27,7 @@ struct ResetPasswordUseCaseTests {
 
         await #expect(throws: AuthTestError.boom) {
             try await useCase.execute(
-                emailVerificationToken: "email-verification-token",
+                emailVerificationToken: "email-token",
                 newPassword: "newPassword123"
             )
         }
