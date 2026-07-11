@@ -2,7 +2,7 @@
 //  MemberProfileResponseDTOTests.swift
 //  CoreNetworkTests
 //
-//  Auth `MemberMeResponseDTOTests`/MyPage `MyPageProfileResponseDTOTests`의 대표 케이스를
+//  Auth/MyPage 각자가 소유했던 구 프로필 응답 DTO 테스트의 대표 케이스를
 //  정본 DTO 필드명에 맞춰 포팅한다.
 //
 
@@ -284,7 +284,7 @@ struct MemberProfileResponseDTOTests {
         #expect(record.email == nil)
     }
 
-    // MARK: - toDomain() 파생 로직 (Auth MemberMeResponseDTOTests 포팅)
+    // MARK: - toDomain() 파생 로직 (Auth 구 프로필 응답 DTO 테스트 포팅)
 
     @Test("기수 번호를 사전식이 아닌 숫자 크기로 정렬한다 (\"9\"/\"10\" 자릿수 역전 회귀 테스트)")
     func sortsGenerationsNumerically() throws {

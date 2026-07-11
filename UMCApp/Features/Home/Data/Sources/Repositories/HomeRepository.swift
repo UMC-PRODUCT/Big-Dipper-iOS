@@ -90,7 +90,9 @@ public final class HomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
     }
 
     private func fetchSeasonStartDate(gisuId: String) async throws -> Date? {
-        let response = try await networkRequesting.request(HomeRouter.getGisuDetail(gisuId: gisuId))
+        let response = try await networkRequesting.request(
+            HomeRouter.getGisuDetail(gisuId: gisuId)
+        )
 
         do {
             let apiResponse = try JSONDecoder().decode(

@@ -392,7 +392,7 @@
 | `Data/DTO/GenerateScheduleRequetDTO.swift` | HomeData |
 | `Data/DTO/GisuDetailDTO.swift` | HomeData |
 | `Data/DTO/HomeScheduleDTO.swift` | HomeData |
-| `Data/DTO/MyProfileDTO.swift` | HomeData |
+| `Data/DTO/MyProfileDTO.swift` | CoreNetwork (Member — MemberProfileResponseDTO로 통합, #961) |
 | `Data/DTO/MySchedulesQuery.swift` | HomeData |
 | `Data/DTO/NoticeListDTO.swift` | HomeData |
 | `Data/DTO/RegisterFCMTokenRequestDTO.swift` | HomeData |
@@ -441,7 +441,7 @@
 | `Domain/Models/ScheduleGeneration/RecentPlace.swift` | HomeDomain |
 | `Domain/Models/ScheduleGeneration/ScheduleRegistrationData.swift` | HomeDomain |
 | `Domain/UseCases/DeleteScheduleUseCaseProtocol.swift` | HomeDomain |
-| `Domain/UseCases/FetchMyProfileUseCaseProtocol.swift` | HomeDomain |
+| `Domain/UseCases/FetchMyProfileUseCaseProtocol.swift` | HomeDomain (FetchHomeProfileUseCaseProtocol로 개명, CoreDomain 프로필 파이프라인 합성 — #961) |
 | `Domain/UseCases/FetchRecentNoticesUseCaseProtocol.swift` | HomeDomain |
 | `Domain/UseCases/FetchScheduleCapabilitiesUseCaseProtocol.swift` | HomeDomain |
 | `Domain/UseCases/FetchScheduleDetailUseCaseProtocol.swift` | HomeDomain |
@@ -449,7 +449,7 @@
 | `Domain/UseCases/ForceDeleteScheduleUseCaseProtocol.swift` | HomeDomain |
 | `Domain/UseCases/GenerateScheduleUseCaseProtocol.swift` | HomeDomain |
 | `Domain/UseCases/Implementations/DeleteScheduleUseCase.swift` | HomeDomain |
-| `Domain/UseCases/Implementations/FetchMyProfileUseCase.swift` | HomeDomain |
+| `Domain/UseCases/Implementations/FetchMyProfileUseCase.swift` | HomeDomain (FetchHomeProfileUseCase로 개명, CoreDomain 프로필 파이프라인 합성 — #961) |
 | `Domain/UseCases/Implementations/FetchRecentNoticesUseCase.swift` | HomeDomain |
 | `Domain/UseCases/Implementations/FetchScheduleCapabilitiesUseCase.swift` | HomeDomain |
 | `Domain/UseCases/Implementations/FetchScheduleDetailUseCase.swift` | HomeDomain |
@@ -527,7 +527,7 @@
 | `Data/DTO/AddChallengerRecordRequestDTO.swift` | MyPageData |
 | `Data/DTO/MyPageFlexibleNumberDecoding.swift` | MyPageData |
 | `Data/DTO/MyPagePostDTO.swift` | MyPageData |
-| `Data/DTO/MyPageProfileDTO.swift` | MyPageData |
+| `Data/DTO/MyPageProfileDTO.swift` | CoreNetwork (Member — MemberProfileResponseDTO로 통합, #961) |
 | `Data/DTO/MyPageTermsDTO.swift` | MyPageData |
 | `Data/DTO/MyPageUploadDTO.swift` | MyPageData |
 | `Data/Repository/Mock/MockMyPageRepository.swift` | MyPageData |

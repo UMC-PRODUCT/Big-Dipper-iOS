@@ -127,8 +127,12 @@ struct ProfileToProfileDataTests {
     @Test("같은 기수의 admin 역할 여러 개는 하나의 ActivityLog로 병합된다")
     func adminRolesMergedBySameGeneration() {
         let roles = [
-            Self.role(roleType: .schoolPresident, gisu: "11", gisuId: "11", responsiblePart: "ADMIN"),
-            Self.role(roleType: .schoolPartLeader, gisu: "11", gisuId: "11", responsiblePart: "ADMIN")
+            Self.role(
+                roleType: .schoolPresident, gisu: "11", gisuId: "11", responsiblePart: "ADMIN"
+            ),
+            Self.role(
+                roleType: .schoolPartLeader, gisu: "11", gisuId: "11", responsiblePart: "ADMIN"
+            )
         ]
         let profile = Self.makeProfile(roles: roles)
         let result = profile.toProfileData()

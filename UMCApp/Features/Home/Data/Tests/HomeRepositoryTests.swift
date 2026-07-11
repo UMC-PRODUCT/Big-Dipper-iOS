@@ -12,7 +12,6 @@ import Foundation
 import Testing
 import Moya
 import CoreDomain
-import CoreNetwork
 import UMCFoundation
 import HomeDomain
 @testable import HomeData
@@ -56,7 +55,8 @@ private final class StubHomeNetwork: HomeNetworkRequesting, @unchecked Sendable 
 }
 
 /// ``MemberProfileRepositoryProtocol`` 가짜 구현.
-private final class MockMemberProfileRepository: MemberProfileRepositoryProtocol, @unchecked Sendable {
+private final class MockMemberProfileRepository:
+    MemberProfileRepositoryProtocol, @unchecked Sendable {
 
     enum MockError: Error, Equatable {
         case notStubbed
@@ -144,7 +144,9 @@ struct HomeRepositoryTests {
 
         let memberProfileRepository = MockMemberProfileRepository()
         memberProfileRepository.result = .success(profile)
-        let network = StubHomeNetwork(.success(Fixture.gisuDetailBody(gisuId: "1002", startAt: startAtString)))
+        let network = StubHomeNetwork(
+            .success(Fixture.gisuDetailBody(gisuId: "1002", startAt: startAtString))
+        )
         let repository = HomeRepository(
             networkRequesting: network,
             memberProfileRepository: memberProfileRepository
@@ -229,7 +231,9 @@ struct HomeRepositoryTests {
 
         let memberProfileRepository = MockMemberProfileRepository()
         memberProfileRepository.result = .success(profile)
-        let network = StubHomeNetwork(.success(Fixture.gisuDetailBody(gisuId: "1002", startAt: startAtString)))
+        let network = StubHomeNetwork(
+            .success(Fixture.gisuDetailBody(gisuId: "1002", startAt: startAtString))
+        )
         let repository = HomeRepository(
             networkRequesting: network,
             memberProfileRepository: memberProfileRepository
@@ -243,7 +247,8 @@ struct HomeRepositoryTests {
         if case .getGisuDetail(let gisuId) = network.lastTarget {
             #expect(gisuId == "1002")
         } else {
-            Issue.record("lastTarget이 HomeRouter.getGisuDetail이 아닙니다: \(String(describing: network.lastTarget))")
+            let target = String(describing: network.lastTarget)
+            Issue.record("lastTarget이 HomeRouter.getGisuDetail이 아닙니다: \(target)")
         }
     }
 

@@ -78,7 +78,8 @@ private final class StubMyPageNetwork: MyPageNetworkRequesting, @unchecked Senda
 ///
 /// `fetchMyProfile()`이 더 이상 `MyPageRouter.getMyProfile`을 거치지 않고 이 정본 파이프라인에
 /// 위임하므로, 미리 설정한 ``CoreDomain/Profile`` 값(또는 에러)을 반환합니다.
-private final class MockMemberProfileRepository: MemberProfileRepositoryProtocol, @unchecked Sendable {
+private final class MockMemberProfileRepository:
+    MemberProfileRepositoryProtocol, @unchecked Sendable {
 
     enum MockError: Error, Equatable {
         case notStubbed

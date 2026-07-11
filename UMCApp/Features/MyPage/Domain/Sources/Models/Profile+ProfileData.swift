@@ -3,7 +3,7 @@
 //  MyPageDomain
 //
 //  정본 `CoreDomain.Profile` → MyPage `ProfileData` 매핑.
-//  원본 MyPageData DTO의 `toProfileData()`(구 `MyPageProfileDTO.swift`, 삭제됨) 이식.
+//  원본 MyPageData DTO의 `toProfileData()`(구 프로필 DTO, 삭제됨) 이식.
 //
 
 import CoreDomain
@@ -31,8 +31,11 @@ public extension Profile {
             part: UMCPartType(apiValue: latestRecord?.part ?? "") ?? fallbackPart
         )
 
+        let challengeId = latestRecord?.challengerId.intValue
+            ?? latestRole?.challengerId.intValue ?? 0
+
         return ProfileData(
-            challengeId: latestRecord?.challengerId.intValue ?? latestRole?.challengerId.intValue ?? 0,
+            challengeId: challengeId,
             challengerInfo: challengerInfo,
             socialConnections: [],
             activityLogs: activityLogs(),

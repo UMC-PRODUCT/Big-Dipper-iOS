@@ -3,8 +3,8 @@
 //  CoreNetwork
 //
 //  `GET /api/v1/member/me` 정본 응답 DTO 모음.
-//  - Auth `MemberMeResponseDTO`, Home `MyProfileResponseDTO`, MyPage `MyPageProfileDTO`
-//    3개 파이프라인이 각자 필요로 하던 필드의 합집합을 한 파일에 모은다.
+//  - Auth·Home·MyPage가 각자 소유했던 구 프로필 응답 DTO 3개 파이프라인이 필요로 하던
+//    필드의 합집합을 한 파일에 모은다.
 //  - 서버 응답 숫자 필드는 모두 `String`으로 보존하며, 도메인 변환 시점에만 `Int`로 환원한다.
 //
 

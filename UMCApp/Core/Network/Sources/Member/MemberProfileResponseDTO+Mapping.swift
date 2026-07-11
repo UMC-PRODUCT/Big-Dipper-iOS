@@ -3,8 +3,8 @@
 //  CoreNetwork
 //
 //  `MemberProfileResponseDTO` → 도메인 모델 매핑.
-//  - `toDomain()`: Auth `MemberMeResponseDTO.toDomain()` 이식, 정본 `Profile` 전체를 채운다.
-//  - `toMemberProfileSummary()`: MyPage `MyPageProfileResponseDTO.toMemberProfileSummary()` 이식.
+//  - `toDomain()`: Auth가 소유했던 구 프로필 응답 DTO의 `toDomain()` 이식, 정본 `Profile` 전체를 채운다.
+//  - `toMemberProfileSummary()`: MyPage가 소유했던 구 프로필 응답 DTO의 `toMemberProfileSummary()` 이식.
 //
 
 import CoreDomain
@@ -17,7 +17,7 @@ extension MemberProfileResponseDTO {
     ///
     /// 역할(roles)과 챌린저 이력(challengerRecords) 양쪽에서 기수 번호를 모아 합집합을 구성하고,
     /// 챌린저 이력 중 숫자 기수가 가장 큰 레코드를 최신 기록으로 채택한다
-    /// (Auth `MemberMeResponseDTO.toDomain()` 이식).
+    /// (Auth가 소유했던 구 프로필 응답 DTO의 `toDomain()` 이식).
     ///
     /// MyPage `updateProfileLinks()`/`patchMemberProfileImage()`가 응답을 `Profile`로 변환한 뒤
     /// `MyPageDomain`의 `Profile.toProfileData()` 확장으로 재매핑하기 위해 모듈 경계를 넘어 호출한다.
@@ -108,7 +108,7 @@ extension MemberProfileResponseDTO {
     }
 
     /// 챌린저 이력(학교/지부)을 우선 채택하고, 역할(roles)의 조직 정보로 누락된 값을 보강한다
-    /// (Auth `MemberMeResponseDTO.buildGenerationOrganizations(records:roles:)` 이식).
+    /// (Auth가 소유했던 구 프로필 응답 DTO의 `buildGenerationOrganizations(records:roles:)` 이식).
     private static func buildGenerationOrganizations(
         records: [MemberProfileChallengerRecordDTO],
         roles: [MemberProfileRoleDTO]
