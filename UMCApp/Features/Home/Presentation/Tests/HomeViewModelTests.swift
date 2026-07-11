@@ -115,6 +115,7 @@ private func makeViewModel(
     let container = DIContainer()
     container.register(FetchHomeProfileUseCaseProtocol.self) { useCase }
     container.register(FetchRecentNoticesUseCaseProtocol.self) { recentNoticesUseCase }
+    container.register(FetchSchedulesUseCaseProtocol.self) { MockFetchSchedulesUseCase() }
     return HomeViewModel(container: container)
 }
 
@@ -155,5 +156,12 @@ private final class MockFetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProt
 
     func execute(gisuId: String) async throws -> [NoticeItemModel] {
         try result.get()
+    }
+}
+
+/// 프로필 로딩 상태 전이 테스트는 일정 조회 결과와 무관하므로 빈 결과만 반환한다.
+private struct MockFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol, Sendable {
+    func execute(from: Date, to: Date, isAttendanceRequired: Bool) async throws -> [Date: [ScheduleDetailData]] {
+        [:]
     }
 }
