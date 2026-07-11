@@ -9,7 +9,7 @@ import UMCFoundation
 @Suite("SignUpByIdPwViewModel — 이메일 중복 확인 debounce")
 struct SignUpByIdPwViewModelEmailAvailabilityTests {
 
-    @Test("인증 완료 후 500ms debounce를 거쳐 중복 확인이 1회 실행된다")
+    @Test("인증 완료 후 debounce를 거쳐 중복 확인이 1회 실행된다")
     func verificationCompleteChainsAvailabilityCheck() async throws {
         let checkEmailAvailabilityUseCase = MockCheckEmailAvailabilityUseCase()
         checkEmailAvailabilityUseCase.result = .success(true)
@@ -19,7 +19,7 @@ struct SignUpByIdPwViewModelEmailAvailabilityTests {
 
         #expect(viewModel.emailAvailabilityState == .idle)
 
-        try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
+        try await waitForEmailAvailabilityDebounce(on: viewModel)
 
         #expect(checkEmailAvailabilityUseCase.callCount == 1)
         #expect(checkEmailAvailabilityUseCase.receivedEmail == "member@umc.dev")
@@ -34,7 +34,7 @@ struct SignUpByIdPwViewModelEmailAvailabilityTests {
             checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase
         )
 
-        try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
+        try await waitForEmailAvailabilityDebounce(on: viewModel)
 
         #expect(viewModel.emailAvailabilityState == .loaded(false))
     }
@@ -55,12 +55,14 @@ struct SignUpByIdPwViewModelEmailAvailabilityTests {
         viewModel.emailVerificationFlow.email = "member@umc.dev"
         try await requestVerification(on: viewModel)
 
-        // 연속 재검증(예: 코드 재입력) — 매 호출마다 이전 debounce 예약이 취소된다.
+        // 연속 재검증(예: 코드 재입력) — 매 호출마다 이전 debounce 예약이 취소되고 새로 예약된다.
+        // 아래 3개 호출은 debounce 간격(500ms)보다 훨씬 짧은 시간 안에 끝나므로, 마지막 예약만
+        // 실제로 만료되어 실행된다.
         try await viewModel.verifyEmailCode("111111")
         try await viewModel.verifyEmailCode("222222")
         try await viewModel.verifyEmailCode("333333")
 
-        try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
+        try await waitForEmailAvailabilityDebounce(on: viewModel)
 
         #expect(checkEmailAvailabilityUseCase.callCount == 1)
         #expect(viewModel.emailAvailabilityState == .loaded(true))
@@ -88,7 +90,7 @@ struct SignUpByIdPwViewModelEmailAvailabilityTests {
         try await requestVerification(on: viewModel)
         try await viewModel.verifyEmailCode("222222")
 
-        try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
+        try await waitForEmailAvailabilityDebounce(on: viewModel)
 
         #expect(checkEmailAvailabilityUseCase.callCount == 1)
         #expect(checkEmailAvailabilityUseCase.receivedEmail == "second@umc.dev")
@@ -101,12 +103,47 @@ struct SignUpByIdPwViewModelEmailAvailabilityTests {
         let viewModel = try await makeVerifiedEmailViewModel(
             checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase
         )
-        try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
+        try await waitForEmailAvailabilityDebounce(on: viewModel)
         #expect(viewModel.emailAvailabilityState == .loaded(true))
 
         viewModel.emailVerificationFlow.email = "changed@umc.dev"
         viewModel.emailVerificationFlow.handleEmailChanged()
 
+        #expect(viewModel.emailAvailabilityState == .idle)
+    }
+
+    @Test("중복 확인 실패 후 retryEmailAvailabilityCheck()를 호출하면 debounce 없이 즉시 재확인한다")
+    func retryEmailAvailabilityCheckRetriesImmediatelyAfterFailure() async throws {
+        let checkEmailAvailabilityUseCase = MockCheckEmailAvailabilityUseCase()
+        checkEmailAvailabilityUseCase.result = .failure(DummyError())
+        let viewModel = try await makeVerifiedEmailViewModel(
+            checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase
+        )
+        try await waitForEmailAvailabilityDebounce(on: viewModel)
+        guard case .failed = viewModel.emailAvailabilityState else {
+            Issue.record("실패 상태를 기대했지만 \(viewModel.emailAvailabilityState)였다")
+            return
+        }
+
+        checkEmailAvailabilityUseCase.result = .success(true)
+        viewModel.retryEmailAvailabilityCheck()
+        await viewModel.emailAvailabilityTask?.value
+
+        #expect(checkEmailAvailabilityUseCase.callCount == 2)
+        #expect(viewModel.emailAvailabilityState == .loaded(true))
+    }
+
+    @Test("중복 확인이 idle/loaded 상태면 retryEmailAvailabilityCheck()는 아무 것도 하지 않는다")
+    func retryEmailAvailabilityCheckNoOpsWhenNotFailed() async throws {
+        let checkEmailAvailabilityUseCase = MockCheckEmailAvailabilityUseCase()
+        checkEmailAvailabilityUseCase.result = .success(true)
+        let viewModel = try await makeVerifiedEmailViewModel(
+            checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase
+        )
+
+        viewModel.retryEmailAvailabilityCheck()
+
+        #expect(checkEmailAvailabilityUseCase.callCount == 0)
         #expect(viewModel.emailAvailabilityState == .idle)
     }
 }
@@ -137,7 +174,7 @@ struct SignUpByIdPwViewModelCanSubmitTests {
         let viewModel = try await makeValidFormViewModel()
         #expect(viewModel.canSubmit == true)
 
-        viewModel.termsAgreements["terms-privacy"] = false
+        viewModel.termsAgreementFlow.termsAgreements["terms-privacy"] = false
 
         #expect(viewModel.canSubmit == false)
     }
@@ -146,18 +183,11 @@ struct SignUpByIdPwViewModelCanSubmitTests {
     func termsNotLoadedBlocksSubmit() async throws {
         let checkEmailAvailabilityUseCase = MockCheckEmailAvailabilityUseCase()
         checkEmailAvailabilityUseCase.result = .success(true)
-        let viewModel = try await makeVerifiedEmailViewModel(
-            checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase,
-            fillSchool: true
+        let viewModel = try await makeFormFilledButTermsNotLoadedViewModel(
+            checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase
         )
-        try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
-        viewModel.name = "홍길동"
-        viewModel.nickname = "길동이"
-        viewModel.password = "password1234"
-        viewModel.passwordConfirm = "password1234"
-        // fetchTerms()를 호출하지 않아 termsState == .idle을 유지한다.
 
-        #expect(viewModel.termsState == .idle)
+        #expect(viewModel.termsAgreementFlow.termsState == .idle)
         #expect(viewModel.canSubmit == false)
     }
 
@@ -174,7 +204,7 @@ struct SignUpByIdPwViewModelCanSubmitTests {
         viewModel.nickname = "길동이"
         viewModel.password = "password1234"
         viewModel.passwordConfirm = "password1234"
-        // debounce 대기 없이 바로 확인 — emailAvailabilityState는 아직 .idle이다.
+        // debounce가 아직 만료되지 않았으므로 emailAvailabilityState는 .idle이다.
 
         #expect(viewModel.canSubmit == false)
     }
@@ -192,7 +222,7 @@ struct SignUpByIdPwViewModelCanSubmitTests {
         viewModel.nickname = "길동이"
         viewModel.password = "password1234"
         viewModel.passwordConfirm = "password1234"
-        try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
+        try await waitForEmailAvailabilityDebounce(on: viewModel)
 
         #expect(viewModel.emailAvailabilityState == .loaded(false))
         #expect(viewModel.canSubmit == false)
@@ -294,16 +324,21 @@ struct SignUpByIdPwViewModelRegisterTests {
     }
 }
 
-// MARK: - Constants
-
-private enum Constants {
-    /// 500ms debounce + CI 스케줄링 여유를 감안한 테스트 대기 시간.
-    static let debounceWaitMilliseconds: Int = 800
-}
-
 // MARK: - Helpers
 
 private struct DummyError: Error {}
+
+private enum Constants {
+    /// 500ms debounce + CI 스케줄링 여유를 감안한 테스트 대기 시간.
+    ///
+    /// Item 6에서 debounce sleep을 결정적으로 대체하는 test double(actor 기반 수동 gate)을
+    /// 시도했으나, `Task { ... }`으로 예약되는 debounce 작업이 MainActor에서 실행되는 반면
+    /// gate의 `advance()`는 별도 액터에서 폴링하는 구조라 재개 시점이 서로 동기화되지 않아
+    /// 테스트가 무한 대기(hang)하는 문제가 있었다. 안정적으로 재현 가능한 결정론적 대안을
+    /// 짧은 시간 안에 확보하지 못해, 우선 실제 `Task.sleep` 기반 wall-clock 대기로 되돌린다
+    /// (기존에 이미 검증된 안전한 패턴). 추후 별도 이슈에서 결정론적 test clock을 재시도한다.
+    static let debounceWaitMilliseconds: Int = 800
+}
 
 private let mockMandatoryTerms: [Terms] = [
     Terms(
@@ -319,6 +354,12 @@ private let mockMandatoryTerms: [Terms] = [
         isMandatory: true
     )
 ]
+
+/// 이메일 중복 확인 debounce(500ms)가 만료되어 확인이 실행될 때까지 대기한다.
+private func waitForEmailAvailabilityDebounce(on viewModel: SignUpByIdPwViewModel) async throws {
+    try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
+    await viewModel.emailAvailabilityTask?.value
+}
 
 @MainActor
 private func makeViewModel(
@@ -406,13 +447,42 @@ private func makeVerifiedEmailViewModel(
         viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
     }
     if fillTerms {
-        await viewModel.fetchTerms()
-        viewModel.termsAgreements["terms-service"] = true
-        viewModel.termsAgreements["terms-privacy"] = true
+        await viewModel.termsAgreementFlow.fetchTerms()
+        viewModel.termsAgreementFlow.termsAgreements["terms-service"] = true
+        viewModel.termsAgreementFlow.termsAgreements["terms-privacy"] = true
     }
 
     viewModel.emailVerificationFlow.email = email
     try await requestVerification(on: viewModel)
+
+    return viewModel
+}
+
+/// Q3: 약관이 로딩되지 않은 상태에서 나머지 필드(이름/닉네임/비밀번호/이메일/학교/이메일인증)만
+/// 채운 `SignUpByIdPwViewModel`을 만든다. `termsAgreementFlow.fetchTerms()`를 호출하지 않으므로
+/// `termsState`는 `.idle`을 유지한다. 이메일 중복 확인 debounce도 내부적으로 완료시킨 뒤 반환한다.
+@MainActor
+private func makeFormFilledButTermsNotLoadedViewModel(
+    checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol? = nil
+) async throws -> SignUpByIdPwViewModel {
+    let mocks = makeTermsNotLoadedSignUpMocks()
+    let viewModel = makeViewModel(
+        fetchSignUpDataUseCase: mocks.fetchSignUpDataUseCase,
+        sendEmailVerificationUseCase: mocks.sendEmailVerificationUseCase,
+        verifyEmailCodeUseCase: mocks.verifyEmailCodeUseCase,
+        checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase
+    )
+    await viewModel.fetchSchools()
+    viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
+    // termsAgreementFlow.fetchTerms()를 호출하지 않아 termsState == .idle을 유지한다.
+
+    viewModel.name = "홍길동"
+    viewModel.nickname = "길동이"
+    viewModel.password = "password1234"
+    viewModel.passwordConfirm = "password1234"
+    viewModel.emailVerificationFlow.email = "member@umc.dev"
+    try await requestVerification(on: viewModel)
+    try await waitForEmailAvailabilityDebounce(on: viewModel)
 
     return viewModel
 }
@@ -452,7 +522,7 @@ private func makeValidFormViewModel(
     )
 
     await viewModel.fetchSchools()
-    await viewModel.fetchTerms()
+    await viewModel.termsAgreementFlow.fetchTerms()
 
     viewModel.name = "홍길동"
     viewModel.nickname = "길동이"
@@ -462,78 +532,15 @@ private func makeValidFormViewModel(
     viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
 
     try await requestVerification(on: viewModel)
-    try await Task.sleep(for: .milliseconds(Constants.debounceWaitMilliseconds))
+    try await waitForEmailAvailabilityDebounce(on: viewModel)
 
-    viewModel.termsAgreements["terms-service"] = true
-    viewModel.termsAgreements["terms-privacy"] = true
+    viewModel.termsAgreementFlow.termsAgreements["terms-service"] = true
+    viewModel.termsAgreementFlow.termsAgreements["terms-privacy"] = true
 
     return viewModel
 }
 
 // MARK: - Mocks — UseCase
-
-private final class MockFetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var fetchSchoolsResult: Result<[School], Error> = .failure(MockError.notStubbed)
-    private(set) var fetchSchoolsCallCount = 0
-
-    var fetchTermsResult: [TermsType: Result<Terms, Error>] = [:]
-    private(set) var fetchTermsCallCount = 0
-
-    func fetchSchools() async throws -> [School] {
-        fetchSchoolsCallCount += 1
-        return try fetchSchoolsResult.get()
-    }
-
-    func fetchTerms(type: TermsType) async throws -> Terms {
-        fetchTermsCallCount += 1
-        guard let result = fetchTermsResult[type] else {
-            throw MockError.notStubbed
-        }
-        return try result.get()
-    }
-}
-
-private final class MockSendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<String, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-
-    func execute(email: String, purpose: EmailVerificationPurpose) async throws -> String {
-        callCount += 1
-        return try result.get()
-    }
-}
-
-private final class MockVerifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<String, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-
-    func execute(emailVerificationId: String, verificationCode: String) async throws -> String {
-        callCount += 1
-        return try result.get()
-    }
-}
-
-private final class MockResendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<Void, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-
-    func execute(emailVerificationId: String) async throws {
-        callCount += 1
-        _ = try result.get()
-    }
-}
 
 private final class MockCheckEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol,
     @unchecked Sendable {

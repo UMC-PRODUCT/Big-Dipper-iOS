@@ -214,51 +214,9 @@ private func makeVerifiedFlow(
 }
 
 // MARK: - Mocks — UseCase
-
-private final class MockSendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<String, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-    private(set) var receivedEmail: String?
-    private(set) var receivedPurpose: EmailVerificationPurpose?
-
-    func execute(email: String, purpose: EmailVerificationPurpose) async throws -> String {
-        callCount += 1
-        receivedEmail = email
-        receivedPurpose = purpose
-        return try result.get()
-    }
-}
-
-private final class MockVerifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<String, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-
-    func execute(emailVerificationId: String, verificationCode: String) async throws -> String {
-        callCount += 1
-        return try result.get()
-    }
-}
-
-private final class MockResendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<Void, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-    private(set) var receivedEmailVerificationId: String?
-
-    func execute(emailVerificationId: String) async throws {
-        callCount += 1
-        receivedEmailVerificationId = emailVerificationId
-        _ = try result.get()
-    }
-}
+//
+// `MockSendEmailVerificationUseCase`/`MockVerifyEmailCodeUseCase`/
+// `MockResendEmailVerificationUseCase`는 `Support/MockAuthUseCases.swift`의 공용 Mock을 사용한다 (#956).
 
 /// 재진입 가드 검증을 위해 인위적인 지연을 주는 인증 발송 UseCase.
 private final class SlowSendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,

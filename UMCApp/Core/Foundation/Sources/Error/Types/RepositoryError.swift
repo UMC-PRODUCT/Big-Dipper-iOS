@@ -38,6 +38,10 @@ public enum RepositoryError: Error, LocalizedError, Sendable, Equatable {
     /// 응답 데이터 디코딩 실패
     case decodingError(detail: String?)
 
+    /// 디코딩 자체는 성공했지만 응답 내용이 의미상 유효하지 않음
+    /// (e.g. 필수 필드가 비어 있음)
+    case invalidResponse(detail: String?)
+
     // MARK: - LocalizedError
 
     public var errorDescription: String? {
@@ -46,6 +50,8 @@ public enum RepositoryError: Error, LocalizedError, Sendable, Equatable {
             return message ?? "서버 오류가 발생했습니다"
         case .decodingError(let detail):
             return "데이터 파싱 실패: \(detail ?? "알 수 없는 오류")"
+        case .invalidResponse(let detail):
+            return "서버 응답이 유효하지 않습니다: \(detail ?? "알 수 없는 오류")"
         }
     }
 
@@ -56,7 +62,7 @@ public enum RepositoryError: Error, LocalizedError, Sendable, Equatable {
         switch self {
         case .serverError(let code, _):
             return code
-        default:
+        case .decodingError, .invalidResponse:
             return nil
         }
     }
@@ -71,7 +77,7 @@ public enum RepositoryError: Error, LocalizedError, Sendable, Equatable {
         switch self {
         case .serverError:
             return true
-        case .decodingError:
+        case .decodingError, .invalidResponse:
             return false
         }
     }

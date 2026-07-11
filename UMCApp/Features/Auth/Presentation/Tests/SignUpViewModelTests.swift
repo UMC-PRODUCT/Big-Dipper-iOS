@@ -13,7 +13,7 @@ struct SignUpViewModelFormValidationTests {
     func initialStateIsIdle() {
         let viewModel = makeViewModel()
         #expect(viewModel.schoolsState == .idle)
-        #expect(viewModel.termsState == .idle)
+        #expect(viewModel.termsAgreementFlow.termsState == .idle)
         #expect(viewModel.registerState == .idle)
         #expect(viewModel.isFormValid == false)
     }
@@ -29,35 +29,14 @@ struct SignUpViewModelFormValidationTests {
         let viewModel = try await makeValidFormViewModel()
         #expect(viewModel.isFormValid == true)
 
-        viewModel.termsAgreements["terms-privacy"] = false
+        viewModel.termsAgreementFlow.termsAgreements["terms-privacy"] = false
 
         #expect(viewModel.isFormValid == false)
     }
 
     @Test("약관이 아직 로딩되지 않았다면 다른 값이 채워져도 폼이 유효하지 않다")
     func termsNotLoadedMakesFormInvalid() async throws {
-        let fetchSignUpDataUseCase = MockFetchSignUpDataUseCase()
-        fetchSignUpDataUseCase.fetchSchoolsResult = .success([School(id: "1", name: "테스트대학교")])
-        let sendEmailVerificationUseCase = MockSendEmailVerificationUseCase()
-        sendEmailVerificationUseCase.result = .success("verify-id")
-        let verifyEmailCodeUseCase = MockVerifyEmailCodeUseCase()
-        verifyEmailCodeUseCase.result = .success("verify-token")
-
-        let viewModel = makeViewModel(
-            fetchSignUpDataUseCase: fetchSignUpDataUseCase,
-            sendEmailVerificationUseCase: sendEmailVerificationUseCase,
-            verifyEmailCodeUseCase: verifyEmailCodeUseCase
-        )
-        await viewModel.fetchSchools()
-        // fetchTerms()를 호출하지 않아 termsState == .idle을 유지한다.
-
-        viewModel.name = "홍길동"
-        viewModel.nickname = "길동이"
-        viewModel.email = "member@umc.dev"
-        viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
-        try await viewModel.requestEmailVerification()
-        try await viewModel.verifyEmailCode("123456")
-
+        let viewModel = try await makeFormFilledButTermsNotLoadedViewModel()
         #expect(viewModel.isFormValid == false)
     }
 }
@@ -71,12 +50,12 @@ struct SignUpViewModelEmailVerificationTests {
         let sendEmailVerificationUseCase = MockSendEmailVerificationUseCase()
         sendEmailVerificationUseCase.result = .success("verify-id-1")
         let viewModel = makeViewModel(sendEmailVerificationUseCase: sendEmailVerificationUseCase)
-        viewModel.email = "member@umc.dev"
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
 
-        try await viewModel.requestEmailVerification()
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
 
-        #expect(viewModel.emailVerificationId == "verify-id-1")
-        #expect(viewModel.isEmailVerified == false)
+        #expect(viewModel.emailVerificationFlow.emailVerificationId == "verify-id-1")
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == false)
         #expect(sendEmailVerificationUseCase.callCount == 1)
         #expect(sendEmailVerificationUseCase.receivedEmail == "member@umc.dev")
         #expect(sendEmailVerificationUseCase.receivedPurpose == .register)
@@ -87,18 +66,18 @@ struct SignUpViewModelEmailVerificationTests {
         let sendEmailVerificationUseCase = MockSendEmailVerificationUseCase()
         sendEmailVerificationUseCase.result = .failure(EmailVerificationError.emailAlreadyExists)
         let viewModel = makeViewModel(sendEmailVerificationUseCase: sendEmailVerificationUseCase)
-        viewModel.email = "member@umc.dev"
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
 
         do {
-            try await viewModel.requestEmailVerification()
+            try await viewModel.emailVerificationFlow.requestEmailVerification()
             Issue.record("에러가 발생해야 합니다")
         } catch {
             #expect(error as? EmailVerificationError == .emailAlreadyExists)
         }
-        #expect(viewModel.emailVerificationId == nil)
+        #expect(viewModel.emailVerificationFlow.emailVerificationId == nil)
     }
 
-    @Test("인증번호 검증 성공 → isEmailVerified true, 토큰/코드 저장")
+    @Test("인증번호 검증 성공 → isEmailVerified true, 토큰 저장")
     func verifyCodeSuccessSetsVerified() async throws {
         let sendEmailVerificationUseCase = MockSendEmailVerificationUseCase()
         sendEmailVerificationUseCase.result = .success("verify-id-1")
@@ -108,13 +87,13 @@ struct SignUpViewModelEmailVerificationTests {
             sendEmailVerificationUseCase: sendEmailVerificationUseCase,
             verifyEmailCodeUseCase: verifyEmailCodeUseCase
         )
-        viewModel.email = "member@umc.dev"
-        try await viewModel.requestEmailVerification()
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
 
-        try await viewModel.verifyEmailCode("654321")
+        try await viewModel.emailVerificationFlow.verifyEmailCode("654321")
 
-        #expect(viewModel.isEmailVerified == true)
-        #expect(viewModel.verificationCode == "654321")
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == true)
+        #expect(viewModel.emailVerificationFlow.emailVerificationToken == "verify-token-1")
         #expect(verifyEmailCodeUseCase.callCount == 1)
         #expect(verifyEmailCodeUseCase.receivedCode == "654321")
     }
@@ -129,16 +108,16 @@ struct SignUpViewModelEmailVerificationTests {
             sendEmailVerificationUseCase: sendEmailVerificationUseCase,
             verifyEmailCodeUseCase: verifyEmailCodeUseCase
         )
-        viewModel.email = "member@umc.dev"
-        try await viewModel.requestEmailVerification()
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
 
         do {
-            try await viewModel.verifyEmailCode("000000")
+            try await viewModel.emailVerificationFlow.verifyEmailCode("000000")
             Issue.record("에러가 발생해야 합니다")
         } catch {
             #expect(error as? AuthError == .invalidVerificationCode)
         }
-        #expect(viewModel.isEmailVerified == false)
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == false)
     }
 
     @Test("발송 요청 없이 검증을 시도하면 아무 것도 하지 않는다")
@@ -146,10 +125,10 @@ struct SignUpViewModelEmailVerificationTests {
         let verifyEmailCodeUseCase = MockVerifyEmailCodeUseCase()
         let viewModel = makeViewModel(verifyEmailCodeUseCase: verifyEmailCodeUseCase)
 
-        try await viewModel.verifyEmailCode("123456")
+        try await viewModel.emailVerificationFlow.verifyEmailCode("123456")
 
         #expect(verifyEmailCodeUseCase.callCount == 0)
-        #expect(viewModel.isEmailVerified == false)
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == false)
     }
 
     @Test("인증번호 재전송 성공/실패가 그대로 반영된다")
@@ -162,15 +141,15 @@ struct SignUpViewModelEmailVerificationTests {
             sendEmailVerificationUseCase: sendEmailVerificationUseCase,
             resendEmailVerificationUseCase: resendEmailVerificationUseCase
         )
-        viewModel.email = "member@umc.dev"
-        try await viewModel.requestEmailVerification()
+        viewModel.emailVerificationFlow.email = "member@umc.dev"
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
 
-        try await viewModel.resendEmailVerification()
+        try await viewModel.emailVerificationFlow.resendEmailVerification()
         #expect(resendEmailVerificationUseCase.callCount == 1)
 
         resendEmailVerificationUseCase.result = .failure(EmailVerificationError.throttled)
         do {
-            try await viewModel.resendEmailVerification()
+            try await viewModel.emailVerificationFlow.resendEmailVerification()
             Issue.record("에러가 발생해야 합니다")
         } catch {
             #expect(error as? EmailVerificationError == .throttled)
@@ -188,18 +167,17 @@ struct SignUpViewModelEmailVerificationTests {
             sendEmailVerificationUseCase: sendEmailVerificationUseCase,
             verifyEmailCodeUseCase: verifyEmailCodeUseCase
         )
-        viewModel.email = "first@umc.dev"
-        try await viewModel.requestEmailVerification()
-        try await viewModel.verifyEmailCode("111111")
-        #expect(viewModel.isEmailVerified == true)
+        viewModel.emailVerificationFlow.email = "first@umc.dev"
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
+        try await viewModel.emailVerificationFlow.verifyEmailCode("111111")
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == true)
 
-        viewModel.email = "second@umc.dev"
-        viewModel.handleEmailChanged()
+        viewModel.emailVerificationFlow.email = "second@umc.dev"
+        viewModel.emailVerificationFlow.handleEmailChanged()
 
-        #expect(viewModel.isEmailVerified == false)
-        #expect(viewModel.emailVerificationId == nil)
-        #expect(viewModel.emailVerificationToken == nil)
-        #expect(viewModel.verificationCode == "")
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == false)
+        #expect(viewModel.emailVerificationFlow.emailVerificationId == nil)
+        #expect(viewModel.emailVerificationFlow.emailVerificationToken == nil)
     }
 
     @Test("이메일 값이 그대로면 인증 상태를 유지한다")
@@ -213,13 +191,13 @@ struct SignUpViewModelEmailVerificationTests {
             verifyEmailCodeUseCase: verifyEmailCodeUseCase,
             initialEmail: "same@umc.dev"
         )
-        viewModel.email = "same@umc.dev"
-        try await viewModel.requestEmailVerification()
-        try await viewModel.verifyEmailCode("111111")
+        viewModel.emailVerificationFlow.email = "same@umc.dev"
+        try await viewModel.emailVerificationFlow.requestEmailVerification()
+        try await viewModel.emailVerificationFlow.verifyEmailCode("111111")
 
-        viewModel.handleEmailChanged()
+        viewModel.emailVerificationFlow.handleEmailChanged()
 
-        #expect(viewModel.isEmailVerified == true)
+        #expect(viewModel.emailVerificationFlow.isEmailVerified == true)
     }
 }
 
@@ -240,31 +218,10 @@ struct SignUpViewModelRegisterTests {
 
     @Test("약관 미로딩 상태에서 나머지 필드가 모두 채워져도 register()는 API를 호출하지 않는다")
     func registerNoOpsWhenTermsNotLoadedButOtherFieldsFilled() async throws {
-        let fetchSignUpDataUseCase = MockFetchSignUpDataUseCase()
-        fetchSignUpDataUseCase.fetchSchoolsResult = .success(
-            [School(id: "1", name: "테스트대학교")]
-        )
-        let sendEmailVerificationUseCase = MockSendEmailVerificationUseCase()
-        sendEmailVerificationUseCase.result = .success("verify-id")
-        let verifyEmailCodeUseCase = MockVerifyEmailCodeUseCase()
-        verifyEmailCodeUseCase.result = .success("verify-token")
         let registerUseCase = MockRegisterUseCase()
-
-        let viewModel = makeViewModel(
-            fetchSignUpDataUseCase: fetchSignUpDataUseCase,
-            sendEmailVerificationUseCase: sendEmailVerificationUseCase,
-            verifyEmailCodeUseCase: verifyEmailCodeUseCase,
+        let viewModel = try await makeFormFilledButTermsNotLoadedViewModel(
             registerUseCase: registerUseCase
         )
-        await viewModel.fetchSchools()
-        // fetchTerms()를 호출하지 않아 termsState == .idle을 유지한다.
-
-        viewModel.name = "홍길동"
-        viewModel.nickname = "길동이"
-        viewModel.email = "member@umc.dev"
-        viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
-        try await viewModel.requestEmailVerification()
-        try await viewModel.verifyEmailCode("123456")
         #expect(viewModel.isFormValid == false)
 
         await viewModel.register()
@@ -534,94 +491,50 @@ private func makeValidFormViewModel(
     )
 
     await viewModel.fetchSchools()
-    await viewModel.fetchTerms()
+    await viewModel.termsAgreementFlow.fetchTerms()
 
     viewModel.name = "홍길동"
     viewModel.nickname = "길동이"
-    viewModel.email = "member@umc.dev"
+    viewModel.emailVerificationFlow.email = "member@umc.dev"
     viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
 
-    try await viewModel.requestEmailVerification()
-    try await viewModel.verifyEmailCode("123456")
+    try await viewModel.emailVerificationFlow.requestEmailVerification()
+    try await viewModel.emailVerificationFlow.verifyEmailCode("123456")
 
-    viewModel.termsAgreements["terms-service"] = true
-    viewModel.termsAgreements["terms-privacy"] = true
+    viewModel.termsAgreementFlow.termsAgreements["terms-service"] = true
+    viewModel.termsAgreementFlow.termsAgreements["terms-privacy"] = true
+
+    return viewModel
+}
+
+/// Q3: 약관이 로딩되지 않은 상태에서 나머지 필드(이름/닉네임/이메일/학교/이메일인증)만 채운
+/// `SignUpViewModel`을 만든다. `termsAgreementFlow.fetchTerms()`를 호출하지 않으므로
+/// `termsState`는 `.idle`을 유지한다.
+@MainActor
+private func makeFormFilledButTermsNotLoadedViewModel(
+    registerUseCase: RegisterUseCaseProtocol? = nil
+) async throws -> SignUpViewModel {
+    let mocks = makeTermsNotLoadedSignUpMocks()
+    let viewModel = makeViewModel(
+        fetchSignUpDataUseCase: mocks.fetchSignUpDataUseCase,
+        sendEmailVerificationUseCase: mocks.sendEmailVerificationUseCase,
+        verifyEmailCodeUseCase: mocks.verifyEmailCodeUseCase,
+        registerUseCase: registerUseCase
+    )
+    await viewModel.fetchSchools()
+    // termsAgreementFlow.fetchTerms()를 호출하지 않아 termsState == .idle을 유지한다.
+
+    viewModel.name = "홍길동"
+    viewModel.nickname = "길동이"
+    viewModel.emailVerificationFlow.email = "member@umc.dev"
+    viewModel.selectedSchool = School(id: "1", name: "테스트대학교")
+    try await viewModel.emailVerificationFlow.requestEmailVerification()
+    try await viewModel.emailVerificationFlow.verifyEmailCode("123456")
 
     return viewModel
 }
 
 // MARK: - Mocks — UseCase
-
-private final class MockFetchSignUpDataUseCase: FetchSignUpDataUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var fetchSchoolsResult: Result<[School], Error> = .failure(MockError.notStubbed)
-    private(set) var fetchSchoolsCallCount = 0
-
-    var fetchTermsResult: [TermsType: Result<Terms, Error>] = [:]
-    private(set) var fetchTermsCallCount = 0
-    private(set) var fetchTermsReceivedTypes: [TermsType] = []
-
-    func fetchSchools() async throws -> [School] {
-        fetchSchoolsCallCount += 1
-        return try fetchSchoolsResult.get()
-    }
-
-    func fetchTerms(type: TermsType) async throws -> Terms {
-        fetchTermsCallCount += 1
-        fetchTermsReceivedTypes.append(type)
-        guard let result = fetchTermsResult[type] else {
-            throw MockError.notStubbed
-        }
-        return try result.get()
-    }
-}
-
-private final class MockSendEmailVerificationUseCase: SendEmailVerificationUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<String, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-    private(set) var receivedEmail: String?
-    private(set) var receivedPurpose: EmailVerificationPurpose?
-
-    func execute(email: String, purpose: EmailVerificationPurpose) async throws -> String {
-        callCount += 1
-        receivedEmail = email
-        receivedPurpose = purpose
-        return try result.get()
-    }
-}
-
-private final class MockVerifyEmailCodeUseCase: VerifyEmailCodeUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<String, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-    private(set) var receivedCode: String?
-
-    func execute(emailVerificationId: String, verificationCode: String) async throws -> String {
-        callCount += 1
-        receivedCode = verificationCode
-        return try result.get()
-    }
-}
-
-private final class MockResendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol,
-    @unchecked Sendable {
-    enum MockError: Error, Equatable { case notStubbed }
-
-    var result: Result<Void, Error> = .failure(MockError.notStubbed)
-    private(set) var callCount = 0
-
-    func execute(emailVerificationId: String) async throws {
-        callCount += 1
-        _ = try result.get()
-    }
-}
 
 private final class MockRegisterUseCase: RegisterUseCaseProtocol, @unchecked Sendable {
     enum MockError: Error, Equatable { case notStubbed }

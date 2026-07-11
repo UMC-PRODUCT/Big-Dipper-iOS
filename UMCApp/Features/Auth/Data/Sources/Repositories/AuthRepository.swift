@@ -17,18 +17,34 @@ public struct AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Property
 
-    private let adapter: MoyaNetworkAdapter
+    private let adapter: any AuthNetworkRequesting
     private let networkClient: NetworkClient
     private let tokenStore: TokenStore
 
     // MARK: - Init
 
+    /// 운영 이니셜라이저 — 구체 `MoyaNetworkAdapter` 를 주입받습니다.
     public init(
         adapter: MoyaNetworkAdapter,
         networkClient: NetworkClient,
         tokenStore: TokenStore
     ) {
-        self.adapter = adapter
+        self.init(
+            networkRequesting: adapter,
+            networkClient: networkClient,
+            tokenStore: tokenStore
+        )
+    }
+
+    /// 테스트 seam — `AuthNetworkRequesting` 가짜 구현을 주입하기 위한 지정 이니셜라이저.
+    /// (`MoyaNetworkAdapter` 는 `NetworkConfig.baseURL` `fatalError` 로 테스트 번들에서
+    /// 직접 사용할 수 없으므로, 테스트는 이 이니셜라이저로 stub 을 주입합니다.)
+    init(
+        networkRequesting: any AuthNetworkRequesting,
+        networkClient: NetworkClient,
+        tokenStore: TokenStore
+    ) {
+        self.adapter = networkRequesting
         self.networkClient = networkClient
         self.tokenStore = tokenStore
     }
@@ -350,7 +366,7 @@ extension AuthRepository: AuthRegistrationRepositoryProtocol {
             // DTO가 누락된 토큰을 빈 문자열로 흡수하므로, 빈 토큰을 유효 세션으로 저장하지
             // 않도록 `register()`와 동일하게 비어있지 않음을 가드한다.
             guard !dto.accessToken.isEmpty, !dto.refreshToken.isEmpty else {
-                throw RepositoryError.decodingError(
+                throw RepositoryError.invalidResponse(
                     detail: "registerByEmail: 서버 응답에 accessToken/refreshToken이 없습니다"
                 )
             }

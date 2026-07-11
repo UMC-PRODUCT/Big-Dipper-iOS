@@ -65,19 +65,19 @@ public struct SignUpView: View {
                     )
 
                     SignUpEmailSection(
-                        email: $viewModel.email,
-                        isVerified: $viewModel.isEmailVerified,
+                        email: $viewModel.emailVerificationFlow.email,
+                        isVerified: $viewModel.emailVerificationFlow.isEmailVerified,
                         onVerificationRequested: {
-                            try await viewModel.requestEmailVerification()
+                            try await viewModel.emailVerificationFlow.requestEmailVerification()
                         },
                         onVerificationComplete: { code in
-                            try await viewModel.verifyEmailCode(code)
+                            try await viewModel.emailVerificationFlow.verifyEmailCode(code)
                         },
                         onResend: {
-                            try await viewModel.resendEmailVerification()
+                            try await viewModel.emailVerificationFlow.resendEmailVerification()
                         },
                         onEmailChanged: {
-                            viewModel.handleEmailChanged()
+                            viewModel.emailVerificationFlow.handleEmailChanged()
                         }
                     )
 
@@ -87,11 +87,11 @@ public struct SignUpView: View {
                     )
 
                     SignUpTermsSection(
-                        termsState: viewModel.termsState,
-                        termsAgreements: viewModel.termsAgreements,
-                        isAllTermsAgreed: viewModel.isAllTermsAgreed,
-                        onToggleAll: { viewModel.toggleAllTerms($0) },
-                        onToggleRow: { viewModel.toggleTerm($0) }
+                        termsState: viewModel.termsAgreementFlow.termsState,
+                        termsAgreements: viewModel.termsAgreementFlow.termsAgreements,
+                        isAllTermsAgreed: viewModel.termsAgreementFlow.isAllTermsAgreed,
+                        onToggleAll: { viewModel.termsAgreementFlow.toggleAllTerms($0) },
+                        onToggleRow: { viewModel.termsAgreementFlow.toggleTerm($0) }
                     )
                 }
                 .safeAreaPadding(.vertical, DefaultConstant.defaultContentTopMargins)
@@ -105,7 +105,7 @@ public struct SignUpView: View {
         }
         .task {
             await viewModel.fetchSchools()
-            await viewModel.fetchTerms()
+            await viewModel.termsAgreementFlow.fetchTerms()
         }
         .onChange(of: viewModel.registerState) { _, newState in
             handleRegisterStateChange(newState)
