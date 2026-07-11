@@ -87,10 +87,17 @@ private final class MockMemberProfileRepository:
 
     var result: Result<Profile, Error> = .failure(MockError.notStubbed)
     private(set) var fetchMyProfileCallCount = 0
+    private(set) var primeCacheCallCount = 0
+    private(set) var primedProfiles: [Profile] = []
 
     func fetchMyProfile() async throws -> Profile {
         fetchMyProfileCallCount += 1
         return try result.get()
+    }
+
+    func primeCache(with profile: Profile) async {
+        primeCacheCallCount += 1
+        primedProfiles.append(profile)
     }
 }
 
@@ -573,6 +580,37 @@ struct MyPageRepositoryUpdateLinksTests {
         #expect(byType["BLOG"] == "")
     }
 
+    @Test("updateProfileLinks — 성공 시 정본 프로필 캐시를 응답 스냅샷으로 갱신한다")
+    func updateLinksPrimesMemberProfileCache() async throws {
+        let memberProfileRepository = MockMemberProfileRepository()
+        let (sut, _) = makeRepository(
+            .success(Fixture.success(Fixture.profileObject)),
+            memberProfileRepository: memberProfileRepository
+        )
+
+        _ = try await sut.updateProfileLinks([ProfileLink(type: .github, url: "x")])
+
+        #expect(memberProfileRepository.primeCacheCallCount == 1)
+        #expect(memberProfileRepository.primedProfiles.first?.memberId == "42")
+    }
+
+    @Test("updateProfileLinks — 실패하면 정본 프로필 캐시를 갱신하지 않는다")
+    func updateLinksFailureDoesNotPrimeCache() async {
+        let memberProfileRepository = MockMemberProfileRepository()
+        let body = Fixture.failureBody(code: "M400", message: "잘못된 링크 형식입니다.")
+        let (sut, _) = makeRepository(
+            .failure(NetworkError.requestFailed(statusCode: 400, data: body)),
+            memberProfileRepository: memberProfileRepository
+        )
+
+        await #expect(throws: RepositoryError.serverError(
+            code: "M400", message: "잘못된 링크 형식입니다."
+        )) {
+            _ = try await sut.updateProfileLinks([ProfileLink(type: .github, url: "x")])
+        }
+        #expect(memberProfileRepository.primeCacheCallCount == 0)
+    }
+
     @Test("updateProfileLinks — 서버 에러 본문(requestFailed)을 RepositoryError.serverError로 승격한다")
     func updateLinksMapsServerError() async {
         let body = Fixture.failureBody(code: "M400", message: "잘못된 링크 형식입니다.")
@@ -631,5 +669,26 @@ struct MyPageRepositoryUpdateImageTests {
         #expect(stub.lastPath == "/api/v1/member")
         #expect(stub.lastMethod == .patch)
         #expect(result.challengeId == 777)
+    }
+
+    @Test("updateProfileImage — 성공 시 정본 프로필 캐시를 PATCH 응답 스냅샷으로 갱신한다")
+    func updateImagePrimesMemberProfileCache() async throws {
+        let storage = FakeStorageRepository()
+        let stub = StubMyPageNetwork(.success(Fixture.success(Fixture.profileObject)))
+        let memberProfileRepository = MockMemberProfileRepository()
+        let sut = MyPageRepository(
+            networkRequesting: stub,
+            memberProfileRepository: memberProfileRepository,
+            storageRepository: storage
+        )
+
+        _ = try await sut.updateProfileImage(
+            imageData: Data([0x01, 0x02, 0x03]),
+            fileName: "profile.jpg",
+            contentType: "image/jpeg"
+        )
+
+        #expect(memberProfileRepository.primeCacheCallCount == 1)
+        #expect(memberProfileRepository.primedProfiles.first?.memberId == "42")
     }
 }

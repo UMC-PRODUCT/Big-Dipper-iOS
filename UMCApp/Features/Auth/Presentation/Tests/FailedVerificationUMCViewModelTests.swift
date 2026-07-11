@@ -182,6 +182,23 @@ struct FailedVerificationUMCViewModelTests {
         #expect(sessionManager.isAdminModeEnabled == false)
     }
 
+    @Test("로그아웃 성공 시 정본 프로필 캐시를 무효화한다")
+    func logoutConfirmInvalidatesMemberProfileCache() async throws {
+        let tokenStore = FakeTokenStore()
+        let memberProfileRepository = MockMemberProfileRepository()
+        let viewModel = makeViewModel(
+            tokenStore: tokenStore,
+            memberProfileRepository: memberProfileRepository
+        )
+
+        viewModel.presentLogoutPrompt()
+        viewModel.alertPrompt?.positiveBtnAction?()
+
+        try await waitUntil { viewModel.destination == .login }
+
+        #expect(memberProfileRepository.invalidateCacheCallCount == 1)
+    }
+
     @Test("로그아웃 실패 시 ErrorHandler에 에러를 전달하고 화면 전환과 세션 초기화를 하지 않는다")
     func logoutFailureReportsErrorWithoutNavigating() async throws {
         let tokenStore = FakeTokenStore()
@@ -238,6 +255,25 @@ struct FailedVerificationUMCViewModelTests {
         #expect(sessionManager.currentRole == .challenger)
         #expect(sessionManager.allRoles.isEmpty)
         #expect(sessionManager.isAdminModeEnabled == false)
+    }
+
+    @Test("회원 탈퇴 성공 시 정본 프로필 캐시를 무효화한다")
+    func deleteAccountSuccessInvalidatesMemberProfileCache() async throws {
+        let deleteMemberUseCase = MockDeleteMemberUseCase()
+        let tokenStore = FakeTokenStore()
+        let memberProfileRepository = MockMemberProfileRepository()
+        let viewModel = makeViewModel(
+            deleteMemberUseCase: deleteMemberUseCase,
+            tokenStore: tokenStore,
+            memberProfileRepository: memberProfileRepository
+        )
+
+        viewModel.presentDeleteAccountPrompt()
+        viewModel.alertPrompt?.positiveBtnAction?()
+
+        try await waitUntil { viewModel.destination == .login }
+
+        #expect(memberProfileRepository.invalidateCacheCallCount == 1)
     }
 
     @Test("회원 탈퇴는 성공했지만 로그아웃(토큰 정리)이 실패하면 화면 전환과 세션 초기화를 하지 않는다")
@@ -315,7 +351,8 @@ private func makeViewModel(
     deleteMemberUseCase: DeleteMemberUseCaseProtocol? = nil,
     tokenStore: FakeTokenStore? = nil,
     syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol? = nil,
-    userSessionManager: UserSessionManager? = nil
+    userSessionManager: UserSessionManager? = nil,
+    memberProfileRepository: MemberProfileRepositoryProtocol? = nil
 ) -> FailedVerificationUMCViewModel {
     let registerUseCase = registerExistingChallengerUseCase
         ?? MockRegisterExistingChallengerUseCase()
@@ -333,6 +370,9 @@ private func makeViewModel(
     container.register(UserSessionManager.self) { sessionManager }
     container.register(NetworkClient.self) {
         NetworkClient(tokenStore: store, refreshService: FakeTokenRefreshService())
+    }
+    if let memberProfileRepository {
+        container.register(MemberProfileRepositoryProtocol.self) { memberProfileRepository }
     }
 
     return FailedVerificationUMCViewModel(
@@ -404,6 +444,23 @@ private final class MockFetchMemberProfileUseCase: FetchMemberProfileUseCaseProt
     func execute() async throws -> Profile {
         callCount += 1
         return try result.get()
+    }
+}
+
+/// 로그아웃/탈퇴 시 정본 프로필 캐시 무효화 호출 여부를 추적하는 Mock.
+private final class MockMemberProfileRepository:
+    MemberProfileRepositoryProtocol, @unchecked Sendable {
+    enum MockError: Error { case notStubbed }
+
+    var result: Result<Profile, Error> = .failure(MockError.notStubbed)
+    private(set) var invalidateCacheCallCount = 0
+
+    func fetchMyProfile() async throws -> Profile {
+        try result.get()
+    }
+
+    func invalidateCache() async {
+        invalidateCacheCallCount += 1
     }
 }
 

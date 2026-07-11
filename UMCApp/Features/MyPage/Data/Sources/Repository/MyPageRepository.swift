@@ -167,7 +167,9 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
                 from: response.data
             )
 
-            return try apiResponse.unwrap().toDomain().toProfileData()
+            let profile = try apiResponse.unwrap().toDomain()
+            await memberProfileRepository.primeCache(with: profile)
+            return profile.toProfileData()
         } catch let error as NetworkError {
             throw Self.parseServerError(from: error) ?? error
         }
@@ -270,13 +272,15 @@ private extension MyPageRepository {
                 )
             )
         )
-        
+
         let apiResponse = try decoder.decode(
             APIResponse<MemberProfileResponseDTO>.self,
             from: response.data
         )
 
-        return try apiResponse.unwrap().toDomain().toProfileData()
+        let profile = try apiResponse.unwrap().toDomain()
+        await memberProfileRepository.primeCache(with: profile)
+        return profile.toProfileData()
     }
     
     /// 프로필 링크 배열을 정규화합니다.

@@ -225,6 +225,8 @@ final class FailedVerificationUMCViewModel {
         do {
             try await networkClient.logout()
             userSessionManager.reset()
+            await container.resolveIfRegistered(MemberProfileRepositoryProtocol.self)?
+                .invalidateCache()
             container.resetCache()
             destination = .login
         } catch {
@@ -247,6 +249,8 @@ final class FailedVerificationUMCViewModel {
             UserDefaults.standard.set(false, forKey: AppStorageKey.canAutoLogin)
             try await networkClient.logout()
             userSessionManager.reset()
+            await container.resolveIfRegistered(MemberProfileRepositoryProtocol.self)?
+                .invalidateCache()
             container.resetCache()
             destination = .login
         } catch {
