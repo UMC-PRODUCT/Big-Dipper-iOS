@@ -3,6 +3,10 @@ import ProjectDescriptionHelpers
 
 let project = featureProject(
     name: "Home",
+    domainExtraDependencies: [
+        // 최근 공지(#915)가 NoticeDomain의 조회 파이프라인(NoticeItemModel/NoticeListRequest 등)을 재사용한다.
+        .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
+    ],
     dataExtraDependencies: [
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ],
@@ -10,6 +14,7 @@ let project = featureProject(
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
+        .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
     ],
     includesDomainTests: true,
     domainTestDependencies: [
@@ -27,6 +32,7 @@ let project = featureProject(
     presentationTestDependencies: [
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
+        .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ]
 )

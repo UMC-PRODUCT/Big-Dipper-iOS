@@ -66,7 +66,9 @@ struct RootTabView: View {
     private func tabContent(_ tab: TabCase) -> some View {
         switch tab {
         case .home:
-            HomeFeatureView()
+            HomeFeatureView { detailItem in
+                pathStore.homePath.append(.notice(.detail(detailItem: detailItem)))
+            }
         case .notice:
             // TODO: NoticePresentation의 실제 NoticeView 연결 (Notice 탭 실연결 후속 이슈)
             NoticeFeatureView()

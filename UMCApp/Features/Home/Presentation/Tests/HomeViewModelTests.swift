@@ -1,6 +1,7 @@
 import CoreDI
 import Foundation
 import HomeDomain
+import NoticeDomain
 import Testing
 import UMCFoundation
 @testable import HomePresentation
@@ -105,10 +106,15 @@ struct HomeViewModelTests {
 private struct DummyError: Error {}
 
 @MainActor
-private func makeViewModel(useCase: FetchHomeProfileUseCaseProtocol? = nil) -> HomeViewModel {
+private func makeViewModel(
+    useCase: FetchHomeProfileUseCaseProtocol? = nil,
+    recentNoticesUseCase: FetchRecentNoticesUseCaseProtocol? = nil
+) -> HomeViewModel {
     let useCase = useCase ?? MockFetchHomeProfileUseCase()
+    let recentNoticesUseCase = recentNoticesUseCase ?? MockFetchRecentNoticesUseCase()
     let container = DIContainer()
     container.register(FetchHomeProfileUseCaseProtocol.self) { useCase }
+    container.register(FetchRecentNoticesUseCaseProtocol.self) { recentNoticesUseCase }
     return HomeViewModel(container: container)
 }
 
@@ -141,5 +147,13 @@ private final class MockFetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol
             try await Task.sleep(nanoseconds: delayNanoseconds)
         }
         return try result.get()
+    }
+}
+
+private final class MockFetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProtocol, @unchecked Sendable {
+    var result: Result<[NoticeItemModel], Error> = .success([])
+
+    func execute(gisuId: String) async throws -> [NoticeItemModel] {
+        try result.get()
     }
 }
