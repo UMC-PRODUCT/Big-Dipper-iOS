@@ -14,8 +14,6 @@ import CoreNetwork
 /// `BaseTargetType`을 통해 baseURL/headers/validation 기본 동작을 상속받습니다.
 /// 각 case의 path/method/task는 본 extension에서 정의합니다.
 public enum MyPageRouter {
-    /// 내 프로필 조회 (`GET /api/v1/member/me`)
-    case getMyProfile
     /// 특정 멤버 프로필 조회 (`GET /api/v1/member/profile/{memberId}`)
     case getMemberProfile(memberId: Int)
     /// 특정 챌린저 프로필 조회
@@ -43,8 +41,6 @@ public enum MyPageRouter {
 extension MyPageRouter: BaseTargetType {
     public var path: String {
         switch self {
-        case .getMyProfile:
-            return "/api/v1/member/me"
         case .getMemberProfile(let memberId):
             return "/api/v1/member/profile/\(memberId)"
         case .getChallengerProfile(let challengerId):
@@ -70,8 +66,6 @@ extension MyPageRouter: BaseTargetType {
 
     public var method: Moya.Method {
         switch self {
-        case .getMyProfile:
-            return .get
         case .getMemberProfile:
             return .get
         case .getChallengerProfile:
@@ -97,9 +91,7 @@ extension MyPageRouter: BaseTargetType {
 
     public var task: Moya.Task {
         switch self {
-        case .getMyProfile, .deleteMember:
-            return .requestPlain
-        case .getMemberProfile, .getChallengerProfile:
+        case .getMemberProfile, .getChallengerProfile, .deleteMember:
             return .requestPlain
         case .addChallengerRecord(let code):
             return .requestJSONEncodable(

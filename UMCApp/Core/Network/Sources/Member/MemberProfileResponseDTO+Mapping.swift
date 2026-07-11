@@ -18,7 +18,10 @@ extension MemberProfileResponseDTO {
     /// 역할(roles)과 챌린저 이력(challengerRecords) 양쪽에서 기수 번호를 모아 합집합을 구성하고,
     /// 챌린저 이력 중 숫자 기수가 가장 큰 레코드를 최신 기록으로 채택한다
     /// (Auth `MemberMeResponseDTO.toDomain()` 이식).
-    func toDomain() -> Profile {
+    ///
+    /// MyPage `updateProfileLinks()`/`patchMemberProfileImage()`가 응답을 `Profile`로 변환한 뒤
+    /// `MyPageDomain`의 `Profile.toProfileData()` 확장으로 재매핑하기 위해 모듈 경계를 넘어 호출한다.
+    public func toDomain() -> Profile {
         let generations = Set(roles.map(\.gisu) + challengerRecords.map(\.gisu))
             .filter { !$0.isEmpty && $0 != "0" }
             .sorted { (Int($0) ?? 0) < (Int($1) ?? 0) }

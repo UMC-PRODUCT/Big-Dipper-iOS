@@ -20,6 +20,7 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
     // MARK: - Property
 
     private let adapter: any MyPageNetworkRequesting
+    private let memberProfileRepository: MemberProfileRepositoryProtocol
     private let storageRepository: StorageRepositoryProtocol
     private let decoder: JSONDecoder
 
@@ -28,11 +29,13 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
     /// 운영 이니셜라이저 — 구체 `MoyaNetworkAdapter` 를 주입받습니다.
     public convenience init(
         adapter: MoyaNetworkAdapter,
+        memberProfileRepository: MemberProfileRepositoryProtocol,
         storageRepository: StorageRepositoryProtocol,
         decoder: JSONDecoder = JSONDecoder()
     ) {
         self.init(
             networkRequesting: adapter,
+            memberProfileRepository: memberProfileRepository,
             storageRepository: storageRepository,
             decoder: decoder
         )
@@ -43,10 +46,12 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
     /// 직접 사용할 수 없으므로, 테스트는 이 이니셜라이저로 stub 을 주입합니다.)
     init(
         networkRequesting: any MyPageNetworkRequesting,
+        memberProfileRepository: MemberProfileRepositoryProtocol,
         storageRepository: StorageRepositoryProtocol,
         decoder: JSONDecoder = JSONDecoder()
     ) {
         self.adapter = networkRequesting
+        self.memberProfileRepository = memberProfileRepository
         self.storageRepository = storageRepository
         self.decoder = decoder
     }
@@ -54,13 +59,12 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
     // MARK: - Profile
 
     /// 내 프로필 조회.
+    ///
+    /// 정본 프로필 조회 파이프라인(``CoreDomain/MemberProfileRepositoryProtocol``)에 위임한 뒤,
+    /// `MyPageDomain`의 `Profile.toProfileData()` 확장으로 화면 전체 데이터를 구성합니다.
     public func fetchMyProfile() async throws -> ProfileData {
-        let response = try await adapter.request(MyPageRouter.getMyProfile)
-        let apiResponse = try decoder.decode(
-            APIResponse<MyPageProfileResponseDTO>.self,
-            from: response.data
-        )
-        return try apiResponse.unwrap().toProfileData()
+        let profile = try await memberProfileRepository.fetchMyProfile()
+        return profile.toProfileData()
     }
 
     /// 특정 멤버 프로필 조회.
@@ -73,7 +77,7 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
         )
 
         if let apiResponse = try? decoder.decode(
-            APIResponse<MyPageProfileResponseDTO>.self,
+            APIResponse<MemberProfileResponseDTO>.self,
             from: response.data
         ),
            let wrapped = try? apiResponse.unwrap() {
@@ -81,7 +85,7 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
         }
 
         let profile = try decoder.decode(
-            MyPageProfileResponseDTO.self,
+            MemberProfileResponseDTO.self,
             from: response.data
         )
         return profile.toMemberProfileSummary()
@@ -159,16 +163,16 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
             )
 
             let apiResponse = try decoder.decode(
-                APIResponse<MyPageProfileResponseDTO>.self,
+                APIResponse<MemberProfileResponseDTO>.self,
                 from: response.data
             )
 
-            return try apiResponse.unwrap().toProfileData()
+            return try apiResponse.unwrap().toDomain().toProfileData()
         } catch let error as NetworkError {
             throw Self.parseServerError(from: error) ?? error
         }
     }
-    
+
     /// 회원 탈퇴 처리
     ///
     /// - Note: 백엔드(MEMBER-003)는 탈퇴 전 회원 정보 스냅샷을 `result`로 반환하지만
@@ -268,11 +272,11 @@ private extension MyPageRepository {
         )
         
         let apiResponse = try decoder.decode(
-            APIResponse<MyPageProfileResponseDTO>.self,
+            APIResponse<MemberProfileResponseDTO>.self,
             from: response.data
         )
-        
-        return try apiResponse.unwrap().toProfileData()
+
+        return try apiResponse.unwrap().toDomain().toProfileData()
     }
     
     /// 프로필 링크 배열을 정규화합니다.

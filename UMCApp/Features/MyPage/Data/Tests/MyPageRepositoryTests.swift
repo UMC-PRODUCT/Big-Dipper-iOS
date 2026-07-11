@@ -74,6 +74,25 @@ private final class StubMyPageNetwork: MyPageNetworkRequesting, @unchecked Senda
     }
 }
 
+/// ``MemberProfileRepositoryProtocol`` 가짜 구현.
+///
+/// `fetchMyProfile()`이 더 이상 `MyPageRouter.getMyProfile`을 거치지 않고 이 정본 파이프라인에
+/// 위임하므로, 미리 설정한 ``CoreDomain/Profile`` 값(또는 에러)을 반환합니다.
+private final class MockMemberProfileRepository: MemberProfileRepositoryProtocol, @unchecked Sendable {
+
+    enum MockError: Error, Equatable {
+        case notStubbed
+    }
+
+    var result: Result<Profile, Error> = .failure(MockError.notStubbed)
+    private(set) var fetchMyProfileCallCount = 0
+
+    func fetchMyProfile() async throws -> Profile {
+        fetchMyProfileCallCount += 1
+        return try result.get()
+    }
+}
+
 /// ``StorageRepositoryProtocol`` 가짜 구현.
 ///
 /// 프로필 이미지 업로드 3단계(prepare → upload → confirm) 호출 순서·인자를 기록합니다.
@@ -244,10 +263,15 @@ private enum Fixture {
 
 private func makeRepository(
     _ outcome: StubMyPageNetwork.Outcome,
-    storage: FakeStorageRepository = FakeStorageRepository()
+    storage: FakeStorageRepository = FakeStorageRepository(),
+    memberProfileRepository: MemberProfileRepositoryProtocol = MockMemberProfileRepository()
 ) -> (MyPageRepository, StubMyPageNetwork) {
     let stub = StubMyPageNetwork(outcome)
-    let repository = MyPageRepository(networkRequesting: stub, storageRepository: storage)
+    let repository = MyPageRepository(
+        networkRequesting: stub,
+        memberProfileRepository: memberProfileRepository,
+        storageRepository: storage
+    )
     return (repository, stub)
 }
 
@@ -256,23 +280,64 @@ private func makeRepository(
 @Suite("MyPageRepository — 프로필 조회 매핑")
 struct MyPageRepositoryProfileTests {
 
-    @Test("fetchMyProfile — 성공 응답을 ProfileData로 매핑하고 /member/me(GET)를 호출한다")
+    @Test("fetchMyProfile — 정본 파이프라인(Profile)을 ProfileData로 매핑하고 어댑터를 거치지 않는다")
     func fetchMyProfileMapsSuccess() async throws {
-        let (sut, stub) = makeRepository(.success(Fixture.success(Fixture.profileObject)))
+        let record = ProfileChallengerRecord(
+            challengerId: "777",
+            memberId: "42",
+            gisu: "11",
+            gisuId: "1100",
+            chapterId: nil,
+            chapterName: nil,
+            part: "IOS",
+            schoolId: "1",
+            schoolName: "한성대",
+            name: "김챌린저",
+            nickname: "챌린",
+            email: nil,
+            profileImageLink: nil,
+            status: .active,
+            challengerPoints: []
+        )
+        let profile = Profile(
+            memberId: "42",
+            name: "전체이름",
+            nickname: "전체닉",
+            generations: ["11"],
+            schoolId: "1",
+            schoolName: "전체학교",
+            roles: [],
+            challengerRecords: [record]
+        )
+        let memberProfileRepository = MockMemberProfileRepository()
+        memberProfileRepository.result = .success(profile)
+        let (sut, stub) = makeRepository(
+            .success(Fixture.successVoid()),
+            memberProfileRepository: memberProfileRepository
+        )
 
-        let profile = try await sut.fetchMyProfile()
+        let result = try await sut.fetchMyProfile()
 
-        #expect(profile.challengeId == 777)
-        #expect(profile.challengerInfo.name == "김챌린저")
-        #expect(stub.requestCount == 1)
-        #expect(stub.lastPath == "/api/v1/member/me")
-        #expect(stub.lastMethod == .get)
+        // 정본 Profile → ProfileData 실제 변환 단언 (최신 챌린저 기록 기준 파생값)
+        #expect(result.challengeId == 777)
+        #expect(result.challengerInfo.gen == "11")
+        #expect(result.challengerInfo.name == "김챌린저")
+        #expect(result.challengerInfo.nickname == "챌린")
+        #expect(result.challengerInfo.part == .front(type: .ios))
+        #expect(memberProfileRepository.fetchMyProfileCallCount == 1)
+        // 더 이상 MyPageRouter.getMyProfile을 거치지 않는다
+        #expect(stub.requestCount == 0)
     }
 
-    @Test("fetchMyProfile — isSuccess:false면 RepositoryError.serverError를 던진다")
+    @Test("fetchMyProfile — memberProfileRepository가 던진 에러를 그대로 전파한다")
     func fetchMyProfileThrowsServerError() async {
+        let memberProfileRepository = MockMemberProfileRepository()
+        memberProfileRepository.result = .failure(
+            RepositoryError.serverError(code: "M404", message: "회원 없음")
+        )
         let (sut, _) = makeRepository(
-            .success(Fixture.failureBody(code: "M404", message: "회원 없음"))
+            .success(Fixture.successVoid()),
+            memberProfileRepository: memberProfileRepository
         )
 
         await #expect(throws: RepositoryError.serverError(code: "M404", message: "회원 없음")) {
@@ -540,7 +605,11 @@ struct MyPageRepositoryUpdateImageTests {
     func updateImageOrchestratesUploadThenPatch() async throws {
         let storage = FakeStorageRepository()
         let stub = StubMyPageNetwork(.success(Fixture.success(Fixture.profileObject)))
-        let sut = MyPageRepository(networkRequesting: stub, storageRepository: storage)
+        let sut = MyPageRepository(
+            networkRequesting: stub,
+            memberProfileRepository: MockMemberProfileRepository(),
+            storageRepository: storage
+        )
         let imageData = Data([0x01, 0x02, 0x03])
 
         let result = try await sut.updateProfileImage(
