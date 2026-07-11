@@ -1,8 +1,8 @@
 import Testing
 @testable import HomeDomain
 
-@Suite("FetchMyProfileUseCase — Repository 위임 검증")
-struct FetchMyProfileUseCaseTests {
+@Suite("FetchHomeProfileUseCase — Repository 위임 검증")
+struct FetchHomeProfileUseCaseTests {
 
     @Test("execute() 호출 시 repository.fetchMyProfile() 결과를 그대로 반환한다")
     func executeDelegatesToRepository() async throws {
@@ -15,7 +15,7 @@ struct FetchMyProfileUseCaseTests {
             ]
         )
         repository.fetchMyProfileResult = .success(expected)
-        let useCase = FetchMyProfileUseCase(repository: repository)
+        let useCase = FetchHomeProfileUseCase(repository: repository)
 
         let result = try await useCase.execute()
 
@@ -27,7 +27,7 @@ struct FetchMyProfileUseCaseTests {
     func executePropagatesError() async {
         let repository = MockHomeRepository()
         repository.fetchMyProfileResult = .failure(HomeTestError.boom)
-        let useCase = FetchMyProfileUseCase(repository: repository)
+        let useCase = FetchHomeProfileUseCase(repository: repository)
 
         await #expect(throws: HomeTestError.boom) {
             _ = try await useCase.execute()

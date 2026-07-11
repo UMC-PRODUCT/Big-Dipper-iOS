@@ -1,4 +1,5 @@
 import CoreDI
+import CoreDomain
 import CoreNetwork
 import MyPageData
 import MyPageDomain
@@ -15,6 +16,7 @@ extension DIContainer {
         register(MyPageRepositoryProtocol.self) {
             MyPageRepository(
                 adapter: self.resolve(MoyaNetworkAdapter.self),
+                memberProfileRepository: self.resolve(MemberProfileRepositoryProtocol.self),
                 storageRepository: self.resolve(StorageRepositoryProtocol.self)
             )
         }

@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CoreDI
+import CoreDomain
 import CoreNetwork
 import AuthDomain
 import UMCFoundation
@@ -21,13 +22,13 @@ struct LoginViewModelKakaoTests {
     func successApprovedSetsLoaded() async {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeKakaoResult = .success(.existingMember)
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
         let profile = makeProfile(generations: ["11"])
-        fetchMyProfileUseCase.result = .success(profile)
+        fetchMemberProfileUseCase.result = .success(profile)
         let syncProfileStorageUseCase = MockSyncProfileStorageUseCase()
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase,
             syncProfileStorageUseCase: syncProfileStorageUseCase
         )
 
@@ -43,13 +44,13 @@ struct LoginViewModelKakaoTests {
     func pendingApprovalSetsFailedPendingApproval() async {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeKakaoResult = .success(.existingMember)
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
-        fetchMyProfileUseCase.result = .success(makeProfile(generations: []))
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
+        fetchMemberProfileUseCase.result = .success(makeProfile(generations: []))
         let errorHandler = ErrorHandler()
         let syncProfileStorageUseCase = MockSyncProfileStorageUseCase()
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase,
             errorHandler: errorHandler,
             syncProfileStorageUseCase: syncProfileStorageUseCase
         )
@@ -66,20 +67,20 @@ struct LoginViewModelKakaoTests {
     func newMemberExposesSignUpDestinationWithKakaoContext() async {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeKakaoResult = .success(.newMember(verificationToken: "verify-token"))
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
         let kakaoLoginManager = MockKakaoLoginManager()
         kakaoLoginManager.accessToken = "kakao-access-token"
         kakaoLoginManager.email = "kakao@umc.dev"
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase,
             kakaoLoginManager: kakaoLoginManager
         )
 
         await viewModel.loginWithKakao()
 
         #expect(viewModel.loginState == .idle)
-        #expect(fetchMyProfileUseCase.callCount == 0)
+        #expect(fetchMemberProfileUseCase.callCount == 0)
         #expect(viewModel.signUpDestination?.verificationToken == "verify-token")
         #expect(viewModel.signUpDestination?.email == "kakao@umc.dev")
         #expect(viewModel.signUpDestination?.fullName == nil)
@@ -123,11 +124,11 @@ struct LoginViewModelKakaoTests {
         let kakaoLoginManager = SlowKakaoLoginManager(delayNanoseconds: 50_000_000)
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeKakaoResult = .success(.existingMember)
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
-        fetchMyProfileUseCase.result = .success(makeProfile(generations: ["11"]))
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
+        fetchMemberProfileUseCase.result = .success(makeProfile(generations: ["11"]))
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase,
             kakaoLoginManager: kakaoLoginManager
         )
 
@@ -150,12 +151,12 @@ struct LoginViewModelOtherProvidersTests {
     func googleLoginSuccessSetsLoaded() async {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeGoogleResult = .success(.existingMember)
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
         let profile = makeProfile(generations: ["12"])
-        fetchMyProfileUseCase.result = .success(profile)
+        fetchMemberProfileUseCase.result = .success(profile)
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase
         )
 
         await viewModel.loginWithGoogle()
@@ -167,13 +168,13 @@ struct LoginViewModelOtherProvidersTests {
     func appleLoginSuccessSetsLoaded() async throws {
         let loginUseCase = MockLoginUseCase()
         loginUseCase.executeAppleResult = .success(.existingMember)
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
         let profile = makeProfile(generations: ["13"])
-        fetchMyProfileUseCase.result = .success(profile)
+        fetchMemberProfileUseCase.result = .success(profile)
         let appleLoginManager = MockAppleLoginManager()
         let viewModel = makeViewModel(
             loginUseCase: loginUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase,
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase,
             appleLoginManager: appleLoginManager
         )
 
@@ -277,7 +278,7 @@ private func waitUntil(
 @MainActor
 private func makeViewModel(
     loginUseCase: LoginUseCaseProtocol? = nil,
-    fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol? = nil,
+    fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol? = nil,
     errorHandler: ErrorHandler? = nil,
     kakaoLoginManager: KakaoLoginManaging? = nil,
     appleLoginManager: AppleLoginManaging? = nil,
@@ -287,7 +288,7 @@ private func makeViewModel(
     // 기본값 초기화 자체가 MainActor 격리(예: GoogleLoginManaging)를 요구하므로
     // 파라미터 기본값이 아닌 함수 본문(@MainActor 컨텍스트)에서 생성한다.
     let loginUseCase = loginUseCase ?? MockLoginUseCase()
-    let fetchMyProfileUseCase = fetchMyProfileUseCase ?? MockFetchMyProfileUseCase()
+    let fetchMemberProfileUseCase = fetchMemberProfileUseCase ?? MockFetchMemberProfileUseCase()
     let errorHandler = errorHandler ?? ErrorHandler()
     let kakaoLoginManager = kakaoLoginManager ?? MockKakaoLoginManager()
     let appleLoginManager = appleLoginManager ?? MockAppleLoginManager()
@@ -296,7 +297,7 @@ private func makeViewModel(
 
     let container = DIContainer()
     container.register(LoginUseCaseProtocol.self) { loginUseCase }
-    container.register(FetchMyProfileUseCaseProtocol.self) { fetchMyProfileUseCase }
+    container.register(FetchMemberProfileUseCaseProtocol.self) { fetchMemberProfileUseCase }
     container.register(SyncProfileStorageUseCaseProtocol.self) { syncProfileStorageUseCase }
     return LoginViewModel(
         container: container,
@@ -345,7 +346,7 @@ private final class MockLoginUseCase: LoginUseCaseProtocol, @unchecked Sendable 
     }
 }
 
-private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @unchecked Sendable {
+private final class MockFetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol, @unchecked Sendable {
     enum MockError: Error, Equatable { case notStubbed }
 
     var result: Result<Profile, Error> = .failure(MockError.notStubbed)

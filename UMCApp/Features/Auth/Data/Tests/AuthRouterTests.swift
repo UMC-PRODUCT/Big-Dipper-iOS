@@ -151,18 +151,10 @@ struct AuthRouterRegistrationTaskTests {
     }
 }
 
-// MARK: - Suite: 기존 로그인/getMe 케이스 회귀 계약
+// MARK: - Suite: 기존 로그인 케이스 회귀 계약
 
-@Suite("AuthRouter — 기존 로그인/getMe 케이스 회귀 계약")
+@Suite("AuthRouter — 기존 로그인 케이스 회귀 계약")
 struct AuthRouterExistingCasesTests {
-
-    @Test("getMe — path는 /api/v1/member/me, method는 .get, task는 .requestPlain")
-    func getMe() {
-        let router = AuthRouter.getMe
-        #expect(router.path == "/api/v1/member/me")
-        #expect(router.method == .get)
-        #expect(isRequestPlain(router.task))
-    }
 
     @Test("loginKakao — path/method/task")
     func loginKakao() {

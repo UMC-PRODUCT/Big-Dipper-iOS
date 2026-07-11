@@ -15,34 +15,6 @@ import MyPageDomain
 @Suite("MyPageRouter")
 struct MyPageRouterTests {
 
-    // MARK: - getMyProfile case
-
-    @Suite("getMyProfile")
-    struct GetMyProfileTests {
-
-        @Test("path는 /api/v1/member/me 이다")
-        func path() {
-            let router = MyPageRouter.getMyProfile
-            #expect(router.path == "/api/v1/member/me")
-        }
-
-        @Test("method는 .get이다")
-        func method() {
-            let router = MyPageRouter.getMyProfile
-            #expect(router.method == .get)
-        }
-
-        @Test("task는 .requestPlain이다")
-        func task() {
-            let router = MyPageRouter.getMyProfile
-
-            guard case .requestPlain = router.task else {
-                Issue.record("Expected .requestPlain, got \(router.task)")
-                return
-            }
-        }
-    }
-
     // MARK: - getTerms case
 
     @Suite("getTerms")
@@ -115,7 +87,8 @@ struct MyPageRouterTests {
 
 /// `refac/803`에서 이식된 케이스(멤버·챌린저 프로필, 회원 수정·탈퇴, 활동 게시글)의
 /// path·method 계약을 검증합니다.
-/// (`getMyProfile`/`getTerms`는 위 `MyPageRouterTests` 스위트에서 별도 검증)
+/// (`getTerms`는 위 `MyPageRouterTests` 스위트에서 별도 검증. `getMyProfile`은 `refac/961`에서
+/// 정본 파이프라인(``CoreNetwork/MemberProfileRouter``)으로 대체되어 제거됨)
 @Suite("MyPageRouter — 이식 케이스 path/method 계약")
 struct MyPageRouterMigratedPathMethodTests {
 

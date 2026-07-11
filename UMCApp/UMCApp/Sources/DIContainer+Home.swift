@@ -1,4 +1,5 @@
 import CoreDI
+import CoreDomain
 import CoreNetwork
 import HomeData
 import HomeDomain
@@ -6,10 +7,13 @@ import HomeDomain
 extension DIContainer {
     func registerHomeDependencies() {
         register(HomeRepositoryProtocol.self) {
-            HomeRepository(adapter: self.resolve(MoyaNetworkAdapter.self))
+            HomeRepository(
+                adapter: self.resolve(MoyaNetworkAdapter.self),
+                memberProfileRepository: self.resolve(MemberProfileRepositoryProtocol.self)
+            )
         }
-        register(FetchMyProfileUseCaseProtocol.self) {
-            FetchMyProfileUseCase(repository: self.resolve(HomeRepositoryProtocol.self))
+        register(FetchHomeProfileUseCaseProtocol.self) {
+            FetchHomeProfileUseCase(repository: self.resolve(HomeRepositoryProtocol.self))
         }
     }
 }

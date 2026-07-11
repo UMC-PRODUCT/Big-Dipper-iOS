@@ -36,6 +36,7 @@ struct UMCAppApp: App {
             modelContext: sharedModelContainer.mainContext
         )
         container.registerNoticeDependencies()
+        container.registerMemberProfileDependencies()
         container.registerAuthDependencies()
         container.registerHomeDependencies()
         container.registerMyPageDependencies()

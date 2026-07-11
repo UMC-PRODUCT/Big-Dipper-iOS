@@ -1,7 +1,11 @@
-/// 부트스트랩 승인 판정 및 로컬 저장소 동기화(`SyncProfileStorageUseCase`)에 필요한 프로필 정보.
+import UMCFoundation
+
+/// Auth/Home/MyPage가 공유하는 정본 프로필 애그리게이트.
 ///
 /// 서버 정수 필드(멤버/학교/지부 ID, 기수 번호)는 절대규칙 #2에 따라 전 레이어 `String`으로 유지한다.
-public struct Profile: Equatable, Sendable {
+/// 필드 구성은 Auth(부트스트랩 승인 판정), Home(`seasonTypes`/`generations` 파생), MyPage(프로필 화면
+/// 전체 항목 + 챌린저 기록)가 각각 필요로 하는 항목의 합집합이다.
+public struct Profile: Equatable, Hashable, Sendable {
 
     // MARK: - Property
 
@@ -26,6 +30,16 @@ public struct Profile: Equatable, Sendable {
     public let roles: [ProfileRole]
     /// 기수별 소속 조직 정보
     public let generationOrganizations: [ProfileGenerationOrganization]
+    /// 계정 이메일 (MyPage 병합 필드)
+    public let email: String
+    /// 프로필 이미지 URL (MyPage 병합 필드)
+    public let profileImageLink: String?
+    /// 멤버 활동 상태 (MyPage 병합 필드)
+    public let status: MemberStatus
+    /// 외부 프로필 링크 (MyPage 병합 필드)
+    public let externalLinks: ProfileExternalLinks?
+    /// 기수별 챌린저 활동 기록 (MyPage 병합 필드)
+    public let challengerRecords: [ProfileChallengerRecord]
 
     // MARK: - Init
 
@@ -42,7 +56,12 @@ public struct Profile: Equatable, Sendable {
         chapterName: String = "",
         responsiblePart: String? = nil,
         roles: [ProfileRole] = [],
-        generationOrganizations: [ProfileGenerationOrganization] = []
+        generationOrganizations: [ProfileGenerationOrganization] = [],
+        email: String = "",
+        profileImageLink: String? = nil,
+        status: MemberStatus = .active,
+        externalLinks: ProfileExternalLinks? = nil,
+        challengerRecords: [ProfileChallengerRecord] = []
     ) {
         self.memberId = memberId
         self.name = name
@@ -57,6 +76,11 @@ public struct Profile: Equatable, Sendable {
         self.responsiblePart = responsiblePart
         self.roles = roles
         self.generationOrganizations = generationOrganizations
+        self.email = email
+        self.profileImageLink = profileImageLink
+        self.status = status
+        self.externalLinks = externalLinks
+        self.challengerRecords = challengerRecords
     }
 
     // MARK: - Function

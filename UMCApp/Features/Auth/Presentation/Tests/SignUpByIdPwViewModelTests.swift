@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CoreDI
+import CoreDomain
 import AuthDomain
 import UMCFoundation
 @testable import AuthPresentation
@@ -248,20 +249,20 @@ struct SignUpByIdPwViewModelRegisterTests {
     func registerSuccessWithApprovedProfile() async throws {
         let registerByEmailUseCase = MockRegisterByEmailUseCase()
         registerByEmailUseCase.result = .success(RegisterByIdPwResult(memberId: "member-1"))
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
-        fetchMyProfileUseCase.result = .success(
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
+        fetchMemberProfileUseCase.result = .success(
             Profile(memberId: "member-1", name: "홍길동", nickname: "길동이", generations: ["10"])
         )
         let viewModel = try await makeValidFormViewModel(
             registerByEmailUseCase: registerByEmailUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase
         )
 
         await viewModel.register()
 
         #expect(viewModel.registerState == .loaded("member-1"))
         #expect(viewModel.isApprovedAfterRegister == true)
-        #expect(fetchMyProfileUseCase.callCount == 1)
+        #expect(fetchMemberProfileUseCase.callCount == 1)
 
         let receivedAgreements = try #require(registerByEmailUseCase.receivedTermsAgreements)
         let sortedAgreements = receivedAgreements.sorted { $0.termsId < $1.termsId }
@@ -275,13 +276,13 @@ struct SignUpByIdPwViewModelRegisterTests {
     func registerSuccessWithUnapprovedProfile() async throws {
         let registerByEmailUseCase = MockRegisterByEmailUseCase()
         registerByEmailUseCase.result = .success(RegisterByIdPwResult(memberId: "member-2"))
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
-        fetchMyProfileUseCase.result = .success(
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
+        fetchMemberProfileUseCase.result = .success(
             Profile(memberId: "member-2", name: "홍길동", nickname: "길동이", generations: [])
         )
         let viewModel = try await makeValidFormViewModel(
             registerByEmailUseCase: registerByEmailUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase
         )
 
         await viewModel.register()
@@ -294,11 +295,11 @@ struct SignUpByIdPwViewModelRegisterTests {
     func registerSuccessWithProfileFetchFailureFallsBackToUnapproved() async throws {
         let registerByEmailUseCase = MockRegisterByEmailUseCase()
         registerByEmailUseCase.result = .success(RegisterByIdPwResult(memberId: "member-3"))
-        let fetchMyProfileUseCase = MockFetchMyProfileUseCase()
-        fetchMyProfileUseCase.result = .failure(DummyError())
+        let fetchMemberProfileUseCase = MockFetchMemberProfileUseCase()
+        fetchMemberProfileUseCase.result = .failure(DummyError())
         let viewModel = try await makeValidFormViewModel(
             registerByEmailUseCase: registerByEmailUseCase,
-            fetchMyProfileUseCase: fetchMyProfileUseCase
+            fetchMemberProfileUseCase: fetchMemberProfileUseCase
         )
 
         await viewModel.register()
@@ -369,7 +370,7 @@ private func makeViewModel(
     resendEmailVerificationUseCase: ResendEmailVerificationUseCaseProtocol? = nil,
     checkEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol? = nil,
     registerByEmailUseCase: RegisterByEmailUseCaseProtocol? = nil,
-    fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol? = nil,
+    fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol? = nil,
     errorHandler: ErrorHandler? = nil
 ) -> SignUpByIdPwViewModel {
     let container = DIContainer()
@@ -391,8 +392,8 @@ private func makeViewModel(
     container.register(RegisterByEmailUseCaseProtocol.self) {
         registerByEmailUseCase ?? MockRegisterByEmailUseCase()
     }
-    container.register(FetchMyProfileUseCaseProtocol.self) {
-        fetchMyProfileUseCase ?? MockFetchMyProfileUseCase()
+    container.register(FetchMemberProfileUseCaseProtocol.self) {
+        fetchMemberProfileUseCase ?? MockFetchMemberProfileUseCase()
     }
 
     return SignUpByIdPwViewModel(
@@ -492,7 +493,7 @@ private func makeFormFilledButTermsNotLoadedViewModel(
 @MainActor
 private func makeValidFormViewModel(
     registerByEmailUseCase: RegisterByEmailUseCaseProtocol? = nil,
-    fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol? = nil,
+    fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol? = nil,
     errorHandler: ErrorHandler? = nil
 ) async throws -> SignUpByIdPwViewModel {
     let fetchSignUpDataUseCase = MockFetchSignUpDataUseCase()
@@ -517,7 +518,7 @@ private func makeValidFormViewModel(
         verifyEmailCodeUseCase: verifyEmailCodeUseCase,
         checkEmailAvailabilityUseCase: checkEmailAvailabilityUseCase,
         registerByEmailUseCase: registerByEmailUseCase,
-        fetchMyProfileUseCase: fetchMyProfileUseCase,
+        fetchMemberProfileUseCase: fetchMemberProfileUseCase,
         errorHandler: errorHandler
     )
 
@@ -579,7 +580,7 @@ private final class MockRegisterByEmailUseCase: RegisterByEmailUseCaseProtocol,
     }
 }
 
-private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @unchecked Sendable {
+private final class MockFetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol, @unchecked Sendable {
     enum MockError: Error, Equatable { case notStubbed }
 
     var result: Result<Profile, Error> = .failure(MockError.notStubbed)

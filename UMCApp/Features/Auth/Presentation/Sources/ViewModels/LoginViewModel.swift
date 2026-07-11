@@ -1,5 +1,6 @@
 import AuthDomain
 import CoreDI
+import CoreDomain
 import CoreNetwork
 import Foundation
 import UMCFoundation
@@ -26,7 +27,7 @@ final class LoginViewModel {
     // MARK: - Property
 
     private let loginUseCase: LoginUseCaseProtocol
-    private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
+    private let fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol
     private let syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol
     private let errorHandler: ErrorHandler
 
@@ -49,7 +50,7 @@ final class LoginViewModel {
         googleLoginManager: GoogleLoginManaging = GoogleLoginManager()
     ) {
         self.loginUseCase = container.resolve(LoginUseCaseProtocol.self)
-        self.fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
+        self.fetchMemberProfileUseCase = container.resolve(FetchMemberProfileUseCaseProtocol.self)
         self.syncProfileStorageUseCase = container.resolve(SyncProfileStorageUseCaseProtocol.self)
         self.errorHandler = errorHandler
         self.kakaoLoginManager = kakaoLoginManager
@@ -194,7 +195,7 @@ final class LoginViewModel {
     @MainActor
     private func resolveApprovalStatus(action: String) async {
         do {
-            let profile = try await fetchMyProfileUseCase.execute()
+            let profile = try await fetchMemberProfileUseCase.execute()
             guard profile.isApproved else {
                 loginState = .failed(.auth(.pendingApproval))
                 return

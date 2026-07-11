@@ -26,7 +26,7 @@ final class FailedVerificationUMCViewModel {
     // MARK: - Property
 
     private let registerExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol
-    private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
+    private let fetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol
     private let deleteMemberUseCase: DeleteMemberUseCaseProtocol
     private let syncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol
     private let userSessionManager: UserSessionManager
@@ -64,7 +64,7 @@ final class FailedVerificationUMCViewModel {
         self.registerExistingChallengerUseCase = container.resolve(
             RegisterExistingChallengerUseCaseProtocol.self
         )
-        self.fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
+        self.fetchMemberProfileUseCase = container.resolve(FetchMemberProfileUseCaseProtocol.self)
         self.deleteMemberUseCase = container.resolve(DeleteMemberUseCaseProtocol.self)
         self.syncProfileStorageUseCase = container.resolve(SyncProfileStorageUseCaseProtocol.self)
         self.userSessionManager = container.resolve(UserSessionManager.self)
@@ -108,7 +108,7 @@ final class FailedVerificationUMCViewModel {
 
         do {
             try await registerExistingChallengerUseCase.execute(code: trimmedCode)
-            let profile = try await fetchMyProfileUseCase.execute()
+            let profile = try await fetchMemberProfileUseCase.execute()
             challengerCode = ""
             presentSuccessPrompt(profile: profile)
         } catch let error as RepositoryError {
