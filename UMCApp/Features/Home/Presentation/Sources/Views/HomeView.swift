@@ -9,6 +9,7 @@ import UMCFoundation
 /// 홈 대시보드 메인 화면.
 ///
 /// 슬라이스 1(#913) 범위: 진입 시 프로필을 로드해 시즌 카드와 세대별 상벌점 카드를 표시한다.
+/// 슬라이스 2(#914) 범위: 이번 달 일정 캘린더와 선택 날짜의 일정 리스트를 표시한다.
 /// 슬라이스 3(#915) 범위: 최신 기수의 최근 공지 5건을 표시하고, 탭 시 상세 화면으로 이동한다.
 /// `NavigationStack`은 루트 탭 셸이 소유하므로 이 뷰는 콘텐츠만 구성한다.
 struct HomeView: View {
@@ -16,6 +17,8 @@ struct HomeView: View {
     // MARK: - Property
 
     @State private var viewModel: HomeViewModel
+    @State private var selectedDate: Date = .now
+    @State private var currentMonth: Date = .now
     private let onNoticeSelected: (NoticeDetail) -> Void
 
     // MARK: - Constants
@@ -48,6 +51,7 @@ struct HomeView: View {
             LazyVStack(alignment: .leading, spacing: DefaultSpacing.spacing24) {
                 seasonSection
                 generationSection
+                scheduleSection
                 recentNoticeSection
             }
             .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
@@ -56,6 +60,18 @@ struct HomeView: View {
         .umcDefaultBackground()
         .task {
             await viewModel.fetchProfileIfNeeded()
+        }
+        .task {
+            await viewModel.fetchSchedules()
+        }
+        .onChange(of: currentMonth) { _, newMonth in
+            let calendar = Calendar.kstGregorian
+            Task {
+                await viewModel.fetchSchedules(
+                    year: calendar.component(.year, from: newMonth),
+                    month: calendar.component(.month, from: newMonth)
+                )
+            }
         }
     }
 
@@ -125,6 +141,22 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Schedule Section
+
+    /// 이번 달 일정 캘린더와 선택 날짜의 일정 리스트 섹션.
+    private var scheduleSection: some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing24) {
+            ScheduleCard(
+                selectedDate: $selectedDate,
+                currentMonth: $currentMonth,
+                scheduledDates: viewModel.scheduleDates
+            )
+            .equatable()
+
+            scheduleList
+        }
+    }
+
     // MARK: - Recent Notice Section
 
     /// 최근 공지 섹션. 프로필 조회에 종속되므로 실패 안내는 `seasonSection`이 대표한다.
@@ -137,6 +169,27 @@ struct HomeView: View {
             recentNoticeLoaded(notices)
         case .failed:
             EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var scheduleList: some View {
+        let schedules = viewModel.getSchedules(selectedDate)
+        if schedules.isEmpty {
+            ContentUnavailableView(
+                "일정이 없습니다.",
+                systemImage: "calendar.badge.exclamationmark",
+                description: Text("선택한 날짜에 등록된 일정이 없습니다.")
+            )
+            .glassEffect(
+                .regular,
+                in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true)
+            )
+        } else {
+            ForEach(schedules) { schedule in
+                ScheduleListCard(data: schedule)
+                    .equatable()
+            }
         }
     }
 
@@ -248,10 +301,29 @@ private struct PreviewFetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProtoc
     }
 }
 
+/// 네트워크 없이 일정 캘린더를 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+private struct PreviewFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol {
+    func execute(from: Date, to: Date, isAttendanceRequired: Bool) async throws -> [Date: [ScheduleDetailData]] {
+        let calendar = Calendar.kstGregorian
+        let today = calendar.startOfDay(for: .now)
+        let schedule = ScheduleDetailData(
+            scheduleId: "1",
+            name: "정기 세미나",
+            description: "",
+            tags: [],
+            startsAt: today,
+            endsAt: today.addingTimeInterval(3600),
+            isParticipant: true
+        )
+        return [today: [schedule]]
+    }
+}
+
 #Preview {
     let container = DIContainer()
     container.register(FetchHomeProfileUseCaseProtocol.self) { PreviewFetchHomeProfileUseCase() }
     container.register(FetchRecentNoticesUseCaseProtocol.self) { PreviewFetchRecentNoticesUseCase() }
+    container.register(FetchSchedulesUseCaseProtocol.self) { PreviewFetchSchedulesUseCase() }
     return NavigationStack {
         HomeView(container: container)
     }

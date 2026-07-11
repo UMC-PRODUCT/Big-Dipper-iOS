@@ -19,5 +19,11 @@ extension DIContainer {
         register(FetchRecentNoticesUseCaseProtocol.self) {
             FetchRecentNoticesUseCase(repository: self.resolve(NoticeRepositoryProtocol.self))
         }
+        register(ScheduleRepositoryProtocol.self) {
+            ScheduleRepository(adapter: self.resolve(MoyaNetworkAdapter.self))
+        }
+        register(FetchSchedulesUseCaseProtocol.self) {
+            FetchSchedulesUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
+        }
     }
 }
