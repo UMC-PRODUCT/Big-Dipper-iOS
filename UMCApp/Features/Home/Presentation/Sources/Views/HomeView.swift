@@ -2,25 +2,28 @@ import CoreDesignSystem
 import CoreDI
 import CoreUIComponents
 import HomeDomain
+import NoticeDomain
 import SwiftUI
 import UMCFoundation
 
 /// 홈 대시보드 메인 화면.
 ///
-/// 슬라이스 1(#913) 범위: 진입 시 프로필을 로드해 시즌 카드와 세대별 상벌점 카드를
-/// 표시한다. 캘린더/최근 공지 등 나머지 섹션은 후속 슬라이스에서 추가된다.
+/// 슬라이스 1(#913) 범위: 진입 시 프로필을 로드해 시즌 카드와 세대별 상벌점 카드를 표시한다.
+/// 슬라이스 3(#915) 범위: 최신 기수의 최근 공지 5건을 표시하고, 탭 시 상세 화면으로 이동한다.
 /// `NavigationStack`은 루트 탭 셸이 소유하므로 이 뷰는 콘텐츠만 구성한다.
 struct HomeView: View {
 
     // MARK: - Property
 
     @State private var viewModel: HomeViewModel
+    private let onNoticeSelected: (NoticeDetail) -> Void
 
     // MARK: - Constants
 
     fileprivate enum Constants {
         static let seasonPlaceholderHeight: CGFloat = 120
         static let penaltyPlaceholderHeight: CGFloat = 240
+        static let recentNoticePlaceholderHeight: CGFloat = 280
     }
 
     // MARK: - Init
@@ -28,8 +31,14 @@ struct HomeView: View {
     /// - Parameters:
     ///   - container: UseCase를 resolve할 DI 컨테이너
     ///   - viewModel: 프리뷰/테스트용 주입 지점 (기본값: container로 생성)
-    init(container: DIContainer, viewModel: HomeViewModel? = nil) {
+    ///   - onNoticeSelected: 최근 공지 카드 탭 시 상세 화면 이동을 위임하는 콜백
+    init(
+        container: DIContainer,
+        viewModel: HomeViewModel? = nil,
+        onNoticeSelected: @escaping (NoticeDetail) -> Void = { _ in }
+    ) {
         _viewModel = State(initialValue: viewModel ?? HomeViewModel(container: container))
+        self.onNoticeSelected = onNoticeSelected
     }
 
     // MARK: - Body
@@ -39,6 +48,7 @@ struct HomeView: View {
             LazyVStack(alignment: .leading, spacing: DefaultSpacing.spacing24) {
                 seasonSection
                 generationSection
+                recentNoticeSection
             }
             .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
         }
@@ -115,6 +125,52 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Recent Notice Section
+
+    /// 최근 공지 섹션. 프로필 조회에 종속되므로 실패 안내는 `seasonSection`이 대표한다.
+    @ViewBuilder
+    private var recentNoticeSection: some View {
+        switch viewModel.recentNoticeState {
+        case .idle, .loading:
+            loadingPlaceholder(height: Constants.recentNoticePlaceholderHeight)
+        case .loaded(let notices):
+            recentNoticeLoaded(notices)
+        case .failed:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func recentNoticeLoaded(_ notices: [NoticeItemModel]) -> some View {
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
+            Text("최근 공지")
+                .appFont(.title3, weight: .semibold, color: .grey900)
+
+            if notices.isEmpty {
+                ContentUnavailableView(
+                    "최근 공지가 없습니다.",
+                    systemImage: "bell.slash",
+                    description: Text("아직 등록된 공지사항이 없습니다.")
+                )
+                .glassEffect(
+                    .regular,
+                    in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true)
+                )
+            } else {
+                VStack(spacing: DefaultSpacing.spacing12) {
+                    ForEach(notices) { notice in
+                        Button {
+                            onNoticeSelected(notice.toNoticeDetail())
+                        } label: {
+                            RecentNoticeCard(notice: notice)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Component
 
     private func loadingPlaceholder(height: CGFloat) -> some View {
@@ -153,9 +209,49 @@ private struct PreviewFetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol {
     }
 }
 
+/// 네트워크 없이 최근 공지 화면을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+private struct PreviewFetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProtocol {
+    func execute(gisuId: String) async throws -> [NoticeItemModel] {
+        [
+            NoticeItemModel(
+                generation: "12",
+                scope: .central,
+                category: .general,
+                mustRead: true,
+                isAlert: false,
+                date: Date(timeIntervalSinceNow: -3600),
+                title: "12기 중앙 해커톤 일정 안내",
+                content: "",
+                writer: "운영진",
+                links: [],
+                images: [],
+                vote: nil,
+                viewCount: "32"
+            ),
+            NoticeItemModel(
+                generation: "12",
+                scope: .branch,
+                category: .general,
+                mustRead: false,
+                isAlert: false,
+                date: Date(timeIntervalSinceNow: -86400),
+                title: "서울 지부 스터디 모집 공지",
+                content: "",
+                writer: "지부장",
+                links: [],
+                images: [],
+                vote: nil,
+                viewCount: "12",
+                scopeDisplayName: "서울"
+            ),
+        ]
+    }
+}
+
 #Preview {
     let container = DIContainer()
     container.register(FetchHomeProfileUseCaseProtocol.self) { PreviewFetchHomeProfileUseCase() }
+    container.register(FetchRecentNoticesUseCaseProtocol.self) { PreviewFetchRecentNoticesUseCase() }
     return NavigationStack {
         HomeView(container: container)
     }

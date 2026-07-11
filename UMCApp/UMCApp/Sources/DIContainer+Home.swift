@@ -3,6 +3,7 @@ import CoreDomain
 import CoreNetwork
 import HomeData
 import HomeDomain
+import NoticeDomain
 
 extension DIContainer {
     func registerHomeDependencies() {
@@ -14,6 +15,9 @@ extension DIContainer {
         }
         register(FetchHomeProfileUseCaseProtocol.self) {
             FetchHomeProfileUseCase(repository: self.resolve(HomeRepositoryProtocol.self))
+        }
+        register(FetchRecentNoticesUseCaseProtocol.self) {
+            FetchRecentNoticesUseCase(repository: self.resolve(NoticeRepositoryProtocol.self))
         }
     }
 }
