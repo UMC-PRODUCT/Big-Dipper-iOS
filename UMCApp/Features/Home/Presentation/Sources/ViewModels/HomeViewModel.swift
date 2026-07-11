@@ -13,12 +13,12 @@ public final class HomeViewModel {
     public private(set) var seasonState: Loadable<[SeasonType]> = .idle
     public private(set) var generationState: Loadable<[HomeGeneration]> = .idle
 
-    private let fetchMyProfileUseCase: FetchMyProfileUseCaseProtocol
+    private let fetchMyProfileUseCase: FetchHomeProfileUseCaseProtocol
 
     // MARK: - Init
 
     public init(container: DIContainer) {
-        fetchMyProfileUseCase = container.resolve(FetchMyProfileUseCaseProtocol.self)
+        fetchMyProfileUseCase = container.resolve(FetchHomeProfileUseCaseProtocol.self)
     }
 
     // MARK: - Function

@@ -1,5 +1,5 @@
 /// 홈 화면 내 프로필 조회 UseCase 구현체
-public final class FetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
+public final class FetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol {
 
     // MARK: - Property
 

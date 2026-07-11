@@ -19,7 +19,7 @@ struct HomeViewModelTests {
 
     @Test("성공 → 시즌/세대 모두 .loaded, 세대는 기수 내림차순 정렬")
     func successSetsLoadedWithGenerationsSortedDescending() async {
-        let useCase = MockFetchMyProfileUseCase()
+        let useCase = MockFetchHomeProfileUseCase()
         let profile = makeProfile(generationNumbers: ["11", "13", "12"])
         useCase.result = .success(profile)
         let viewModel = makeViewModel(useCase: useCase)
@@ -32,7 +32,7 @@ struct HomeViewModelTests {
 
     @Test("RepositoryError → 두 섹션 모두 .failed(.repository)")
     func repositoryErrorSetsFailed() async {
-        let useCase = MockFetchMyProfileUseCase()
+        let useCase = MockFetchHomeProfileUseCase()
         useCase.result = .failure(RepositoryError.decodingError(detail: "boom"))
         let viewModel = makeViewModel(useCase: useCase)
 
@@ -44,7 +44,7 @@ struct HomeViewModelTests {
 
     @Test("알 수 없는 에러 → 두 섹션 모두 .failed(.unknown)")
     func unknownErrorSetsFailed() async {
-        let useCase = MockFetchMyProfileUseCase()
+        let useCase = MockFetchHomeProfileUseCase()
         useCase.result = .failure(DummyError())
         let viewModel = makeViewModel(useCase: useCase)
 
@@ -56,7 +56,7 @@ struct HomeViewModelTests {
 
     @Test("취소(CancellationError) → 이전 상태로 복원")
     func cancellationRestoresPreviousState() async {
-        let useCase = MockFetchMyProfileUseCase()
+        let useCase = MockFetchHomeProfileUseCase()
         let profile = makeProfile(generationNumbers: ["11"])
         useCase.result = .success(profile)
         let viewModel = makeViewModel(useCase: useCase)
@@ -73,7 +73,7 @@ struct HomeViewModelTests {
 
     @Test("fetchProfileIfNeeded()는 idle일 때만 로드한다")
     func fetchIfNeededLoadsOnlyWhenIdle() async {
-        let useCase = MockFetchMyProfileUseCase()
+        let useCase = MockFetchHomeProfileUseCase()
         useCase.result = .success(makeProfile(generationNumbers: ["11"]))
         let viewModel = makeViewModel(useCase: useCase)
 
@@ -85,7 +85,7 @@ struct HomeViewModelTests {
 
     @Test("로딩 중 중복 호출은 무시 (UseCase 1회만 호출)")
     func duplicateCallWhileLoadingIsIgnored() async {
-        let useCase = MockFetchMyProfileUseCase()
+        let useCase = MockFetchHomeProfileUseCase()
         useCase.delayNanoseconds = 50_000_000
         useCase.result = .success(makeProfile(generationNumbers: ["11"]))
         let viewModel = makeViewModel(useCase: useCase)
@@ -105,10 +105,10 @@ struct HomeViewModelTests {
 private struct DummyError: Error {}
 
 @MainActor
-private func makeViewModel(useCase: FetchMyProfileUseCaseProtocol? = nil) -> HomeViewModel {
-    let useCase = useCase ?? MockFetchMyProfileUseCase()
+private func makeViewModel(useCase: FetchHomeProfileUseCaseProtocol? = nil) -> HomeViewModel {
+    let useCase = useCase ?? MockFetchHomeProfileUseCase()
     let container = DIContainer()
-    container.register(FetchMyProfileUseCaseProtocol.self) { useCase }
+    container.register(FetchHomeProfileUseCaseProtocol.self) { useCase }
     return HomeViewModel(container: container)
 }
 
@@ -124,7 +124,7 @@ private func makeProfile(generationNumbers: [String]) -> HomeProfileResult {
 
 // MARK: - Mocks
 
-private final class MockFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol, @unchecked Sendable {
+private final class MockFetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol, @unchecked Sendable {
 
     enum MockError: Error, Equatable {
         case notStubbed

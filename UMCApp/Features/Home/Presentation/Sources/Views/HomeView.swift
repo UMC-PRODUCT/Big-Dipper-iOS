@@ -131,7 +131,7 @@ struct HomeView: View {
 
 #if DEBUG
 /// 네트워크 없이 화면을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
-private struct PreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
+private struct PreviewFetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol {
     func execute() async throws -> HomeProfileResult {
         HomeProfileResult(
             memberId: "1",
@@ -155,7 +155,7 @@ private struct PreviewFetchMyProfileUseCase: FetchMyProfileUseCaseProtocol {
 
 #Preview {
     let container = DIContainer()
-    container.register(FetchMyProfileUseCaseProtocol.self) { PreviewFetchMyProfileUseCase() }
+    container.register(FetchHomeProfileUseCaseProtocol.self) { PreviewFetchHomeProfileUseCase() }
     return NavigationStack {
         HomeView(container: container)
     }
