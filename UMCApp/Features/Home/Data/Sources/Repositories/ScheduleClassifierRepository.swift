@@ -9,7 +9,8 @@ import UMCFoundation
 /// 결과를 `UserDefaults` 기반 캐시에 저장해 재계산을 피한다. 모델/캐시는 초기화 시점에 한 번
 /// 로드하며(DIContainer가 resolve 결과를 캐싱하므로 앱 생애주기 동안 1회), 이후 재로드 경로는
 /// 없다.
-public final class ScheduleClassifierRepository: ScheduleClassifierRepositoryProtocol, @unchecked Sendable {
+public final class ScheduleClassifierRepository: ScheduleClassifierRepositoryProtocol,
+                                                 @unchecked Sendable {
 
     // MARK: - Property
 
@@ -51,7 +52,10 @@ public final class ScheduleClassifierRepository: ScheduleClassifierRepositoryPro
             return Self.mapMLLabelToCategory(label)
         } catch {
             #if DEBUG
-            print("[ScheduleClassifierRepository] classifyWithML 예측 실패: \(error.localizedDescription)")
+            print(
+                "[ScheduleClassifierRepository] classifyWithML 예측 실패: "
+                    + error.localizedDescription
+            )
             #endif
             return nil
         }
@@ -59,7 +63,8 @@ public final class ScheduleClassifierRepository: ScheduleClassifierRepositoryPro
 
     public func classifyWithKeywords(title: String) -> ScheduleIconCategory {
         let lowercased = title.lowercased()
-        for rule in Self.keywordRules where rule.keywords.contains(where: { lowercased.contains($0) }) {
+        for rule in Self.keywordRules
+        where rule.keywords.contains(where: { lowercased.contains($0) }) {
             return rule.category
         }
         return .general
@@ -89,7 +94,9 @@ public final class ScheduleClassifierRepository: ScheduleClassifierRepositoryPro
         userDefaults.set(data, forKey: Constants.cacheStorageKey)
     }
 
-    private static func loadCacheFromDisk(userDefaults: UserDefaults) -> [String: ScheduleIconCategory] {
+    private static func loadCacheFromDisk(
+        userDefaults: UserDefaults
+    ) -> [String: ScheduleIconCategory] {
         guard
             let data = userDefaults.data(forKey: Constants.cacheStorageKey),
             let decoded = try? JSONDecoder().decode([String: String].self, from: data)
@@ -97,7 +104,10 @@ public final class ScheduleClassifierRepository: ScheduleClassifierRepositoryPro
             return [:]
         }
         return decoded.compactMapValues { rawValue in
-            guard let category = ScheduleIconCategory(rawValue: rawValue), !category.isDeprecated else {
+            guard
+                let category = ScheduleIconCategory(rawValue: rawValue),
+                !category.isDeprecated
+            else {
                 return nil
             }
             return category

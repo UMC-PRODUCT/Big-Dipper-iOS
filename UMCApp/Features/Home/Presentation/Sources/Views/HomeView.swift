@@ -187,8 +187,11 @@ struct HomeView: View {
             )
         } else {
             ForEach(schedules) { schedule in
-                ScheduleListCard(data: schedule, category: viewModel.category(for: schedule.scheduleId))
-                    .equatable()
+                ScheduleListCard(
+                    data: schedule,
+                    category: viewModel.category(for: schedule.scheduleId)
+                )
+                .equatable()
             }
         }
     }

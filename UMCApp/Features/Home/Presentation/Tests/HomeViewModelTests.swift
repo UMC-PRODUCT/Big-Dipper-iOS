@@ -206,7 +206,8 @@ private struct MockFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol, Sendabl
 }
 
 /// 제목별로 분류 결과를 주입할 수 있는 Mock. 매칭이 없으면 `.general`을 반환한다.
-private final class MockClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol, @unchecked Sendable {
+private final class MockClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol,
+                                                 @unchecked Sendable {
     var resultsByTitle: [String: ScheduleIconCategory] = [:]
     private(set) var classifiedTitles: [String] = []
 

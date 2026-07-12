@@ -47,6 +47,20 @@ struct ScheduleClassifierRepositoryTests {
         #expect(repository.classifyWithKeywords(title: "아무 의미 없는 제목") == .general)
     }
 
+    // MARK: - CoreML 모델 로드
+
+    /// staticFramework(HomeData)에서 `.mlmodel`이 `Home_HomeData.bundle`로 실제 번들링되어
+    /// `Bundle.module` 경로로 로드되는지 검증한다. 이 검증이 없으면 Tuist/Xcode 업그레이드로
+    /// 리소스 번들 워크어라운드가 조용히 깨져도(→ 키워드 전용으로 degrade) 테스트가 통과해
+    /// 회귀를 놓친다.
+    @Test("CoreML 모델이 번들 리소스에서 로드되어 실제 예측을 수행한다")
+    func modelLoadsFromBundleAndPredictsNonNilCategory() {
+        let repository = ScheduleClassifierRepository(userDefaults: makeEphemeralUserDefaults())
+
+        #expect(repository.isModelLoaded == true)
+        #expect(repository.classifyWithML(title: "정기 세미나 진행 안내") != nil)
+    }
+
     // MARK: - 캐시 저장/로드
 
     @Test("cacheCategory로 저장한 값이 새 인스턴스에서도 로드된다 (roundtrip)")

@@ -29,7 +29,9 @@ extension DIContainer {
             ScheduleClassifierRepository()
         }
         register(ClassifyScheduleUseCaseProtocol.self) {
-            ClassifyScheduleUseCase(repository: self.resolve(ScheduleClassifierRepositoryProtocol.self))
+            ClassifyScheduleUseCase(
+                repository: self.resolve(ScheduleClassifierRepositoryProtocol.self)
+            )
         }
     }
 }
