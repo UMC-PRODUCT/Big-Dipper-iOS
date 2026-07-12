@@ -10,6 +10,11 @@ let project = featureProject(
     dataExtraDependencies: [
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ],
+    // staticFramework의 Compile Sources 산출물(.mlmodelc)은 소비 타겟까지 전파되지 않으므로,
+    // 런타임 로드가 가능하도록 리소스 번들로도 명시한다 (ScheduleClassifierRepository 참고).
+    dataResources: [
+        "Data/Sources/MLModels/**",
+    ],
     presentationExtraDependencies: [
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
