@@ -50,6 +50,7 @@ public struct MyPageProfileView: View {
     @ViewBuilder
     private func sectionConnectionImpl(_ profile: Binding<ProfileData>) -> some View {
         // 프로필 이미지 수정
-        profilIm
+        ProfileImagePicker(selectedPhotoItem: $viewModel.selectedPhotoItem, selectedImage: viewModel.selectedImage, profileImage: viewModel.profileData.challengerInfo.profileImage)
+        
     }
 }

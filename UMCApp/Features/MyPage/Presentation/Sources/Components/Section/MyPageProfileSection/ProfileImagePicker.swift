@@ -1,5 +1,5 @@
 //
-//  profileImagePicker.swift
+//  ProfileImagePicker.swift
 //  MyPage
 //
 //  Created by 김동민 on 7/8/26.
@@ -14,7 +14,7 @@ import CoreUIComponents
 ///
 /// PhotosPicker를 사용하여 사진 라이브러리에서 이미지를 선택할 수 있습니다.
 /// 선택된 이미지가 있으면 해당 이미지를, 없으면 서버에서 받은 프로필 이미지를 표시합니다.
-public struct profileImagePicker: View {
+public struct ProfileImagePicker: View {
     
     // MARK: - Property
     
@@ -22,10 +22,10 @@ public struct profileImagePicker: View {
     @Binding public var selectedPhotoItem: PhotosPickerItem?
     
     /// 선택된 사진이 UIImage로 변환된 결과
-    private var selectedImage: UIImage?
+    public var selectedImage: UIImage?
     
     /// 기존 프로필 이미지 URL (서버에서 받은 값)
-    private var profileImage: String?
+    public var profileImage: String?
     
     private enum Constants {
         /// 프로필 이미지 크기
