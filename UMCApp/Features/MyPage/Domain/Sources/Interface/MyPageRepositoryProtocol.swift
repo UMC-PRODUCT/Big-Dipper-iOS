@@ -12,7 +12,8 @@ import CoreDomain
 public protocol MyPageRepositoryProtocol: Sendable {
 
     /// 내 프로필 조회
-    func fetchMyProfile() async throws -> ProfileData
+    /// - Parameter forceRefresh: `true`이면 세션 프로필 캐시를 우회해 서버에서 새로 조회한다.
+    func fetchMyProfile(forceRefresh: Bool) async throws -> ProfileData
 
     /// 특정 멤버 프로필 조회
     func fetchMemberProfile(memberId: Int) async throws -> MemberProfileSummary
@@ -51,4 +52,12 @@ public protocol MyPageRepositoryProtocol: Sendable {
     func fetchTerms(termsType: String) async throws -> MyPageTerms
 
 
+}
+
+extension MyPageRepositoryProtocol {
+
+    /// 내 프로필 조회 (캐시 허용 기본 경로, `forceRefresh: false`와 동일).
+    public func fetchMyProfile() async throws -> ProfileData {
+        try await fetchMyProfile(forceRefresh: false)
+    }
 }

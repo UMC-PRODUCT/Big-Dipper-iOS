@@ -122,6 +122,26 @@ struct MyPageViewModelTests {
         #expect(repository.callCount == 1)
         #expect(viewModel.profileData.value?.challengeId == 1)
     }
+
+    @Test("fetchProfile(forceRefresh: true)는 repository까지 forceRefresh를 그대로 전달한다")
+    func forceRefreshIsPassedThroughToRepository() async {
+        let repository = StubRepository(result: .success(makeProfileData(challengeId: 1)))
+        let viewModel = makeViewModel(repository: repository)
+
+        await viewModel.fetchProfile(forceRefresh: true)
+
+        #expect(repository.lastForceRefresh == true)
+    }
+
+    @Test("기본 fetchProfile()은 forceRefresh: false로 조회한다 (캐시 히트 유지)")
+    func defaultFetchUsesCacheAllowedPath() async {
+        let repository = StubRepository(result: .success(makeProfileData(challengeId: 1)))
+        let viewModel = makeViewModel(repository: repository)
+
+        await viewModel.fetchProfile()
+
+        #expect(repository.lastForceRefresh == false)
+    }
 }
 
 // MARK: - Helpers
@@ -172,13 +192,15 @@ private func makeProfileData(
 
 private final class StubRepository: MyPageRepositoryProtocol, @unchecked Sendable {
     private let result: Result<ProfileData, AppError>
+    private(set) var lastForceRefresh: Bool?
 
     init(result: Result<ProfileData, AppError>) {
         self.result = result
     }
 
-    func fetchMyProfile() async throws -> ProfileData {
-        try result.get()
+    func fetchMyProfile(forceRefresh: Bool) async throws -> ProfileData {
+        lastForceRefresh = forceRefresh
+        return try result.get()
     }
 
     func fetchMemberProfile(memberId: Int) async throws -> MemberProfileSummary { fatalError("unused") }
@@ -199,7 +221,7 @@ private final class ThrowingRepository: MyPageRepositoryProtocol, @unchecked Sen
         self.error = error
     }
 
-    func fetchMyProfile() async throws -> ProfileData {
+    func fetchMyProfile(forceRefresh: Bool) async throws -> ProfileData {
         throw error
     }
 
@@ -230,7 +252,7 @@ private final class SlowStubRepository: MyPageRepositoryProtocol, @unchecked Sen
         self.delayNanoseconds = delayNanoseconds
     }
 
-    func fetchMyProfile() async throws -> ProfileData {
+    func fetchMyProfile(forceRefresh: Bool) async throws -> ProfileData {
         lock.lock()
         _callCount += 1
         lock.unlock()
