@@ -717,7 +717,13 @@ final class OperatorStudyManagementViewModel {
             return false
         }
 
-        let message = studyGroupCreateFailureMessage(statusCode: statusCode, data: data)
+        // 로컬 Alert 로 소화하는 대상은 403(권한) 에러뿐이다.
+        // 그 외 상태코드(401 세션 만료·404·409·5xx 등)는 서버 응답 본문에 message 필드가
+        // 있더라도 여기서 처리하지 않고 false 를 반환해, 호출부가 errorHandler(로깅/세션 처리)로
+        // 흘려보내도록 한다.
+        guard statusCode == 403 else { return false }
+
+        let message = authorizationFailureMessage(from: data)
             ?? decodeServerMessage(from: data)
 
         guard let message else { return false }
@@ -737,17 +743,15 @@ final class OperatorStudyManagementViewModel {
         return true
     }
 
-    private func studyGroupCreateFailureMessage(
-        statusCode: Int,
-        data: Data?
-    ) -> String? {
-        guard statusCode == 403 else { return nil }
-
+    /// 403 그룹 생성 실패 중 `AUTHORIZATION-0002` 코드에 대한 권한 안내 메시지.
+    ///
+    /// 호출부(`presentStudyGroupCreateAlert(from:)`)가 이미 `statusCode == 403` 을 보장하므로
+    /// 여기서는 에러 코드만 판별한다. 다른 403 코드는 nil 을 반환해, 호출부가 서버 메시지
+    /// fallback(`decodeServerMessage`)으로 처리하게 한다.
+    private func authorizationFailureMessage(from data: Data?) -> String? {
         let payload = decodeServerErrorPayload(from: data)
         let errorCode = payload?.code?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
-        // 권한 안내 메시지는 `AUTHORIZATION-0002` 한 코드에만 적용한다.
-        // 다른 403 코드는 nil 을 반환해 호출부가 서버 메시지 fallback 으로 처리하게 한다.
         guard errorCode == "AUTHORIZATION-0002" else {
             return nil
         }

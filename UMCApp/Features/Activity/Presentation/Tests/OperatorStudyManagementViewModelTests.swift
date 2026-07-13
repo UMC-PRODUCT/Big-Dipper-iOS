@@ -377,6 +377,29 @@ struct OperatorStudyManagementViewModelCreateTests {
         #expect(viewModel.alertPrompt?.message == "이미 존재하는 그룹입니다.")
         #expect(viewModel.alertPrompt?.message.hasPrefix("현재 계정 권한으로는") == false)
     }
+
+    @Test(
+        "생성 비-403 에러 — 서버 메시지 body 가 있어도 로컬 Alert 로 소화하지 않고 errorHandler 로 전파",
+        arguments: [401, 404, 409, 500]
+    )
+    func createDoesNotSwallowNon403ServerMessage(statusCode: Int) async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        let body = Data(#"{"message":"서버가 내려준 실패 메시지"}"#.utf8)
+        useCase.createError = NetworkError.requestFailed(statusCode: statusCode, data: body)
+        let viewModel = makeViewModel(useCase: useCase, gisuId: "11")
+
+        let created = await viewModel.createGroup(
+            name: "iOS 스터디",
+            part: .front(type: .ios),
+            mentors: [makeChallenger(memberId: "9", challengerId: "909")],
+            members: []
+        )
+
+        #expect(created == false)
+        // 비-403 은 로컬 Alert(권한/서버 메시지)로 소화되지 않아야 한다 → alertPrompt 는 nil,
+        // 에러는 errorHandler 경로로 흘러간다.
+        #expect(viewModel.alertPrompt == nil)
+    }
 }
 
 // MARK: - 그룹 수정 / 삭제
