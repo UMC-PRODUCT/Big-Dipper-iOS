@@ -187,17 +187,14 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
         memberIds: [String],
         mentorIds: [String]
     ) async throws {
-        try await performVoidRequest(
-            .createStudyGroup(
-                body: StudyGroupCreateRequestDTO(
-                    gisuId: gisuId,
-                    name: name,
-                    part: part.apiValue,
-                    memberIds: memberIds,
-                    mentorIds: mentorIds
-                )
-            )
+        let body = StudyGroupCreateRequestDTO(
+            gisuId: try intIdentifier(gisuId, field: "gisuId"),
+            name: name,
+            part: part.apiValue,
+            memberIds: try intIdentifiers(memberIds, field: "memberIds"),
+            mentorIds: try intIdentifiers(mentorIds, field: "mentorIds")
         )
+        try await performVoidRequest(.createStudyGroup(body: body))
     }
 
     public func updateStudyGroup(groupId: String, name: String) async throws {
@@ -242,15 +239,14 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
         studyGroupId: String,
         weeklyCurriculumId: String
     ) async throws {
-        try await performVoidRequest(
-            .linkStudyGroupSchedule(
-                body: StudyGroupScheduleCreateRequestDTO(
-                    scheduleId: scheduleId,
-                    studyGroupId: studyGroupId,
-                    weeklyCurriculumId: weeklyCurriculumId
-                )
+        let body = StudyGroupScheduleCreateRequestDTO(
+            scheduleId: try intIdentifier(scheduleId, field: "scheduleId"),
+            studyGroupId: try intIdentifier(studyGroupId, field: "studyGroupId"),
+            weeklyCurriculumId: try intIdentifier(
+                weeklyCurriculumId, field: "weeklyCurriculumId"
             )
         )
+        try await performVoidRequest(.linkStudyGroupSchedule(body: body))
     }
 }
 
@@ -303,5 +299,24 @@ private extension StudyRepository {
             from: response.data
         )
         try apiResponse.validateSuccess()
+    }
+
+    /// 요청 본문에 담을 `String` 식별자를 `Int` 로 변환한다.
+    ///
+    /// 서버는 이 식별자들을 정수로 받는다. 값은 서버 응답(숫자 문자열)에서 오므로 보통 변환에
+    /// 성공하지만, 변환할 수 없는 값이면 잘못된 요청을 보내는 대신 곧바로 에러를 던진다.
+    /// 마땅한 전용 케이스가 없어 ``UMCFoundation/RepositoryError`` 의 `decodingError` 로 던진다.
+    func intIdentifier(_ value: String, field: String) throws -> Int {
+        guard let converted = Int(value) else {
+            throw RepositoryError.decodingError(
+                detail: "\(field) 식별자를 정수로 변환할 수 없습니다: \(value)"
+            )
+        }
+        return converted
+    }
+
+    /// ``intIdentifier(_:field:)`` 의 배열 버전. 하나라도 변환에 실패하면 던진다.
+    func intIdentifiers(_ values: [String], field: String) throws -> [Int] {
+        try values.map { try intIdentifier($0, field: field) }
     }
 }

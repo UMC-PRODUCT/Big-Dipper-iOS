@@ -217,19 +217,19 @@ struct StudyRouterTests {
 
 private func makeCreateBody() -> StudyGroupCreateRequestDTO {
     StudyGroupCreateRequestDTO(
-        gisuId: "7",
+        gisuId: 7,
         name: "iOS 스터디",
         part: "IOS",
-        memberIds: ["1", "2"],
-        mentorIds: ["3"]
+        memberIds: [1, 2],
+        mentorIds: [3]
     )
 }
 
 private func makeScheduleBody() -> StudyGroupScheduleCreateRequestDTO {
     StudyGroupScheduleCreateRequestDTO(
-        scheduleId: "10",
-        studyGroupId: "42",
-        weeklyCurriculumId: "5"
+        scheduleId: 10,
+        studyGroupId: 42,
+        weeklyCurriculumId: 5
     )
 }
 
@@ -372,22 +372,22 @@ struct StudyRouterCRUDTaskTests {
 @Suite("StudyRouter — Request DTO JSON 인코딩 계약")
 struct StudyRouterRequestDTOEncodingTests {
 
-    @Test("StudyGroupCreateRequestDTO — 식별자를 문자열/문자열 배열로 직렬화한다 (정수 아님)")
-    func createDTOEncodesIdentifiersAsStrings() throws {
+    @Test("StudyGroupCreateRequestDTO — 식별자를 정수/정수 배열로 직렬화한다 (문자열 아님)")
+    func createDTOEncodesIdentifiersAsIntegers() throws {
         let dto = StudyGroupCreateRequestDTO(
-            gisuId: "7",
+            gisuId: 7,
             name: "iOS 스터디",
             part: "IOS",
-            memberIds: ["1", "2"],
-            mentorIds: ["3"]
+            memberIds: [1, 2],
+            mentorIds: [3]
         )
         let json = try encodeToJSON(dto)
 
-        // 핵심 계약: 식별자는 String/[String] 이며 숫자가 아님
-        #expect(json["gisuId"] as? String == "7")
-        #expect(json["gisuId"] as? Int == nil)
-        #expect(json["memberIds"] as? [String] == ["1", "2"])
-        #expect(json["mentorIds"] as? [String] == ["3"])
+        // 서버가 식별자를 정수로 받으므로 Int/[Int] 로 인코딩되어야 한다 (문자열 아님)
+        #expect(json["gisuId"] as? Int == 7)
+        #expect(json["gisuId"] as? String == nil)
+        #expect(json["memberIds"] as? [Int] == [1, 2])
+        #expect(json["mentorIds"] as? [Int] == [3])
         #expect(json["name"] as? String == "iOS 스터디")
         #expect(json["part"] as? String == "IOS")
         #expect(json.keys.count == 5)
@@ -401,18 +401,18 @@ struct StudyRouterRequestDTOEncodingTests {
         #expect(json.keys.count == 1)
     }
 
-    @Test("StudyGroupScheduleCreateRequestDTO — 세 식별자를 문자열로 직렬화한다 (정수 아님)")
-    func scheduleDTOEncodesIdentifiersAsStrings() throws {
+    @Test("StudyGroupScheduleCreateRequestDTO — 세 식별자를 정수로 직렬화한다 (문자열 아님)")
+    func scheduleDTOEncodesIdentifiersAsIntegers() throws {
         let dto = StudyGroupScheduleCreateRequestDTO(
-            scheduleId: "10",
-            studyGroupId: "42",
-            weeklyCurriculumId: "5"
+            scheduleId: 10,
+            studyGroupId: 42,
+            weeklyCurriculumId: 5
         )
         let json = try encodeToJSON(dto)
-        #expect(json["scheduleId"] as? String == "10")
-        #expect(json["studyGroupId"] as? String == "42")
-        #expect(json["weeklyCurriculumId"] as? String == "5")
-        #expect(json["scheduleId"] as? Int == nil)
+        #expect(json["scheduleId"] as? Int == 10)
+        #expect(json["studyGroupId"] as? Int == 42)
+        #expect(json["weeklyCurriculumId"] as? Int == 5)
+        #expect(json["scheduleId"] as? String == nil)
         #expect(json.keys.count == 3)
     }
 }

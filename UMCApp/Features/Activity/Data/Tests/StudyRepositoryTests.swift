@@ -485,6 +485,21 @@ struct StudyRepositoryCRUDTests {
             try await operation.invoke(on: sut)
         }
     }
+
+    @Test("createStudyGroup — 식별자가 정수 문자열이 아니면 네트워크 호출 없이 던진다")
+    private func createStudyGroupThrowsBeforeNetworkOnNonNumericIdentifier() async {
+        // 서버는 ID 를 정수로 받으므로 Repository 가 요청을 만들 때 String→Int 로 변환한다.
+        // 변환할 수 없는 값이면 요청을 보내기 전에 에러를 던진다.
+        let (sut, stub) = makeRepository(.success(Fixture.success("null")))
+
+        await #expect(throws: RepositoryError.self) {
+            try await sut.createStudyGroup(
+                gisuId: "abc", name: "n", part: .front(type: .ios),
+                memberIds: ["2"], mentorIds: ["3"]
+            )
+        }
+        #expect(stub.requestCount == 0)
+    }
 }
 
 #endif
