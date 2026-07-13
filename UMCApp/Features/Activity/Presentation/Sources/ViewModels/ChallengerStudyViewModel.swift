@@ -39,17 +39,28 @@ final class ChallengerStudyViewModel {
 
     // MARK: - Action
 
-    /// 커리큘럼 진행 현황 로드
+    /// 커리큘럼 진행 현황을 조회합니다.
     ///
-    /// 성공 시 `.loaded`, 이미 래핑된 `AppError` 는 그대로, 그 외 계층 에러는 대응
-    /// `AppError` 로 매핑해 `.failed` 로 전이합니다. 모든 에러는 화면 내 인라인 표시용
-    /// `Loadable.failed` 로 흐릅니다.
+    /// 이미 로딩 중이면 중복 호출을 무시합니다. `.task` 가 취소되면 던져지는 에러는
+    /// 실패가 아니므로 이전 상태로 복원해 허위 에러 카드가 뜨지 않게 합니다. 에러 분기:
+    /// - `CancellationError` / `NSURLErrorCancelled` → 이전 상태 복원
+    /// - `AppError` → 그대로 `.failed` (이미 래핑됨)
+    /// - `DomainError` / `NetworkError` / `RepositoryError` → 대응 `AppError` 로 매핑
+    /// - 그 외 → `.failed(.unknown(message:))`
     func fetchCurriculum() async {
+        if curriculumState.isLoading { return }
+
+        let previousState = curriculumState
         curriculumState = .loading
 
         do {
             let progress = try await fetchCurriculumUseCase.execute()
             curriculumState = .loaded(progress)
+        } catch is CancellationError {
+            curriculumState = previousState
+        } catch let error as NSError
+            where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+            curriculumState = previousState
         } catch let error as AppError {
             curriculumState = .failed(error)
         } catch let error as DomainError {
