@@ -1,8 +1,8 @@
 //
 //  AITokenDailyUsageRecord.swift
-//  NoticePresentation
+//  NoticeDomain
 //
-//  Created by 이예지 on 5/30/26.
+//  Created by 이예지 on 7/14/26.
 //
 
 import Foundation

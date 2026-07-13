@@ -42,6 +42,7 @@ public struct NavigationModifier: ViewModifier {
         case partSelection = "파트 선택"
         case noticeDetail = "공지사항"
         case noticeReadStatus = "공지 열람 현황"
+        case noticeAISummary = "AI 요약"
         case detailSchedule = "일정 상세"
         case studyScheduleRegistration = "스터디 일정 등록"
         case communityPostEdit = "게시글 수정"

@@ -10,6 +10,7 @@ import FoundationModels
 import SwiftData
 import UIKit
 import UMCFoundation
+import NoticeDomain
 
 extension NoticeEditorViewModel {
 

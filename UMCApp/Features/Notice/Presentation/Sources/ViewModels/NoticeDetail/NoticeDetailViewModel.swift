@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import UMCFoundation
 import CoreDI
 import NoticeDomain
@@ -125,6 +126,20 @@ public final class NoticeDetailViewModel {
 
     /// 선택된 필터 타입
     public var selectedFilter: ReadStatusFilterType = .all
+    
+    // MARK: - AI Reading Summary State
+
+    /// AI 읽기 요약 시트 표시 여부
+    var showReadingSummarySheet: Bool = false
+
+    /// AI 읽기 요약 진행 단계
+    var readingSummaryPhase: ReadingSummaryPhase = .idle
+
+    /// AI 읽기 요약 스트리밍 중 현재까지 생성된 텍스트
+    var readingSummaryStreamingText: String = ""
+
+    /// AI 읽기 요약용 ModelContext (View에서 주입)
+    var readingSummaryModelContext: ModelContext?
 
     // MARK: - Permission State
 
