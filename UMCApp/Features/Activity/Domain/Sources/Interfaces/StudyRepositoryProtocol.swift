@@ -35,10 +35,11 @@ public protocol StudyRepositoryProtocol {
     /// 스터디 그룹 상세 목록 페이지 조회
     ///
     /// - Parameters:
-    ///   - cursor: 페이지 커서 (첫 페이지는 `nil`)
+    ///   - cursor: 페이지 커서 (첫 페이지는 `nil`). 서버가 내려준 불투명(opaque) 토큰을
+    ///     그대로 echo 하므로 `String` 으로 전달한다 (숫자로 강제 변환 금지).
     ///   - size: 페이지 크기
     func fetchStudyGroupDetailsPage(
-        cursor: Int?,
+        cursor: String?,
         size: Int
     ) async throws -> StudyGroupDetailsPage
 
@@ -53,11 +54,12 @@ public protocol StudyRepositoryProtocol {
     ///
     /// - Parameters:
     ///   - memberId: 멤버 ID (서버 응답)
-    ///   - preferredGeneration: 우선 조회할 기수 (클라이언트 입력, 없으면 최신 레코드 기준)
+    ///   - preferredGeneration: 우선 조회할 기수 (클라이언트 입력, 없으면 최신 레코드 기준).
+    ///     전 레이어 `String` 통일 — 숫자 기수 비교는 구현체가 연산 시점에 `Int` 로 변환한다.
     /// - Returns: 조회된 챌린저 ID — 서버 응답이므로 `String?`
     func resolveChallengerId(
         memberId: String,
-        preferredGeneration: Int?
+        preferredGeneration: String?
     ) async throws -> String?
 
     // MARK: - 운영진 스터디 그룹 CRUD

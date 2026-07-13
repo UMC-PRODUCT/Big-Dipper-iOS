@@ -54,7 +54,7 @@ struct StudyRouterTests {
             StudyRouter.getCurriculum(
                 query: CurriculumOverviewQuery(gisuId: "7", part: "BE", weekNo: nil)
             ),
-            StudyRouter.getMyStudyGroups(query: MyStudyGroupsQuery(cursor: 10, size: 20)),
+            StudyRouter.getMyStudyGroups(query: MyStudyGroupsQuery(cursor: "10", size: 20)),
             StudyRouter.getStudyGroupDetail(groupId: "42"),
             StudyRouter.getMemberProfile(memberId: "99")
         ]
@@ -86,7 +86,7 @@ struct StudyRouterTests {
     func getMyStudyGroupsTaskEncodesQueryString() throws {
         // Given
         let router = StudyRouter.getMyStudyGroups(
-            query: MyStudyGroupsQuery(cursor: 10, size: 20)
+            query: MyStudyGroupsQuery(cursor: "10", size: 20)
         )
 
         // When
@@ -94,7 +94,7 @@ struct StudyRouterTests {
 
         // Then
         #expect(extracted.parameters["size"] as? Int == 20)
-        #expect(extracted.parameters["cursor"] as? Int == 10)
+        #expect(extracted.parameters["cursor"] as? String == "10")
         #expect((extracted.encoding as? URLEncoding)?.destination == .queryString)
     }
 
@@ -172,15 +172,27 @@ struct StudyRouterTests {
     @Test("MyStudyGroupsQuery 는 cursor 가 있으면 파라미터에 포함한다")
     func myStudyGroupsQueryIncludesCursorWhenPresent() {
         // Given
-        let query = MyStudyGroupsQuery(cursor: 15, size: 20)
+        let query = MyStudyGroupsQuery(cursor: "15", size: 20)
 
         // When
         let parameters = query.toParameters
 
         // Then
         #expect(parameters.count == 2)
-        #expect(parameters["cursor"] as? Int == 15)
+        #expect(parameters["cursor"] as? String == "15")
         #expect(parameters["size"] as? Int == 20)
+    }
+
+    @Test("MyStudyGroupsQuery 는 불투명 커서 토큰을 변형 없이 파라미터로 전달한다")
+    func myStudyGroupsQueryForwardsOpaqueCursor() {
+        // Given — 서버 nextCursor 는 숫자가 아닐 수 있다(불투명 토큰).
+        let query = MyStudyGroupsQuery(cursor: "cursor-2", size: 20)
+
+        // When
+        let parameters = query.toParameters
+
+        // Then
+        #expect(parameters["cursor"] as? String == "cursor-2")
     }
 
     @Test("MyStudyGroupsQuery 는 cursor 가 nil 이면 파라미터에서 제외한다")

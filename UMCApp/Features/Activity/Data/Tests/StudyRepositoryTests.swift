@@ -37,6 +37,8 @@ private final class StubNetworkRequesting: NetworkRequesting, @unchecked Sendabl
     private var outcomes: [Outcome]
     private(set) var requestedPaths: [String] = []
     private(set) var requestedMethods: [Moya.Method] = []
+    /// 각 요청의 `cursor` 쿼리 파라미터 (없으면 `nil`). 페이지네이션 echo 검증용.
+    private(set) var requestedCursors: [String?] = []
 
     var requestCount: Int { requestedPaths.count }
     var lastPath: String? { requestedPaths.last }
@@ -49,6 +51,7 @@ private final class StubNetworkRequesting: NetworkRequesting, @unchecked Sendabl
     func request<T: TargetType>(_ target: T) async throws -> Response {
         requestedPaths.append(target.path)
         requestedMethods.append(target.method)
+        requestedCursors.append(Self.cursor(from: target.task))
         guard !outcomes.isEmpty else {
             throw StubError.noOutcomeQueued
         }
@@ -58,6 +61,13 @@ private final class StubNetworkRequesting: NetworkRequesting, @unchecked Sendabl
         case .failure(let error):
             throw error
         }
+    }
+
+    private static func cursor(from task: Moya.Task) -> String? {
+        if case let .requestParameters(parameters, _) = task {
+            return parameters["cursor"] as? String
+        }
+        return nil
     }
 }
 
@@ -306,6 +316,25 @@ struct StudyRepositoryGroupTests {
         #expect(stub.requestCount == 1)        // 두 번째 페이지를 요청하지 않음
     }
 
+    @Test("fetchStudyGroupDetails — 불투명 nextCursor 를 다음 페이지 요청 커서로 그대로 echo 한다")
+    func fetchStudyGroupDetailsEchoesOpaqueCursor() async throws {
+        let page1 = Fixture.studyGroupsPage(
+            [Fixture.studyGroupDetailObject], nextCursor: "cursor-2", hasNext: true
+        )
+        let page2 = Fixture.studyGroupsPage(
+            [Fixture.studyGroupDetailObject], nextCursor: nil, hasNext: false
+        )
+        let (sut, stub) = makeRepository([
+            .success(Fixture.success(page1)),
+            .success(Fixture.success(page2))
+        ])
+
+        _ = try await sut.fetchStudyGroupDetails()
+
+        // 1페이지는 커서 없음, 2페이지는 불투명 토큰을 숫자 변환 없이 그대로 전달.
+        #expect(stub.requestedCursors == [nil, "cursor-2"])
+    }
+
     @Test("fetchStudyGroupDetail — 단일 상세를 매핑하고 groupId 를 path 에 보간한다")
     func fetchStudyGroupDetailMapsSuccess() async throws {
         let (sut, stub) = makeRepository(
@@ -329,14 +358,14 @@ struct StudyRepositoryResolveChallengerTests {
     @Test(
         "resolveChallengerId — 기수/컨텍스트 폴백/첫 레코드 우선순위로 challengerId 를 해석한다",
         arguments: [
-            (preferred: Optional(8), contextGisuId: Optional("70"), expected: "C8"),
-            (preferred: Optional<Int>.none, contextGisuId: Optional("80"), expected: "C8"),
-            (preferred: Optional<Int>.none, contextGisuId: Optional("70"), expected: "C7"),
-            (preferred: Optional<Int>.none, contextGisuId: Optional<String>.none, expected: "C7")
+            (preferred: Optional("8"), contextGisuId: Optional("70"), expected: "C8"),
+            (preferred: Optional<String>.none, contextGisuId: Optional("80"), expected: "C8"),
+            (preferred: Optional<String>.none, contextGisuId: Optional("70"), expected: "C7"),
+            (preferred: Optional<String>.none, contextGisuId: Optional<String>.none, expected: "C7")
         ]
     )
     func resolveChallengerIdAppliesPriority(
-        preferred: Int?,
+        preferred: String?,
         contextGisuId: String?,
         expected: String
     ) async throws {

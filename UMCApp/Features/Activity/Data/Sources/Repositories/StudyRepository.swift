@@ -100,7 +100,7 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
 
     public func fetchStudyGroupDetails() async throws -> [StudyGroupInfo] {
         var allDetails: [StudyGroupInfo] = []
-        var cursor: Int?
+        var cursor: String?
         var hasNext = true
 
         while hasNext {
@@ -111,7 +111,7 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
             allDetails.append(contentsOf: page.content)
 
             hasNext = page.hasNext
-            cursor = page.nextCursor.flatMap(Int.init)
+            cursor = page.nextCursor
             // 다음 페이지가 있다고 했으나 커서가 없으면 무한 루프 방지를 위해 중단한다.
             if hasNext && cursor == nil {
                 break
@@ -122,7 +122,7 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
     }
 
     public func fetchStudyGroupDetailsPage(
-        cursor: Int?,
+        cursor: String?,
         size: Int
     ) async throws -> StudyGroupDetailsPage {
         let response = try await networkRequesting.request(
@@ -150,7 +150,7 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
 
     public func resolveChallengerId(
         memberId: String,
-        preferredGeneration: Int?
+        preferredGeneration: String?
     ) async throws -> String? {
         let response = try await networkRequesting.request(
             StudyRouter.getMemberProfile(memberId: memberId)
@@ -165,8 +165,9 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
             $0.memberId == memberId && !$0.challengerId.isEmpty
         }
 
-        if let preferredGeneration, preferredGeneration > 0,
-           let matched = records.first(where: { $0.gisu == preferredGeneration }) {
+        // 기수는 String 으로 전달받아 숫자 비교 연산 시점에만 Int 로 변환한다.
+        if let preferredGisu = preferredGeneration.flatMap(Int.init), preferredGisu > 0,
+           let matched = records.first(where: { $0.gisu == preferredGisu }) {
             return matched.challengerId
         }
 
