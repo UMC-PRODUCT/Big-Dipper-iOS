@@ -105,7 +105,7 @@ private extension MyActivePostsViewModel {
         
         switch logType {
         case .myWritePost:
-            return try await useCaseProvider.fetchMypostsUseCase.execute(query: query)
+            return try await useCaseProvider.fetchMyPostsUseCase.execute(query: query)
         case .myWriteComment:
             return try await useCaseProvider.fetchMyCommentedPostsUseCase.execute(query: query)
         case .myScrapPost:

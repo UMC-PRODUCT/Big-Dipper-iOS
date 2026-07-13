@@ -160,7 +160,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
         defer { isAddingACtivityLog = false }
         
         let currentSocialConnections = profileData.socialConnections
-        try await useCaseProvider.addChallngerRecordUseCase.execute(code: code)
+        try await useCaseProvider.addChallengerRecordUseCase.execute(code: code)
         profileData = try await useCaseProvider.fetchMyPageProfileUseCase.execute()
         profileData.socialConnections = currentSocialConnections
         initialPorfileLinkState = Self.makeProfileLinkState(from: profileData.profileLink)

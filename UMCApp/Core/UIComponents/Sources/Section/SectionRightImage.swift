@@ -32,12 +32,7 @@ public struct SectionRightImage: View {
     public init(rightImage: String) {
         self.rightImage = rightImage
     }
-    
-    // MARK: - Function
-    public init(rightImage: String) {
-        self.rightImage = rightImage
-    }
-    
+
     // MARK: - Body
     
     public var body: some View {
