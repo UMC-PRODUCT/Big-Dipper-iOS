@@ -1,3 +1,10 @@
+//
+//  ProfileRole.swift
+//  CoreDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 import UMCFoundation
 
 /// 멤버가 보유한 기수별 역할 정보.

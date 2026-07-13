@@ -1,3 +1,10 @@
+//
+//  NavigationDestination.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import NoticeDomain
 
 /// 탭 내부에서 push되는 화면 목적지를 타입 세이프하게 정의하는 전역 열거형.

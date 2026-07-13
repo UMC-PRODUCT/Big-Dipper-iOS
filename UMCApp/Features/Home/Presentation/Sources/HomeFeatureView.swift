@@ -1,3 +1,10 @@
+//
+//  HomeFeatureView.swift
+//  HomePresentation
+//
+//  Created by euijjang97 on 3/6/26.
+//
+
 import CoreDI
 import NoticeDomain
 import SwiftUI

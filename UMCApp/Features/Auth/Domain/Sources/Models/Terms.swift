@@ -1,3 +1,10 @@
+//
+//  Terms.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 약관 도메인 모델
 public struct Terms: Equatable, Sendable {
 

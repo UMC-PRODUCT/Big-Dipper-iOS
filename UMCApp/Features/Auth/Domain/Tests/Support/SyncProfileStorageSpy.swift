@@ -1,3 +1,10 @@
+//
+//  SyncProfileStorageSpy.swift
+//  AuthDomainTests
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 import CoreDomain
 @testable import AuthDomain
 

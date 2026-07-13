@@ -1,3 +1,10 @@
+//
+//  RegisterUseCaseProtocol.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 소셜 회원가입 UseCase 인터페이스
 public protocol RegisterUseCaseProtocol {
     /// 소셜 신규 회원가입을 완료한다.

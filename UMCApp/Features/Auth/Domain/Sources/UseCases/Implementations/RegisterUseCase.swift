@@ -1,3 +1,10 @@
+//
+//  RegisterUseCase.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 소셜 회원가입 UseCase 구현체
 public final class RegisterUseCase: RegisterUseCaseProtocol {
 

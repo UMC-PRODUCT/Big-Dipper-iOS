@@ -1,3 +1,10 @@
+//
+//  HomeRepositoryProtocol.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 홈 화면 프로필 관련 데이터 접근 계층 인터페이스.
 public protocol HomeRepositoryProtocol {
 

@@ -2,6 +2,8 @@
 //  CachedMemberProfileRepositoryTests.swift
 //  CoreNetworkTests
 //
+//  Created by euijjang97 on 7/11/26.
+//
 //  캐시 히트/미스, `primeCache`/`invalidateCache` 무효화 트리거, 동시 호출 병합
 //  (in-flight coalescing)을 검증한다.
 //

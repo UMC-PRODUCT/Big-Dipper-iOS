@@ -1,3 +1,10 @@
+//
+//  VerifyEmailCodeUseCaseProtocol.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일 인증 코드 검증 UseCase 인터페이스
 public protocol VerifyEmailCodeUseCaseProtocol {
     /// 이메일 인증 코드를 검증한다.

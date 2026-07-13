@@ -1,3 +1,10 @@
+//
+//  OAuthLoginResponseDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import CoreNetwork
 
 /// OAuth 소셜 로그인 API 응답 DTO

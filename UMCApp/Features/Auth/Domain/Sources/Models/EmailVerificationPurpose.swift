@@ -1,3 +1,10 @@
+//
+//  EmailVerificationPurpose.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일 인증 목적.
 ///
 /// rawValue는 서버 요청 바디 필드에 그대로 사용된다.

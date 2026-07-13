@@ -1,3 +1,10 @@
+//
+//  ResendEmailVerificationUseCaseProtocol.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일 인증 코드 재전송 UseCase 인터페이스
 public protocol ResendEmailVerificationUseCaseProtocol {
     /// 이메일 인증 코드를 재전송한다.

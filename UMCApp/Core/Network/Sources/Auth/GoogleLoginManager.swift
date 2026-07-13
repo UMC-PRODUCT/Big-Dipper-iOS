@@ -1,3 +1,10 @@
+//
+//  GoogleLoginManager.swift
+//  CoreNetwork
+//
+//  Created by euijjang97 on 5/31/26.
+//
+
 import Foundation
 import GoogleSignIn
 import UIKit

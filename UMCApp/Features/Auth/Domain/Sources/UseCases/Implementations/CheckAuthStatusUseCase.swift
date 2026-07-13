@@ -1,3 +1,10 @@
+//
+//  CheckAuthStatusUseCase.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import CoreDomain
 import Foundation
 import UMCFoundation

@@ -1,3 +1,10 @@
+//
+//  EmailVerificationError.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import Foundation
 
 /// 이메일 인증 관련 도메인 에러.

@@ -1,3 +1,10 @@
+//
+//  TabCase.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import SwiftUI
 
 /// 루트 탭 셸이 표시하는 5개 탭.

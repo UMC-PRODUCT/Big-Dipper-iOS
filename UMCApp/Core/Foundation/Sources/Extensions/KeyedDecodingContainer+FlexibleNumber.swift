@@ -2,6 +2,8 @@
 //  KeyedDecodingContainer+FlexibleNumber.swift
 //  UMCFoundation
 //
+//  Created by euijjang97 on 2/18/26.
+//
 //  서버가 정수/실수/불리언을 String 또는 Number 어느 쪽으로든 직렬화할 수 있어
 //  Response DTO 디코딩 시 양쪽을 모두 흡수하기 위한 공용 헬퍼.
 //

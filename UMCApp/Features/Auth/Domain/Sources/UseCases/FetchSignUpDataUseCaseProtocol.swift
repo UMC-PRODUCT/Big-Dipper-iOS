@@ -1,3 +1,10 @@
+//
+//  FetchSignUpDataUseCaseProtocol.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 회원가입 화면에 필요한 학교/약관 데이터 조회 UseCase 인터페이스
 public protocol FetchSignUpDataUseCaseProtocol {
     /// 학교 목록을 조회한다.

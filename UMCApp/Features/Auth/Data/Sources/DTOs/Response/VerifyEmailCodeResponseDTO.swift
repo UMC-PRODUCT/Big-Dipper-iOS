@@ -1,3 +1,10 @@
+//
+//  VerifyEmailCodeResponseDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일 인증 코드 검증 API 응답 DTO
 public struct VerifyEmailCodeResponseDTO: Codable, Sendable, Equatable {
 

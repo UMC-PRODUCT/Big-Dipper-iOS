@@ -1,3 +1,10 @@
+//
+//  TermsAgreementDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 약관 동의 항목 요청 DTO
 ///
 /// 소셜 회원가입(`register`)/이메일 회원가입(`registerByEmail`) 양쪽 요청이 공유한다

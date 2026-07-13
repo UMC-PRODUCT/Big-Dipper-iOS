@@ -1,3 +1,10 @@
+//
+//  RegisterResponseDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import UMCFoundation
 
 /// 소셜 회원가입 API 응답 DTO

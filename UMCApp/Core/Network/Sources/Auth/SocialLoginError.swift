@@ -1,3 +1,10 @@
+//
+//  SocialLoginError.swift
+//  CoreNetwork
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import Foundation
 
 /// 소셜 로그인 SDK 전반에서 공통으로 정규화하는 에러입니다.

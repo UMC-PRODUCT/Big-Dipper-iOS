@@ -2,6 +2,8 @@
 //  AuthRepositoryTests.swift
 //  AuthDataTests
 //
+//  Created by euijjang97 on 7/11/26.
+//
 
 //  진짜 `AuthRepository`를 대상으로, 그 아래 네트워크 계층만 가짜(`StubAuthNetwork`)로 주입해
 //  `registerByEmail`의 디코딩·도메인 매핑·토큰 저장·에러 매핑 계약을 검증한다.

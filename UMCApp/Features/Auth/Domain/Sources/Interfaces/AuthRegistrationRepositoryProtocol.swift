@@ -1,3 +1,10 @@
+//
+//  AuthRegistrationRepositoryProtocol.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 회원가입(이메일 인증/학교·약관 조회/가입) 관련 데이터 접근 계층 인터페이스.
 ///
 /// 세션/소셜로그인을 담당하는 `AuthRepositoryProtocol`과는 별도로 분리한다(ISP).

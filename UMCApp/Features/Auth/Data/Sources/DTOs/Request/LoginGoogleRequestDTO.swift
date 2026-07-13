@@ -1,3 +1,10 @@
+//
+//  LoginGoogleRequestDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// Google 소셜 로그인 요청 DTO
 ///
 /// `POST /api/v1/auth/login/google`

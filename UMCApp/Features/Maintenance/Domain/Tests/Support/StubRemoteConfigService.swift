@@ -1,3 +1,10 @@
+//
+//  StubRemoteConfigService.swift
+//  MaintenanceDomainTests
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 @testable import MaintenanceDomain
 
 /// `RemoteConfigServiceProtocol`의 테스트용 Stub 구현체

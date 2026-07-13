@@ -2,6 +2,8 @@
 //  Profile+ProfileData.swift
 //  MyPageDomain
 //
+//  Created by euijjang97 on 7/11/26.
+//
 //  정본 `CoreDomain.Profile` → MyPage `ProfileData` 매핑.
 //  원본 MyPageData DTO의 `toProfileData()`(구 프로필 DTO, 삭제됨) 이식.
 //

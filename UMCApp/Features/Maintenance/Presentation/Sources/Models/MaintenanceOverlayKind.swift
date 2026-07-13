@@ -1,3 +1,10 @@
+//
+//  MaintenanceOverlayKind.swift
+//  MaintenancePresentation
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 import MaintenanceDomain
 
 /// `MaintenanceView`가 렌더링해야 할 앱 루트 오버레이 종류.

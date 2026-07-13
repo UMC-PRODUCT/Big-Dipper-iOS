@@ -1,3 +1,10 @@
+//
+//  SignUpEmailSection.swift
+//  AuthPresentation
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import CoreDesignSystem
 import SwiftUI
 

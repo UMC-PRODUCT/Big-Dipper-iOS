@@ -1,3 +1,10 @@
+//
+//  RegisterByEmailUseCaseProtocol.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일(ID/PW) 회원가입 UseCase 인터페이스
 public protocol RegisterByEmailUseCaseProtocol {
     /// 이메일(ID/PW) 회원가입을 완료한다.

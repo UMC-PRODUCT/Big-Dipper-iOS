@@ -1,3 +1,10 @@
+//
+//  AppColor.swift
+//  CoreDesignSystem
+//
+//  Created by euijjang97 on 4/29/26.
+//
+
 import SwiftUI
 
 public enum AppColor {

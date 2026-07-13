@@ -1,3 +1,10 @@
+//
+//  VerifyEmailCodeRequestDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일 인증 코드 검증 요청 DTO
 ///
 /// `POST /api/v1/auth/email-verification/code`

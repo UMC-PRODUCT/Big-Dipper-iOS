@@ -1,3 +1,10 @@
+//
+//  RegisterCredentialRequestDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// OAuth 회원 비밀번호 추가 등록 요청 DTO
 ///
 /// `POST /api/v1/auth/credentials`

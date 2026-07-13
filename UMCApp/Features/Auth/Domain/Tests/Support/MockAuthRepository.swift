@@ -1,3 +1,10 @@
+//
+//  MockAuthRepository.swift
+//  AuthDomainTests
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import Foundation
 @testable import AuthDomain
 

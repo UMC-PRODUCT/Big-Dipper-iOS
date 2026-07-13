@@ -1,3 +1,10 @@
+//
+//  SignUpPasswordSection.swift
+//  AuthPresentation
+//
+//  Created by euijjang97 on 4/30/26.
+//
+
 import CoreDesignSystem
 import SwiftUI
 

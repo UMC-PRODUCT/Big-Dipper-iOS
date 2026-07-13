@@ -1,3 +1,10 @@
+//
+//  ScheduleDetailData.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 import Foundation
 import UMCFoundation
 

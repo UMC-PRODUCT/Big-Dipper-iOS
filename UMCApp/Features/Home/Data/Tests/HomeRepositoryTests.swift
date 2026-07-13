@@ -2,6 +2,8 @@
 //  HomeRepositoryTests.swift
 //  HomeDataTests
 //
+//  Created by euijjang97 on 7/11/26.
+//
 //  진짜 `HomeRepository`를 대상으로, 정본 프로필 조회 파이프라인(``MemberProfileRepositoryProtocol``)과
 //  기수 상세 조회 네트워크 계층만 가짜(``MockMemberProfileRepository``/``StubHomeNetwork``)로 주입해
 //  `Profile → HomeProfileResult` 매핑(세대 파생/포인트 분류/활동일 계산)과

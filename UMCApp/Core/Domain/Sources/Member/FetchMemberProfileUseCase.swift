@@ -1,3 +1,10 @@
+//
+//  FetchMemberProfileUseCase.swift
+//  CoreDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 /// 정본 내 프로필 조회 UseCase 구현체.
 public struct FetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol {
 

@@ -1,3 +1,10 @@
+//
+//  Profile.swift
+//  CoreDomain
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import UMCFoundation
 
 /// Auth/Home/MyPage가 공유하는 정본 프로필 애그리게이트.

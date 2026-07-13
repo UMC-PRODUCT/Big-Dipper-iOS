@@ -1,3 +1,10 @@
+//
+//  AppFlowState.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import UMCFoundation
 
 /// 앱 전체 화면 상태.

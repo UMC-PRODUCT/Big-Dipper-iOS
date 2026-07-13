@@ -1,3 +1,10 @@
+//
+//  AppleLoginManager.swift
+//  CoreNetwork
+//
+//  Created by euijjang97 on 1/13/26.
+//
+
 import AuthenticationServices
 import UIKit
 

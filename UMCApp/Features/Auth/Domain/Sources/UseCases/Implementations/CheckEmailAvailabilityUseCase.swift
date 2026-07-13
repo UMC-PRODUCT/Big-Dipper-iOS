@@ -1,3 +1,10 @@
+//
+//  CheckEmailAvailabilityUseCase.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일 중복 확인 UseCase 구현체
 public final class CheckEmailAvailabilityUseCase: CheckEmailAvailabilityUseCaseProtocol {
 

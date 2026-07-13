@@ -1,3 +1,10 @@
+//
+//  DIContainer+MyPage.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 import CoreDI
 import CoreDomain
 import CoreNetwork

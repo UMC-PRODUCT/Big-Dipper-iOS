@@ -1,3 +1,10 @@
+//
+//  PathStore.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import Foundation
 
 /// 탭별 네비게이션 경로를 한 곳에서 관리하는 전역 Store.

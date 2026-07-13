@@ -1,3 +1,10 @@
+//
+//  MySchedulesQuery.swift
+//  HomeData
+//
+//  Created by euijjang97 on 5/7/26.
+//
+
 import Foundation
 import UMCFoundation
 

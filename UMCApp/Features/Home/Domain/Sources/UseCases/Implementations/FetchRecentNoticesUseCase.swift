@@ -1,3 +1,10 @@
+//
+//  FetchRecentNoticesUseCase.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 import NoticeDomain
 
 /// 홈 화면 최근 공지 조회 UseCase 구현체

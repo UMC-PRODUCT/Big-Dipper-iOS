@@ -1,3 +1,10 @@
+//
+//  AuthRouter.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import CoreNetwork
 import Foundation
 import Moya

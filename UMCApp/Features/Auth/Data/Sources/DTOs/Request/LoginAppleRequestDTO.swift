@@ -1,3 +1,10 @@
+//
+//  LoginAppleRequestDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 5/7/26.
+//
+
 /// Apple 소셜 로그인 요청 DTO
 ///
 /// `POST /api/v1/auth/login/apple`

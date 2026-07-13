@@ -1,3 +1,10 @@
+//
+//  SendEmailVerificationUseCaseProtocol.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일 인증 발송 UseCase 인터페이스
 public protocol SendEmailVerificationUseCaseProtocol {
     /// 이메일로 인증 코드를 발송한다.

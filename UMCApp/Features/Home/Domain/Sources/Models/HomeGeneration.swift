@@ -1,3 +1,10 @@
+//
+//  HomeGeneration.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 기수별 상벌점 현황.
 ///
 /// `UMCFoundation.Generation`(기수 값 자체를 나타내는 단순 모델)과 이름이 겹치지 않도록

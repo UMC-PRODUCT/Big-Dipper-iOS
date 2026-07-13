@@ -1,3 +1,10 @@
+//
+//  FailedVerificationUMC.swift
+//  AuthPresentation
+//
+//  Created by euijjang97 on 1/13/26.
+//
+
 import CoreDesignSystem
 import CoreDI
 import CoreNetwork

@@ -1,3 +1,10 @@
+//
+//  ResetPasswordRequestDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 /// 비밀번호 재설정 요청 DTO
 ///
 /// `PATCH /api/v1/auth/password/reset`

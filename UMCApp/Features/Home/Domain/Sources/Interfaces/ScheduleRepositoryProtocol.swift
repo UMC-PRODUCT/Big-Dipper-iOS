@@ -1,3 +1,10 @@
+//
+//  ScheduleRepositoryProtocol.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 import Foundation
 
 /// 홈 일정 캘린더 데이터 접근 계층 인터페이스.

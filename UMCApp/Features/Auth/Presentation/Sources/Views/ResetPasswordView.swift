@@ -1,3 +1,10 @@
+//
+//  ResetPasswordView.swift
+//  AuthPresentation
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 import AuthDomain
 import CoreDesignSystem
 import CoreDI

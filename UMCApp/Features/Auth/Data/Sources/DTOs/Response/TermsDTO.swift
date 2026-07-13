@@ -1,3 +1,10 @@
+//
+//  TermsDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import AuthDomain
 import UMCFoundation
 

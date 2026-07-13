@@ -1,3 +1,10 @@
+//
+//  NearbyError.swift
+//  CoreNearbyExchange
+//
+//  Created by euijjang97 on 4/23/26.
+//
+
 import Foundation
 
 public enum NearbyError: Error, Sendable {

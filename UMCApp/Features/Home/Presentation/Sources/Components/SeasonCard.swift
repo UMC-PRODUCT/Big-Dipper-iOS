@@ -1,3 +1,10 @@
+//
+//  SeasonCard.swift
+//  HomePresentation
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import CoreDesignSystem
 import HomeDomain
 import SwiftUI

@@ -1,3 +1,10 @@
+//
+//  FetchSchedulesUseCaseProtocol.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 import Foundation
 
 /// 기간 내 내 일정 조회 UseCase 인터페이스

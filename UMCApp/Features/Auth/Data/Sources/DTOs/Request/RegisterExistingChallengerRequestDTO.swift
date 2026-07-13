@@ -1,3 +1,10 @@
+//
+//  RegisterExistingChallengerRequestDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 기존 챌린저 코드 등록 요청 DTO
 ///
 /// `POST /api/v1/challenger-record/member`

@@ -1,3 +1,10 @@
+//
+//  UMCAppTests.swift
+//  UMCAppTests
+//
+//  Created by euijjang97 on 3/6/26.
+//
+
 import Testing
 import UMCFoundation
 @testable import UMCApp
