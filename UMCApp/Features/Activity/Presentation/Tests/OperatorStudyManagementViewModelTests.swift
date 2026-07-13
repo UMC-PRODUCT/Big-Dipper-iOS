@@ -90,6 +90,21 @@ private func makeViewModel(
     )
 }
 
+/// 백그라운드 새로고침처럼 fire-and-forget `Task` 가 완료될 때까지 조건을 폴링한다.
+/// mock 은 실제 I/O 지연이 없어 몇 번의 yield 로 끝난다. `maxYields` 는 무한 루프 방지 상한.
+@MainActor
+private func drainUntil(
+    _ viewModel: OperatorStudyManagementViewModel,
+    maxYields: Int = 10_000,
+    _ condition: (OperatorStudyManagementViewModel) -> Bool
+) async {
+    var yields = 0
+    while !condition(viewModel), yields < maxYields {
+        await Task.yield()
+        yields += 1
+    }
+}
+
 private struct DummyError: Error {}
 
 // MARK: - Mock
@@ -258,6 +273,45 @@ struct OperatorStudyManagementViewModelLoadTests {
         await viewModel.loadMoreGroupManagementDataIfNeeded(currentGroupID: UUID())
 
         #expect(useCase.fetchPageCalls.count == 1)
+    }
+
+    @Test("생성 후 백그라운드 새로고침 — 로드된 페이지 윈도우를 복원해 첫 페이지로 잘리지 않는다")
+    func refreshRestoresLoadedPageWindowAfterCreate() async throws {
+        let useCase = MockOperatorStudyManagementUseCase()
+        let page1 = (1...20).map { makeGroup(serverID: "G-\($0)") }
+        let page2 = (21...40).map { makeGroup(serverID: "G-\($0)") }
+        // 페이지 소비 순서: [최초 조회][loadMore][새로고침 1p][새로고침 2p]
+        useCase.pageResults = [
+            makePage(content: page1, hasNext: true, nextCursor: "c1"),
+            makePage(content: page2, hasNext: false),
+            makePage(content: page1, hasNext: true, nextCursor: "c1"),
+            makePage(content: page2, hasNext: false)
+        ]
+        let viewModel = makeViewModel(useCase: useCase, gisuId: "11")
+
+        // 사용자가 2페이지(40개)까지 스크롤한 상태 재현
+        await viewModel.fetchGroupManagementData()
+        let lastCard = try #require(viewModel.studyGroupDetails.last)
+        await viewModel.loadMoreGroupManagementDataIfNeeded(currentGroupID: lastCard.id)
+        #expect(viewModel.studyGroupDetails.count == 40)
+
+        // 그룹 생성 → 백그라운드 새로고침 트리거
+        let created = await viewModel.createGroup(
+            name: "새 스터디",
+            part: .front(type: .ios),
+            mentors: [makeChallenger(memberId: "9", challengerId: "909")],
+            members: []
+        )
+        #expect(created == true)
+
+        // 새로고침 Task 가 placeholder 를 서버 데이터로 교체할 때까지 대기
+        await drainUntil(viewModel) { vm in
+            !vm.studyGroupDetails.contains { $0.serverID.hasPrefix("new_") }
+        }
+
+        // 첫 페이지(20)로 잘리지 않고 로드 윈도우(40)가 복원돼야 한다.
+        #expect(viewModel.studyGroupDetails.count == 40)
+        #expect(viewModel.studyGroupDetails.map(\.serverID).contains("G-40"))
     }
 }
 

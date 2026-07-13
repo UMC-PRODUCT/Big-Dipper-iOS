@@ -680,18 +680,41 @@ final class OperatorStudyManagementViewModel {
     }
 
     private func refreshStudyGroupManagementDataInBackground() {
+        // 새로고침 전에 사용자가 스크롤로 로드해 둔 항목 수(로드 윈도우)를 기억한다.
+        // 낙관적 placeholder(`new_`)는 아직 서버에 없으므로 목표 길이 계산에서 제외한다.
+        let targetCount = max(
+            studyGroupDetails.filter { isPersistedServerGroup($0.serverID) }.count,
+            Constants.groupManagementPageSize
+        )
+
         Task { [weak self] in
             guard let self else { return }
 
             do {
-                let firstPage = try await self.useCase.fetchStudyGroupDetailsPage(
-                    cursor: nil,
-                    size: Constants.groupManagementPageSize
-                )
-                self.studyGroupDetails = firstPage.content
-                self.studyGroupDetailsNextCursor = firstPage.nextCursor
-                self.studyGroupDetailsHasNext = firstPage.hasNext
-                self.studyGroupDetailsState = .loaded(firstPage.content)
+                // 첫 페이지만 덮어써 뒤쪽 페이지를 잘라내던 문제를 방지한다.
+                // 첫 페이지부터 다시 페이지네이션해 기존 로드 윈도우 길이를 복원한다.
+                var restored: [StudyGroupInfo] = []
+                var seenServerIDs = Set<String>()
+                var cursor: String?
+                var hasNext = true
+
+                repeat {
+                    let page = try await self.useCase.fetchStudyGroupDetailsPage(
+                        cursor: cursor,
+                        size: Constants.groupManagementPageSize
+                    )
+                    for group in page.content {
+                        guard seenServerIDs.insert(group.serverID).inserted else { continue }
+                        restored.append(group)
+                    }
+                    cursor = page.nextCursor
+                    hasNext = page.hasNext
+                } while hasNext && restored.count < targetCount
+
+                self.studyGroupDetails = restored
+                self.studyGroupDetailsNextCursor = cursor
+                self.studyGroupDetailsHasNext = hasNext
+                self.studyGroupDetailsState = .loaded(restored)
             } catch {
                 // 생성 자체는 성공했으나 목록 재동기화에 실패한 경우.
                 // 낙관적 `new_` placeholder 가 남아 관리(수정/삭제)가 막히므로,
