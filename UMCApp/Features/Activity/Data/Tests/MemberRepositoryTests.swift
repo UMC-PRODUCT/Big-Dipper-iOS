@@ -90,6 +90,7 @@ private enum Fixture {
         challengerId: String = "C100",
         part: String = "IOS",
         name: String = "홍길동",
+        nickname: String = "닉",
         gisu: Int = 7,
         pointSum: Double = 3,
         roleTypes: [String] = ["CHALLENGER"]
@@ -99,7 +100,7 @@ private enum Fixture {
         {
           "challengerId": "\(challengerId)", "memberId": "\(memberId)", "gisuId": "70",
           "generation": \(gisu), "gisu": \(gisu), "part": "\(part)", "name": "\(name)",
-          "nickname": "닉", "schoolName": "한성대", "pointSum": \(pointSum),
+          "nickname": "\(nickname)", "schoolName": "한성대", "pointSum": \(pointSum),
           "profileImageLink": null, "roleTypes": [\(roles)]
         }
         """
@@ -158,12 +159,13 @@ private enum Fixture {
     static func memberProfile(
         id: String = "100",
         name: String = "홍길동",
+        nickname: String = "닉",
         roleType: String = "SCHOOL_PART_LEADER",
         records: [String]
     ) -> String {
         """
         {
-          "id": "\(id)", "name": "\(name)", "nickname": "닉", "schoolName": "한성대",
+          "id": "\(id)", "name": "\(name)", "nickname": "\(nickname)", "schoolName": "한성대",
           "profileImageLink": null,
           "roles": [{ "challengerId": "C100", "roleType": "\(roleType)" }],
           "challengerRecords": [\(records.joined(separator: ","))]
@@ -347,6 +349,34 @@ struct MemberRepositoryListTests {
 
         #expect(member.penalty == 5)
         #expect(member.penaltyHistory.isEmpty)
+    }
+
+    // 검색 응답의 닉네임이 중간 모델에서 유실돼, 프로필 닉네임이 비면 '이름'이 닉네임 자리로 새던
+    // 회귀(리뷰 지적). 닉네임은 프로필 우선, 프로필이 비면 검색 닉네임으로 폴백해야 한다(이름 아님).
+    @Test(
+        "fetchMembersPage — 닉네임은 프로필 우선, 프로필이 비면 검색 닉네임으로 폴백한다",
+        arguments: [("프로필닉", "프로필닉"), ("", "검색닉")]
+    )
+    func fetchMembersPageResolvesNickname(
+        _ profileNickname: String,
+        _ expected: String
+    ) async throws {
+        let page = Fixture.offsetPage(
+            items: [Fixture.offsetItem(memberId: "100", name: "홍길동", nickname: "검색닉")]
+        )
+        let profile = Fixture.memberProfile(
+            name: "홍길동",
+            nickname: profileNickname,
+            records: [Fixture.record(gisu: 7, points: [])]
+        )
+        let (sut, _) = makeRepository([
+            .success(Fixture.success(page)),
+            .success(Fixture.success(profile))
+        ])
+
+        let member = try #require(try await sut.fetchMembersPage(page: 0).members.first)
+
+        #expect(member.nickname == expected)
     }
 
     // 프로필 조회 실패 모드 두 가지 — 서버 거부(success:false)와 스키마 깨짐(malformed JSON).

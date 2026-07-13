@@ -208,6 +208,7 @@ private extension MemberRepository {
         let memberId: String
         let challengerId: String?
         let name: String
+        let nickname: String
         let profileImageURL: String?
         let schoolName: String
         let generation: String
@@ -278,6 +279,7 @@ private extension MemberRepository {
                 memberId: item.memberId,
                 challengerId: item.challengerId.nonEmpty,
                 name: item.name,
+                nickname: item.nickname,
                 profileImageURL: item.profileImageURL,
                 schoolName: item.schoolName,
                 generation: generation,
@@ -360,7 +362,7 @@ private extension MemberRepository {
             challengerID: resolvedChallengerID(descriptor: descriptor, record: record),
             profile: profile?.profileImageURL ?? descriptor.profileImageURL,
             name: profile?.name.nonEmpty ?? descriptor.name,
-            nickname: profile?.nickname.nonEmpty ?? descriptor.name,
+            nickname: profile?.nickname.nonEmpty ?? descriptor.nickname,
             generation: allGenerationsText(from: profile, fallback: descriptor.generation),
             school: profile?.schoolName.nonEmpty ?? descriptor.schoolName,
             position: descriptor.position,
