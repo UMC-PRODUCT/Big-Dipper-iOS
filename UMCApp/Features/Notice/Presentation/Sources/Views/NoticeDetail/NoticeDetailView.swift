@@ -68,7 +68,7 @@ public struct NoticeDetailView: View {
 
     public var body: some View {
         content
-            .navigation(naviTitle: .noticeDetail, displayMode: .inline)
+            .navigation(naviTitle: NavigationTitle.Notice.detail, displayMode: .inline)
             .navigationSubtitle(noticeTypeSubtitle)
             .toolbar { toolbarContent }
             .safeAreaBar(edge: .bottom, alignment: .center, content: expandedReadStatusInset)

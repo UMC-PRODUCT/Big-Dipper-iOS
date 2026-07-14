@@ -42,7 +42,7 @@ public struct NoticeReadStatusSheet: View {
                     failedSection(error: error)
                 }
             }
-            .navigation(naviTitle: .noticeReadStatus, displayMode: .inline)
+            .navigation(naviTitle: NavigationTitle.Notice.readStatus, displayMode: .inline)
             .toolbar {
                 ToolBarCollection.CancelBtn(action: {})
                 
