@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import CoreDomain
 import UMCFoundation
 import CoreDI
 import NoticeDomain
