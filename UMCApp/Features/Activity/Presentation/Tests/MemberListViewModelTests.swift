@@ -16,12 +16,14 @@ import UMCFoundation
 
 // MARK: - Helpers
 
-/// 멤버 픽스처. `memberID`/`challengerID` 외 필드는 테스트 결과와 무관한 고정값입니다.
+/// 멤버 픽스처. `memberID`/`challengerID`/`rewardPoints` 외 필드는 테스트 결과와 무관한
+/// 고정값입니다. (`rewardPoints` 는 상점 보존 테스트에서만 의미가 있으며 기본 0.)
 private func makeMember(
     memberID: String?,
     challengerID: String? = nil,
     name: String = "홍길동",
-    part: UMCPartType = .front(type: .ios)
+    part: UMCPartType = .front(type: .ios),
+    rewardPoints: Double = 0
 ) -> MemberManagementItem {
     MemberManagementItem(
         memberID: memberID,
@@ -34,7 +36,7 @@ private func makeMember(
         position: "",
         part: part,
         penalty: 0,
-        rewardPoints: 0,
+        rewardPoints: rewardPoints,
         badge: false,
         managementTeam: .challenger,
         attendanceRecords: [],
@@ -454,6 +456,51 @@ struct MemberListViewModelSubmitPointTests {
         #expect(loaded.first { $0.memberID == "1" }?.penalty == 2)
         // 나머지 멤버는 그대로 유지된다.
         #expect(loaded.first { $0.memberID == "2" }?.penalty == 0)
+    }
+
+    @Test("벌점 부여 후 재조회 → 히스토리에 상점 없어도 기존 상점 배지 보존(0 소거 X)")
+    func submitPreservesExistingRewardWhenHistoryHasNoReward() async {
+        let member = makeMember(memberID: "1", challengerID: "C-1", rewardPoints: 5)
+        let useCase = MockFetchMembersUseCase()
+        useCase.pages[0] = makePage([member], hasNext: false, currentPage: 0)
+        // 재조회 히스토리에 벌점만 있고 상점 항목은 없음
+        useCase.pointHistory = [makeHistory(pointType: .studyLate, penaltyScore: 2)]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchMembers()
+
+        _ = await viewModel.submitPoint(
+            member: member,
+            pointType: .studyLate,
+            pointValue: 2,
+            description: "지각"
+        )
+
+        let updated = viewModel.membersState.value?.first { $0.memberID == "1" }
+        #expect(updated?.penalty == 2)          // 히스토리 벌점 반영
+        #expect(updated?.rewardPoints == 5)     // 기존 상점 보존(0 으로 소거되지 않음)
+    }
+
+    @Test("상세 시트 열림 상태에서 부여 → selectedMember 가 stable id 로 갱신")
+    func submitWhileSheetOpenUpdatesSelectionWithStableIdentity() async {
+        let member = makeMember(memberID: "1", challengerID: "C-1")
+        let useCase = MockFetchMembersUseCase()
+        useCase.pages[0] = makePage([member], hasNext: false, currentPage: 0)
+        useCase.pointHistory = [makeHistory(pointType: .studyLate, penaltyScore: 2)]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchMembers()
+        // 상세 시트가 이 멤버를 표시 중인 상태
+        viewModel.selectedMember = member
+
+        _ = await viewModel.submitPoint(
+            member: member,
+            pointType: .studyLate,
+            pointValue: 2,
+            description: "지각"
+        )
+
+        // 시트 정체성(id) 을 유지하며 재조회 상세로 갱신된다.
+        #expect(viewModel.selectedMember?.id == member.id)
+        #expect(viewModel.selectedMember?.penalty == 2)
     }
 
     @Test("부여 중 DomainError → Alert 표시 + 실패 반환")
