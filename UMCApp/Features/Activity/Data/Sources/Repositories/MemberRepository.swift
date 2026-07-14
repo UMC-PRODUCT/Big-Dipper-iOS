@@ -153,9 +153,9 @@ public final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendab
 
     /// 멤버의 기수별 상벌점 요약을 조회합니다.
     ///
-    /// - Note: 레거시는 기수별 챌린저 ID 마다 MyPage 챌린저 프로필을 병렬 조회했으나, 본 모듈은
-    ///   단일 멤버 프로필(`challengerRecords[].resolvedPoints`)에서 요약을 파생합니다 — MyPage
-    ///   모듈 의존 없이 동일 데이터를 활용합니다.
+    /// - Note: 레거시는 기수별 챌린저 ID 마다 MyPage 챌린저 프로필을 병렬로 조회했지만, 본 모듈은
+    ///   단일 멤버 프로필(`challengerRecords[].resolvedPoints`)에서 요약을 뽑습니다 — MyPage
+    ///   모듈에 기대지 않고 같은 데이터를 씁니다.
     public func fetchGenerationPointSummaries(
         memberId: String
     ) async throws -> [GenerationPointSummary] {

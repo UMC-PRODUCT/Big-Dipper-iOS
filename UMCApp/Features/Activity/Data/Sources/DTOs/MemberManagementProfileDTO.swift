@@ -15,7 +15,7 @@ import UMCFoundation
 /// `GET /api/v1/member/profile/{memberId}`
 ///
 /// 같은 엔드포인트를 ``MemberProfileDTO``(챌린저 ID 해석 전용, `challengerRecords` 만)도
-/// 디코딩하지만, 멤버 관리에는 이름·역할·기수별 포인트가 필요하므로 별도 리치 DTO 로 분리합니다.
+/// 디코딩하지만, 멤버 관리에는 이름·역할·기수별 포인트가 필요해 필드가 더 많은 별도 DTO 로 나눴습니다.
 /// 서버 식별자는 전 레이어 `String` 통일 규칙에 따라 `String` 으로 디코딩합니다(절대 규칙 #2).
 struct MemberManagementProfileDTO: Codable, Sendable, Equatable {
 

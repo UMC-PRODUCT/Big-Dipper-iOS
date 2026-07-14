@@ -9,9 +9,9 @@ import Foundation
 
 /// 멤버 관리 조회에 필요한 현재 사용자 컨텍스트 제공자.
 ///
-/// ``MemberRepositoryProtocol`` 의 멤버 목록 조회는 학교 단위 오프셋 검색을 사용하므로
-/// `schoolId` 가 필요하고, 상벌점 히스토리 열람 권한 판별·기수 우선순위 해석을 위해
-/// `currentMemberId`·`gisuId` 가 필요합니다. Repository 는 이 추상화에서 값을 읽습니다.
+/// ``MemberRepositoryProtocol`` 의 멤버 목록 조회가 학교 단위 오프셋 검색이라 `schoolId` 가
+/// 있어야 하고, 상벌점 히스토리 열람 권한과 기수 우선순위를 따지려면 `currentMemberId`·
+/// `gisuId` 도 필요합니다. Repository 는 이 값들을 여기서 읽어옵니다.
 ///
 /// - Note: ``StudyContextProviding`` 과 같은 이유로 비-`Sendable` 의존성으로 두고,
 ///   Repository 가 `@unchecked Sendable` 로 감쌉니다. 운영 코드는
