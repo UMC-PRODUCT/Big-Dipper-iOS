@@ -12,8 +12,9 @@ internal import Alamofire
 
 /// Study(Activity) Feature API 라우터.
 ///
-/// 조회 계열(커리큘럼/운영 스터디 그룹/멤버 프로필)과 운영진 스터디 그룹 CRUD·일정 연결을
-/// 단일 enum 으로 묶어 표현합니다. 멤버·포인트 계열 case 는 9차 멤버 Data 레이어에서 확장합니다.
+/// 조회 계열(커리큘럼/운영 스터디 그룹/멤버 프로필)과 운영진 스터디 그룹 CRUD·일정 연결,
+/// 멤버·포인트 계열(오프셋 검색·상벌점 부여/삭제·챌린저 프로필)을 단일 enum 으로 묶어
+/// 표현합니다.
 ///
 /// 연관값(Query/Request DTO·식별자 String)이 모두 `Sendable` 이므로 라우터도 `Sendable`.
 /// 동시성 경계를 넘어 안전하게 전달되며, 테스트의 파라미터화(`@Test(arguments:)`)도 가능.
@@ -28,8 +29,19 @@ enum StudyRouter: Sendable {
     case getMyStudyGroups(query: MyStudyGroupsQuery)
     /// 단일 스터디 그룹 상세 조회 — `GET /api/v1/study-groups/{groupId}`
     case getStudyGroupDetail(groupId: String)
-    /// 멤버 프로필 조회 (resolveChallengerId 용) — `GET /api/v1/member/profile/{memberId}`
+    /// 멤버 프로필 조회 (resolveChallengerId · 멤버 관리 용) — `GET /api/v1/member/profile/{memberId}`
     case getMemberProfile(memberId: String)
+
+    // MARK: - 멤버 / 포인트
+
+    /// 학교 단위 챌린저 오프셋 검색 — `GET /api/v1/challenger/search/offset`
+    case searchChallengersOffset(query: ChallengerSearchQuery)
+    /// 챌린저 포인트 부여 — `POST /api/v1/challenger/{challengerId}/points`
+    case createChallengerPoint(challengerId: String, body: ChallengerPointCreateRequestDTO)
+    /// 챌린저 포인트 삭제 — `DELETE /api/v1/challenger/points/{challengerPointId}`
+    case deleteChallengerPoint(challengerPointId: String)
+    /// 챌린저 프로필 조회 (포인트 히스토리 용) — `GET /api/v1/challenger/{challengerId}`
+    case getChallengerProfile(challengerId: String)
 
     // MARK: - 운영진 스터디 그룹 CRUD / 일정 연결
 
@@ -65,6 +77,14 @@ extension StudyRouter: BaseTargetType {
             return "/api/v1/study-groups/\(groupId)"
         case .getMemberProfile(let memberId):
             return "/api/v1/member/profile/\(memberId)"
+        case .searchChallengersOffset:
+            return "/api/v1/challenger/search/offset"
+        case .createChallengerPoint(let challengerId, _):
+            return "/api/v1/challenger/\(challengerId)/points"
+        case .deleteChallengerPoint(let challengerPointId):
+            return "/api/v1/challenger/points/\(challengerPointId)"
+        case .getChallengerProfile(let challengerId):
+            return "/api/v1/challenger/\(challengerId)"
         case .createStudyGroup:
             return "/api/v1/study-groups"
         case .updateStudyGroup(let groupId, _):
@@ -89,10 +109,13 @@ extension StudyRouter: BaseTargetType {
         case .getCurriculum,
              .getMyStudyGroups,
              .getStudyGroupDetail,
-             .getMemberProfile:
+             .getMemberProfile,
+             .searchChallengersOffset,
+             .getChallengerProfile:
             return .get
         case .createStudyGroup,
-             .linkStudyGroupSchedule:
+             .linkStudyGroupSchedule,
+             .createChallengerPoint:
             return .post
         case .updateStudyGroup,
              .addStudyGroupMember,
@@ -100,7 +123,8 @@ extension StudyRouter: BaseTargetType {
             return .patch
         case .deleteStudyGroup,
              .removeStudyGroupMember,
-             .removeStudyGroupMentor:
+             .removeStudyGroupMentor,
+             .deleteChallengerPoint:
             return .delete
         }
     }
@@ -119,19 +143,28 @@ extension StudyRouter: BaseTargetType {
                 parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
+        case .searchChallengersOffset(let query):
+            return .requestParameters(
+                parameters: query.toParameters,
+                encoding: URLEncoding.queryString
+            )
         case .createStudyGroup(let body):
             return .requestJSONEncodable(body)
         case .updateStudyGroup(_, let body):
             return .requestJSONEncodable(body)
         case .linkStudyGroupSchedule(let body):
             return .requestJSONEncodable(body)
+        case .createChallengerPoint(_, let body):
+            return .requestJSONEncodable(body)
         case .getStudyGroupDetail,
              .getMemberProfile,
+             .getChallengerProfile,
              .deleteStudyGroup,
              .addStudyGroupMember,
              .removeStudyGroupMember,
              .addStudyGroupMentor,
-             .removeStudyGroupMentor:
+             .removeStudyGroupMentor,
+             .deleteChallengerPoint:
             return .requestPlain
         }
     }
