@@ -32,5 +32,13 @@ extension DIContainer {
         register(FetchSchedulesUseCaseProtocol.self) {
             FetchSchedulesUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
         }
+        register(ScheduleClassifierRepositoryProtocol.self) {
+            ScheduleClassifierRepository()
+        }
+        register(ClassifyScheduleUseCaseProtocol.self) {
+            ClassifyScheduleUseCase(
+                repository: self.resolve(ScheduleClassifierRepositoryProtocol.self)
+            )
+        }
     }
 }

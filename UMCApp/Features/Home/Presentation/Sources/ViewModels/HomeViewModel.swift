@@ -28,6 +28,10 @@ public final class HomeViewModel {
     /// 실패 시 빈 딕셔너리로 degrade한다 (원본 AppProduct와 동일한 정책).
     public private(set) var scheduleByDates: [Date: [ScheduleDetailData]] = [:]
 
+    /// 일정 ID(``ScheduleDetailData/scheduleId``) → 분류된 카테고리. 분류가 끝난 일정만 채워지며,
+    /// 조회는 ``category(for:)`` 를 통해 기본값(``ScheduleIconCategory/general``)과 함께 사용한다.
+    public private(set) var scheduleCategories: [String: ScheduleIconCategory] = [:]
+
     /// 일정이 있는 날짜 집합 (캘린더 그리드의 점 표시용).
     public var scheduleDates: Set<Date> {
         Set(scheduleByDates.keys)
@@ -36,6 +40,7 @@ public final class HomeViewModel {
     private let fetchMyProfileUseCase: FetchHomeProfileUseCaseProtocol
     private let fetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProtocol
     private let fetchMySchedulesUseCase: FetchSchedulesUseCaseProtocol
+    private let classifyScheduleUseCase: ClassifyScheduleUseCaseProtocol
 
     // MARK: - Init
 
@@ -43,6 +48,7 @@ public final class HomeViewModel {
         fetchMyProfileUseCase = container.resolve(FetchHomeProfileUseCaseProtocol.self)
         fetchRecentNoticesUseCase = container.resolve(FetchRecentNoticesUseCaseProtocol.self)
         fetchMySchedulesUseCase = container.resolve(FetchSchedulesUseCaseProtocol.self)
+        classifyScheduleUseCase = container.resolve(ClassifyScheduleUseCaseProtocol.self)
     }
 
     // MARK: - Function
@@ -113,6 +119,7 @@ public final class HomeViewModel {
                 to: endOfMonth.kstEndOfDay,
                 isAttendanceRequired: false
             )
+            await classifySchedules(scheduleByDates.values.flatMap { $0 })
         } catch {
             scheduleByDates = [:]
         }
@@ -123,7 +130,22 @@ public final class HomeViewModel {
         scheduleByDates[Calendar.kstGregorian.startOfDay(for: date)] ?? []
     }
 
+    /// 일정 ID로 분류된 카테고리를 조회한다. 분류 전/실패 시 ``ScheduleIconCategory/general``.
+    public func category(for scheduleId: String) -> ScheduleIconCategory {
+        scheduleCategories[scheduleId] ?? .general
+    }
+
     // MARK: - Private Function
+
+    /// 일정 제목을 분류해 ``scheduleCategories`` 를 갱신한다. 빈 제목이거나 분류가 실패해도
+    /// UseCase가 `.general`을 반환하므로 별도 에러 처리는 필요 없다.
+    private func classifySchedules(_ schedules: [ScheduleDetailData]) async {
+        for schedule in schedules {
+            scheduleCategories[schedule.scheduleId] = await classifyScheduleUseCase.execute(
+                title: schedule.name
+            )
+        }
+    }
 
     /// 최신 기수의 최근 공지 5건을 조회한다. 소속 기수가 없으면 빈 목록으로 처리한다.
     private func fetchRecentNotices(latestGisuId: String?) async {

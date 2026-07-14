@@ -197,8 +197,11 @@ struct HomeView: View {
             )
         } else {
             ForEach(schedules) { schedule in
-                ScheduleListCard(data: schedule)
-                    .equatable()
+                ScheduleListCard(
+                    data: schedule,
+                    category: viewModel.category(for: schedule.scheduleId)
+                )
+                .equatable()
             }
         }
     }
@@ -329,11 +332,19 @@ private struct PreviewFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol {
     }
 }
 
+/// CoreML 로드 없이 카드 아이콘을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+private struct PreviewClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol {
+    func execute(title: String) async -> ScheduleIconCategory {
+        .study
+    }
+}
+
 #Preview {
     let container = DIContainer()
     container.register(FetchHomeProfileUseCaseProtocol.self) { PreviewFetchHomeProfileUseCase() }
     container.register(FetchRecentNoticesUseCaseProtocol.self) { PreviewFetchRecentNoticesUseCase() }
     container.register(FetchSchedulesUseCaseProtocol.self) { PreviewFetchSchedulesUseCase() }
+    container.register(ClassifyScheduleUseCaseProtocol.self) { PreviewClassifyScheduleUseCase() }
     return NavigationStack {
         HomeView(container: container)
     }

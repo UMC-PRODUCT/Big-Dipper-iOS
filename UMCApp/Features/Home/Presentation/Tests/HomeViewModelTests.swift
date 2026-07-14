@@ -107,6 +107,38 @@ struct HomeViewModelTests {
         #expect(useCase.callCount == 1)
     }
 
+    @Test("분류 전에는 category(for:)가 .general을 반환한다")
+    func categoryDefaultsToGeneralBeforeClassification() {
+        let viewModel = makeViewModel()
+
+        #expect(viewModel.category(for: "unknown-schedule") == .general)
+    }
+
+    @Test("fetchSchedules() 성공 시 일정 제목을 분류해 scheduleCategories를 채운다")
+    func fetchSchedulesClassifiesLoadedSchedules() async {
+        let schedule = ScheduleDetailData(
+            scheduleId: "1",
+            name: "알고리즘 스터디",
+            description: "",
+            tags: [],
+            startsAt: .now,
+            endsAt: .now.addingTimeInterval(3600),
+            isParticipant: true
+        )
+        let fetchSchedulesUseCase = MockFetchSchedulesUseCase(result: [.now: [schedule]])
+        let classifyScheduleUseCase = MockClassifyScheduleUseCase()
+        classifyScheduleUseCase.resultsByTitle["알고리즘 스터디"] = .study
+        let viewModel = makeViewModel(
+            fetchSchedulesUseCase: fetchSchedulesUseCase,
+            classifyScheduleUseCase: classifyScheduleUseCase
+        )
+
+        await viewModel.fetchSchedules()
+
+        #expect(viewModel.category(for: "1") == .study)
+        #expect(classifyScheduleUseCase.classifiedTitles == ["알고리즘 스터디"])
+    }
+
     @Test("fetchProfile(forceRefresh: true)는 UseCase에 forceRefresh를 그대로 전달한다")
     func forceRefreshIsPassedThroughToUseCase() async {
         let useCase = MockFetchHomeProfileUseCase()
@@ -137,14 +169,19 @@ private struct DummyError: Error {}
 @MainActor
 private func makeViewModel(
     useCase: FetchHomeProfileUseCaseProtocol? = nil,
-    recentNoticesUseCase: FetchRecentNoticesUseCaseProtocol? = nil
+    recentNoticesUseCase: FetchRecentNoticesUseCaseProtocol? = nil,
+    fetchSchedulesUseCase: FetchSchedulesUseCaseProtocol? = nil,
+    classifyScheduleUseCase: ClassifyScheduleUseCaseProtocol? = nil
 ) -> HomeViewModel {
     let useCase = useCase ?? MockFetchHomeProfileUseCase()
     let recentNoticesUseCase = recentNoticesUseCase ?? MockFetchRecentNoticesUseCase()
+    let fetchSchedulesUseCase = fetchSchedulesUseCase ?? MockFetchSchedulesUseCase()
+    let classifyScheduleUseCase = classifyScheduleUseCase ?? MockClassifyScheduleUseCase()
     let container = DIContainer()
     container.register(FetchHomeProfileUseCaseProtocol.self) { useCase }
     container.register(FetchRecentNoticesUseCaseProtocol.self) { recentNoticesUseCase }
-    container.register(FetchSchedulesUseCaseProtocol.self) { MockFetchSchedulesUseCase() }
+    container.register(FetchSchedulesUseCaseProtocol.self) { fetchSchedulesUseCase }
+    container.register(ClassifyScheduleUseCaseProtocol.self) { classifyScheduleUseCase }
     return HomeViewModel(container: container)
 }
 
@@ -192,7 +229,21 @@ private final class MockFetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProt
 
 /// 프로필 로딩 상태 전이 테스트는 일정 조회 결과와 무관하므로 빈 결과만 반환한다.
 private struct MockFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol, Sendable {
+    var result: [Date: [ScheduleDetailData]] = [:]
+
     func execute(from: Date, to: Date, isAttendanceRequired: Bool) async throws -> [Date: [ScheduleDetailData]] {
-        [:]
+        result
+    }
+}
+
+/// 제목별로 분류 결과를 주입할 수 있는 Mock. 매칭이 없으면 `.general`을 반환한다.
+private final class MockClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol,
+                                                 @unchecked Sendable {
+    var resultsByTitle: [String: ScheduleIconCategory] = [:]
+    private(set) var classifiedTitles: [String] = []
+
+    func execute(title: String) async -> ScheduleIconCategory {
+        classifiedTitles.append(title)
+        return resultsByTitle[title] ?? .general
     }
 }

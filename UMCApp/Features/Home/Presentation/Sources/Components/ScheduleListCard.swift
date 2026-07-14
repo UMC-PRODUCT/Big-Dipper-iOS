@@ -13,15 +13,14 @@ import UMCFoundation
 
 /// 선택한 날짜의 일정 한 건을 리스트 형태로 보여주는 카드.
 ///
-/// - Note: 제목 기반 자동 카테고리 분류(ML)는 이 슬라이스(#914) 범위 밖으로, 항상
-///   ``ScheduleIconCategory/general`` 아이콘을 표시한다. 분류 기능은 후속 이슈에서 추가한다.
+/// - Note: 카테고리 아이콘은 이 뷰가 직접 분류하지 않고, 부모(`HomeViewModel`)가 제목 기반으로
+///   분류한 결과(``ScheduleIconCategory``)를 주입받아 표시하는 dumb 컴포넌트다(#979).
 struct ScheduleListCard: View, Equatable {
 
     // MARK: - Property
 
     let data: ScheduleDetailData
-
-    private let category: ScheduleIconCategory = .general
+    let category: ScheduleIconCategory
 
     fileprivate enum Constants {
         static let iconPadding: CGFloat = 8
@@ -32,7 +31,7 @@ struct ScheduleListCard: View, Equatable {
     // MARK: - Equatable
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.data == rhs.data
+        lhs.data == rhs.data && lhs.category == rhs.category
     }
 
     // MARK: - Body
@@ -80,24 +79,30 @@ struct ScheduleListCard: View, Equatable {
 
 #Preview(traits: .sizeThatFitsLayout) {
     VStack {
-        ScheduleListCard(data: ScheduleDetailData(
-            scheduleId: "1",
-            name: "컨퍼런스",
-            description: "",
-            tags: [],
-            startsAt: .now.addingTimeInterval(60 * 60 * 24 * 7),
-            endsAt: .now.addingTimeInterval(60 * 60 * 24 * 7 + 3600),
-            isParticipant: true
-        ))
-        ScheduleListCard(data: ScheduleDetailData(
-            scheduleId: "2",
-            name: "데모데이",
-            description: "",
-            tags: [],
-            startsAt: .now.addingTimeInterval(-60 * 60 * 24 * 14),
-            endsAt: .now.addingTimeInterval(-60 * 60 * 24 * 14 + 3600),
-            isParticipant: false
-        ))
+        ScheduleListCard(
+            data: ScheduleDetailData(
+                scheduleId: "1",
+                name: "컨퍼런스",
+                description: "",
+                tags: [],
+                startsAt: .now.addingTimeInterval(60 * 60 * 24 * 7),
+                endsAt: .now.addingTimeInterval(60 * 60 * 24 * 7 + 3600),
+                isParticipant: true
+            ),
+            category: .presentation
+        )
+        ScheduleListCard(
+            data: ScheduleDetailData(
+                scheduleId: "2",
+                name: "데모데이",
+                description: "",
+                tags: [],
+                startsAt: .now.addingTimeInterval(-60 * 60 * 24 * 14),
+                endsAt: .now.addingTimeInterval(-60 * 60 * 24 * 14 + 3600),
+                isParticipant: false
+            ),
+            category: .celebration
+        )
     }
     .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
 }
