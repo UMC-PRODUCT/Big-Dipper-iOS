@@ -28,6 +28,7 @@ struct FetchHomeProfileUseCaseTests {
 
         #expect(result == expected)
         #expect(repository.fetchMyProfileCallCount == 1)
+        #expect(repository.fetchMyProfileReceivedForceRefresh == false)
     }
 
     @Test("repository.fetchMyProfile()이 에러를 던지면 그대로 전파한다")
@@ -39,5 +40,18 @@ struct FetchHomeProfileUseCaseTests {
         await #expect(throws: HomeTestError.boom) {
             _ = try await useCase.execute()
         }
+    }
+
+    @Test("execute(forceRefresh: true)는 forceRefresh를 repository에 그대로 관통시킨다")
+    func executePassesForceRefreshThrough() async throws {
+        let repository = MockHomeRepository()
+        let expected = HomeProfileResult(memberId: "1", seasonTypes: [.days(1)], generations: [])
+        repository.fetchMyProfileResult = .success(expected)
+        let useCase = FetchHomeProfileUseCase(repository: repository)
+
+        let result = try await useCase.execute(forceRefresh: true)
+
+        #expect(result == expected)
+        #expect(repository.fetchMyProfileReceivedForceRefresh == true)
     }
 }

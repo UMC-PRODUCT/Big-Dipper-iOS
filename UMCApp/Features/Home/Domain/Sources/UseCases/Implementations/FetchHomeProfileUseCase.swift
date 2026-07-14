@@ -20,7 +20,7 @@ public final class FetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol {
 
     // MARK: - Function
 
-    public func execute() async throws -> HomeProfileResult {
-        try await repository.fetchMyProfile()
+    public func execute(forceRefresh: Bool) async throws -> HomeProfileResult {
+        try await repository.fetchMyProfile(forceRefresh: forceRefresh)
     }
 }
