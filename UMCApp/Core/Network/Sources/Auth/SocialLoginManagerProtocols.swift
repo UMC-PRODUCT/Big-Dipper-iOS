@@ -1,3 +1,10 @@
+//
+//  SocialLoginManagerProtocols.swift
+//  CoreNetwork
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 카카오 소셜 로그인 매니저 인터페이스.
 ///
 /// `LoginViewModel`이 실제 Kakao SDK 대신 테스트 더블을 주입할 수 있도록 하는 최소 계약이다.

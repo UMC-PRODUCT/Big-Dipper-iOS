@@ -1,3 +1,10 @@
+//
+//  HomeProfileResult.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 홈 화면 시즌/세대 카드 구성에 필요한 프로필 조회 결과.
 public struct HomeProfileResult: Equatable, Sendable {
 

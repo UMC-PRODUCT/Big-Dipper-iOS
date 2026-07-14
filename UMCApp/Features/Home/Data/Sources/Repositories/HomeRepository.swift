@@ -1,3 +1,10 @@
+//
+//  HomeRepository.swift
+//  HomeData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import CoreDomain
 import CoreNetwork
 import Foundation
@@ -38,8 +45,8 @@ public final class HomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Function
 
-    public func fetchMyProfile() async throws -> HomeProfileResult {
-        let profile = try await memberProfileRepository.fetchMyProfile()
+    public func fetchMyProfile(forceRefresh: Bool) async throws -> HomeProfileResult {
+        let profile = try await memberProfileRepository.fetchMyProfile(forceRefresh: forceRefresh)
         let generations = profile.toHomeGenerations()
         let seasonTypes = try await makeSeasonTypes(profile: profile)
 

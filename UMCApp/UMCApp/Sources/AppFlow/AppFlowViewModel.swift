@@ -1,3 +1,10 @@
+//
+//  AppFlowViewModel.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import Foundation
 import UMCFoundation
 

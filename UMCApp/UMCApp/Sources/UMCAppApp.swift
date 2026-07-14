@@ -1,3 +1,10 @@
+//
+//  UMCAppApp.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 3/6/26.
+//
+
 import CoreDesignSystem
 import CoreDI
 import FirebaseCore

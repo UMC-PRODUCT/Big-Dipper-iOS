@@ -1,3 +1,10 @@
+//
+//  ResetPasswordViewModelTests.swift
+//  AuthPresentationTests
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 import Testing
 import Foundation
 import CoreDI

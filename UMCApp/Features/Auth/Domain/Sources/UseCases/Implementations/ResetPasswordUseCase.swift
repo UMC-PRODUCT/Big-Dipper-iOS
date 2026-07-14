@@ -1,3 +1,10 @@
+//
+//  ResetPasswordUseCase.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 /// 비밀번호 재설정 UseCase 구현체
 public final class ResetPasswordUseCase: ResetPasswordUseCaseProtocol {
 

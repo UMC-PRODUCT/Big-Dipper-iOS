@@ -62,8 +62,8 @@ public final class MyPageRepository: MyPageRepositoryProtocol, @unchecked Sendab
     ///
     /// 정본 프로필 조회 파이프라인(``CoreDomain/MemberProfileRepositoryProtocol``)에 위임한 뒤,
     /// `MyPageDomain`의 `Profile.toProfileData()` 확장으로 화면 전체 데이터를 구성합니다.
-    public func fetchMyProfile() async throws -> ProfileData {
-        let profile = try await memberProfileRepository.fetchMyProfile()
+    public func fetchMyProfile(forceRefresh: Bool) async throws -> ProfileData {
+        let profile = try await memberProfileRepository.fetchMyProfile(forceRefresh: forceRefresh)
         return profile.toProfileData()
     }
 

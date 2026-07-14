@@ -1,3 +1,10 @@
+//
+//  RefreshCoalescer.swift
+//  MaintenanceData
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 import Foundation
 
 /// 짧은 시간 내에 연속 호출되는 비동기 작업을 하나의 실행으로 합쳐주는 헬퍼.

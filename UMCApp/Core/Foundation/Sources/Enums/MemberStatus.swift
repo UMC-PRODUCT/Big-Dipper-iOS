@@ -2,6 +2,8 @@
 //  MemberStatus.swift
 //  UMCFoundation
 //
+//  Created by euijjang97 on 6/25/26.
+//
 
 import Foundation
 

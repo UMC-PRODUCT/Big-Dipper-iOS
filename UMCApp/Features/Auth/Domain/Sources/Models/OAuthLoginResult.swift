@@ -1,3 +1,10 @@
+//
+//  OAuthLoginResult.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// OAuth 소셜 로그인 결과.
 ///
 /// 서버 응답에 따라 기존 회원/신규 회원을 구분한다.

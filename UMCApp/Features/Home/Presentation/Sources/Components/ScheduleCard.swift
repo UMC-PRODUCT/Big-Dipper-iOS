@@ -1,3 +1,10 @@
+//
+//  ScheduleCard.swift
+//  HomePresentation
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 import CoreDesignSystem
 import SwiftUI
 import UMCFoundation

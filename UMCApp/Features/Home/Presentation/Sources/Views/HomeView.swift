@@ -1,3 +1,10 @@
+//
+//  HomeView.swift
+//  HomePresentation
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import CoreDesignSystem
 import CoreDI
 import CoreUIComponents
@@ -57,6 +64,9 @@ struct HomeView: View {
             .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
         }
         .contentMargins(.bottom, DefaultConstant.defaultContentBottomMargins, for: .scrollContent)
+        .refreshable {
+            await viewModel.fetchProfile(forceRefresh: true)
+        }
         .umcDefaultBackground()
         .task {
             await viewModel.fetchProfileIfNeeded()
@@ -244,7 +254,7 @@ struct HomeView: View {
 #if DEBUG
 /// 네트워크 없이 화면을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
 private struct PreviewFetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol {
-    func execute() async throws -> HomeProfileResult {
+    func execute(forceRefresh: Bool) async throws -> HomeProfileResult {
         HomeProfileResult(
             memberId: "1",
             seasonTypes: [.gens(["11", "12"]), .days(128)],

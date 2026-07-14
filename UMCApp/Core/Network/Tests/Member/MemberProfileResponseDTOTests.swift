@@ -2,6 +2,8 @@
 //  MemberProfileResponseDTOTests.swift
 //  CoreNetworkTests
 //
+//  Created by euijjang97 on 7/11/26.
+//
 //  Auth/MyPage 각자가 소유했던 구 프로필 응답 DTO 테스트의 대표 케이스를
 //  정본 DTO 필드명에 맞춰 포팅한다.
 //

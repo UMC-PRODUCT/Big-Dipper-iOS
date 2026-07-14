@@ -1,3 +1,10 @@
+//
+//  RegisterResult.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 소셜 회원가입 결과.
 ///
 /// 토큰 저장은 Repository(Data 레이어)의 TokenStore가 전담하므로(#953 `performOAuthLogin` 선례),

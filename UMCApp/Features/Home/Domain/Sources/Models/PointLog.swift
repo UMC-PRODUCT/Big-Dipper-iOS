@@ -1,3 +1,10 @@
+//
+//  PointLog.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 페널티 카드가 표시하는 포인트 내역 한 건.
 public struct PointLog: Identifiable, Equatable, Sendable {
 

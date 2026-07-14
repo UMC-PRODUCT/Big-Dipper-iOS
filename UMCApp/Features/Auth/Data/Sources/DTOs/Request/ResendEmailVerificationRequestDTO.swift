@@ -1,3 +1,10 @@
+//
+//  ResendEmailVerificationRequestDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일 인증 코드 재전송 요청 DTO
 ///
 /// `POST /api/v1/auth/email-verification/resend`

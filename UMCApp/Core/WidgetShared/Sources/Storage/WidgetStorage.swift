@@ -1,3 +1,10 @@
+//
+//  WidgetStorage.swift
+//  CoreWidgetShared
+//
+//  Created by euijjang97 on 4/23/26.
+//
+
 import Foundation
 
 /// App Group 기반 위젯 공유 스토리지 래퍼

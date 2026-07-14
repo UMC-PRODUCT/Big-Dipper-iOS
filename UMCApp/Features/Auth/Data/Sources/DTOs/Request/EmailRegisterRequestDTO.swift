@@ -1,3 +1,10 @@
+//
+//  EmailRegisterRequestDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일(ID/PW) 회원가입 API 요청 DTO
 ///
 /// `POST /api/v1/member/register/email`

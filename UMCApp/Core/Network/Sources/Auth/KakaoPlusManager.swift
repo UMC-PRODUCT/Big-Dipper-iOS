@@ -1,3 +1,10 @@
+//
+//  KakaoPlusManager.swift
+//  CoreNetwork
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 import Foundation
 import KakaoSDKTalk
 import UIKit

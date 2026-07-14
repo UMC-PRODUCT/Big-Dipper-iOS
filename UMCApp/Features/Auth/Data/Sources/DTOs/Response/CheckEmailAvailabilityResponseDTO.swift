@@ -1,3 +1,10 @@
+//
+//  CheckEmailAvailabilityResponseDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import UMCFoundation
 
 /// 이메일 중복 검사 API 응답 DTO

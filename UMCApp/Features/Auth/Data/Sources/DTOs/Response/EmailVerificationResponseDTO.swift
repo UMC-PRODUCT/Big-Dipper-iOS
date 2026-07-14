@@ -1,3 +1,10 @@
+//
+//  EmailVerificationResponseDTO.swift
+//  AuthData
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import UMCFoundation
 
 /// 이메일 인증 발송/재전송 API 응답 DTO

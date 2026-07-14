@@ -25,7 +25,7 @@ public final class FetchMyPageProfileUseCase: FetchMyPageProfileUseCaseProtocol 
 
     // MARK: - Function
 
-    public func execute() async throws -> ProfileData {
-        try await repository.fetchMyProfile()
+    public func execute(forceRefresh: Bool) async throws -> ProfileData {
+        try await repository.fetchMyProfile(forceRefresh: forceRefresh)
     }
 }

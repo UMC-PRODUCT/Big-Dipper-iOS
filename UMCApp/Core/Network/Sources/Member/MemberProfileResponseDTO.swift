@@ -2,6 +2,8 @@
 //  MemberProfileResponseDTO.swift
 //  CoreNetwork
 //
+//  Created by euijjang97 on 7/11/26.
+//
 //  `GET /api/v1/member/me` 정본 응답 DTO 모음.
 //  - Auth·Home·MyPage가 각자 소유했던 구 프로필 응답 DTO 3개 파이프라인이 필요로 하던
 //    필드의 합집합을 한 파일에 모은다.

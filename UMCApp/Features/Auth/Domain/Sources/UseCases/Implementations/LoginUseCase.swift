@@ -1,3 +1,10 @@
+//
+//  LoginUseCase.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 소셜 로그인 UseCase 구현체
 ///
 /// 토큰 저장은 Repository(Data 레이어)가 내부적으로 처리하므로, 이 UseCase는

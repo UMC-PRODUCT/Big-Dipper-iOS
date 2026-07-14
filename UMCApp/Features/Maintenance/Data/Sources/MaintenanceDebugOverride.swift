@@ -1,3 +1,10 @@
+//
+//  MaintenanceDebugOverride.swift
+//  MaintenanceData
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 #if DEBUG
 /// 디버그 빌드 전용 — 실제 Firebase 콘솔 값과 무관하게 점검·강제 업데이트 오버레이를
 /// 강제로 노출시키는 토글. QA/개발 중 오버레이 UI를 즉시 확인하고 싶을 때 사용한다.

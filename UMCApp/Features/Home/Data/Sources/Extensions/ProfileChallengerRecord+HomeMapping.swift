@@ -1,3 +1,10 @@
+//
+//  ProfileChallengerRecord+HomeMapping.swift
+//  HomeData
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 import CoreDomain
 import Foundation
 import HomeDomain

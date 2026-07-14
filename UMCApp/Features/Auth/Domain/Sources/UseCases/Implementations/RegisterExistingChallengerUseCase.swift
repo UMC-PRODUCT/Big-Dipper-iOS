@@ -1,3 +1,10 @@
+//
+//  RegisterExistingChallengerUseCase.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 기존 챌린저 6자리 코드 등록 UseCase 구현체
 public final class RegisterExistingChallengerUseCase: RegisterExistingChallengerUseCaseProtocol {
 

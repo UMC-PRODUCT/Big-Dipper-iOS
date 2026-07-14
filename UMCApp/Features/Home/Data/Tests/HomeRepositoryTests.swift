@@ -2,6 +2,8 @@
 //  HomeRepositoryTests.swift
 //  HomeDataTests
 //
+//  Created by euijjang97 on 7/11/26.
+//
 //  진짜 `HomeRepository`를 대상으로, 정본 프로필 조회 파이프라인(``MemberProfileRepositoryProtocol``)과
 //  기수 상세 조회 네트워크 계층만 가짜(``MockMemberProfileRepository``/``StubHomeNetwork``)로 주입해
 //  `Profile → HomeProfileResult` 매핑(세대 파생/포인트 분류/활동일 계산)과
@@ -12,6 +14,7 @@ import Foundation
 import Testing
 import Moya
 import CoreDomain
+import CoreNetwork
 import UMCFoundation
 import HomeDomain
 @testable import HomeData
@@ -64,10 +67,36 @@ private final class MockMemberProfileRepository:
 
     var result: Result<Profile, Error> = .failure(MockError.notStubbed)
     private(set) var fetchMyProfileCallCount = 0
+    private(set) var lastForceRefresh: Bool?
 
     func fetchMyProfile() async throws -> Profile {
+        try await fetchMyProfile(forceRefresh: false)
+    }
+
+    func fetchMyProfile(forceRefresh: Bool) async throws -> Profile {
         fetchMyProfileCallCount += 1
+        lastForceRefresh = forceRefresh
         return try result.get()
+    }
+}
+
+/// 캐시 합성 검증용 원격 스텁 — 호출 횟수를 기록하고 호출 시점의 `profileToReturn`을 반환한다.
+private actor FakeRemoteMemberProfileRepository: MemberProfileRepositoryProtocol {
+
+    private(set) var callCount = 0
+    private var profileToReturn: Profile
+
+    init(profile: Profile) {
+        self.profileToReturn = profile
+    }
+
+    func updateProfile(_ profile: Profile) {
+        profileToReturn = profile
+    }
+
+    func fetchMyProfile() async throws -> Profile {
+        callCount += 1
+        return profileToReturn
     }
 }
 
@@ -83,6 +112,18 @@ private enum Fixture {
           "result": { "gisuId": "\(gisuId)", "startAt": "\(startAt)" }
         }
         """.utf8)
+    }
+
+    /// 기수 기록이 없어 기수 상세 네트워크 호출이 발생하지 않는 최소 프로필
+    static func minimalProfile(memberId: String) -> Profile {
+        Profile(
+            memberId: memberId,
+            name: "홍길동",
+            nickname: "길동",
+            generations: [],
+            roles: [],
+            challengerRecords: []
+        )
     }
 }
 
@@ -291,5 +332,55 @@ struct HomeRepositoryTests {
         await #expect(throws: MockMemberProfileRepository.MockError.notStubbed) {
             _ = try await repository.fetchMyProfile()
         }
+    }
+
+    @Test("fetchMyProfile(forceRefresh:)가 정본 프로필 리포지토리에 플래그를 그대로 전달한다")
+    func fetchMyProfilePassesForceRefreshToMemberProfileRepository() async throws {
+        let memberProfileRepository = MockMemberProfileRepository()
+        memberProfileRepository.result = .success(Fixture.minimalProfile(memberId: "1"))
+        let network = StubHomeNetwork(.failure(MockMemberProfileRepository.MockError.notStubbed))
+        let repository = HomeRepository(
+            networkRequesting: network,
+            memberProfileRepository: memberProfileRepository
+        )
+
+        _ = try await repository.fetchMyProfile(forceRefresh: true)
+        #expect(memberProfileRepository.lastForceRefresh == true)
+
+        _ = try await repository.fetchMyProfile()
+        #expect(memberProfileRepository.lastForceRefresh == false)
+    }
+
+    @Test("forceRefresh는 캐시를 우회해 서버를 재조회하고, 이후 일반 조회는 갱신된 스냅샷을 반환한다")
+    func forceRefreshBypassesCacheAndSubsequentFetchReturnsUpdatedSnapshot() async throws {
+        let remote = FakeRemoteMemberProfileRepository(
+            profile: Fixture.minimalProfile(memberId: "1")
+        )
+        let cached = CachedMemberProfileRepository(remote: remote)
+        let network = StubHomeNetwork(.failure(MockMemberProfileRepository.MockError.notStubbed))
+        let repository = HomeRepository(
+            networkRequesting: network,
+            memberProfileRepository: cached
+        )
+
+        let first = try await repository.fetchMyProfile()
+        #expect(first.memberId == "1")
+
+        await remote.updateProfile(Fixture.minimalProfile(memberId: "2"))
+
+        let cachedHit = try await repository.fetchMyProfile()
+        var remoteCallCount = await remote.callCount
+        #expect(cachedHit.memberId == "1", "일반 조회는 캐시 히트 — 이전 스냅샷 유지")
+        #expect(remoteCallCount == 1)
+
+        let refreshed = try await repository.fetchMyProfile(forceRefresh: true)
+        remoteCallCount = await remote.callCount
+        #expect(refreshed.memberId == "2", "forceRefresh는 캐시를 우회해 서버 최신을 반환")
+        #expect(remoteCallCount == 2)
+
+        let afterRefresh = try await repository.fetchMyProfile()
+        remoteCallCount = await remote.callCount
+        #expect(afterRefresh.memberId == "2", "이후 일반 조회도 갱신된 스냅샷을 반환")
+        #expect(remoteCallCount == 2, "갱신된 캐시에 히트 — 추가 원격 호출 없음")
     }
 }

@@ -1,3 +1,10 @@
+//
+//  AuthRepositoryProtocol.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 /// 인증/세션 관련 데이터 접근 계층 인터페이스.
 ///
 /// `NetworkClient`/`TokenStore` 같은 Core 인프라 타입을 Domain 레이어에 노출하지 않도록

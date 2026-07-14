@@ -1,3 +1,10 @@
+//
+//  SeasonType.swift
+//  HomeDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 홈 시즌 카드가 표시하는 값의 종류.
 ///
 /// 소속 기수가 없으면 누적 활동일(`days`), 있으면 소속 기수 목록(`gens`)을 표시한다.

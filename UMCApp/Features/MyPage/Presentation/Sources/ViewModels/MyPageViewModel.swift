@@ -60,15 +60,19 @@ public final class MyPageViewModel {
     /// - Important: 본 PR은 `/member-oauth/me` 동기화를 호출하지 않으므로
     ///   `socialConnections`는 항상 빈 배열로 세팅됩니다. 소셜 연동 표시는
     ///   Auth UseCase 이식 후속 PR에서 복원합니다.
+    /// - Parameter forceRefresh: `true`이면 세션 프로필 캐시를 우회해 서버 최신으로 갱신한다.
+    ///   (#816 화면 조립 시 당겨서 새로고침 경로로 연결 예정)
     @MainActor
-    public func fetchProfile() async {
+    public func fetchProfile(forceRefresh: Bool = false) async {
         if profileData.isLoading { return }
 
         let previousState = profileData
         profileData = .loading
 
         do {
-            var profile = try await myPageProvider.fetchMyPageProfileUseCase.execute()
+            var profile = try await myPageProvider.fetchMyPageProfileUseCase.execute(
+                forceRefresh: forceRefresh
+            )
             // TODO: Auth UseCase 이식 후속 PR에서 syncConnectedSocials() 호출로 교체
             profile.socialConnections = []
             profileData = .loaded(profile)

@@ -89,15 +89,41 @@ private final class MockMemberProfileRepository:
     private(set) var fetchMyProfileCallCount = 0
     private(set) var primeCacheCallCount = 0
     private(set) var primedProfiles: [Profile] = []
+    private(set) var lastForceRefresh: Bool?
 
     func fetchMyProfile() async throws -> Profile {
+        try await fetchMyProfile(forceRefresh: false)
+    }
+
+    func fetchMyProfile(forceRefresh: Bool) async throws -> Profile {
         fetchMyProfileCallCount += 1
+        lastForceRefresh = forceRefresh
         return try result.get()
     }
 
     func primeCache(with profile: Profile) async {
         primeCacheCallCount += 1
         primedProfiles.append(profile)
+    }
+}
+
+/// 캐시 합성 검증용 원격 스텁 — 호출 횟수를 기록하고 호출 시점의 `profileToReturn`을 반환한다.
+private actor FakeRemoteMemberProfileRepository: MemberProfileRepositoryProtocol {
+
+    private(set) var callCount = 0
+    private var profileToReturn: Profile
+
+    init(profile: Profile) {
+        self.profileToReturn = profile
+    }
+
+    func updateProfile(_ profile: Profile) {
+        profileToReturn = profile
+    }
+
+    func fetchMyProfile() async throws -> Profile {
+        callCount += 1
+        return profileToReturn
     }
 }
 
@@ -195,6 +221,18 @@ private enum Fixture {
         if let message { fields.append("\"message\": \"\(message)\"") }
         fields.append("\"result\": null")
         return Data("{ \(fields.joined(separator: ", ")) }".utf8)
+    }
+
+    /// 캐시 합성 검증용 최소 Profile (기수 기록 없음)
+    static func minimalProfile(memberId: String) -> Profile {
+        Profile(
+            memberId: memberId,
+            name: "홍길동",
+            nickname: "길동",
+            generations: [],
+            roles: [],
+            challengerRecords: []
+        )
     }
 
     /// 프로필 result 본문 — 최신 챌린저 기록(challengerId 777, gisu 11, IOS)을 가진 멤버(id 42)
@@ -351,6 +389,50 @@ struct MyPageRepositoryProfileTests {
         await #expect(throws: RepositoryError.serverError(code: "M404", message: "회원 없음")) {
             _ = try await sut.fetchMyProfile()
         }
+    }
+
+    @Test("fetchMyProfile(forceRefresh:)가 정본 프로필 리포지토리에 플래그를 그대로 전달한다")
+    func fetchMyProfilePassesForceRefreshToMemberProfileRepository() async throws {
+        let memberProfileRepository = MockMemberProfileRepository()
+        memberProfileRepository.result = .success(Fixture.minimalProfile(memberId: "42"))
+        let (sut, _) = makeRepository(
+            .success(Fixture.successVoid()),
+            memberProfileRepository: memberProfileRepository
+        )
+
+        _ = try await sut.fetchMyProfile(forceRefresh: true)
+        #expect(memberProfileRepository.lastForceRefresh == true)
+
+        _ = try await sut.fetchMyProfile()
+        #expect(memberProfileRepository.lastForceRefresh == false)
+    }
+
+    @Test("forceRefresh는 캐시를 우회해 서버를 재조회하고, 이후 일반 조회는 캐시에 히트한다")
+    func forceRefreshBypassesCacheAndSubsequentFetchHitsRefreshedCache() async throws {
+        let remote = FakeRemoteMemberProfileRepository(
+            profile: Fixture.minimalProfile(memberId: "42")
+        )
+        let cached = CachedMemberProfileRepository(remote: remote)
+        let (sut, _) = makeRepository(
+            .success(Fixture.successVoid()),
+            memberProfileRepository: cached
+        )
+
+        _ = try await sut.fetchMyProfile()
+        var count = await remote.callCount
+        #expect(count == 1, "일반 조회 1회 — 캐시 적재")
+
+        _ = try await sut.fetchMyProfile()
+        count = await remote.callCount
+        #expect(count == 1, "일반 조회 1회 더 — 캐시 히트")
+
+        _ = try await sut.fetchMyProfile(forceRefresh: true)
+        count = await remote.callCount
+        #expect(count == 2, "forceRefresh — 캐시 우회")
+
+        _ = try await sut.fetchMyProfile()
+        count = await remote.callCount
+        #expect(count == 2, "일반 조회 1회 더 — 갱신된 캐시 히트")
     }
 
     @Test("fetchMemberProfile — APIResponse 래핑 응답을 MemberProfileSummary로 매핑하고 memberId를 path에 보간한다")

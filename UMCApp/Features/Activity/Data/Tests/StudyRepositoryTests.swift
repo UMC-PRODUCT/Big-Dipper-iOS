@@ -37,6 +37,8 @@ private final class StubNetworkRequesting: NetworkRequesting, @unchecked Sendabl
     private var outcomes: [Outcome]
     private(set) var requestedPaths: [String] = []
     private(set) var requestedMethods: [Moya.Method] = []
+    /// 각 요청의 `cursor` 쿼리 파라미터 (없으면 `nil`). 페이지네이션 echo 검증용.
+    private(set) var requestedCursors: [String?] = []
 
     var requestCount: Int { requestedPaths.count }
     var lastPath: String? { requestedPaths.last }
@@ -49,6 +51,7 @@ private final class StubNetworkRequesting: NetworkRequesting, @unchecked Sendabl
     func request<T: TargetType>(_ target: T) async throws -> Response {
         requestedPaths.append(target.path)
         requestedMethods.append(target.method)
+        requestedCursors.append(Self.cursor(from: target.task))
         guard !outcomes.isEmpty else {
             throw StubError.noOutcomeQueued
         }
@@ -58,6 +61,13 @@ private final class StubNetworkRequesting: NetworkRequesting, @unchecked Sendabl
         case .failure(let error):
             throw error
         }
+    }
+
+    private static func cursor(from task: Moya.Task) -> String? {
+        if case let .requestParameters(parameters, _) = task {
+            return parameters["cursor"] as? String
+        }
+        return nil
     }
 }
 
@@ -306,6 +316,25 @@ struct StudyRepositoryGroupTests {
         #expect(stub.requestCount == 1)        // 두 번째 페이지를 요청하지 않음
     }
 
+    @Test("fetchStudyGroupDetails — 불투명 nextCursor 를 다음 페이지 요청 커서로 그대로 echo 한다")
+    func fetchStudyGroupDetailsEchoesOpaqueCursor() async throws {
+        let page1 = Fixture.studyGroupsPage(
+            [Fixture.studyGroupDetailObject], nextCursor: "cursor-2", hasNext: true
+        )
+        let page2 = Fixture.studyGroupsPage(
+            [Fixture.studyGroupDetailObject], nextCursor: nil, hasNext: false
+        )
+        let (sut, stub) = makeRepository([
+            .success(Fixture.success(page1)),
+            .success(Fixture.success(page2))
+        ])
+
+        _ = try await sut.fetchStudyGroupDetails()
+
+        // 1페이지는 커서 없음, 2페이지는 불투명 토큰을 숫자 변환 없이 그대로 전달.
+        #expect(stub.requestedCursors == [nil, "cursor-2"])
+    }
+
     @Test("fetchStudyGroupDetail — 단일 상세를 매핑하고 groupId 를 path 에 보간한다")
     func fetchStudyGroupDetailMapsSuccess() async throws {
         let (sut, stub) = makeRepository(
@@ -329,14 +358,14 @@ struct StudyRepositoryResolveChallengerTests {
     @Test(
         "resolveChallengerId — 기수/컨텍스트 폴백/첫 레코드 우선순위로 challengerId 를 해석한다",
         arguments: [
-            (preferred: Optional(8), contextGisuId: Optional("70"), expected: "C8"),
-            (preferred: Optional<Int>.none, contextGisuId: Optional("80"), expected: "C8"),
-            (preferred: Optional<Int>.none, contextGisuId: Optional("70"), expected: "C7"),
-            (preferred: Optional<Int>.none, contextGisuId: Optional<String>.none, expected: "C7")
+            (preferred: Optional("8"), contextGisuId: Optional("70"), expected: "C8"),
+            (preferred: Optional<String>.none, contextGisuId: Optional("80"), expected: "C8"),
+            (preferred: Optional<String>.none, contextGisuId: Optional("70"), expected: "C7"),
+            (preferred: Optional<String>.none, contextGisuId: Optional<String>.none, expected: "C7")
         ]
     )
     func resolveChallengerIdAppliesPriority(
-        preferred: Int?,
+        preferred: String?,
         contextGisuId: String?,
         expected: String
     ) async throws {
@@ -369,14 +398,14 @@ struct StudyRepositoryResolveChallengerTests {
     }
 }
 
-// MARK: - Suite: CRUD 스텁 계약
+// MARK: - Suite: CRUD/연결 실행 계약
 
-@Suite("StudyRepository — CRUD/연결 스텁 (미구현 계약)")
-struct StudyRepositoryStubTests {
+@Suite("StudyRepository — CRUD/연결 실행 (도메인 규칙)")
+struct StudyRepositoryCRUDTests {
 
-    /// 8차에서 실구현될 CRUD/연결 메서드. 모두 동일하게 `unimplemented` 를 던지므로
-    /// 검증 본문이 같아 파라미터화한다.
-    private enum StubOperation: CaseIterable, CustomTestStringConvertible {
+    /// CRUD/연결 8종. 성공/실패 검증 본문이 동일하므로 파라미터화한다
+    /// (작업별로 path·method 만 다르며, 이를 케이스 메타데이터로 분리한다).
+    private enum Operation: CaseIterable, CustomTestStringConvertible {
         case create, update, delete
         case addMember, removeMember, addMentor, removeMentor
         case linkSchedule
@@ -394,6 +423,24 @@ struct StudyRepositoryStubTests {
             }
         }
 
+        var expectedPath: String {
+            switch self {
+            case .create: "/api/v1/study-groups"
+            case .update, .delete: "/api/v1/study-groups/1"
+            case .addMember, .removeMember: "/api/v1/study-groups/1/members/2"
+            case .addMentor, .removeMentor: "/api/v1/study-groups/1/mentors/2"
+            case .linkSchedule: "/api/v1/study-groups/schedules"
+            }
+        }
+
+        var expectedMethod: Moya.Method {
+            switch self {
+            case .create, .linkSchedule: .post
+            case .update, .addMember, .addMentor: .patch
+            case .delete, .removeMember, .removeMentor: .delete
+            }
+        }
+
         var testDescription: String { operationName }
 
         func invoke(on sut: StudyRepository) async throws {
@@ -401,7 +448,7 @@ struct StudyRepositoryStubTests {
             case .create:
                 try await sut.createStudyGroup(
                     gisuId: "1", name: "n", part: .front(type: .ios),
-                    memberIds: [], mentorIds: []
+                    memberIds: ["2"], mentorIds: ["3"]
                 )
             case .update:
                 try await sut.updateStudyGroup(groupId: "1", name: "n")
@@ -424,18 +471,63 @@ struct StudyRepositoryStubTests {
     }
 
     @Test(
-        "CRUD/연결 스텁 8종 — 호출 시 unimplemented(operation:) 에러를 던진다",
-        arguments: StubOperation.allCases
+        "CRUD/연결 8종 — 성공 응답 시 명세된 path·method 로 1회 호출한다",
+        arguments: Operation.allCases
     )
-    private func crudStubsThrowUnimplemented(_ operation: StubOperation) async {
-        let (sut, stub) = makeRepository([])
+    private func crudSucceedsWithExpectedEndpoint(_ operation: Operation) async throws {
+        let (sut, stub) = makeRepository(.success(Fixture.success("null")))
+
+        try await operation.invoke(on: sut)
+
+        #expect(stub.requestCount == 1)
+        #expect(stub.lastPath == operation.expectedPath)
+        #expect(stub.lastMethod == operation.expectedMethod)
+    }
+
+    @Test(
+        "CRUD/연결 8종 — 본문 없는 2xx 응답(빈 본문)도 성공으로 처리한다",
+        arguments: Operation.allCases
+    )
+    private func crudSucceedsOnEmptyBody(_ operation: Operation) async throws {
+        // DELETE 등은 본문 없이 2xx 만 반환할 수 있다. 빈 본문을 디코딩 시도하면 실패하므로
+        // 성공으로 처리해야 한다(레거시 CRUD 와 동일한 계약).
+        let (sut, stub) = makeRepository(.success(Data()))
+
+        try await operation.invoke(on: sut)
+
+        #expect(stub.requestCount == 1)
+        #expect(stub.lastPath == operation.expectedPath)
+    }
+
+    @Test(
+        "CRUD/연결 8종 — 실패(success:false) 응답 시 serverError 를 던진다",
+        arguments: Operation.allCases
+    )
+    private func crudThrowsServerErrorOnFailure(_ operation: Operation) async {
+        let (sut, _) = makeRepository(
+            .success(Fixture.failureBody(code: "STUDY403", message: "권한 없음"))
+        )
 
         await #expect(
-            throws: StudyRepositoryError.unimplemented(operation: operation.operationName)
+            throws: RepositoryError.serverError(code: "STUDY403", message: "권한 없음")
         ) {
             try await operation.invoke(on: sut)
         }
-        #expect(stub.requestCount == 0)        // 네트워크 호출 없이 즉시 실패
+    }
+
+    @Test("createStudyGroup — 식별자가 정수 문자열이 아니면 네트워크 호출 없이 던진다")
+    private func createStudyGroupThrowsBeforeNetworkOnNonNumericIdentifier() async {
+        // 서버는 ID 를 정수로 받으므로 Repository 가 요청을 만들 때 String→Int 로 변환한다.
+        // 변환할 수 없는 값이면 요청을 보내기 전에 에러를 던진다.
+        let (sut, stub) = makeRepository(.success(Fixture.success("null")))
+
+        await #expect(throws: RepositoryError.self) {
+            try await sut.createStudyGroup(
+                gisuId: "abc", name: "n", part: .front(type: .ios),
+                memberIds: ["2"], mentorIds: ["3"]
+            )
+        }
+        #expect(stub.requestCount == 0)
     }
 }
 

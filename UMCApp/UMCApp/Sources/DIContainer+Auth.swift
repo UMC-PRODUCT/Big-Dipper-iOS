@@ -1,3 +1,10 @@
+//
+//  DIContainer+Auth.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import AuthData
 import AuthDomain
 import CoreDI

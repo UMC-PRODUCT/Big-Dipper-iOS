@@ -1,3 +1,10 @@
+//
+//  HomeViewModelTests.swift
+//  HomePresentationTests
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import CoreDI
 import Foundation
 import HomeDomain
@@ -131,6 +138,28 @@ struct HomeViewModelTests {
         #expect(viewModel.category(for: "1") == .study)
         #expect(classifyScheduleUseCase.classifiedTitles == ["알고리즘 스터디"])
     }
+
+    @Test("fetchProfile(forceRefresh: true)는 UseCase에 forceRefresh를 그대로 전달한다")
+    func forceRefreshIsPassedThroughToUseCase() async {
+        let useCase = MockFetchHomeProfileUseCase()
+        useCase.result = .success(makeProfile(generationNumbers: ["11"]))
+        let viewModel = makeViewModel(useCase: useCase)
+
+        await viewModel.fetchProfile(forceRefresh: true)
+
+        #expect(useCase.lastForceRefresh == true)
+    }
+
+    @Test("기본 fetchProfile()은 forceRefresh: false로 조회한다 (캐시 히트 유지)")
+    func defaultFetchUsesCacheAllowedPath() async {
+        let useCase = MockFetchHomeProfileUseCase()
+        useCase.result = .success(makeProfile(generationNumbers: ["11"]))
+        let viewModel = makeViewModel(useCase: useCase)
+
+        await viewModel.fetchProfile()
+
+        #expect(useCase.lastForceRefresh == false)
+    }
 }
 
 // MARK: - Helpers
@@ -178,9 +207,11 @@ private final class MockFetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol
     /// 로딩 중 중복 호출 방지 검증용 인위적 지연 (기본값: 지연 없음)
     var delayNanoseconds: UInt64 = 0
     private(set) var callCount = 0
+    private(set) var lastForceRefresh: Bool?
 
-    func execute() async throws -> HomeProfileResult {
+    func execute(forceRefresh: Bool) async throws -> HomeProfileResult {
         callCount += 1
+        lastForceRefresh = forceRefresh
         if delayNanoseconds > 0 {
             try await Task.sleep(nanoseconds: delayNanoseconds)
         }

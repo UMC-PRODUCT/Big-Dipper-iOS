@@ -1,3 +1,10 @@
+//
+//  SocialLoginLabel.swift
+//  CoreUIComponents
+//
+//  Created by euijjang97 on 5/27/26.
+//
+
 import CoreDesignSystem
 import SwiftUI
 import UMCFoundation

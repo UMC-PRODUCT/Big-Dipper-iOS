@@ -1,3 +1,10 @@
+//
+//  CheckEmailAvailabilityQuery.swift
+//  AuthData
+//
+//  Created by euijjang97 on 5/17/26.
+//
+
 /// 이메일 중복 검사 Query DTO
 ///
 /// `GET /api/v1/auth/email/availability?email=...`

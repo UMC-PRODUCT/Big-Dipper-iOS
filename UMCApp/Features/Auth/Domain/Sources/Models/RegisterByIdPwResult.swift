@@ -1,3 +1,10 @@
+//
+//  RegisterByIdPwResult.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 이메일(ID/PW) 회원가입 결과.
 ///
 /// 이메일 가입은 서버가 가입과 동시에 항상 토큰을 발급하므로, Repository가 토큰을 저장한 뒤

@@ -1,3 +1,10 @@
+//
+//  ProfileExternalLinks.swift
+//  CoreDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 /// 외부 프로필 링크 (MyPage `MyPageProfileExternalLinksDTO`의 도메인 대응).
 public struct ProfileExternalLinks: Equatable, Hashable, Sendable {
 

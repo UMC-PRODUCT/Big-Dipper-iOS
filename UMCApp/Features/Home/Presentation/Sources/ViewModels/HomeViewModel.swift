@@ -1,3 +1,10 @@
+//
+//  HomeViewModel.swift
+//  HomePresentation
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import CoreDI
 import Foundation
 import HomeDomain
@@ -54,7 +61,9 @@ public final class HomeViewModel {
 
     /// 내 프로필을 조회해 시즌/세대 카드 상태를 갱신한다. 실패 시 인라인 `.failed` 상태로 표시한다.
     /// 세대 조회가 성공하면 최신 기수를 기준으로 최근 공지도 함께 조회한다.
-    public func fetchProfile() async {
+    /// - Parameter forceRefresh: `true`이면 세션 프로필 캐시를 우회해 서버 최신으로 갱신한다
+    ///   (당겨서 새로고침 경로).
+    public func fetchProfile(forceRefresh: Bool = false) async {
         if seasonState.isLoading { return }
 
         let previousSeasonState = seasonState
@@ -63,7 +72,7 @@ public final class HomeViewModel {
         generationState = .loading
 
         do {
-            let profile = try await fetchMyProfileUseCase.execute()
+            let profile = try await fetchMyProfileUseCase.execute(forceRefresh: forceRefresh)
             let sortedGenerations = sortedByGenerationDescending(profile.generations)
             seasonState = .loaded(profile.seasonTypes)
             generationState = .loaded(sortedGenerations)

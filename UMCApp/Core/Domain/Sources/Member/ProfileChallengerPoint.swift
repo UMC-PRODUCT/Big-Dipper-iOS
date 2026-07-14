@@ -1,3 +1,10 @@
+//
+//  ProfileChallengerPoint.swift
+//  CoreDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 /// 챌린저 기록의 포인트(가점/감점) 이력 한 건.
 public struct ProfileChallengerPoint: Equatable, Hashable, Sendable {
 

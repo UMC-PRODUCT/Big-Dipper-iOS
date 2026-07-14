@@ -1,3 +1,10 @@
+//
+//  MemberProfileRepositoryProtocol.swift
+//  CoreDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 /// 정본 프로필 조회 데이터 접근 계층 인터페이스.
 ///
 /// 구현체는 세션 단위 캐싱 여부를 자유롭게 선택할 수 있다. `fetchMyProfile()`은 기존 소비부

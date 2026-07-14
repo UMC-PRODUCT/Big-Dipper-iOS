@@ -1,3 +1,10 @@
+//
+//  ARPairingCoordinator.swift
+//  CoreNearbyExchange
+//
+//  Created by euijjang97 on 4/23/26.
+//
+
 import Foundation
 import ARKit
 import RealityKit

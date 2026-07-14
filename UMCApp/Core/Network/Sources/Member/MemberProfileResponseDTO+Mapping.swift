@@ -2,6 +2,8 @@
 //  MemberProfileResponseDTO+Mapping.swift
 //  CoreNetwork
 //
+//  Created by euijjang97 on 7/11/26.
+//
 //  `MemberProfileResponseDTO` → 도메인 모델 매핑.
 //  - `toDomain()`: Auth가 소유했던 구 프로필 응답 DTO의 `toDomain()` 이식, 정본 `Profile` 전체를 채운다.
 //  - `toMemberProfileSummary()`: MyPage가 소유했던 구 프로필 응답 DTO의 `toMemberProfileSummary()` 이식.

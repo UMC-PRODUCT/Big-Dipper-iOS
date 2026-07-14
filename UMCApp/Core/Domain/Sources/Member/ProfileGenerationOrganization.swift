@@ -1,3 +1,10 @@
+//
+//  ProfileGenerationOrganization.swift
+//  CoreDomain
+//
+//  Created by euijjang97 on 7/10/26.
+//
+
 /// 기수별 소속 조직(지부/학교) 정보.
 ///
 /// `SyncProfileStorageUseCase`가 UserDefaults에 JSON 문자열로 저장하기 위해

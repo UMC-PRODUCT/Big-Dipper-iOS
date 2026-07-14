@@ -1,3 +1,10 @@
+//
+//  AuthBootstrapStatus.swift
+//  AuthDomain
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 /// 부트스트랩 시점의 인증 상태 판정 결과.
 public enum AuthBootstrapStatus: Equatable, Sendable {
     /// 유효 세션 + 승인된 챌린저 — 메인으로 진입 가능

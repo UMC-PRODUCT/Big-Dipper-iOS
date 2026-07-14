@@ -1,3 +1,10 @@
+//
+//  NearbyExchangeDIRegistration.swift
+//  CoreDI
+//
+//  Created by euijjang97 on 4/23/26.
+//
+
 // Phase 1 기본 구현체: BLETransport 주입
 // Phase 2 교체 분기점: UWBTransport + ARPairingCoordinator 조합으로 swap 예정.
 //   교체 시 이 파일의 등록 클로저만 변경하면 피처 레이어 수정 없이 전환 가능.

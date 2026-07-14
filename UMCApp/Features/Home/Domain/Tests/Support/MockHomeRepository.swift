@@ -1,3 +1,10 @@
+//
+//  MockHomeRepository.swift
+//  HomeDomainTests
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import Foundation
 @testable import HomeDomain
 
@@ -21,9 +28,11 @@ final class MockHomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
 
     var fetchMyProfileResult: Result<HomeProfileResult, Error> = .failure(MockError.notStubbed)
     private(set) var fetchMyProfileCallCount = 0
+    private(set) var fetchMyProfileReceivedForceRefresh: Bool?
 
-    func fetchMyProfile() async throws -> HomeProfileResult {
+    func fetchMyProfile(forceRefresh: Bool) async throws -> HomeProfileResult {
         fetchMyProfileCallCount += 1
+        fetchMyProfileReceivedForceRefresh = forceRefresh
         return try fetchMyProfileResult.get()
     }
 }

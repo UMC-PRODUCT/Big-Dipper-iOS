@@ -36,4 +36,10 @@ public extension Notification.Name {
 
     /// 기수 매핑 정보가 갱신되었을 때 발송되는 알림.
     static let generationMappingsUpdated = Notification.Name("generationMappingsUpdated")
+
+    /// 멤버 상벌점이 변경(부여/삭제)되었을 때 발송되는 알림.
+    ///
+    /// 멤버 관리 화면에서 상벌점을 부여하거나 삭제하면 발송됩니다.
+    /// 관련 화면(예: 명예의 전당)이 수신하여 목록을 갱신합니다.
+    static let memberPenaltyUpdated = Notification.Name("memberPenaltyUpdated")
 }

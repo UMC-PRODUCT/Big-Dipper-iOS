@@ -1,3 +1,10 @@
+//
+//  ProfileChallengerRecord.swift
+//  CoreDomain
+//
+//  Created by euijjang97 on 7/11/26.
+//
+
 import UMCFoundation
 
 /// 멤버가 활동한 기수별 챌린저 기록 한 건 (MyPage `MyPageChallengerRecordDTO`의 도메인 대응).

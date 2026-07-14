@@ -1,3 +1,10 @@
+//
+//  NavigationRoutingView.swift
+//  UMCApp
+//
+//  Created by euijjang97 on 7/8/26.
+//
+
 import CoreDI
 import NoticePresentation
 import SwiftUI

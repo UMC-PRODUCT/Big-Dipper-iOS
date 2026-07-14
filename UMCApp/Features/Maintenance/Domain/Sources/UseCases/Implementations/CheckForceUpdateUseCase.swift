@@ -1,3 +1,10 @@
+//
+//  CheckForceUpdateUseCase.swift
+//  MaintenanceDomain
+//
+//  Created by euijjang97 on 6/10/26.
+//
+
 import Foundation
 
 /// 원격 최소 지원 버전(RemoteConfig) 대비 강제 업데이트 필요 여부를 판정하는 UseCase 구현체.

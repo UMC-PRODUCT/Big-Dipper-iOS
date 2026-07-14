@@ -2,6 +2,8 @@
 //  ProfileToProfileDataTests.swift
 //  MyPageDomainTests
 //
+//  Created by euijjang97 on 7/11/26.
+//
 //  `Profile.toProfileData()` 도메인 변환 로직 검증.
 //  (원본 MyPageData `MyPageProfileResponseDTOTests.toProfileData` 스위트 이식 — JSON 디코딩
 //  없이 정본 `CoreDomain.Profile`을 직접 구성해 검증한다. `toMemberProfileSummary()` 케이스는

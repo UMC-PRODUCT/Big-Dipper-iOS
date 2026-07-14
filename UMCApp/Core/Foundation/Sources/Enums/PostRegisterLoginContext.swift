@@ -1,3 +1,10 @@
+//
+//  PostRegisterLoginContext.swift
+//  UMCFoundation
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 /// 회원가입 직후 세션 복구에 필요한 소셜 로그인 재인증 자격 정보.
 ///
 /// 소셜 신규가입 시 서버가 토큰을 내려주지 않으면(`RegisterResult.sessionEstablished == false`),

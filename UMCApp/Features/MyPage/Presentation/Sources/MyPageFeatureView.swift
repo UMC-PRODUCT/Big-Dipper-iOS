@@ -1,3 +1,10 @@
+//
+//  MyPageFeatureView.swift
+//  MyPagePresentation
+//
+//  Created by euijjang97 on 3/6/26.
+//
+
 import BadgeDomain
 import SwiftUI
 

@@ -1,3 +1,10 @@
+//
+//  SignUpFocusField.swift
+//  AuthPresentation
+//
+//  Created by euijjang97 on 7/9/26.
+//
+
 import Foundation
 
 /// 회원가입 화면(`SignUpView`/`SignUpByIdPwView`)의 키보드 포커스 대상 필드.
