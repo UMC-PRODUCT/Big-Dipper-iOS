@@ -32,6 +32,7 @@ let project = Project(
                 .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
                 .project(target: "AuthPresentation", path: .relativeToRoot("Features/Auth")),
                 .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
+                .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
                 .project(target: "NoticePresentation", path: .relativeToRoot("Features/Notice")),
                 .project(target: "NoticeData", path: .relativeToRoot("Features/Notice")),
                 .project(target: "ActivityPresentation", path: .relativeToRoot("Features/Activity")),
