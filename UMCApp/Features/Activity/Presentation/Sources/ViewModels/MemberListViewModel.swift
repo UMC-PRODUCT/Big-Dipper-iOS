@@ -6,8 +6,8 @@
 //
 
 import ActivityDomain
+import CoreDomain
 import Foundation
-import os.log
 import UMCFoundation
 
 /// 멤버 목록 화면의 상태를 관리하는 ViewModel
@@ -24,12 +24,6 @@ final class MemberListViewModel {
     private let fetchMembersUseCase: FetchMembersUseCaseProtocol
     private let errorHandler: ErrorHandler
     private let userSessionManager: UserSessionManager
-
-    /// 새로고침 실패 등 사용자 흐름을 막지 않는 best-effort 작업의 관측용 로거.
-    private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "AppProduct",
-        category: "MemberListViewModel"
-    )
 
     // MARK: - Property
 
@@ -204,7 +198,7 @@ final class MemberListViewModel {
         // 서버 부여는 이미 성공. 목록 새로고침은 best-effort 로 처리한다.
         // 새로고침 실패를 부여 실패로 보고하면 사용자가 재시도해 중복 부여로 이어지므로,
         // 부여 성공/알림과 새로고침을 분리한다.
-        await reloadMembersBestEffort(member: member)
+        await refreshMember(after: member)
         NotificationCenter.default.post(name: .memberPenaltyUpdated, object: nil)
         return true
     }
@@ -289,64 +283,54 @@ final class MemberListViewModel {
         }
 
         // 서버 삭제는 이미 성공. 목록 새로고침은 best-effort (실패해도 삭제 결과는 유효).
-        await reloadMembersBestEffort(member: member)
+        await refreshMember(after: member)
         NotificationCenter.default.post(name: .memberPenaltyUpdated, object: nil)
         return nil
     }
 
-    /// 목록 새로고침을 best-effort 로 수행한다.
+    /// 상벌점 mutation 후 로컬 상태를 갱신한다.
     ///
-    /// 상벌점 mutation 은 이미 서버에 반영됐으므로 새로고침 실패가 사용자 흐름을 막아서는
-    /// 안 된다. 실패해도 mutation 결과는 유효하게 보고하되, 로컬 목록/선택 멤버가 stale 로
-    /// 남는 상황을 추적할 수 있도록 실패만 로깅한다.
-    private func reloadMembersBestEffort(member: MemberManagementItem) async {
-        do {
-            try await reloadMembersAndReselect(member: member)
-        } catch {
-            logger.error(
-                "멤버 목록 새로고침 실패(best-effort): \(error.localizedDescription, privacy: .public)"
+    /// 상벌점을 부여/삭제한 **그 멤버 한 명만** 단건 재조회해 로컬 목록과 선택 상태를
+    /// 교체한다. 전체 페이지를 처음부터 다시 받지 않으므로 목록이 길어져도 갱신 비용이
+    /// 일정하다. mutation 은 이미 서버에 반영됐고 상세 조회는 실패 시 원본 멤버를 그대로
+    /// 돌려주므로(`fetchMemberDetail`), 이 경로는 사용자 흐름을 막지 않는 best-effort 다.
+    private func refreshMember(after member: MemberManagementItem) async {
+        let detailedMember = await fetchMemberDetail(for: member)
+
+        // 로컬 목록에서 해당 멤버 항목만 교체한다(전체 페이지 재요청 없음).
+        if case .loaded(var members) = membersState,
+           let index = members.firstIndex(where: { isSameMember($0, as: member) }) {
+            members[index] = detailedMember
+            membersState = .loaded(members)
+        }
+
+        // 상세 시트가 이 멤버를 표시 중이면 선택 상태도 갱신한다(시트 정체성 유지).
+        if let selected = selectedMember, isSameMember(selected, as: member) {
+            selectedMember = memberWithStableSheetIdentity(
+                base: selected,
+                updated: detailedMember
             )
         }
     }
 
-    private func reloadMembersAndReselect(
-        member: MemberManagementItem
-    ) async throws {
-        var allMembers: [MemberManagementItem] = []
-        var page = 0
-        var lastLoadedPage = 0
-        var reachedLastPage = false
-        while page <= currentPage {
-            let result = try await fetchMembersUseCase.executePage(page: page)
-            allMembers.append(contentsOf: result.members)
-            lastLoadedPage = result.currentPage
-            if !result.hasNext {
-                reachedLastPage = true
-                break
-            }
-            page += 1
+    /// 두 멤버가 같은 대상인지 서버 식별자로 판별한다.
+    ///
+    /// `memberID` 가 양쪽 모두 있으면 그것으로, 아니면 `challengerID` 로 비교한다.
+    private func isSameMember(
+        _ lhs: MemberManagementItem,
+        as rhs: MemberManagementItem
+    ) -> Bool {
+        if let lhsMemberID = lhs.memberID,
+           let rhsMemberID = rhs.memberID,
+           lhsMemberID == rhsMemberID {
+            return true
         }
-        membersState = .loaded(allMembers)
-        // 재조회 결과로 페이지네이션 상태도 함께 갱신한다. 마지막 페이지가 줄어들거나
-        // hasNext 가 false 가 된 경우 이후 fetchNextPage 가 잘못된 페이지를 요청하지 않도록 한다.
-        currentPage = lastLoadedPage
-        hasMorePages = !reachedLastPage
-        guard let resolvedMember = resolveMember(
-            in: allMembers,
-            from: member
-        ) else {
-            selectedMember = nil
-            return
+        if let lhsChallengerID = lhs.challengerID,
+           let rhsChallengerID = rhs.challengerID,
+           lhsChallengerID == rhsChallengerID {
+            return true
         }
-
-        let detailedMember = await fetchMemberDetail(
-            for: resolvedMember
-        )
-
-        selectedMember = memberWithStableSheetIdentity(
-            base: member,
-            updated: detailedMember
-        )
+        return false
     }
 
     /// 멤버의 상세 정보(출석 기록, 포인트 히스토리, 기수 포인트)를 조회합니다.
@@ -398,27 +382,6 @@ final class MemberListViewModel {
             canViewPenaltyHistory: true,
             generationPoints: generationPoints
         )
-    }
-
-    private func resolveMember(
-        in members: [MemberManagementItem],
-        from target: MemberManagementItem
-    ) -> MemberManagementItem? {
-        members.first(where: {
-            if let targetMemberId = target.memberID,
-               let memberId = $0.memberID,
-               targetMemberId == memberId {
-                return true
-            }
-
-            if let targetChallengerId = target.challengerID,
-               let challengerId = $0.challengerID,
-               targetChallengerId == challengerId {
-                return true
-            }
-
-            return false
-        })
     }
 
     private func memberWithStableSheetIdentity(

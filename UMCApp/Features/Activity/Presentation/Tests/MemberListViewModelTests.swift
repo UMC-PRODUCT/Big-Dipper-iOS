@@ -8,6 +8,7 @@
 import Foundation
 import Testing
 import ActivityDomain
+import CoreDomain
 import UMCFoundation
 @testable import ActivityPresentation
 
@@ -71,7 +72,7 @@ private func makeViewModel(
     role: ManagementTeam = .schoolPresident
 ) -> MemberListViewModel {
     let session = UserSessionManager()
-    session.updateRole(role)
+    session.updateRole(role, allRoles: [role])
     return MemberListViewModel(
         fetchMembersUseCase: useCase,
         errorHandler: ErrorHandler(),
@@ -287,33 +288,6 @@ struct MemberListViewModelPaginationTests {
         #expect(viewModel.membersState == .loaded([m1, m2]))
         #expect(viewModel.isLoadingNextPage == false)
     }
-
-    @Test("새로고침으로 마지막 페이지가 줄면 → 이후 fetchNextPage 가 스테일 페이지 미요청")
-    func reloadShrinkPreventsStalePageRequest() async {
-        let m0 = makeMember(memberID: "0", challengerID: "C-0")
-        let m1 = makeMember(memberID: "1")
-        let useCase = MockFetchMembersUseCase()
-        useCase.pages[0] = makePage([m0], hasNext: true, currentPage: 0)
-        useCase.pages[1] = makePage([m1], hasNext: true, currentPage: 1)
-        let viewModel = makeViewModel(useCase: useCase)
-        await viewModel.fetchMembers()
-        await viewModel.fetchNextPage()
-
-        // 새로고침 시점에 데이터가 줄어 page 1 이 마지막(hasNext=false)이 됨
-        useCase.pages[1] = makePage([m1], hasNext: false, currentPage: 1)
-        _ = await viewModel.submitPoint(
-            member: m0,
-            pointType: .bestWorkbook,
-            pointValue: 2,
-            description: "x"
-        )
-
-        let callsBeforeNext = useCase.executePageCalls.count
-        await viewModel.fetchNextPage()
-
-        #expect(viewModel.hasMorePages == false)
-        #expect(useCase.executePageCalls.count == callsBeforeNext)
-    }
 }
 
 // MARK: - 검색·그룹핑
@@ -434,15 +408,15 @@ struct MemberListViewModelSubmitPointTests {
         #expect(useCase.grantPointCalls.first?.pointType == .bestWorkbook)
     }
 
-    @Test("부여 성공 후 새로고침 실패 → 성공 반환(서버 부여는 유효, 재시도 유발 X)")
-    func submitPointReturnsTrueWhenReloadFails() async {
+    @Test("부여 성공 후 단건 재조회가 보강 정보를 못 받아도 → 성공 반환(서버 부여는 유효)")
+    func submitPointReturnsTrueWhenDetailRefreshUnavailable() async {
         let member = makeMember(memberID: "1", challengerID: "C-1")
         let useCase = MockFetchMembersUseCase()
+        // pointHistory/attendance 등을 비워 단건 재조회가 보강 정보를 못 받는 상황
         useCase.pages[0] = makePage([member], hasNext: false, currentPage: 0)
         let viewModel = makeViewModel(useCase: useCase)
         await viewModel.fetchMembers()
 
-        useCase.executePageError = DummyError()
         let granted = await viewModel.submitPoint(
             member: member,
             pointType: .bestWorkbook,
@@ -454,17 +428,18 @@ struct MemberListViewModelSubmitPointTests {
         #expect(useCase.grantPointCalls.count == 1)
     }
 
-    @Test("부여 후 새로고침 → 페이지네이션 상태(hasMorePages) 갱신")
-    func submitPointReloadUpdatesPaginationState() async {
+    @Test("부여 후 → 그 멤버만 단건 재조회(전체 페이지 미재요청) + 해당 항목만 갱신")
+    func submitPointRefetchesOnlyMutatedMember() async {
         let member = makeMember(memberID: "1", challengerID: "C-1")
+        let other = makeMember(memberID: "2", challengerID: "C-2")
         let useCase = MockFetchMembersUseCase()
-        useCase.pages[0] = makePage([member], hasNext: true, currentPage: 0)
+        useCase.pages[0] = makePage([member, other], hasNext: false, currentPage: 0)
+        // 부여 후 단건 재조회가 반영할 히스토리(벌점 2점)
+        useCase.pointHistory = [makeHistory(pointType: .studyLate, penaltyScore: 2)]
         let viewModel = makeViewModel(useCase: useCase)
         await viewModel.fetchMembers()
-        #expect(viewModel.hasMorePages == true)
+        let callsAfterInitialLoad = useCase.executePageCalls
 
-        // 새로고침 시점에 해당 페이지가 마지막이 되어 hasNext=false 로 바뀐 상황
-        useCase.pages[0] = makePage([member], hasNext: false, currentPage: 0)
         _ = await viewModel.submitPoint(
             member: member,
             pointType: .bestWorkbook,
@@ -472,7 +447,13 @@ struct MemberListViewModelSubmitPointTests {
             description: "잘했어요"
         )
 
-        #expect(viewModel.hasMorePages == false)
+        // 전체 페이지를 다시 받지 않으므로 executePage 호출 목록이 그대로다.
+        #expect(useCase.executePageCalls == callsAfterInitialLoad)
+        // 부여한 멤버 항목만 상세 재조회 결과(벌점 합계 2)로 교체된다.
+        let loaded = viewModel.membersState.value ?? []
+        #expect(loaded.first { $0.memberID == "1" }?.penalty == 2)
+        // 나머지 멤버는 그대로 유지된다.
+        #expect(loaded.first { $0.memberID == "2" }?.penalty == 0)
     }
 
     @Test("부여 중 DomainError → Alert 표시 + 실패 반환")
@@ -528,16 +509,16 @@ struct MemberListViewModelDeletePointTests {
         #expect(useCase.deletePointCalls == ["P-1"])
     }
 
-    @Test("삭제 성공 후 새로고침 실패 → nil 반환(서버 삭제는 유효)")
-    func deletePointReturnsNilWhenReloadFails() async {
+    @Test("삭제 성공 후 단건 재조회가 보강 정보를 못 받아도 → nil 반환(서버 삭제는 유효)")
+    func deletePointReturnsNilWhenDetailRefreshUnavailable() async {
         let member = makeMember(memberID: "1", challengerID: "C-1")
         let history = makeHistory()
         let useCase = MockFetchMembersUseCase()
+        // pointHistory/attendance 등을 비워 단건 재조회가 보강 정보를 못 받는 상황
         useCase.pages[0] = makePage([member], hasNext: false, currentPage: 0)
         let viewModel = makeViewModel(useCase: useCase)
         await viewModel.fetchMembers()
 
-        useCase.executePageError = DummyError()
         let message = await viewModel.deletePoint(member: member, history: history)
 
         #expect(message == nil)
