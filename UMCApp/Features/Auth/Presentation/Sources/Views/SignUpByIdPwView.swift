@@ -8,6 +8,7 @@
 import AuthDomain
 import CoreDesignSystem
 import CoreDI
+import CoreUIComponents
 import SwiftUI
 import UMCFoundation
 
@@ -117,7 +118,7 @@ public struct SignUpByIdPwView: View {
                 .safeAreaPadding(.vertical, DefaultConstant.defaultContentTopMargins)
                 .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
             }
-            .navigation(naviTitle: .signUp, displayMode: .large)
+            .navigation(naviTitle: NavigationTitle.Auth.signUp, displayMode: .large)
             .navigationSubtitle(Constants.naviSubtitle)
             .safeAreaInset(edge: .bottom) {
                 submitButton

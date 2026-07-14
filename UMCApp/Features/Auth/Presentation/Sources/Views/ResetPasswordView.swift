@@ -8,6 +8,7 @@
 import AuthDomain
 import CoreDesignSystem
 import CoreDI
+import CoreUIComponents
 import SwiftUI
 import UMCFoundation
 
@@ -88,7 +89,7 @@ public struct ResetPasswordView: View {
                 .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
             }
             .scrollDismissesKeyboard(.interactively)
-            .navigation(naviTitle: .resetPassword, displayMode: .inline)
+            .navigation(naviTitle: NavigationTitle.Auth.resetPassword, displayMode: .inline)
             .safeAreaInset(edge: .bottom) {
                 submitButton
             }
