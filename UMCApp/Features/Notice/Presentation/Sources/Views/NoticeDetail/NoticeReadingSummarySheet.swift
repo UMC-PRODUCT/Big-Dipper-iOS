@@ -60,7 +60,7 @@ struct NoticeReadingSummarySheet: View {
                 .padding(.horizontal, Constants.sheetHorizontalPadding)
                 .padding(.top, Constants.sheetTopPadding)
             }
-            .navigation(naviTitle: .noticeAISummary, displayMode: .inline)
+            .navigation(naviTitle:  NavigationTitle.Notice.noticeAISummary, displayMode: .inline)
             .toolbar { sheetToolbar }
         }
         .presentationDetents([.medium, .large], selection: $selectedDetent)
