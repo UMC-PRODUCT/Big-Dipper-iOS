@@ -8,7 +8,7 @@
 import Foundation
 
 /// 멤버 활동 상태
-public enum MemberStatus: String, Codable, Equatable, Hashable {
+public enum MemberStatus: String, Codable, Equatable, Hashable, Sendable {
     /// 활동 중
     case active = "ACTIVE"
     /// 비활성
