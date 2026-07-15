@@ -7,6 +7,9 @@
 
 import Foundation
 
+/// 프로필 이미지 변경 UseCase Protocol
+///
+/// 마이페이지에서 프로필 이미지변경합니다.
 public protocol UpdateMyPageProfileImageUseCaseProtocol {
     func execute(
         imageData: Data,

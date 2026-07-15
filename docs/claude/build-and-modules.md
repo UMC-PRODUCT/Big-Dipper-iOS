@@ -150,11 +150,13 @@ featureProject(
 |--------|------|--------|
 | Moya | 15.0.3 | CoreNetwork |
 | Kingfisher | 8.6.1 | CoreUIComponents |
+| KakaoSDK (kakao-ios-sdk) | 2.27.0+ | CoreNetwork (`KakaoLoginManager`) |
+| GoogleSignIn-iOS | 9.1.0+ | CoreNetwork (`GoogleLoginManager`) |
 
 ### 주요 설정
 
 - **Tuist 버전**: `UMCApp/mise.toml` 고정 (`4.155.0`)
-- **Deployment Target**: iOS 26.3 (`Project.swift` 기준, 전체 타겟 공통)
+- **Deployment Target**: iOS 26.4 (`Project.swift` 기준, 전체 타겟 공통)
 - **Product Type**: 모든 모듈 `.staticFramework`
 - **Bundle ID**: Core → `dev.umc.core.*` / Feature → `dev.umc.feature.*.*`
 - **Workspace**: glob(`Core/*`, `Features/*`) + `UMCAppWidget`, `UMCWatchApp` 명시 포함

@@ -1,3 +1,10 @@
+//
+//  ExchangePayload.swift
+//  CoreNearbyExchange
+//
+//  Created by euijjang97 on 4/23/26.
+//
+
 import Foundation
 
 // Android 크로스 플랫폼 교환 포맷 확정 스키마 (PRD v3 기반)

@@ -1,3 +1,10 @@
+//
+//  WidgetAttendanceEntry.swift
+//  CoreWidgetShared
+//
+//  Created by euijjang97 on 4/23/26.
+//
+
 import WidgetKit
 import Foundation
 

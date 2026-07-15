@@ -15,25 +15,51 @@ public enum ServerDateTimeConverter {
     // MARK: - TimeZone
 
     public nonisolated static let utcTimeZone: TimeZone = .init(secondsFromGMT: 0) ?? .current
-    public nonisolated static let kstTimeZone: TimeZone = .init(identifier: "Asia/Seoul") ?? .current
+    public nonisolated static let kstTimeZone: TimeZone =
+        .init(identifier: "Asia/Seoul") ?? .current
+
+    // MARK: - Cached Formatter
+
+    /// 파싱/포매팅마다 포매터를 새로 만들면 비용이 크므로 hot-path 포매터는 한 번만 생성해 재사용합니다.
+    /// `ISO8601DateFormatter`/`DateFormatter`는 읽기(파싱·포매팅) 시 thread-safe하므로 공유해도 안전합니다.
+    private nonisolated static let iso8601WithFraction: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private nonisolated static let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private nonisolated static let kstDateFormatter: Foundation.DateFormatter = {
+        let formatter = Foundation.DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = kstTimeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private nonisolated static let kstTimeFormatter: Foundation.DateFormatter = {
+        let formatter = Foundation.DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = kstTimeZone
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
 
     // MARK: - Function
 
     public nonisolated static func parseUTCDateTime(_ value: String) -> Date? {
         guard !value.isEmpty else { return nil }
 
-        let formatterWithFraction = ISO8601DateFormatter()
-        formatterWithFraction.formatOptions = [
-            .withInternetDateTime,
-            .withFractionalSeconds
-        ]
-        if let date = formatterWithFraction.date(from: value) {
+        if let date = iso8601WithFraction.date(from: value) {
             return date
         }
 
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        if let date = formatter.date(from: value) {
+        if let date = iso8601.date(from: value) {
             return date
         }
 

@@ -1,3 +1,10 @@
+//
+//  BadgeDomain.swift
+//  BadgeDomain
+//
+//  Created by euijjang97 on 4/23/26.
+//
+
 import Foundation
 
 public struct Badge: Identifiable, Equatable {

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 import ActivityDomain
 
 /// 출석 현황 응답의 `participants[]` 항목 DTO
@@ -60,11 +61,11 @@ struct AttendanceParticipantDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        memberId = try container.decodeFlexibleStringIfPresent(forKey: .memberId) ?? ""
+        memberId = container.decodeFlexibleStringOrNil(forKey: .memberId) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         nickname = try container.decodeIfPresent(String.self, forKey: .nickname) ?? ""
         profileImageURL = try container.decodeIfPresent(String.self, forKey: .profileImageURL)
-        schoolId = try container.decodeFlexibleStringIfPresent(forKey: .schoolId) ?? ""
+        schoolId = container.decodeFlexibleStringOrNil(forKey: .schoolId) ?? ""
         schoolName = try container.decodeIfPresent(String.self, forKey: .schoolName) ?? ""
         attendanceStatus = try container.decodeIfPresent(String.self, forKey: .attendanceStatus)
         isLocationVerified = try container.decodeIfPresent(

@@ -10,7 +10,7 @@ let project = Project(
             destinations: .iOS,
             product: .staticFramework,
             bundleId: "dev.umc.core.nearbyexchange",
-            deploymentTargets: .iOS("26.3"),
+            deploymentTargets: .iOS("26.4"),
             sources: ["Sources/**"],
             dependencies: [
                 .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),

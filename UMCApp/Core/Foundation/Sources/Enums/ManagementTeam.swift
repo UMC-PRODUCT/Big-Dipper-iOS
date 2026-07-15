@@ -79,7 +79,9 @@ public enum ManagementTeam: String, CaseIterable, Codable, Sendable, Comparable 
         lhs.level < rhs.level
     }
 
-    public static func highestPriority<S: Sequence>(in roles: S) -> ManagementTeam? where S.Element == ManagementTeam {
+    public static func highestPriority<S: Sequence>(
+        in roles: S
+    ) -> ManagementTeam? where S.Element == ManagementTeam {
         roles.max()
     }
 

@@ -1,5 +1,12 @@
-import AuthDomain
+//
+//  AuthData.swift
+//  AuthData
+//
+//  Created by euijjang97 on 3/6/26.
+//
 
-public struct AuthRepository: AuthUseCase {
-    public init() {}
-}
+//import AuthDomain
+//
+//public struct AuthRepository: AuthUseCase {
+//    public init() {}
+//}

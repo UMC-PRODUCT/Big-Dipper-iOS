@@ -76,7 +76,7 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
     }
 
     func fetchStudyGroupDetailsPage(
-        cursor: Int?,
+        cursor: String?,
         size: Int
     ) async throws -> StudyGroupDetailsPage {
         fatalError("fetchStudyGroupDetailsPage 는 FetchCurriculumUseCase 계약 밖입니다.")
@@ -88,7 +88,7 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
 
     func resolveChallengerId(
         memberId: String,
-        preferredGeneration: Int?
+        preferredGeneration: String?
     ) async throws -> String? {
         fatalError("resolveChallengerId 는 FetchCurriculumUseCase 계약 밖입니다.")
     }

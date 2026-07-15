@@ -10,7 +10,7 @@ import Foundation
 /// @AppStorage 접근 키
 ///
 /// UserDefaults 사용을 줄이고 `@AppStorage`로 관리합니다.
-/// 홈 프로필 조회 시 `HomeViewModel.saveProfileToStorage()`에서 저장됩니다.
+/// 로그인/승인 완료 시 `SyncProfileStorageUseCase`에서 저장됩니다.
 public enum AppStorageKey {
 
     // MARK: - System
@@ -89,7 +89,9 @@ public enum AppStorageKey {
     ///
     /// 로그아웃 / 회원 탈퇴 / 세션 만료 처리 시 호출해야 합니다.
     /// `UserDefaults` 접근은 thread-safe하므로 actor 격리 없이 호출 가능합니다.
-    public nonisolated static func clearSessionScopedValues(in defaults: UserDefaults = .standard) {
+    public nonisolated static func clearSessionScopedValues(
+        in defaults: UserDefaults = .standard
+    ) {
         sessionScopedKeys.forEach { defaults.removeObject(forKey: $0) }
     }
 }

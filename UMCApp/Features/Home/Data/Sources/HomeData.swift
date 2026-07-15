@@ -1,5 +1,12 @@
-import HomeDomain
+//
+//  HomeData.swift
+//  HomeData
+//
+//  Created by euijjang97 on 3/6/26.
+//
 
-public struct HomeRepository: HomeUseCase {
-    public init() {}
-}
+// import HomeDomain
+//
+// public struct HomeRepository: HomeUseCase {
+//     public init() {}
+// }

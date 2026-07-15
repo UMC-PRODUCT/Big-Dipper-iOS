@@ -67,7 +67,7 @@ public enum UMCPartType: Codable, Equatable, Hashable {
             return type.rawValue
         }
     }
-    
+
     /// 파트의 정렬 순서를 반환합니다.
     ///
     /// 정렬 순서: PM(0) > Design(1) > Web(2) > iOS(3) > Android(4) > Spring(5) > NodeJS(6)
@@ -97,7 +97,7 @@ public enum UMCPartType: Codable, Equatable, Hashable {
             }
         }
     }
-   
+
     /// 파트별 아이콘
     public var icon: String {
         switch self {

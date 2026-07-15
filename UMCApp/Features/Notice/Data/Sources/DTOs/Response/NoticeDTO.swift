@@ -41,11 +41,11 @@ public struct NoticeDTO: Codable {
     /// 커스텀 디코더: 서버 응답의 타입 불일치(Int/String)를 유연하게 처리합니다.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decodeFlexibleStringValue(forKey: .id)
+        id = try container.decodeFlexibleString(forKey: .id)
         title = try container.decode(String.self, forKey: .title)
         content = try container.decode(String.self, forKey: .content)
         shouldSendNotification = try container.decodeIfPresent(Bool.self, forKey: .shouldSendNotification) ?? false
-        viewCount = try container.decodeFlexibleStringValue(forKey: .viewCount)
+        viewCount = try container.decodeFlexibleString(forKey: .viewCount)
         createdAt = try container.decode(String.self, forKey: .createdAt)
         targetInfo = try container.decode(NoticeTargetInfoDTO.self, forKey: .targetInfo)
         authorChallengerId = try? container.decode(String.self, forKey: .authorChallengerId)
@@ -151,14 +151,14 @@ public struct NoticeTargetInfoDTO: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        targetGisu = container.decodeFlexibleOptionalString(forKey: .targetGisu)
-        targetGisuId = container.decodeFlexibleOptionalString(forKey: .targetGisuId) ?? "0"
-        targetChapterId = container.decodeFlexibleOptionalString(forKey: .targetChapterId)
-        targetSchoolId = container.decodeFlexibleOptionalString(forKey: .targetSchoolId)
-        targetChapterName = container.decodeFlexibleOptionalString(forKey: .targetChapterName)
-        targetSchoolName = container.decodeFlexibleOptionalString(forKey: .targetSchoolName)
-        chapterName = container.decodeFlexibleOptionalString(forKey: .chapterName)
-        schoolName = container.decodeFlexibleOptionalString(forKey: .schoolName)
+        targetGisu = container.decodeFlexibleStringOrNil(forKey: .targetGisu)
+        targetGisuId = container.decodeFlexibleStringOrNil(forKey: .targetGisuId) ?? "0"
+        targetChapterId = container.decodeFlexibleStringOrNil(forKey: .targetChapterId)
+        targetSchoolId = container.decodeFlexibleStringOrNil(forKey: .targetSchoolId)
+        targetChapterName = container.decodeFlexibleStringOrNil(forKey: .targetChapterName)
+        targetSchoolName = container.decodeFlexibleStringOrNil(forKey: .targetSchoolName)
+        chapterName = container.decodeFlexibleStringOrNil(forKey: .chapterName)
+        schoolName = container.decodeFlexibleStringOrNil(forKey: .schoolName)
         targetParts = try container.decodeIfPresent([UMCPartType].self, forKey: .targetParts)
     }
 
@@ -197,39 +197,3 @@ private extension String {
     }
 }
 
-// MARK: - Flexible Decoding Helpers
-
-private extension KeyedDecodingContainer {
-    /// String/Int/Double 타입을 모두 String으로 디코딩합니다.
-    func decodeFlexibleStringValue(forKey key: Key) throws -> String {
-        if let value = try? decode(String.self, forKey: key) {
-            return value
-        }
-        if let value = try? decode(Int.self, forKey: key) {
-            return String(value)
-        }
-        if let value = try? decode(Double.self, forKey: key) {
-            return String(value)
-        }
-        throw DecodingError.typeMismatch(
-            String.self,
-            DecodingError.Context(
-                codingPath: codingPath + [key],
-                debugDescription: "Expected String/Int/Double for key '\(key.stringValue)'"
-            )
-        )
-    }
-
-    func decodeFlexibleOptionalString(forKey key: Key) -> String? {
-        if let value = try? decodeIfPresent(String.self, forKey: key) {
-            return value
-        }
-        if let value = try? decode(Int.self, forKey: key) {
-            return String(value)
-        }
-        if let value = try? decode(Double.self, forKey: key) {
-            return String(Int(value))
-        }
-        return nil
-    }
-}

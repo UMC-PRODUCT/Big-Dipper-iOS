@@ -11,7 +11,7 @@ private let bundleIdBase = "dev.umc.core"
 ///   - name: 타겟 이름 (예: "CoreNetwork", "UMCFoundation")
 ///   - bundleIdSuffix: bundleId 접미사 (예: "network", "foundation")
 ///   - destinations: 지원 플랫폼 (기본값: `.iOS`)
-///   - deploymentTargets: 배포 대상 (기본값: iOS 26.3)
+///   - deploymentTargets: 배포 대상 (기본값: iOS 26.4)
 ///   - dependencies: 메인 타겟 의존성 목록
 ///   - includesTests: `true`이면 `Tests/**` 소스를 사용하는 unitTests 타겟을 함께 생성
 ///   - testDependencies: 테스트 타겟에 추가로 주입할 의존성 (메인 타겟은 자동 포함)
@@ -20,7 +20,7 @@ public func coreProject(
     name: String,
     bundleIdSuffix: String,
     destinations: Destinations = .iOS,
-    deploymentTargets: DeploymentTargets = .iOS("26.3"),
+    deploymentTargets: DeploymentTargets = .iOS("26.4"),
     dependencies: [TargetDependency] = [],
     resources: ResourceFileElements? = nil,
     additionalSettings: SettingsDictionary = [:],

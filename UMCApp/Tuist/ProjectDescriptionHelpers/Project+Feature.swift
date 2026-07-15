@@ -15,9 +15,12 @@ private let bundleIdBase = "dev.umc.feature"
 /// - Parameters:
 ///   - name: Feature 이름 (예: "Auth", "Home"). 타겟명 및 bundleId 생성에 사용됩니다.
 ///   - domainDestinations: Domain 타겟의 지원 플랫폼 (기본값: `.iOS`). watchOS 공유가 필요한 경우 `[.iPhone, .appleWatch]`로 지정.
-///   - domainDeploymentTargets: Domain 타겟의 배포 대상 (기본값: iOS 26.3). watchOS 공유 시 `.multiplatform(iOS:watchOS:)` 로 지정.
+///   - domainDeploymentTargets: Domain 타겟의 배포 대상 (기본값: iOS 26.4). watchOS 공유 시 `.multiplatform(iOS:watchOS:)` 로 지정.
 ///   - domainExtraDependencies: Domain 타겟에 추가할 의존성
 ///   - dataExtraDependencies: Data 타겟에 추가할 의존성
+///   - dataResources: Data 타겟에 번들로 포함할 리소스 (예: CoreML `.mlmodel`).
+///     staticFramework는 Compile Sources 산출물이 소비 타겟까지 전파되지 않으므로,
+///     런타임에 필요한 리소스는 별도 리소스 번들로 명시해야 한다.
 ///   - presentationExtraDependencies: Presentation 타겟에 추가할 의존성
 ///   - includesDomainTests: `true`이면 `Domain/Tests/**` 소스를 사용하는 unitTests 타겟 생성
 ///   - domainTestDependencies: Domain 테스트 타겟에 추가로 주입할 의존성 (메인 Domain은 자동 포함)
@@ -28,9 +31,10 @@ private let bundleIdBase = "dev.umc.feature"
 public func featureProject(
     name: String,
     domainDestinations: Destinations = .iOS,
-    domainDeploymentTargets: DeploymentTargets = .iOS("26.3"),
+    domainDeploymentTargets: DeploymentTargets = .iOS("26.4"),
     domainExtraDependencies: [TargetDependency] = [],
     dataExtraDependencies: [TargetDependency] = [],
+    dataResources: ResourceFileElements? = nil,
     presentationExtraDependencies: [TargetDependency] = [],
     includesDomainTests: Bool = false,
     domainTestDependencies: [TargetDependency] = [],
@@ -58,8 +62,9 @@ public func featureProject(
             destinations: .iOS,
             product: .staticFramework,
             bundleId: "\(bundleIdBase).\(nameLowered).data",
-            deploymentTargets: .iOS("26.3"),
+            deploymentTargets: .iOS("26.4"),
             sources: ["Data/Sources/**"],
+            resources: dataResources,
             dependencies: [
                 .target(name: "\(name)Domain"),
                 .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
@@ -71,7 +76,7 @@ public func featureProject(
             destinations: .iOS,
             product: .staticFramework,
             bundleId: "\(bundleIdBase).\(nameLowered).presentation",
-            deploymentTargets: .iOS("26.3"),
+            deploymentTargets: .iOS("26.4"),
             sources: ["Presentation/Sources/**"],
             dependencies: [
                 .target(name: "\(name)Domain"),
@@ -103,7 +108,7 @@ public func featureProject(
                 destinations: .iOS,
                 product: .unitTests,
                 bundleId: "\(bundleIdBase).\(nameLowered).data.tests",
-                deploymentTargets: .iOS("26.3"),
+                deploymentTargets: .iOS("26.4"),
                 sources: ["Data/Tests/**"],
                 dependencies: [.target(name: "\(name)Data")] + dataTestDependencies
             )
@@ -117,7 +122,7 @@ public func featureProject(
                 destinations: .iOS,
                 product: .unitTests,
                 bundleId: "\(bundleIdBase).\(nameLowered).presentation.tests",
-                deploymentTargets: .iOS("26.3"),
+                deploymentTargets: .iOS("26.4"),
                 sources: ["Presentation/Tests/**"],
                 dependencies: [.target(name: "\(name)Presentation")] + presentationTestDependencies
             )

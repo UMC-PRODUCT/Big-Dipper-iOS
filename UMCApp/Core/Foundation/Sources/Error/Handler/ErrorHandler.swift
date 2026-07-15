@@ -6,8 +6,10 @@
 //
 
 import Foundation
-import FoundationModels
 import os.log
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 /// 앱 전역에서 발생하는 에러를 중앙 집중식으로 처리하는 핸들러.
 ///
@@ -82,7 +84,7 @@ public final class ErrorHandler {
 
     /// 에러 로깅에 사용되는 Logger.
     private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "AppProduct",
+        subsystem: Bundle.main.bundleIdentifier ?? "UMCApp",
         category: "ErrorHandler"
     )
 
@@ -193,11 +195,18 @@ public final class ErrorHandler {
         }
 
         // 9. LanguageModelSession.GenerationError → DomainError 변환
+        #if canImport(FoundationModels)
         if let generationError = error as? LanguageModelSession.GenerationError {
             return .domain(.custom(message: describeGenerationError(generationError)))
         }
+        #endif
 
-        // 10. 알 수 없는 에러
+        // 10. LocationError → DomainError 변환 (인라인 상태로 처리 가능한 도메인 에러)
+        if let locationError = error as? LocationError {
+            return .domain(.custom(message: locationError.errorDescription ?? "위치 오류가 발생했습니다."))
+        }
+
+        // 11. 알 수 없는 에러
         return .unknown(message: error.localizedDescription)
     }
 
@@ -212,6 +221,7 @@ public final class ErrorHandler {
         }
     }
 
+    #if canImport(FoundationModels)
     private func describeGenerationError(_ error: LanguageModelSession.GenerationError) -> String {
         switch error {
         case .exceededContextWindowSize:
@@ -236,6 +246,7 @@ public final class ErrorHandler {
             return "AI 처리 중 문제가 발생했습니다."
         }
     }
+    #endif
 
     private func describeDecodingError(_ error: DecodingError) -> String {
         switch error {

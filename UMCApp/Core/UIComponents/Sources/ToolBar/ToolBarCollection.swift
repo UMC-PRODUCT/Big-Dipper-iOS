@@ -744,6 +744,24 @@ public struct ToolBarCollection {
             static let iconSize: CGFloat = 18
         }
 
+        public init(
+            isSubmitting: Bool,
+            isDeletingAccount: Bool,
+            isLoggingOut: Bool,
+            onHome: @escaping () -> Void,
+            onInquiry: @escaping () -> Void,
+            onLogout: @escaping () -> Void,
+            onDeleteAccount: @escaping () -> Void
+        ) {
+            self.isSubmitting = isSubmitting
+            self.isDeletingAccount = isDeletingAccount
+            self.isLoggingOut = isLoggingOut
+            self.onHome = onHome
+            self.onInquiry = onInquiry
+            self.onLogout = onLogout
+            self.onDeleteAccount = onDeleteAccount
+        }
+
         public var body: some ToolbarContent {
             ToolbarItem(placement: .bottomBar) {
                 actionButton(

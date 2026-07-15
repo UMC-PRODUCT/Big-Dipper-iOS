@@ -118,7 +118,7 @@ public struct NoticeReadStatusResponseDTO: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.content = try container.decode([NoticeReadStatusUserDTO].self, forKey: .content)
-        self.nextCursor = container.decodeFlexibleOptionalString(forKey: .nextCursor) ?? ""
+        self.nextCursor = container.decodeFlexibleStringOrNil(forKey: .nextCursor) ?? ""
         self.hasNext = try container.decode(Bool.self, forKey: .hasNext)
     }
 }
@@ -148,45 +148,3 @@ extension NoticeReadStatusUserDTO {
     }
 }
 
-// MARK: - Flexible Decoding Helpers
-
-private extension KeyedDecodingContainer {
-    /// String, Int, Double 타입 중 하나로 디코딩하여 String으로 반환 (실패 시 빈 문자열)
-    func decodeFlexibleStringOrEmpty(forKey key: Key) -> String {
-        if let value = try? decode(String.self, forKey: key) {
-            return value
-        }
-        if let value = try? decode(Int.self, forKey: key) {
-            return String(value)
-        }
-        if let value = try? decode(Double.self, forKey: key) {
-            return String(value)
-        }
-        return ""
-    }
-
-    /// String, Int, Double 타입 중 하나로 디코딩하여 Optional String으로 반환
-    func decodeFlexibleOptionalString(forKey key: Key) -> String? {
-        if let value = try? decodeIfPresent(String.self, forKey: key) {
-            return value
-        }
-        if let value = try? decode(Int.self, forKey: key) {
-            return String(value)
-        }
-        if let value = try? decode(Double.self, forKey: key) {
-            return String(value)
-        }
-        return nil
-    }
-
-    func decodeFirstNonEmptyString(forKeys keys: [Key]) -> String? {
-        for key in keys {
-            guard let rawValue = decodeFlexibleOptionalString(forKey: key) else { continue }
-            let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty {
-                return trimmed
-            }
-        }
-        return nil
-    }
-}
