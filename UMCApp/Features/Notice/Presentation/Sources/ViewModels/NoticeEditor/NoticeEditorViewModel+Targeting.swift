@@ -1,6 +1,6 @@
 //
 //  NoticeEditorViewModel+Targeting.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 6/1/26.
 //
