@@ -21,7 +21,7 @@ struct VotingFormSheetView: View, Equatable {
     /// 취소 액션
     var onCancel: () -> Void
     /// 확인 액션
-    var onConfirm: () -> Void
+    var onConfirm: () async -> Void
     /// 시트 모드(생성/수정)
     var mode: VoteEditorMode = .create
 
@@ -247,7 +247,7 @@ struct VotingFormSheetView: View, Equatable {
             dateRow(
                 title: Constants.voteEndDateTitle,
                 selection: endDateBinding,
-                range: endDateLowerBound...Date.distantFuture
+                range: endDateLowerBound(for: formData.startDate)...Date.distantFuture
             )
         }
         .padding(.top, Constants.dateTopMargin)
@@ -301,11 +301,20 @@ struct VotingFormSheetView: View, Equatable {
     // MARK: - Date Binding
 
     /// 시작일 바인딩(선택일 00:00:00 고정)
+    ///
+    /// 시작일이 기존 마감일 이후로 이동하면 마감일이 DatePicker 허용 범위 밖에 남으므로
+    /// 새 하한일로 함께 보정합니다.
     private var startDateBinding: Binding<Date> {
         Binding(
             get: { formData.startDate },
             set: { newDate in
-                formData.startDate = Calendar.current.startOfDay(for: newDate)
+                let newStartDate = Calendar.current.startOfDay(for: newDate)
+                formData.startDate = newStartDate
+
+                let lowerBound = endDateLowerBound(for: newStartDate)
+                if formData.endDate < lowerBound {
+                    formData.endDate = endOfDay(for: lowerBound)
+                }
             }
         )
     }
@@ -315,23 +324,28 @@ struct VotingFormSheetView: View, Equatable {
         Binding(
             get: { formData.endDate },
             set: { newDate in
-                let calendar = Calendar.current
-                let startOfDay = calendar.startOfDay(for: newDate)
-                formData.endDate = calendar.date(
-                    bySettingHour: 23,
-                    minute: 59,
-                    second: 59,
-                    of: startOfDay
-                ) ?? newDate
+                formData.endDate = endOfDay(for: newDate)
             }
         )
     }
 
-    /// 마감일 최소 허용값(시작일 + 1일)
-    private var endDateLowerBound: Date {
-        Calendar.current.date(byAdding: .day, value: 1, to: formData.startDate) ?? formData.startDate
+    /// 시작일 기준 마감일 최소 허용값(시작일 + 1일)
+    private func endDateLowerBound(for startDate: Date) -> Date {
+        Calendar.current.date(byAdding: .day, value: 1, to: startDate) ?? startDate
     }
-    
+
+    /// 선택일을 해당 일자의 23:59:59로 정규화합니다.
+    private func endOfDay(for date: Date) -> Date {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        return calendar.date(
+            bySettingHour: 23,
+            minute: 59,
+            second: 59,
+            of: startOfDay
+        ) ?? date
+    }
+
     /// 확인 버튼 로딩 상태(실제 제출 + DEBUG 강제 상태)
     private var isConfirmButtonLoading: Bool {
         isSubmitting || isDebugLoading
@@ -341,11 +355,9 @@ struct VotingFormSheetView: View, Equatable {
     private func handleConfirmTap() {
         guard !isConfirmButtonLoading else { return }
         isSubmitting = true
-        onConfirm()
 
         Task { @MainActor in
-            // 시트가 즉시 닫히지 않는 경우를 대비해 다음 프레임에 로딩 상태 복구
-            await Task.yield()
+            await onConfirm()
             isSubmitting = false
         }
     }
