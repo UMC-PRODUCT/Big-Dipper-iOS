@@ -14,7 +14,7 @@ import UIKit
 ///
 /// `NSAttributedString.enumerateAttributes(in:)` 로 같은 속성을 공유하는 run 단위로
 /// 순회하며 각 run 을 `serializeSegment` 로 변환하고 이어 붙입니다.
-public enum MarkdownInlineSerializer {
+enum MarkdownInlineSerializer {
 
     // MARK: - Function
 
@@ -26,7 +26,11 @@ public enum MarkdownInlineSerializer {
     ///   - blockImpliedBold: 블록 prefix(헤딩 등) 자체가 bold 를 암시하는 경우 `true`.
     ///     이 때 인라인 레벨에서는 `**` 래핑을 하지 않아 이중 표시를 방지합니다.
     /// - Returns: 인라인 마크다운 문자열.
-    public static func serializeInline(_ attributedString: NSAttributedString, range: NSRange, blockImpliedBold: Bool = false) -> String {
+    static func serializeInline(
+        _ attributedString: NSAttributedString,
+        range: NSRange,
+        blockImpliedBold: Bool = false
+    ) -> String {
         guard range.length > 0 else {
             return ""
         }
@@ -40,7 +44,11 @@ public enum MarkdownInlineSerializer {
                 return
             }
 
-            markdown.append(serializeSegment(text: text, attributes: attributes, blockImpliedBold: blockImpliedBold))
+            markdown.append(serializeSegment(
+                text: text,
+                attributes: attributes,
+                blockImpliedBold: blockImpliedBold
+            ))
         }
 
         return markdown
@@ -62,14 +70,19 @@ public enum MarkdownInlineSerializer {
     ///   - attributes: run 의 속성 dictionary.
     ///   - blockImpliedBold: 블록 레벨에서 이미 bold 가 함축되어 있는지 여부.
     /// - Returns: 해당 run 을 나타내는 마크다운 조각.
-    public static func serializeSegment(text: String, attributes: [NSAttributedString.Key: Any], blockImpliedBold: Bool = false) -> String {
+    static func serializeSegment(
+        text: String,
+        attributes: [NSAttributedString.Key: Any],
+        blockImpliedBold: Bool = false
+    ) -> String {
         let font = attributes[.font] as? UIFont
         let traits = font?.fontDescriptor.symbolicTraits ?? []
         // 헤딩/부머리말 블록은 폰트 자체가 bold이므로, 블록 레벨에서 이미 implied된 bold는 인라인 ** 마커로 이중 래핑하지 않는다.
         // Pretendard는 커스텀 폰트라 symbolic trait보다 폰트명으로 bold를 판별하는 편이 더 신뢰할 수 있습니다.
         let isBold: Bool
         if let font, font.fontName.hasPrefix("Pretendard") {
-            isBold = (font.fontName.contains("Bold") || font.fontName.contains("SemiBold")) && !blockImpliedBold
+            let hasBoldName = font.fontName.contains("Bold") || font.fontName.contains("SemiBold")
+            isBold = hasBoldName && !blockImpliedBold
         } else {
             isBold = traits.contains(.traitBold) && !blockImpliedBold
         }
@@ -80,7 +93,8 @@ public enum MarkdownInlineSerializer {
         } else {
             isItalic = traits.contains(.traitItalic)
         }
-        let isMonospaced = traits.contains(.traitMonoSpace) || font?.familyName.lowercased().contains("mono") == true
+        let isMonospaced = traits.contains(.traitMonoSpace)
+            || font?.familyName.lowercased().contains("mono") == true
         let isUnderlined = (attributes[.underlineStyle] as? NSNumber)?.intValue ?? 0 != 0
         let isStruck = (attributes[.strikethroughStyle] as? NSNumber)?.intValue ?? 0 != 0
         let highlightColor = attributes[.backgroundColor] as? UIColor
@@ -101,7 +115,9 @@ public enum MarkdownInlineSerializer {
         if !isMonospaced {
             leadingWhitespace = String(cleanedText.prefix(while: \.isWhitespace))
             let withoutLeading = cleanedText.dropFirst(leadingWhitespace.count)
-            trailingWhitespace = String(withoutLeading.reversed().prefix(while: \.isWhitespace).reversed())
+            trailingWhitespace = String(
+                withoutLeading.reversed().prefix(while: \.isWhitespace).reversed()
+            )
             coreText = String(withoutLeading.dropLast(trailingWhitespace.count))
 
             // 공백뿐인 run 은 서식 마커 없이 공백 그대로 직렬화합니다.
@@ -112,7 +128,7 @@ public enum MarkdownInlineSerializer {
 
         if isMonospaced {
             // mono font → `텍스트`
-            content = "`\(MarkdownEscaping.escapeMarkdownCodeText(text))`"
+            content = "`\(MarkdownEscaping.escapeMarkdownCodeText(cleanedText))`"
         } else if isBold && isItalic {
             // Bold + Italic → **_텍스트_**
             content = "**_\(content)_**"

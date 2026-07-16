@@ -20,12 +20,12 @@ import Foundation
 ///
 /// 변환 동작 자체(NSAttributedString 치환)는 `RichTextCoordinator+MarkdownAutoformat` 이
 /// 담당하며, 이 타입은 UIKit 의존이 없는 순수 판별 로직만 가집니다.
-public enum MarkdownAutoformat {
+enum MarkdownAutoformat {
 
     // MARK: - Types
 
     /// 타이핑으로 막 완성된 인라인 토큰의 종류.
-    public enum InlineTokenKind {
+    enum InlineTokenKind {
         /// `**텍스트**`
         case bold
         /// `***텍스트***`
@@ -41,7 +41,7 @@ public enum MarkdownAutoformat {
     }
 
     /// `completedInlineToken` 의 검출 결과.
-    public struct CompletedToken {
+    struct CompletedToken {
         /// 토큰 종류.
         let kind: InlineTokenKind
         /// 검사 구간(segment) 내에서 마커를 포함한 토큰 전체 범위 (UTF-16).
@@ -63,7 +63,7 @@ public enum MarkdownAutoformat {
     ///
     /// - Parameter text: 붙여넣기로 삽입될 원본 텍스트.
     /// - Returns: 마크다운으로 해석해야 하면 `true`.
-    public static func containsMarkdownSyntax(_ text: String) -> Bool {
+    static func containsMarkdownSyntax(_ text: String) -> Bool {
         // 블록 prefix: 라인 시작의 헤딩/인용구/불릿/번호 목록
         for line in text.components(separatedBy: .newlines) {
             let lineRange = NSRange(location: 0, length: (line as NSString).length)
@@ -71,7 +71,10 @@ public enum MarkdownAutoformat {
                 MarkdownRegex.h3, MarkdownRegex.h2, MarkdownRegex.h1,
                 MarkdownRegex.blockquote, MarkdownRegex.bulletList, MarkdownRegex.numberList,
             ]
-            if blockPatterns.contains(where: { $0.firstMatch(in: line, range: lineRange) != nil }) {
+            let hasBlockPrefix = blockPatterns.contains(where: {
+                $0.firstMatch(in: line, range: lineRange) != nil
+            })
+            if hasBlockPrefix {
                 return true
             }
         }
@@ -99,7 +102,7 @@ public enum MarkdownAutoformat {
     ///
     /// - Parameter segment: 단락 시작부터 커서까지의 plain 문자열.
     /// - Returns: 완성된 토큰 정보. 없으면 `nil`.
-    public static func completedInlineToken(in segment: String) -> CompletedToken? {
+    static func completedInlineToken(in segment: String) -> CompletedToken? {
         let nsSegment = segment as NSString
         let fullRange = NSRange(location: 0, length: nsSegment.length)
 

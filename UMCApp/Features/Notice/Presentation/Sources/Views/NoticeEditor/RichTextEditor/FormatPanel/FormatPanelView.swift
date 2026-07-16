@@ -34,7 +34,9 @@ fileprivate enum Constants {
     static let inactiveBackgroundColor: Color = .secondary.opacity(0.14)
     static let inactiveForegroundColor: Color = .secondary
     static let activeForegroundColor: Color = .white
-    static let paragraphStyles: [EditorParagraphStyle] = [.title, .heading, .subheading, .body, .mono]
+    static let paragraphStyles: [EditorParagraphStyle] = [
+        .title, .heading, .subheading, .body, .mono
+    ]
     static let highlightPalette: [HighlightOption] = [
         .init(name: "보라", color: .purple.opacity(0.35)),
         .init(name: "분홍", color: .pink.opacity(0.35)),
@@ -55,7 +57,9 @@ public struct FormatPanelView: View {
     /// ViewModel의 highlightColor와 팔레트 색상을 비교하여 현재 선택된 인덱스를 반환합니다.
     private var selectedHighlightIndex: Int? {
         guard let vmColor = viewModel.highlightColor else { return nil }
-        return Constants.highlightPalette.firstIndex { colorsApproximatelyEqual($0.color, vmColor) }
+        return Constants.highlightPalette.firstIndex {
+            colorsApproximatelyEqual($0.color, vmColor)
+        }
     }
 
     private var selectedHighlightColor: Color? {
@@ -78,7 +82,7 @@ public struct FormatPanelView: View {
     private var header: some View {
         HStack {
             Text("포맷")
-                .appFont(.body, weight: .semibold ,color: .black)
+                .appFont(.body, weight: .semibold, color: .grey900)
 
             Spacer()
 
@@ -185,7 +189,10 @@ public struct FormatPanelView: View {
                                     .foregroundStyle(Constants.inactiveForegroundColor)
                             }
                             Circle()
-                                .stroke(Constants.inactiveForegroundColor.opacity(0.18), lineWidth: 1)
+                                .stroke(
+                                    Constants.inactiveForegroundColor.opacity(0.18),
+                                    lineWidth: 1
+                                )
                         }
                         .accessibilityHidden(true)
                 }
@@ -200,14 +207,19 @@ public struct FormatPanelView: View {
                         } label: {
                             Circle()
                                 .fill(Color.clear)
-                                .frame(width: Constants.paletteCircleSize, height: Constants.paletteCircleSize)
+                                .frame(
+                                    width: Constants.paletteCircleSize,
+                                    height: Constants.paletteCircleSize
+                                )
                                 .overlay {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 10, weight: .bold))
                                         .foregroundStyle(Constants.inactiveForegroundColor)
                                     Circle()
                                         .stroke(
-                                            selectedHighlightIndex == nil ? Constants.activeColor : Constants.inactiveForegroundColor.opacity(0.3),
+                                            selectedHighlightIndex == nil
+                                                ? Constants.activeColor
+                                                : Constants.inactiveForegroundColor.opacity(0.3),
                                             lineWidth: 2
                                         )
                                 }
@@ -215,7 +227,8 @@ public struct FormatPanelView: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel("형광펜 제거")
 
-                        ForEach(Array(Constants.highlightPalette.enumerated()), id: \.offset) { index, option in
+                        let palette = Array(Constants.highlightPalette.enumerated())
+                        ForEach(palette, id: \.offset) { index, option in
                             Button {
                                 viewModel.applyHighlight(color: option.color)
                                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -224,11 +237,16 @@ public struct FormatPanelView: View {
                             } label: {
                                 Circle()
                                     .fill(option.color)
-                                    .frame(width: Constants.paletteCircleSize, height: Constants.paletteCircleSize)
+                                    .frame(
+                                        width: Constants.paletteCircleSize,
+                                        height: Constants.paletteCircleSize
+                                    )
                                     .overlay {
                                         Circle()
                                             .stroke(
-                                                selectedHighlightIndex == index ? Constants.activeColor : .clear,
+                                                selectedHighlightIndex == index
+                                                    ? Constants.activeColor
+                                                    : .clear,
                                                 lineWidth: 2
                                             )
                                     }
@@ -311,11 +329,15 @@ public struct FormatPanelView: View {
     }
 
     private func paragraphBackground(for style: EditorParagraphStyle) -> Color {
-        viewModel.paragraphStyle == style ? Constants.activeColor : Constants.inactiveBackgroundColor
+        viewModel.paragraphStyle == style
+            ? Constants.activeColor
+            : Constants.inactiveBackgroundColor
     }
 
     private func paragraphForegroundColor(for style: EditorParagraphStyle) -> Color {
-        viewModel.paragraphStyle == style ? Constants.activeForegroundColor : Constants.inactiveForegroundColor
+        viewModel.paragraphStyle == style
+            ? Constants.activeForegroundColor
+            : Constants.inactiveForegroundColor
     }
 
     private enum InlineFormatStyle {
@@ -335,7 +357,9 @@ public struct FormatPanelView: View {
                 .underline(previewStyle == .underline)
                 .strikethrough(previewStyle == .strikethrough)
                 .frame(width: Constants.controlButtonSize, height: Constants.controlButtonSize)
-                .foregroundStyle(isActive ? Constants.activeForegroundColor : Constants.inactiveForegroundColor)
+                .foregroundStyle(
+                    isActive ? Constants.activeForegroundColor : Constants.inactiveForegroundColor
+                )
                 .background(buttonBackground(isActive: isActive))
         }
         .buttonStyle(.plain)
@@ -361,7 +385,9 @@ public struct FormatPanelView: View {
             Image(systemName: systemName)
                 .font(.system(size: 17, weight: .semibold))
                 .frame(width: Constants.controlButtonSize, height: Constants.controlButtonSize)
-                .foregroundStyle(isActive ? Constants.activeForegroundColor : Constants.inactiveForegroundColor)
+                .foregroundStyle(
+                    isActive ? Constants.activeForegroundColor : Constants.inactiveForegroundColor
+                )
                 .background(buttonBackground(isActive: isActive))
         }
         .buttonStyle(.plain)

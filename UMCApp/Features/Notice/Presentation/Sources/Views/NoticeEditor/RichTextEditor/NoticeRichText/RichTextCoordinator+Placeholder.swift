@@ -11,7 +11,7 @@ extension RichTextCoordinator {
 
     // MARK: - Placeholder
 
-    public func installPlaceholderIfNeeded(in textView: UITextView) {
+    func installPlaceholderIfNeeded(in textView: UITextView) {
         if let label = textView.viewWithTag(Constants.placeholderTag) as? UILabel {
             label.text = parent.placeholder
             label.font = textView.font
@@ -38,17 +38,20 @@ extension RichTextCoordinator {
             ),
             placeholderLabel.leadingAnchor.constraint(
                 equalTo: textView.leadingAnchor,
-                constant: textView.textContainerInset.left + textView.textContainer.lineFragmentPadding
+                constant: textView.textContainerInset.left
+                    + textView.textContainer.lineFragmentPadding
             ),
             placeholderLabel.trailingAnchor.constraint(
                 lessThanOrEqualTo: textView.trailingAnchor,
-                constant: -(textView.textContainerInset.right + textView.textContainer.lineFragmentPadding)
+                constant: -(textView.textContainerInset.right
+                    + textView.textContainer.lineFragmentPadding)
             )
         ])
     }
 
-    public func updatePlaceholder(in textView: UITextView) {
-        guard let placeholderLabel = textView.viewWithTag(Constants.placeholderTag) as? UILabel else {
+    func updatePlaceholder(in textView: UITextView) {
+        let placeholderView = textView.viewWithTag(Constants.placeholderTag)
+        guard let placeholderLabel = placeholderView as? UILabel else {
             return
         }
 

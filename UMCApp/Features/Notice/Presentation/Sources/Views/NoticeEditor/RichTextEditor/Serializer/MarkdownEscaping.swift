@@ -14,7 +14,7 @@ import Foundation
 /// 에디터는 WYSIWYG 편집 결과를 마크다운 문자열로 저장한 뒤 다시 파싱해 렌더링합니다.
 /// 이 왕복 과정에서 사용자가 "문자 그대로" 입력한 마크다운 기호(`*`, `_`, `` ` `` 등)가
 /// 서식으로 오해석되지 않도록 직렬화 시 백슬래시로 escape하고, 역직렬화 시 다시 벗겨냅니다.
-public enum MarkdownEscaping {
+enum MarkdownEscaping {
 
     // MARK: - Property
 
@@ -23,9 +23,11 @@ public enum MarkdownEscaping {
     /// ### 각 문자가 포함된 이유
     /// - `\\`, `*`, `_`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `<`, `>`: 인라인 토큰 기호.
     /// - `#`, `-`: 헤딩/목록 등 블록 레벨 토큰 기호.
-    /// - `.`: `escapeLeadingBlockSyntax` 가 `"1\. text"` 형태로 escape하므로 역직렬화 시 `.` 를 unescape 해야 합니다.
-    /// - `–`: `escapeLeadingBlockSyntax` 가 `"\– text"` 형태로 escape 하므로 역직렬화 시 `–` 를 unescape 해야 합니다.
-    public static let escapedMarkdownCharacters: Set<Character> = [
+    /// - `.`: `escapeLeadingBlockSyntax` 가 `"1\. text"` 형태로 escape하므로
+    ///   역직렬화 시 `.` 를 unescape 해야 합니다.
+    /// - `–`: `escapeLeadingBlockSyntax` 가 `"\– text"` 형태로 escape 하므로
+    ///   역직렬화 시 `–` 를 unescape 해야 합니다.
+    static let escapedMarkdownCharacters: Set<Character> = [
         "\\", "*", "_", "[", "]", "(", ")", "~", "`", "<", ">", "#", "-", ".", "–"
     ]
 
@@ -41,7 +43,7 @@ public enum MarkdownEscaping {
     ///
     /// - Note: `<`, `>` 포함의 근거: 사용자가 입력한 `</u>`, `</mark>` 등이 deserialize 시
     ///   닫는 태그로 오파싱되는 것을 방지합니다.
-    public static func escapeMarkdownText(_ text: String) -> String {
+    static func escapeMarkdownText(_ text: String) -> String {
         var escaped = ""
 
         for character in text {
@@ -63,7 +65,7 @@ public enum MarkdownEscaping {
     ///
     /// - Parameter text: 코드 스팬 내부 원본.
     /// - Returns: 백틱 스팬으로 안전하게 감쌀 수 있는 문자열.
-    public static func escapeMarkdownCodeText(_ text: String) -> String {
+    static func escapeMarkdownCodeText(_ text: String) -> String {
         var escaped = ""
 
         for character in text {
@@ -84,7 +86,7 @@ public enum MarkdownEscaping {
     ///
     /// - Parameter url: 링크 URL 의 raw 문자열.
     /// - Returns: destination 영역에 안전하게 삽입 가능한 문자열.
-    public static func escapeMarkdownLinkDestination(_ url: String) -> String {
+    static func escapeMarkdownLinkDestination(_ url: String) -> String {
         var escaped = ""
         for character in url {
             if character == ")" || character == "\\" {
@@ -103,7 +105,7 @@ public enum MarkdownEscaping {
     ///
     /// - Parameter line: 아직 블록 처리가 안 된 한 줄.
     /// - Returns: 해당 prefix 가 서식으로 재해석되지 않도록 보정된 문자열.
-    public static func escapeLeadingBlockSyntax(in line: String) -> String {
+    static func escapeLeadingBlockSyntax(in line: String) -> String {
         if line.hasPrefix("### ") || line.hasPrefix("## ") || line.hasPrefix("# ") {
             return "\\\(line)"
         }
@@ -112,8 +114,10 @@ public enum MarkdownEscaping {
             return "\\\(line)"
         }
 
-        guard let match = MarkdownRegex.leadingNumber
-            .firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length)) else {
+        guard let match = MarkdownRegex.leadingNumber.firstMatch(
+            in: line,
+            range: NSRange(location: 0, length: (line as NSString).length)
+        ) else {
             return line
         }
 
@@ -132,7 +136,7 @@ public enum MarkdownEscaping {
     ///
     /// - Parameter text: escape 된 마크다운 텍스트.
     /// - Returns: 화면 표시 또는 추가 처리용 원본 텍스트.
-    public static func unescapeMarkdownText(_ text: String) -> String {
+    static func unescapeMarkdownText(_ text: String) -> String {
         var unescaped = ""
         var isEscaping = false
 
@@ -170,7 +174,7 @@ public enum MarkdownEscaping {
     ///
     /// - Parameter text: 코드 스팬 안의 raw 문자열.
     /// - Returns: 사용자가 입력한 그대로의 코드 본문.
-    public static func unescapeCodeText(_ text: String) -> String {
+    static func unescapeCodeText(_ text: String) -> String {
         var unescaped = ""
         var isEscaping = false
 
