@@ -112,7 +112,7 @@ public enum MarkdownInlineSerializer {
 
         if isMonospaced {
             // mono font → `텍스트`
-            content = "`\(MarkdownEscaping.escapeMarkdownCodeText(text))`"
+            content = "`\(MarkdownEscaping.escapeMarkdownCodeText(cleanedText))`"
         } else if isBold && isItalic {
             // Bold + Italic → **_텍스트_**
             content = "**_\(content)_**"
