@@ -16,7 +16,7 @@ import UIKit
 /// 공지사항 본문은 일반적으로 마크다운이지만, 과거 데이터 또는 외부 경로로 HTML 이 섞여
 /// 들어올 수 있습니다. 이 경우 마크다운 파서에 그대로 통과시키면 깨진 서식이 화면에
 /// 노출되므로, 휴리스틱으로 포맷을 감지한 뒤 분기합니다.
-public enum MarkdownHTMLDetector {
+enum MarkdownHTMLDetector {
 
     // MARK: - Function
 
@@ -30,8 +30,9 @@ public enum MarkdownHTMLDetector {
     ///
     /// - Note: `<u>`, `<mark>` 는 iOS 에디터의 마크다운 인라인 토큰이므로 판별 집합에서
     ///   제외합니다. 이 태그만 포함된 콘텐츠는 계속 마크다운으로 간주됩니다.
-    public static func looksLikeHTML(_ content: String) -> Bool {
-        let pattern = "<(p|div|br|span|b|i|strong|em|ul|ol|li|h[1-6]|blockquote|a|table|tr|td)[\\s>/]"
+    static func looksLikeHTML(_ content: String) -> Bool {
+        let pattern =
+            "<(p|div|br|span|b|i|strong|em|ul|ol|li|h[1-6]|blockquote|a|table|tr|td)[\\s>/]"
         return content.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
@@ -47,7 +48,7 @@ public enum MarkdownHTMLDetector {
     ///
     /// - Parameter markdown: 마크다운 또는 HTML 문자열.
     /// - Returns: 서식이 모두 제거된 plain text.
-    public static func plainText(from markdown: String) -> String {
+    static func plainText(from markdown: String) -> String {
         if looksLikeHTML(markdown) {
             return plainTextFromHTML(markdown)
         }

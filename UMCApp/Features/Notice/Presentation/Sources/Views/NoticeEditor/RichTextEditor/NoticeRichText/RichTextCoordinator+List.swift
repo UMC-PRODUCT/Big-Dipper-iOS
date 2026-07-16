@@ -13,7 +13,7 @@ extension RichTextCoordinator {
 
     /// 목록 단락에서 Enter 키 입력을 처리합니다.
     /// - 반환값: true이면 UIKit이 기본 Enter 처리를 수행, false이면 직접 처리 완료
-    public func handleReturnInList(textView: BlockquoteTextView, range: NSRange) -> Bool {
+    func handleReturnInList(textView: BlockquoteTextView, range: NSRange) -> Bool {
         let storage = textView.textStorage
         guard storage.length > 0 else { return true }
 
@@ -21,9 +21,14 @@ extension RichTextCoordinator {
         // storage.length - 1 로 clamp하면 trailing \n이 있는 경우 이전 단락을 오인합니다.
         let paragraphLocation = min(range.location, storage.length)
         let nsString = storage.string as NSString
-        let paragraphRange = nsString.paragraphRange(for: NSRange(location: paragraphLocation, length: 0))
-        // EOF 빈 단락(location >= storage.length): paragraphText가 빈 문자열이어서 detectListPrefix가 nil을 반환합니다.
-        let paragraphText = paragraphRange.location < storage.length ? nsString.substring(with: paragraphRange) : ""
+        let paragraphRange = nsString.paragraphRange(
+            for: NSRange(location: paragraphLocation, length: 0)
+        )
+        // EOF 빈 단락(location >= storage.length): paragraphText가 빈 문자열이어서
+        // detectListPrefix가 nil을 반환합니다.
+        let paragraphText = paragraphRange.location < storage.length
+            ? nsString.substring(with: paragraphRange)
+            : ""
 
         guard let (prefix, listKind) = detectListPrefix(in: paragraphText) else {
             return true
@@ -32,14 +37,17 @@ extension RichTextCoordinator {
         // 접두사 이후 실제 콘텐츠 존재 여부 확인 (NSString 기반으로 통일)
         let prefixNSLength = (prefix as NSString).length
         let paragraphNSStr = paragraphText as NSString
-        let contentAfterPrefix = paragraphNSStr.length > prefixNSLength ? paragraphNSStr.substring(from: prefixNSLength) : ""
+        let contentAfterPrefix = paragraphNSStr.length > prefixNSLength
+            ? paragraphNSStr.substring(from: prefixNSLength)
+            : ""
         let hasContent = contentAfterPrefix.contains { !$0.isNewline && !$0.isWhitespace }
 
         if !hasContent {
             // 빈 목록 줄 → 접두사만 제거하고 목록 탈출
             let removeRange = NSRange(location: paragraphRange.location, length: prefixNSLength)
             let fontLocation = min(paragraphRange.location, storage.length - 1)
-            let currentFont = storage.attribute(.font, at: fontLocation, effectiveRange: nil) as? UIFont
+            let currentFont = storage.attribute(.font, at: fontLocation, effectiveRange: nil)
+                as? UIFont
                 ?? UIFont.preferredFont(forTextStyle: .body)
 
             storage.beginEditing()
@@ -69,7 +77,8 @@ extension RichTextCoordinator {
 
         // 내용 있는 목록 줄 → 다음 항목 접두사를 자동으로 이어받습니다
         let nextPrefix = nextListPrefix(for: listKind, currentPrefix: prefix)
-        let currentFont = textView.typingAttributes[.font] as? UIFont ?? UIFont.preferredFont(forTextStyle: .body)
+        let currentFont = textView.typingAttributes[.font] as? UIFont
+            ?? UIFont.preferredFont(forTextStyle: .body)
         let listStyleID = listStyleID(for: listKind)
 
         // 새 줄 속성은 허용 목록 방식으로 구성합니다.
@@ -84,7 +93,10 @@ extension RichTextCoordinator {
         }
 
         let newLineString = "\n" + nextPrefix
-        let newLineAttributed = NSMutableAttributedString(string: newLineString, attributes: newLineAttrs)
+        let newLineAttributed = NSMutableAttributedString(
+            string: newLineString,
+            attributes: newLineAttrs
+        )
 
         storage.beginEditing()
         storage.replaceCharacters(in: range, with: newLineAttributed)
@@ -103,7 +115,12 @@ extension RichTextCoordinator {
             } else {
                 nextItemNumber = 2
             }
-            renumberFollowingNumberedList(from: insertedEnd, expectedNext: nextItemNumber, in: storage, font: currentFont)
+            renumberFollowingNumberedList(
+                from: insertedEnd,
+                expectedNext: nextItemNumber,
+                in: storage,
+                font: currentFont
+            )
         }
 
         let newCursor = range.location + (newLineString as NSString).length
@@ -124,20 +141,29 @@ extension RichTextCoordinator {
     ///
     /// 전체 재번호 작업을 단일 beginEditing/endEditing 블록으로 감싸
     /// delegate 알림을 1회만 발생시켜 SwiftUI 다중 재렌더를 방지합니다.
-    public func renumberFollowingNumberedList(from insertedEnd: Int, expectedNext: Int, in storage: NSTextStorage, font: UIFont) {
+    func renumberFollowingNumberedList(
+        from insertedEnd: Int,
+        expectedNext: Int,
+        in storage: NSTextStorage,
+        font: UIFont
+    ) {
         var currentNumber = expectedNext
         var location = insertedEnd
 
         // 삽입된 새 줄(다음 항목)의 다음 단락부터 순회 시작
         var nsString = storage.string as NSString
-        let newParagraph = nsString.paragraphRange(for: NSRange(location: min(location, max(0, storage.length - 1)), length: 0))
+        let newParagraph = nsString.paragraphRange(
+            for: NSRange(location: min(location, max(0, storage.length - 1)), length: 0)
+        )
         location = NSMaxRange(newParagraph)
 
         // 단일 editing 트랜잭션: N개 항목을 재번호해도 delegate 알림 1회만 발생
         storage.beginEditing()
         while location < storage.length {
             nsString = storage.string as NSString  // replaceCharacters 이후 항상 갱신
-            let paragraphRange = nsString.paragraphRange(for: NSRange(location: location, length: 0))
+            let paragraphRange = nsString.paragraphRange(
+                for: NSRange(location: location, length: 0)
+            )
             let paragraphText = nsString.substring(with: paragraphRange)
 
             guard let match = RichTextCoordinator.numberListPrefixRegex.firstMatch(
@@ -150,8 +176,14 @@ extension RichTextCoordinator {
             let lengthDelta = (newPrefix as NSString).length - match.range.length
 
             if oldPrefix != newPrefix {
-                let replaceRange = NSRange(location: paragraphRange.location, length: match.range.length)
-                storage.replaceCharacters(in: replaceRange, with: NSAttributedString(string: newPrefix, attributes: [.font: font]))
+                let replaceRange = NSRange(
+                    location: paragraphRange.location,
+                    length: match.range.length
+                )
+                storage.replaceCharacters(
+                    in: replaceRange,
+                    with: NSAttributedString(string: newPrefix, attributes: [.font: font])
+                )
                 let next = NSMaxRange(paragraphRange) + lengthDelta
                 guard next > location else { break }
                 location = next
@@ -169,13 +201,16 @@ extension RichTextCoordinator {
     // MARK: - List Prefix Detection
 
     /// 단락 텍스트에서 목록 접두사와 종류를 감지합니다.
-    public func detectListPrefix(in paragraphText: String) -> (prefix: String, kind: EditorListStyle)? {
+    func detectListPrefix(in paragraphText: String) -> (prefix: String, kind: EditorListStyle)? {
         if paragraphText.hasPrefix("• ") { return ("• ", .bullet) }
         if paragraphText.hasPrefix("– ") { return ("– ", .dash) }
 
         let nsText = paragraphText as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
-        guard let match = RichTextCoordinator.numberListPrefixRegex.firstMatch(in: paragraphText, range: fullRange) else {
+        guard let match = RichTextCoordinator.numberListPrefixRegex.firstMatch(
+            in: paragraphText,
+            range: fullRange
+        ) else {
             return nil
         }
 
@@ -183,10 +218,10 @@ extension RichTextCoordinator {
         return (prefix, .number)
     }
 
-    public static let numberListPrefixRegex = try! NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
+    static let numberListPrefixRegex = try! NSRegularExpression(pattern: "^(\\d+)\\.\\s+")
 
     /// 현재 접두사를 기반으로 다음 목록 항목의 접두사를 계산합니다.
-    public func nextListPrefix(for kind: EditorListStyle, currentPrefix: String) -> String {
+    func nextListPrefix(for kind: EditorListStyle, currentPrefix: String) -> String {
         switch kind {
         case .bullet: return "• "
         case .dash: return "– "
@@ -198,7 +233,7 @@ extension RichTextCoordinator {
     }
 
     /// 목록 스타일에 대한 저장 식별자를 반환합니다.
-    public func listStyleID(for style: EditorListStyle) -> String {
+    func listStyleID(for style: EditorListStyle) -> String {
         switch style {
         case .bullet: return "bullet"
         case .dash: return "dash"

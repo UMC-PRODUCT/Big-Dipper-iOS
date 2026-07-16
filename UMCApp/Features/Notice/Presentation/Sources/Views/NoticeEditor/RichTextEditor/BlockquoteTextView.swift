@@ -8,7 +8,7 @@
 import UIKit
 
 /// 인용구 속성이 적용된 단락에 왼쪽 세로 경계선을 렌더링하는 UITextView 서브클래스입니다.
-public final class BlockquoteTextView: UITextView {
+final class BlockquoteTextView: UITextView {
 
     // MARK: - Property
 
@@ -30,7 +30,7 @@ public final class BlockquoteTextView: UITextView {
 
     // MARK: - Layout
 
-    public override func layoutSubviews() {
+    override func layoutSubviews() {
         super.layoutSubviews()
         if needsBlockquoteRefresh {
             needsBlockquoteRefresh = false
@@ -41,7 +41,7 @@ public final class BlockquoteTextView: UITextView {
     // MARK: - Blockquote Rendering
 
     /// 다음 레이아웃 패스에서 인용구 경계선을 갱신하도록 예약합니다.
-    public func setNeedsBlockquoteRefresh() {
+    func setNeedsBlockquoteRefresh() {
         needsBlockquoteRefresh = true
         setNeedsLayout()
     }
@@ -49,7 +49,7 @@ public final class BlockquoteTextView: UITextView {
     /// 텍스트 스토리지에서 인용구 속성을 읽어 왼쪽 경계선 레이어를 즉시 업데이트합니다.
     ///
     /// 연속된 인용구 단락을 하나의 그룹으로 병합하여 단일 경계선을 그립니다.
-    public func refreshBlockquoteBorders() {
+    func refreshBlockquoteBorders() {
         needsBlockquoteRefresh = false
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -92,17 +92,34 @@ public final class BlockquoteTextView: UITextView {
         }
 
         while location < storage.length {
-            let paragraphRange = nsString.paragraphRange(for: NSRange(location: location, length: 0))
+            let paragraphRange = nsString.paragraphRange(
+                for: NSRange(location: location, length: 0)
+            )
             let checkLocation = min(paragraphRange.location, storage.length - 1)
-            let isBlockquote = (storage.attribute(.editorBlockquote, at: checkLocation, effectiveRange: nil) as? Bool) == true
+            let blockquoteFlag = storage.attribute(
+                .editorBlockquote,
+                at: checkLocation,
+                effectiveRange: nil
+            )
+            let isBlockquote = (blockquoteFlag as? Bool) == true
 
             if isBlockquote {
-                let currentBorderColor = storage.attribute(.editorBlockquoteBorderColor, at: checkLocation, effectiveRange: nil) as? UIColor ?? .systemGray3
-                let currentBaseIndent = (storage.attribute(.editorBlockquoteBaseHeadIndent, at: checkLocation, effectiveRange: nil) as? NSNumber)
+                let currentBorderColor = storage.attribute(
+                    .editorBlockquoteBorderColor,
+                    at: checkLocation,
+                    effectiveRange: nil
+                ) as? UIColor ?? .systemGray3
+                let currentBaseIndent = (storage.attribute(
+                    .editorBlockquoteBaseHeadIndent,
+                    at: checkLocation,
+                    effectiveRange: nil
+                ) as? NSNumber)
                     .map { CGFloat($0.doubleValue) } ?? 0
 
                 // 시각 속성이 변경되면 이전 그룹을 flush하고 새 그룹 시작
-                if hasActiveGroup && (currentBorderColor != groupBorderColor || abs(currentBaseIndent - groupBaseIndent) > 0.5) {
+                let groupStyleChanged = currentBorderColor != groupBorderColor
+                    || abs(currentBaseIndent - groupBaseIndent) > 0.5
+                if hasActiveGroup && groupStyleChanged {
                     flushGroup()
                 }
 
@@ -114,7 +131,10 @@ public final class BlockquoteTextView: UITextView {
                     hasActiveGroup = true
                 }
 
-                let glyphRange = lm.glyphRange(forCharacterRange: paragraphRange, actualCharacterRange: nil)
+                let glyphRange = lm.glyphRange(
+                    forCharacterRange: paragraphRange,
+                    actualCharacterRange: nil
+                )
                 lm.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, _, _ in
                     groupMinY = min(groupMinY, usedRect.minY + tcInset.top)
                     groupMaxY = max(groupMaxY, usedRect.maxY + tcInset.top)
@@ -145,7 +165,12 @@ public final class BlockquoteTextView: UITextView {
             // 인용구 탈출 직후에는 typingAttributes에서 인용구가 제거되므로
             // 이전 단락의 trailing \n 속성만으로 경계선이 연장되지 않습니다.
             let extraRect = lm.extraLineFragmentRect
-            let lastCharIsBlockquote = (storage.attribute(.editorBlockquote, at: storage.length - 1, effectiveRange: nil) as? Bool) == true
+            let lastCharFlag = storage.attribute(
+                .editorBlockquote,
+                at: storage.length - 1,
+                effectiveRange: nil
+            )
+            let lastCharIsBlockquote = (lastCharFlag as? Bool) == true
             let cursorIsInBlockquote = (typingAttributes[.editorBlockquote] as? Bool) == true
             if extraRect.height > 0, lastCharIsBlockquote, cursorIsInBlockquote {
                 groupMinY = min(groupMinY, extraRect.minY + tcInset.top)
