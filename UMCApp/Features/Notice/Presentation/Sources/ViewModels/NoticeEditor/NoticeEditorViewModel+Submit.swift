@@ -181,7 +181,7 @@ extension NoticeEditorViewModel {
 
     /// 공지 생성 API용 TargetInfoDTO를 구성합니다.
     public func buildTargetInfo() -> NoticeTargetInfo {
-        let currentGeneration = (Int(resolvedGisuId) ?? 0) > 0 ? (Int(resolvedGisuId) ?? 0) : 0
+        let currentGeneration = resolvedGisuIdValue
         let selectedBranchId = subCategorySelection.selectedBranch?.id
         let selectedSchoolFromSheet = subCategorySelection.selectedSchool?.id
         let selectedParts = subCategorySelection.selectedParts.isEmpty

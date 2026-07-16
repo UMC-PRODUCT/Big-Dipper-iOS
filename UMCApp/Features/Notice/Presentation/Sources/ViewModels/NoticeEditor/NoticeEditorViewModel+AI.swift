@@ -138,6 +138,7 @@ extension NoticeEditorViewModel {
             }
 
             if !fullText.isEmpty {
+                // TODO: CoreDesignSystem AppFont → UIFont 브릿지 도입 후 교체 (#930 리뷰)
                 let baseFont = UIFont(name: "Pretendard-Regular", size: 16)
                     ?? UIFont.preferredFont(forTextStyle: .body)
                 richAttributedContent = MarkdownSerializer.deserialize(fullText, baseFont: baseFont)
@@ -368,6 +369,7 @@ extension NoticeEditorViewModel {
 
         title = draft.title.isEmpty ? title : draft.title
 
+        // TODO: CoreDesignSystem AppFont → UIFont 브릿지 도입 후 교체 (#930 리뷰)
         let baseFont = UIFont(name: "Pretendard-Regular", size: 16)
             ?? UIFont.preferredFont(forTextStyle: .body)
         richAttributedContent = MarkdownSerializer.deserialize(draft.body, baseFont: baseFont)

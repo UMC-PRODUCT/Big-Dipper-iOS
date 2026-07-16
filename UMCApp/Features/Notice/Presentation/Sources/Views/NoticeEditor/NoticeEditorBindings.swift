@@ -34,9 +34,6 @@ struct NoticeEditorBindings: ViewModifier {
     // MARK: - Constants
 
     private enum Constants {
-        /// 이미지/투표 섹션 스크롤 앵커 ID
-        static let imageSectionScrollID: String = "notice_editor_image_section"
-        static let voteSectionScrollID: String = "notice_editor_vote_section"
         /// 링크 추가 후 스크롤/포커스 안정화 대기 시간
         static let linkScrollDelayNanos: UInt64 = 120_000_000
     }
@@ -92,7 +89,7 @@ struct NoticeEditorBindings: ViewModifier {
     fileprivate func handleNoticeImagesCountChanged(oldValue: Int, newValue: Int) {
         guard newValue > oldValue else { return }
         withAnimation(.easeOut(duration: 0.2)) {
-            scrollProxy.scrollTo(Constants.imageSectionScrollID, anchor: .center)
+            scrollProxy.scrollTo(NoticeEditorScrollAnchor.imageSection, anchor: .center)
         }
     }
 
@@ -100,7 +97,7 @@ struct NoticeEditorBindings: ViewModifier {
     fileprivate func handleVoteConfirmStateChanged(oldValue: Bool, newValue: Bool) {
         guard !oldValue, newValue else { return }
         withAnimation(.easeOut(duration: 0.2)) {
-            scrollProxy.scrollTo(Constants.voteSectionScrollID, anchor: .center)
+            scrollProxy.scrollTo(NoticeEditorScrollAnchor.voteSection, anchor: .center)
         }
     }
 

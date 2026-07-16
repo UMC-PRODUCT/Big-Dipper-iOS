@@ -1,6 +1,6 @@
 //
 //  NoticeRequestFactory.swift
-//  NoticeDomain
+//  NoticeData
 //
 //  Created by 이예지 on 7/14/26.
 //

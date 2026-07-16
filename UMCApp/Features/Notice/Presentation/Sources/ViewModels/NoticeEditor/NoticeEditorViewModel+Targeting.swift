@@ -70,7 +70,7 @@ extension NoticeEditorViewModel {
             case .central:
                 let canSelectBranch = visibleSubCategories.contains(.branch)
                 let canSelectSchool = visibleSubCategories.contains(.school)
-                let hasResolvedGisu = (Int(resolvedGisuId) ?? 0) > 0
+                let hasResolvedGisu = resolvedGisuIdValue > 0
 
                 if canSelectBranch, canSelectSchool {
                     async let branches = hasResolvedGisu
@@ -103,7 +103,7 @@ extension NoticeEditorViewModel {
                 if visibleSubCategories.contains(.branch) {
                     if memberRole == .chapterPresident, let chapterId = userChapterId, (Int(chapterId) ?? 0) > 0 {
                         let allBranches = try await (
-                            (Int(resolvedGisuId) ?? 0) > 0
+                            resolvedGisuIdValue > 0
                             ? targetUseCase.fetchBranches(gisuId:  String(resolvedGisuId))
                             : targetUseCase.fetchAllBranches()
                         )
@@ -115,7 +115,7 @@ extension NoticeEditorViewModel {
                         }
                     } else {
                         branchOptions = try await (
-                            (Int(resolvedGisuId) ?? 0) > 0
+                            resolvedGisuIdValue > 0
                             ? targetUseCase.fetchBranches(gisuId:  String(resolvedGisuId))
                             : targetUseCase.fetchAllBranches()
                         )
@@ -135,7 +135,7 @@ extension NoticeEditorViewModel {
                 branchOptions = []
                 if visibleSubCategories.contains(.school) {
                     schoolOptions = try await (
-                        (Int(resolvedGisuId) ?? 0) > 0
+                        resolvedGisuIdValue > 0
                         ? targetUseCase.fetchSchools(gisuId: String(resolvedGisuId))
                         : targetUseCase.fetchAllSchools()
                     )
@@ -517,7 +517,7 @@ private extension NoticeEditorViewModel {
         }
 
         // 기수 미선택 시 금지 조합 방지
-        if (Int(resolvedGisuId) ?? 0) <= 0 && !subCategorySelection.selectedParts.isEmpty {
+        if resolvedGisuIdValue <= 0 && !subCategorySelection.selectedParts.isEmpty {
             subCategorySelection.selectedParts = []
             subCategorySelection.selectedSubCategories.remove(.part)
         }

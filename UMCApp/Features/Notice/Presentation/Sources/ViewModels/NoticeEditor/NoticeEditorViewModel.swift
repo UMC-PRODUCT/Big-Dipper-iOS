@@ -77,6 +77,11 @@ public final class NoticeEditorViewModel {
         userGisuId ?? String(gisuId)
     }
 
+    /// `resolvedGisuId`의 정수 표현. 파싱 실패·음수는 모두 0(미해결)으로 수렴시킵니다.
+    public var resolvedGisuIdValue: Int {
+        max(Int(resolvedGisuId) ?? 0, 0)
+    }
+
     public var resolvedChapterId: String {
         userChapterId ?? String(organizationId)
     }
@@ -245,7 +250,7 @@ public final class NoticeEditorViewModel {
         switch mode {
         case .create:
             // 서버 스펙: 운영진 공지는 기수 필수
-            if case .management = selectedCategory, (Int(resolvedGisuId) ?? 0) <= 0 {
+            if case .management = selectedCategory, resolvedGisuIdValue <= 0 {
                 return false
             }
             return hasRequiredFields

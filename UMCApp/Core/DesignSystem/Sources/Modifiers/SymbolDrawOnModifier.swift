@@ -1,6 +1,6 @@
 //
 //  SymbolDrawOnModifier.swift
-//  CoreUIComponents
+//  CoreDesignSystem
 //
 //  Created by 이예지 on 7/3/26.
 //

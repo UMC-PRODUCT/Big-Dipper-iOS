@@ -64,7 +64,7 @@ public struct NoticeEditorView: View {
 
     /// 본문이 화면을 꽉 채우도록 최소 높이 계산
     private var editorMinHeight: CGFloat {
-        max(scrollViewHeight, 400)
+        max(scrollViewHeight, Constants.editorMinHeight)
     }
 
     // MARK: - Initializer
@@ -144,7 +144,7 @@ public struct NoticeEditorView: View {
                     images: viewModel.noticeImages,
                     onRemove: viewModel.removeImage
                 )
-                .id(Constants.imageSectionScrollID)
+                .id(NoticeEditorScrollAnchor.imageSection)
             }
 
             if !viewModel.noticeLinks.isEmpty {
@@ -162,7 +162,7 @@ public struct NoticeEditorView: View {
                     onDelete: viewModel.deleteVote,
                     onEdit: viewModel.editVote
                 )
-                .id(Constants.voteSectionScrollID)
+                .id(NoticeEditorScrollAnchor.voteSection)
             }
         }
     }
@@ -377,8 +377,7 @@ public struct NoticeEditorView: View {
 
 private extension NoticeEditorView {
     enum Constants {
-        /// 이미지/투표 섹션 스크롤 앵커 ID (NoticeEditorBindings 와 동기화)
-        static let imageSectionScrollID: String = "notice_editor_image_section"
-        static let voteSectionScrollID: String = "notice_editor_vote_section"
+        /// 스크롤 뷰 높이가 아직 측정되지 않았을 때 본문에 보장할 최소 높이
+        static let editorMinHeight: CGFloat = 400
     }
 }
