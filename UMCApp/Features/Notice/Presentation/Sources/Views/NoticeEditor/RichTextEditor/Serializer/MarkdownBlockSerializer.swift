@@ -1,6 +1,6 @@
 //
 //  MarkdownBlockSerializer.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 6/30/26.
 //
@@ -16,7 +16,7 @@ import UIKit
 /// (`#`, `>`, `- `, `1. ` 등) 를 결정하고, 인라인 직렬화는 `MarkdownInlineSerializer` 에
 /// 위임합니다. 단락 경계를 넘어서는 줄바꿈 문자(trailing newlines)는 내용과 분리하여
 /// 손실 없이 보존합니다.
-public enum MarkdownBlockSerializer {
+enum MarkdownBlockSerializer {
 
     // MARK: - Function
 
@@ -31,7 +31,7 @@ public enum MarkdownBlockSerializer {
     ///
     /// - Parameter attributedString: 에디터의 현재 입력 상태.
     /// - Returns: 저장/전송에 사용할 마크다운 문자열.
-    public static func serialize(_ attributedString: NSAttributedString) -> String {
+    static func serialize(_ attributedString: NSAttributedString) -> String {
         let nsString = attributedString.string as NSString
 
         guard nsString.length > 0 else {
@@ -42,7 +42,9 @@ public enum MarkdownBlockSerializer {
         var location = 0
 
         while location < nsString.length {
-            let paragraphRange = nsString.paragraphRange(for: NSRange(location: location, length: 0))
+            let paragraphRange = nsString.paragraphRange(
+                for: NSRange(location: location, length: 0)
+            )
             let paragraphText = nsString.substring(with: paragraphRange) as NSString
             let contentLength = contentLengthExcludingTrailingNewlines(in: paragraphText)
             let contentRange = NSRange(location: paragraphRange.location, length: contentLength)
@@ -92,32 +94,63 @@ public enum MarkdownBlockSerializer {
     ///   - attributedString: 전체 에디터 텍스트.
     ///   - contentRange: 개행을 제외한 단락 본문 범위.
     /// - Returns: prefix / 인라인 범위 / 블록 레벨 bold 여부가 담긴 `MarkdownBlockContext`.
-    private static func blockContext(for attributedString: NSAttributedString, contentRange: NSRange) -> MarkdownBlockContext {
-        let paragraphString = attributedString.attributedSubstring(from: contentRange).string as NSString
+    private static func blockContext(
+        for attributedString: NSAttributedString,
+        contentRange: NSRange
+    ) -> MarkdownBlockContext {
+        let paragraphString = attributedString
+            .attributedSubstring(from: contentRange).string as NSString
         let fullLength = paragraphString.length
 
-        guard let firstContentOffset = firstNonWhitespaceOffset(in: paragraphString as String) else {
-            return MarkdownBlockContext(markdownPrefix: "", inlineRange: contentRange, blockImpliedBold: false)
+        guard let firstContentOffset = firstNonWhitespaceOffset(
+            in: paragraphString as String
+        ) else {
+            return MarkdownBlockContext(
+                markdownPrefix: "",
+                inlineRange: contentRange,
+                blockImpliedBold: false
+            )
         }
 
         let firstContentLocation = contentRange.location + firstContentOffset
-        let font = attributedString.attribute(.font, at: firstContentLocation, effectiveRange: nil) as? UIFont
+        let font = attributedString.attribute(
+            .font,
+            at: firstContentLocation,
+            effectiveRange: nil
+        ) as? UIFont
 
         // 속성 기반 판별을 텍스트 prefix보다 먼저 수행 (제목/인용구가 목록처럼 보이는 텍스트로 시작해도 안전)
-        let isBlockquote = (attributedString.attribute(.editorBlockquote, at: firstContentLocation, effectiveRange: nil) as? Bool) == true
+        let blockquoteFlag = attributedString.attribute(
+            .editorBlockquote,
+            at: firstContentLocation,
+            effectiveRange: nil
+        )
+        let isBlockquote = (blockquoteFlag as? Bool) == true
         if isBlockquote {
             // 인용구 (.editorBlockquote attribute) → > 텍스트
-            return MarkdownBlockContext(markdownPrefix: "> ", inlineRange: contentRange, blockImpliedBold: false)
+            return MarkdownBlockContext(
+                markdownPrefix: "> ",
+                inlineRange: contentRange,
+                blockImpliedBold: false
+            )
         }
 
         if let font, abs(font.pointSize - 28) < 0.5 {
             // 단락 스타일 title (28pt) → # 텍스트
-            return MarkdownBlockContext(markdownPrefix: "# ", inlineRange: contentRange, blockImpliedBold: true)
+            return MarkdownBlockContext(
+                markdownPrefix: "# ",
+                inlineRange: contentRange,
+                blockImpliedBold: true
+            )
         }
 
         if let font, abs(font.pointSize - 22) < 0.5 {
             // 단락 스타일 heading (22pt) → ## 텍스트
-            return MarkdownBlockContext(markdownPrefix: "## ", inlineRange: contentRange, blockImpliedBold: true)
+            return MarkdownBlockContext(
+                markdownPrefix: "## ",
+                inlineRange: contentRange,
+                blockImpliedBold: true
+            )
         }
 
         if let font,
@@ -125,43 +158,66 @@ public enum MarkdownBlockSerializer {
            font.fontDescriptor.symbolicTraits.contains(.traitBold),
            isParagraphDominantlySubheading(in: attributedString, range: contentRange) {
             // 단락 스타일 subheading (17pt) → ### 텍스트
-            return MarkdownBlockContext(markdownPrefix: "### ", inlineRange: contentRange, blockImpliedBold: true)
+            return MarkdownBlockContext(
+                markdownPrefix: "### ",
+                inlineRange: contentRange,
+                blockImpliedBold: true
+            )
         }
 
         // 텍스트 prefix 기반 목록 판별 (속성 판별 이후)
-        if let match = MarkdownRegex.bulletPrefix
-            .firstMatch(in: paragraphString as String, range: NSRange(location: 0, length: fullLength)) {
+        if let match = MarkdownRegex.bulletPrefix.firstMatch(
+            in: paragraphString as String,
+            range: NSRange(location: 0, length: fullLength)
+        ) {
             // Bullet prefix • → - 텍스트
             return MarkdownBlockContext(
                 markdownPrefix: "- ",
-                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length),
+                inlineRange: NSRange(
+                    location: contentRange.location + match.range.length,
+                    length: contentRange.length - match.range.length
+                ),
                 blockImpliedBold: false
             )
         }
 
-        if let match = MarkdownRegex.dashPrefix
-            .firstMatch(in: paragraphString as String, range: NSRange(location: 0, length: fullLength)) {
+        if let match = MarkdownRegex.dashPrefix.firstMatch(
+            in: paragraphString as String,
+            range: NSRange(location: 0, length: fullLength)
+        ) {
             // Dash prefix – → – 텍스트
             return MarkdownBlockContext(
                 markdownPrefix: "– ",
-                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length),
+                inlineRange: NSRange(
+                    location: contentRange.location + match.range.length,
+                    length: contentRange.length - match.range.length
+                ),
                 blockImpliedBold: false
             )
         }
 
-        if let match = MarkdownRegex.numberPrefix
-            .firstMatch(in: paragraphString as String, range: NSRange(location: 0, length: fullLength)) {
+        if let match = MarkdownRegex.numberPrefix.firstMatch(
+            in: paragraphString as String,
+            range: NSRange(location: 0, length: fullLength)
+        ) {
             let marker = paragraphString.substring(with: match.range(at: 1))
 
             // Number prefix 숫자. → 1. 텍스트
             return MarkdownBlockContext(
                 markdownPrefix: "\(marker). ",
-                inlineRange: NSRange(location: contentRange.location + match.range.length, length: contentRange.length - match.range.length),
+                inlineRange: NSRange(
+                    location: contentRange.location + match.range.length,
+                    length: contentRange.length - match.range.length
+                ),
                 blockImpliedBold: false
             )
         }
 
-        return MarkdownBlockContext(markdownPrefix: "", inlineRange: contentRange, blockImpliedBold: false)
+        return MarkdownBlockContext(
+            markdownPrefix: "",
+            inlineRange: contentRange,
+            blockImpliedBold: false
+        )
     }
 
     /// 단락 문자열의 끝에서 연속된 `\n`/`\r` 개수를 제외한 "내용 길이" 를 계산합니다.
@@ -214,7 +270,10 @@ public enum MarkdownBlockSerializer {
     ///   - attributedString: 전체 에디터 텍스트.
     ///   - range: 검사 대상 단락 범위.
     /// - Returns: 모든 비공백 run 이 17pt bold 이면 `true`.
-    private static func isParagraphDominantlySubheading(in attributedString: NSAttributedString, range: NSRange) -> Bool {
+    private static func isParagraphDominantlySubheading(
+        in attributedString: NSAttributedString,
+        range: NSRange
+    ) -> Bool {
         var hasNonWhitespace = false
         var allSubheading = true
 

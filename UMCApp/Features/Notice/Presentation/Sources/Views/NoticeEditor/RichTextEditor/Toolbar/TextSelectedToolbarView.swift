@@ -1,6 +1,6 @@
 //
 //  TextSelectedToolbarView.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 7/1/26.
 //
@@ -67,7 +67,11 @@ public struct TextSelectedToolbarView: View {
     ) -> some View {
         Button(action: action) {
             Text(title)
-                .appFont(.body, weight: isActive ? .semibold : .regular, color: isActive ? .grey000 : .grey900)
+                .appFont(
+                    .body,
+                    weight: isActive ? .semibold : .regular,
+                    color: isActive ? .grey000 : .grey900
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background {
                     RoundedRectangle(cornerRadius: Constants.buttonCornerRadius)

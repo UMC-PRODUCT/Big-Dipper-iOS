@@ -1,6 +1,6 @@
 //
 //  TableCellToolbarView.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 7/1/26.
 //
@@ -67,7 +67,7 @@ public struct TableCellToolbarView: View {
             viewModel.applyOutdent()
         } label: {
             toolbarLabel(
-                title: "Outdent",
+                title: "내어쓰기",
                 systemImage: "decrease.indent"
             )
         }
@@ -81,7 +81,7 @@ public struct TableCellToolbarView: View {
             viewModel.applyIndent()
         } label: {
             toolbarLabel(
-                title: "Indent",
+                title: "들여쓰기",
                 systemImage: "increase.indent"
             )
         }
@@ -97,7 +97,9 @@ public struct TableCellToolbarView: View {
             toolbarLabel(
                 title: "인용구",
                 systemImage: "text.quote",
-                foregroundColor: viewModel.isBlockquote ? Constants.activeColor : Constants.inactiveColor
+                foregroundColor: viewModel.isBlockquote
+                    ? Constants.activeColor
+                    : Constants.inactiveColor
             )
         }
         .buttonStyle(.plain)

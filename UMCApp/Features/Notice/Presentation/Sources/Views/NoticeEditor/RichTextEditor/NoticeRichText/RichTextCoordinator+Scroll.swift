@@ -1,6 +1,6 @@
 //
 //  RichTextCoordinator+Scroll.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 6/30/26.
 //
@@ -13,7 +13,7 @@ extension RichTextCoordinator {
 
     /// 다음 run loop에서 커서 스크롤을 1회만 실행하도록 예약합니다.
     /// 빠른 입력/붙여넣기에서 예약이 누적되는 것을 방지합니다.
-    public func scheduleScrollCursorToVisible(in textView: UITextView) {
+    func scheduleScrollCursorToVisible(in textView: UITextView) {
         pendingScrollWork?.cancel()
         let work = DispatchWorkItem { [weak self, weak textView] in
             guard let self, let textView else { return }
@@ -27,7 +27,7 @@ extension RichTextCoordinator {
     ///
     /// isScrollEnabled = false인 UITextView는 자체 커서 추적을 하지 않으므로
     /// 부모 ScrollView를 직접 찾아 scrollRectToVisible을 호출합니다.
-    public func scrollCursorToVisible(in textView: UITextView) {
+    func scrollCursorToVisible(in textView: UITextView) {
         guard let selectedRange = textView.selectedTextRange else { return }
         let cursorRect = textView.caretRect(for: selectedRange.end)
         guard !cursorRect.isNull, !cursorRect.isInfinite else { return }
@@ -42,14 +42,18 @@ extension RichTextCoordinator {
                 let topInset = scrollView.adjustedContentInset.top
                 let bottomInset = scrollView.adjustedContentInset.bottom
                 let visibleMinY = scrollView.contentOffset.y + topInset
-                let visibleMaxY = scrollView.contentOffset.y + scrollView.bounds.height - bottomInset
+                let visibleMaxY = scrollView.contentOffset.y
+                    + scrollView.bounds.height - bottomInset
 
                 // 커서가 이미 visible rect 안에 있으면 스크롤 불필요
                 if rectInScrollView.minY >= visibleMinY && rectInScrollView.maxY <= visibleMaxY {
                     return
                 }
 
-                var paddedRect = rectInScrollView.insetBy(dx: 0, dy: -Constants.cursorScrollPadding)
+                var paddedRect = rectInScrollView.insetBy(
+                    dx: 0,
+                    dy: -Constants.cursorScrollPadding
+                )
                 if paddedRect.maxY > visibleMaxY {
                     paddedRect.size.height += bottomInset
                 }

@@ -1,6 +1,6 @@
 //
 //  MarkdownInlineParser.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 7/1/26.
 //
@@ -15,7 +15,7 @@ import UIKit
 /// `MarkdownBlockParser` 가 블록 prefix 를 걷어낸 뒤 넘겨주는 본문에 대해,
 /// "가장 먼저 등장하는 인라인 토큰" 을 찾아 순차적으로 소비하며 `NSAttributedString` 을 구성합니다.
 /// 중첩 토큰(예: `**[링크](url)**`)은 자식 본문을 재귀 호출로 다시 파싱해 처리합니다.
-public enum MarkdownInlineParser {
+enum MarkdownInlineParser {
 
     // MARK: - Function
 
@@ -33,7 +33,11 @@ public enum MarkdownInlineParser {
     ///   - baseFont: 본문 기본 폰트.
     ///   - style: 상위 스타일(블록에서 전달된 bold/fontSize/blockquote 등).
     /// - Returns: 인라인 서식이 반영된 attributed string.
-    public static func parseInlineMarkdown(_ text: String, baseFont: UIFont, style: MarkdownInlineStyle) -> NSAttributedString {
+    static func parseInlineMarkdown(
+        _ text: String,
+        baseFont: UIFont,
+        style: MarkdownInlineStyle
+    ) -> NSAttributedString {
         let mutableAttributedString = NSMutableAttributedString()
         let nsText = text as NSString
         var location = 0
@@ -44,13 +48,17 @@ public enum MarkdownInlineParser {
 
             guard let token = earliestInlineToken(in: remainingText) else {
                 let plainText = nsText.substring(from: location)
-                mutableAttributedString.append(attributedPlainText(plainText, baseFont: baseFont, style: style))
+                mutableAttributedString.append(
+                    attributedPlainText(plainText, baseFont: baseFont, style: style)
+                )
                 break
             }
 
             if token.match.range.location > 0 {
                 let prefix = (remainingText as NSString).substring(to: token.match.range.location)
-                mutableAttributedString.append(attributedPlainText(prefix, baseFont: baseFont, style: style))
+                mutableAttributedString.append(
+                    attributedPlainText(prefix, baseFont: baseFont, style: style)
+                )
             }
 
             switch token.kind {
@@ -58,9 +66,12 @@ public enum MarkdownInlineParser {
                 // `텍스트` → mono font (백슬래시 이스케이프 제거 후 적용)
                 var codeStyle = style
                 codeStyle.isMonospaced = true
-                let rawCodeText = (remainingText as NSString).substring(with: token.match.range(at: 1))
+                let rawCodeText = (remainingText as NSString)
+                    .substring(with: token.match.range(at: 1))
                 let codeText = MarkdownEscaping.unescapeCodeText(rawCodeText)
-                mutableAttributedString.append(attributedPlainText(codeText, baseFont: baseFont, style: codeStyle))
+                mutableAttributedString.append(
+                    attributedPlainText(codeText, baseFont: baseFont, style: codeStyle)
+                )
 
             case .link:
                 // [텍스트](url) → NSLinkAttributeName (허용 scheme: https, http, mailto, tel)
@@ -72,14 +83,19 @@ public enum MarkdownInlineParser {
                    ["https", "http", "mailto", "tel"].contains(scheme) {
                     linkStyle.linkURL = url
                 }
-                mutableAttributedString.append(parseInlineMarkdown(label, baseFont: baseFont, style: linkStyle))
+                mutableAttributedString.append(
+                    parseInlineMarkdown(label, baseFont: baseFont, style: linkStyle)
+                )
 
             case .underline:
                 // <u>텍스트</u> → Underline
                 var underlineStyle = style
                 underlineStyle.isUnderlined = true
-                let underlineText = (remainingText as NSString).substring(with: token.match.range(at: 1))
-                mutableAttributedString.append(parseInlineMarkdown(underlineText, baseFont: baseFont, style: underlineStyle))
+                let underlineText = (remainingText as NSString)
+                    .substring(with: token.match.range(at: 1))
+                mutableAttributedString.append(
+                    parseInlineMarkdown(underlineText, baseFont: baseFont, style: underlineStyle)
+                )
 
             case .highlight:
                 // <mark color="R,G,B,A">텍스트</mark> → backgroundColor
@@ -87,43 +103,58 @@ public enum MarkdownInlineParser {
                 let colorRange = token.match.range(at: 1)
                 let textRange = token.match.range(at: 2)
                 if colorRange.location != NSNotFound,
-                   let colorCode = Range(colorRange, in: remainingText).map({ String(remainingText[$0]) }),
+                   let colorCode = Range(colorRange, in: remainingText)
+                       .map({ String(remainingText[$0]) }),
                    let uiColor = MarkdownAttributeBuilder.uiColor(fromCode: colorCode) {
                     highlightStyle.highlightColor = uiColor
                 } else {
                     highlightStyle.highlightColor = UIColor.yellow.withAlphaComponent(0.4)
                 }
                 let highlightText = (remainingText as NSString).substring(with: textRange)
-                mutableAttributedString.append(parseInlineMarkdown(highlightText, baseFont: baseFont, style: highlightStyle))
+                mutableAttributedString.append(
+                    parseInlineMarkdown(highlightText, baseFont: baseFont, style: highlightStyle)
+                )
 
             case .strikethrough:
                 // ~~텍스트~~ → Strikethrough
                 var strikeStyle = style
                 strikeStyle.isStruck = true
-                let strikeText = (remainingText as NSString).substring(with: token.match.range(at: 1))
-                mutableAttributedString.append(parseInlineMarkdown(strikeText, baseFont: baseFont, style: strikeStyle))
+                let strikeText = (remainingText as NSString)
+                    .substring(with: token.match.range(at: 1))
+                mutableAttributedString.append(
+                    parseInlineMarkdown(strikeText, baseFont: baseFont, style: strikeStyle)
+                )
 
             case .boldItalicMixed, .boldItalicStars:
                 // **_텍스트_** / ***텍스트*** → Bold + Italic
                 var boldItalicStyle = style
                 boldItalicStyle.isBold = true
                 boldItalicStyle.isItalic = true
-                let boldItalicText = (remainingText as NSString).substring(with: token.match.range(at: 1))
-                mutableAttributedString.append(parseInlineMarkdown(boldItalicText, baseFont: baseFont, style: boldItalicStyle))
+                let boldItalicText = (remainingText as NSString)
+                    .substring(with: token.match.range(at: 1))
+                mutableAttributedString.append(
+                    parseInlineMarkdown(boldItalicText, baseFont: baseFont, style: boldItalicStyle)
+                )
 
             case .bold:
                 // **텍스트** → Bold
                 var boldStyle = style
                 boldStyle.isBold = true
-                let boldText = (remainingText as NSString).substring(with: token.match.range(at: 1))
-                mutableAttributedString.append(parseInlineMarkdown(boldText, baseFont: baseFont, style: boldStyle))
+                let boldText = (remainingText as NSString)
+                    .substring(with: token.match.range(at: 1))
+                mutableAttributedString.append(
+                    parseInlineMarkdown(boldText, baseFont: baseFont, style: boldStyle)
+                )
 
             case .italicAsterisk, .italicUnderscore:
                 // *텍스트* / _텍스트_ → Italic
                 var italicStyle = style
                 italicStyle.isItalic = true
-                let italicText = (remainingText as NSString).substring(with: token.match.range(at: 1))
-                mutableAttributedString.append(parseInlineMarkdown(italicText, baseFont: baseFont, style: italicStyle))
+                let italicText = (remainingText as NSString)
+                    .substring(with: token.match.range(at: 1))
+                mutableAttributedString.append(
+                    parseInlineMarkdown(italicText, baseFont: baseFont, style: italicStyle)
+                )
             }
 
             location += NSMaxRange(token.match.range)
@@ -139,7 +170,7 @@ public enum MarkdownInlineParser {
     ///
     /// - Parameter text: 검색 대상 텍스트.
     /// - Returns: 가장 먼저 등장하는 토큰, 없으면 `nil`.
-    public static func earliestInlineToken(in text: String) -> MarkdownInlineToken? {
+    static func earliestInlineToken(in text: String) -> MarkdownInlineToken? {
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
 
@@ -174,7 +205,11 @@ public enum MarkdownInlineParser {
     ///   - baseFont: 본문 기본 폰트.
     ///   - style: 현재 인라인 스타일.
     /// - Returns: 서식이 적용된 attributed string.
-    public static func attributedPlainText(_ text: String, baseFont: UIFont, style: MarkdownInlineStyle) -> NSAttributedString {
+    static func attributedPlainText(
+        _ text: String,
+        baseFont: UIFont,
+        style: MarkdownInlineStyle
+    ) -> NSAttributedString {
         NSAttributedString(
             string: MarkdownEscaping.unescapeMarkdownText(text),
             attributes: MarkdownAttributeBuilder.attributes(for: style, baseFont: baseFont)

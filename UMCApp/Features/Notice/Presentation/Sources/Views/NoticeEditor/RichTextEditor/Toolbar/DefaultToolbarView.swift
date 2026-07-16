@@ -1,6 +1,6 @@
 //
 //  DefaultToolbarView.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 7/1/26.
 //
@@ -26,7 +26,11 @@ public struct DefaultToolbarView: View {
             highlightButton
             listButton
         }
-        .frame(maxWidth: .infinity, minHeight: Constants.toolbarHeight, maxHeight: Constants.toolbarHeight)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: Constants.toolbarHeight,
+            maxHeight: Constants.toolbarHeight
+        )
     }
 
     // MARK: - Components
@@ -61,26 +65,53 @@ public struct DefaultToolbarView: View {
         } label: {
             Image(systemName: Constants.listIcon)
                 .font(.system(size: Constants.iconSize, weight: .semibold))
-                .frame(maxWidth: .infinity, minHeight: Constants.toolbarHeight, maxHeight: Constants.toolbarHeight)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: Constants.toolbarHeight,
+                    maxHeight: Constants.toolbarHeight
+                )
                 .contentShape(Rectangle())
                 .foregroundStyle(Constants.inactiveColor)
         }
     }
 
     private var boldButton: some View {
-        inlineFormatButton(title: "B", weight: .bold, isActive: viewModel.isBold, action: viewModel.toggleBold)
+        inlineFormatButton(
+            title: "B",
+            weight: .bold,
+            isActive: viewModel.isBold,
+            action: viewModel.toggleBold
+        )
     }
 
     private var italicButton: some View {
-        inlineFormatButton(title: "I", weight: .regular, isItalic: true, isActive: viewModel.isItalic, action: viewModel.toggleItalic)
+        inlineFormatButton(
+            title: "I",
+            weight: .regular,
+            isItalic: true,
+            isActive: viewModel.isItalic,
+            action: viewModel.toggleItalic
+        )
     }
 
     private var underlineButton: some View {
-        inlineFormatButton(title: "U", weight: .regular, isUnderline: true, isActive: viewModel.isUnderline, action: viewModel.toggleUnderline)
+        inlineFormatButton(
+            title: "U",
+            weight: .regular,
+            isUnderline: true,
+            isActive: viewModel.isUnderline,
+            action: viewModel.toggleUnderline
+        )
     }
 
     private var strikethroughButton: some View {
-        inlineFormatButton(title: "S", weight: .regular, isStrikethrough: true, isActive: viewModel.isStrikethrough, action: viewModel.toggleStrikethrough)
+        inlineFormatButton(
+            title: "S",
+            weight: .regular,
+            isStrikethrough: true,
+            isActive: viewModel.isStrikethrough,
+            action: viewModel.toggleStrikethrough
+        )
     }
 
     private func inlineFormatButton(
@@ -97,7 +128,11 @@ public struct DefaultToolbarView: View {
                 .font(.system(size: Constants.iconSize, weight: weight).italic(isItalic))
                 .underline(isUnderline)
                 .strikethrough(isStrikethrough)
-                .frame(maxWidth: .infinity, minHeight: Constants.toolbarHeight, maxHeight: Constants.toolbarHeight)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: Constants.toolbarHeight,
+                    maxHeight: Constants.toolbarHeight
+                )
                 .contentShape(Rectangle())
                 .foregroundStyle(isActive ? Color.indigo500 : Constants.inactiveColor)
         }
@@ -120,7 +155,11 @@ public struct DefaultToolbarView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: Constants.iconSize, weight: .semibold))
-                .frame(maxWidth: .infinity, minHeight: Constants.toolbarHeight, maxHeight: Constants.toolbarHeight)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: Constants.toolbarHeight,
+                    maxHeight: Constants.toolbarHeight
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -1,31 +1,35 @@
 //
 //  RichTextCoordinator.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 6/30/26.
 //
 
 import UIKit
 
-public final class RichTextCoordinator: NSObject, UITextViewDelegate {
+final class RichTextCoordinator: NSObject, UITextViewDelegate {
 
     // MARK: - Property
 
-    public var parent: RichTextViewRepresentable
-    public var isEditing = false
-    public var pendingScrollWork: DispatchWorkItem?
+    var parent: RichTextViewRepresentable
+    var isEditing = false
+    var pendingScrollWork: DispatchWorkItem?
     /// 내부 커서 보정 중 selection delegate 재진입을 방지합니다.
-    public var isSuppressingSelectionSync = false
+    var isSuppressingSelectionSync = false
 
     // MARK: - Initializer
 
-    public init(parent: RichTextViewRepresentable) {
+    init(parent: RichTextViewRepresentable) {
         self.parent = parent
     }
 
     // MARK: - UITextViewDelegate
 
-    public func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+    func textView(
+        _ textView: UITextView,
+        shouldChangeTextIn range: NSRange,
+        replacementText text: String
+    ) -> Bool {
         // 한글 등 IME 조합 중에는 Enter 커스텀 처리를 건너뜁니다.
         // markedTextRange != nil이면 조합이 진행 중이므로 UIKit 기본 동작을 유지합니다.
         if let bqTextView = textView as? BlockquoteTextView {
@@ -51,7 +55,7 @@ public final class RichTextCoordinator: NSObject, UITextViewDelegate {
         return true
     }
 
-    public func textViewDidChange(_ textView: UITextView) {
+    func textViewDidChange(_ textView: UITextView) {
         // italic 토글 후 첫 타이핑: _pendingItalicEnabled 플래그를 초기화합니다.
         // 이후부터는 storage 속성과 .editorItalic 커스텀 키로 상태를 추적합니다.
         parent.toolbarViewModel.clearPendingItalic()
@@ -92,7 +96,7 @@ public final class RichTextCoordinator: NSObject, UITextViewDelegate {
         scheduleScrollCursorToVisible(in: textView)
     }
 
-    public func textViewDidChangeSelection(_ textView: UITextView) {
+    func textViewDidChangeSelection(_ textView: UITextView) {
         // 내부 커서 보정 중에는 동기화를 건너뜁니다.
         guard !isSuppressingSelectionSync else { return }
         // IME 조합 중(한글 등)에는 선택 범위가 빈번하게 변경됩니다.
@@ -110,18 +114,20 @@ public final class RichTextCoordinator: NSObject, UITextViewDelegate {
         }
 
         parent.toolbarViewModel.selectedRange = textView.selectedRange
-        parent.toolbarViewModel.toolbarMode = textView.selectedRange.length > 0 ? .textSelected : .default
+        parent.toolbarViewModel.toolbarMode = textView.selectedRange.length > 0
+            ? .textSelected
+            : .default
         parent.toolbarViewModel.reapplyActiveHighlightIfNeeded()
         parent.toolbarViewModel.syncFormattingState()
     }
 
-    public func textViewDidBeginEditing(_ textView: UITextView) {
+    func textViewDidBeginEditing(_ textView: UITextView) {
         isEditing = true
         parent.toolbarViewModel.setEditorActive(true)
         updatePlaceholder(in: textView)
     }
 
-    public func textViewDidEndEditing(_ textView: UITextView) {
+    func textViewDidEndEditing(_ textView: UITextView) {
         isEditing = false
         // 편집 종료 시 IME 조합 중 보류했던 바인딩을 확실히 반영합니다.
         if !parent.attributedText.isEqual(textView.attributedText) {
@@ -134,7 +140,10 @@ public final class RichTextCoordinator: NSObject, UITextViewDelegate {
 
     // MARK: - Function
 
-    public func clampedSelectedRange(for selectedRange: NSRange, in attributedText: NSAttributedString) -> NSRange {
+    func clampedSelectedRange(
+        for selectedRange: NSRange,
+        in attributedText: NSAttributedString
+    ) -> NSRange {
         let safeLocation = min(max(selectedRange.location, 0), attributedText.length)
         let safeLength = min(max(selectedRange.length, 0), attributedText.length - safeLocation)
         return NSRange(location: safeLocation, length: safeLength)
@@ -142,7 +151,7 @@ public final class RichTextCoordinator: NSObject, UITextViewDelegate {
 
     // MARK: - Constants
 
-    public enum Constants {
+    enum Constants {
         static let cursorScrollPadding: CGFloat = 40
         static let placeholderTag = 92_601
     }

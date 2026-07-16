@@ -1,6 +1,6 @@
 //
 //  MarkdownAttributeBuilder.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 6/30/26.
 //
@@ -15,7 +15,7 @@ import UIKit
 ///
 /// 파서(역직렬화)와 직렬화 공통 코드 경로에서 재사용되며, Pretendard 커스텀 폰트의
 /// 굵기/기울임 처리 같은 플랫폼 세부사항을 한곳에 격리합니다.
-public enum MarkdownAttributeBuilder {
+enum MarkdownAttributeBuilder {
 
     // MARK: - Function
 
@@ -28,7 +28,10 @@ public enum MarkdownAttributeBuilder {
     ///
     /// - Note: 인용구 전용 커스텀 키(`editorBlockquote` 등)는 에디터 내부의 장식
     ///   레이어(왼쪽 테두리 라인 등)에서 사용되며, 직렬화 시에도 블록 prefix 판별 근거가 됩니다.
-    static func attributes(for style: MarkdownInlineStyle, baseFont: UIFont) -> [NSAttributedString.Key: Any] {
+    static func attributes(
+        for style: MarkdownInlineStyle,
+        baseFont: UIFont
+    ) -> [NSAttributedString.Key: Any] {
         var result: [NSAttributedString.Key: Any] = [
             .font: font(for: style, baseFont: baseFont),
         ]
@@ -103,7 +106,14 @@ public enum MarkdownAttributeBuilder {
             var font = UIFont(name: fontName, size: pointSize) ?? baseFont.withSize(pointSize)
 
             if style.isItalic {
-                let oblique = CGAffineTransform(a: 1, b: 0, c: CGFloat(tanf(12.0 * Float.pi / 180.0)), d: 1, tx: 0, ty: 0)
+                let oblique = CGAffineTransform(
+                    a: 1,
+                    b: 0,
+                    c: CGFloat(tanf(12.0 * Float.pi / 180.0)),
+                    d: 1,
+                    tx: 0,
+                    ty: 0
+                )
                 let descriptor = font.fontDescriptor.withMatrix(oblique)
                 font = UIFont(descriptor: descriptor, size: pointSize)
             }
@@ -128,7 +138,8 @@ public enum MarkdownAttributeBuilder {
         }
 
         if style.isBold && style.isItalic {
-            let fallbackDescriptor = UIFont.systemFont(ofSize: pointSize, weight: .bold).fontDescriptor
+            let fallbackDescriptor = UIFont
+                .systemFont(ofSize: pointSize, weight: .bold).fontDescriptor
             let italicTraits = fallbackDescriptor.symbolicTraits.union(.traitItalic)
 
             if let italicDescriptor = fallbackDescriptor.withSymbolicTraits(italicTraits) {
@@ -153,8 +164,9 @@ public enum MarkdownAttributeBuilder {
     ///
     /// - Parameter font: 굵기를 읽어올 대상 폰트.
     /// - Returns: `UIFont.Weight` (읽기 실패 시 `.regular`).
-    public static func fontWeight(from font: UIFont) -> UIFont.Weight {
-        let traits = font.fontDescriptor.object(forKey: .traits) as? [UIFontDescriptor.TraitKey: Any]
+    static func fontWeight(from font: UIFont) -> UIFont.Weight {
+        let traits = font.fontDescriptor.object(forKey: .traits)
+            as? [UIFontDescriptor.TraitKey: Any]
         let rawWeight = traits?[.weight] as? CGFloat ?? UIFont.Weight.regular.rawValue
         return UIFont.Weight(rawValue: rawWeight)
     }
@@ -165,7 +177,7 @@ public enum MarkdownAttributeBuilder {
     /// 왼쪽 테두리 라인과 본문 간격이 일정하게 유지됩니다.
     ///
     /// - Returns: 인용구용 `NSParagraphStyle`.
-    public static func quoteParagraphStyle() -> NSParagraphStyle {
+    static func quoteParagraphStyle() -> NSParagraphStyle {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.firstLineHeadIndent = EditorConstants.blockquoteIndent
         paragraphStyle.headIndent = EditorConstants.blockquoteIndent
@@ -180,10 +192,15 @@ public enum MarkdownAttributeBuilder {
     ///
     /// - Parameter code: 소수점 구분자를 쉼표로 사용하는 RGBA 문자열.
     /// - Returns: 변환된 `UIColor` 또는 `nil`.
-    public static func uiColor(fromCode code: String) -> UIColor? {
+    static func uiColor(fromCode code: String) -> UIColor? {
         let parts = code.split(separator: ",").compactMap { Double($0) }
         guard parts.count == 4, parts.allSatisfy(\.isFinite) else { return nil }
         let clamped = parts.map { max(0.0, min(1.0, $0)) }
-        return UIColor(red: CGFloat(clamped[0]), green: CGFloat(clamped[1]), blue: CGFloat(clamped[2]), alpha: CGFloat(clamped[3]))
+        return UIColor(
+            red: CGFloat(clamped[0]),
+            green: CGFloat(clamped[1]),
+            blue: CGFloat(clamped[2]),
+            alpha: CGFloat(clamped[3])
+        )
     }
 }

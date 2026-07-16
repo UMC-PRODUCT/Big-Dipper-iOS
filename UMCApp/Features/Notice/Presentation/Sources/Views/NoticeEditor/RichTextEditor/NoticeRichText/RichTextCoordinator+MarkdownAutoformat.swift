@@ -1,6 +1,6 @@
 //
 //  RichTextCoordinator+MarkdownAutoformat.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 6/30/26.
 //
@@ -21,7 +21,7 @@ extension RichTextCoordinator {
     ///
     /// `textViewDidChange` 에서 IME 조합이 없을 때만 호출됩니다. 변환 후 이어지는 타이핑이
     /// 서식을 상속하지 않도록 typingAttributes 를 본문 상태로 되돌립니다.
-    public func applyTypedMarkdownAutoformatIfNeeded(in textView: UITextView) {
+    func applyTypedMarkdownAutoformatIfNeeded(in textView: UITextView) {
         guard textView.markedTextRange == nil,
               textView.selectedRange.length == 0 else { return }
 
@@ -30,7 +30,9 @@ extension RichTextCoordinator {
         let cursorLocation = textView.selectedRange.location
         guard cursorLocation > 0, cursorLocation <= nsText.length else { return }
 
-        let paragraphRange = nsText.paragraphRange(for: NSRange(location: cursorLocation, length: 0))
+        let paragraphRange = nsText.paragraphRange(
+            for: NSRange(location: cursorLocation, length: 0)
+        )
         let segmentRange = NSRange(
             location: paragraphRange.location,
             length: cursorLocation - paragraphRange.location
@@ -38,11 +40,19 @@ extension RichTextCoordinator {
         guard segmentRange.length > 0 else { return }
         let segment = nsText.substring(with: segmentRange)
 
-        if convertTypedListPrefixIfNeeded(segment: segment, segmentRange: segmentRange, in: textView) {
+        if convertTypedListPrefixIfNeeded(
+            segment: segment,
+            segmentRange: segmentRange,
+            in: textView
+        ) {
             return
         }
 
-        convertCompletedInlineTokenIfNeeded(segment: segment, segmentRange: segmentRange, in: textView)
+        convertCompletedInlineTokenIfNeeded(
+            segment: segment,
+            segmentRange: segmentRange,
+            in: textView
+        )
     }
 
     // MARK: - Paste
@@ -52,7 +62,7 @@ extension RichTextCoordinator {
     /// `shouldChangeTextIn` 에서 마크다운 감지 후 호출되며, 호출부는 `false` 를 반환해
     /// UIKit 기본 삽입을 막아야 합니다. 기본 삽입이 일어나지 않으므로 `textViewDidChange`
     /// 가 수행하던 바인딩/placeholder 동기화를 여기서 직접 수행합니다.
-    public func insertParsedMarkdown(_ markdown: String, in textView: UITextView, range: NSRange) {
+    func insertParsedMarkdown(_ markdown: String, in textView: UITextView, range: NSRange) {
         let baseFont = textView.font
             ?? UIFont(name: "Pretendard-Regular", size: 16)
             ?? UIFont.preferredFont(forTextStyle: .body)

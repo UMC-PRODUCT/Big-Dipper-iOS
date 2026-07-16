@@ -1,6 +1,6 @@
 //
 //  MarkdownBlockParser.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 6/30/26.
 //
@@ -19,7 +19,7 @@ import UIKit
 /// 1. `\r\n`, `\r` 을 `\n` 으로 정규화.
 /// 2. 라인 별로 `deserializeBlock` 호출 → `MarkdownDeserializedBlock` 획득.
 /// 3. 마지막 줄이 아니면 줄바꿈 문자를 블록 스타일과 함께 덧붙임.
-public enum MarkdownBlockParser {
+enum MarkdownBlockParser {
 
     // MARK: - Function
 
@@ -29,7 +29,7 @@ public enum MarkdownBlockParser {
     ///   - markdown: 마크다운 원본.
     ///   - baseFont: 본문 기본 폰트(헤딩이 아닌 줄에 적용).
     /// - Returns: 에디터/미리보기에 표시 가능한 attributed string.
-    public static func deserialize(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
+    static func deserialize(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
         let normalizedMarkdown = normalizeSpacePaddedInlineTokens(
             markdown
                 .replacingOccurrences(of: "\r\n", with: "\n")
@@ -43,7 +43,9 @@ public enum MarkdownBlockParser {
             attributedString.append(block.content)
 
             if index < lines.count - 1 {
-                attributedString.append(NSAttributedString(string: "\n", attributes: block.newlineAttributes))
+                attributedString.append(
+                    NSAttributedString(string: "\n", attributes: block.newlineAttributes)
+                )
             }
         }
 
@@ -63,7 +65,7 @@ public enum MarkdownBlockParser {
     ///
     /// - Parameter markdown: 개행 정규화가 끝난 마크다운 원본.
     /// - Returns: 공백 인접 bold/strikethrough 토큰이 정규화된 마크다운.
-    public static func normalizeSpacePaddedInlineTokens(_ markdown: String) -> String {
+    static func normalizeSpacePaddedInlineTokens(_ markdown: String) -> String {
         var result = markdown
 
         let replacements: [(NSRegularExpression, String)] = [
@@ -95,7 +97,10 @@ public enum MarkdownBlockParser {
     ///   - line: 줄바꿈이 제거된 단일 라인.
     ///   - baseFont: 본문 기본 폰트.
     /// - Returns: 본문 + 줄바꿈 속성이 캡슐화된 `MarkdownDeserializedBlock`.
-    public static func deserializeBlock(from line: String, baseFont: UIFont) -> MarkdownDeserializedBlock {
+    static func deserializeBlock(
+        from line: String,
+        baseFont: UIFont
+    ) -> MarkdownDeserializedBlock {
         var style = MarkdownInlineStyle()
         var markdownBody = line
         var literalPrefix = ""
@@ -147,7 +152,11 @@ public enum MarkdownBlockParser {
             ))
         }
 
-        mutableAttributedString.append(MarkdownInlineParser.parseInlineMarkdown(markdownBody, baseFont: baseFont, style: style))
+        mutableAttributedString.append(MarkdownInlineParser.parseInlineMarkdown(
+            markdownBody,
+            baseFont: baseFont,
+            style: style
+        ))
 
         return MarkdownDeserializedBlock(
             content: mutableAttributedString,

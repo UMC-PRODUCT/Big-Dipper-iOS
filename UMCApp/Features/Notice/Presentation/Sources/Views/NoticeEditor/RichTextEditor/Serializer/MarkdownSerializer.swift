@@ -1,6 +1,6 @@
 //
 //  MarkdownSerializer.swift
-//  NoticeData
+//  NoticePresentation
 //
 //  Created by 이예지 on 7/1/26.
 //
@@ -21,7 +21,7 @@ import UIKit
 ///   꺼내 쓰지 않아도 됩니다.
 /// - 내부 파일을 SOLID 원칙에 따라 분리한 뒤에도 공용 API 표면은 불변이라 리팩터링 영향이
 ///   국소화됩니다.
-public enum MarkdownSerializer {
+enum MarkdownSerializer {
 
     // MARK: - Serialize
 
@@ -29,7 +29,7 @@ public enum MarkdownSerializer {
     ///
     /// - Parameter attributedString: 에디터 현재 상태.
     /// - Returns: 저장/전송에 사용할 마크다운 원문.
-    public static func serialize(_ attributedString: NSAttributedString) -> String {
+    static func serialize(_ attributedString: NSAttributedString) -> String {
         MarkdownBlockSerializer.serialize(attributedString)
     }
 
@@ -39,7 +39,7 @@ public enum MarkdownSerializer {
     ///
     /// - Parameter content: 검사 대상.
     /// - Returns: HTML 로 보이면 `true`.
-    public static func looksLikeHTML(_ content: String) -> Bool {
+    static func looksLikeHTML(_ content: String) -> Bool {
         MarkdownHTMLDetector.looksLikeHTML(content)
     }
 
@@ -51,7 +51,7 @@ public enum MarkdownSerializer {
     ///
     /// - Parameter markdown: 마크다운 또는 HTML 원본.
     /// - Returns: 서식이 제거된 plain text.
-    public static func plainText(from markdown: String) -> String {
+    static func plainText(from markdown: String) -> String {
         MarkdownHTMLDetector.plainText(from: markdown)
     }
 
@@ -68,7 +68,7 @@ public enum MarkdownSerializer {
     ///   - markdown: 표시할 마크다운.
     ///   - baseFont: 본문 기본 폰트.
     /// - Returns: 렌더링 가능한 attributed string.
-    public static func deserializeForDisplay(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
+    static func deserializeForDisplay(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
         MarkdownBlockParser.deserialize(markdown, baseFont: baseFont)
     }
 
@@ -81,7 +81,7 @@ public enum MarkdownSerializer {
     ///
     /// - Parameter markdown: escape 가 포함된 마크다운 문자열.
     /// - Returns: escape 가 제거된 문자열.
-    public static func unescapeForDisplay(_ markdown: String) -> String {
+    static func unescapeForDisplay(_ markdown: String) -> String {
         MarkdownEscaping.unescapeMarkdownText(markdown)
     }
 
@@ -96,7 +96,7 @@ public enum MarkdownSerializer {
     ///   - markdown: 로드할 마크다운.
     ///   - baseFont: 본문 기본 폰트.
     /// - Returns: 에디터에 주입 가능한 attributed string.
-    public static func deserialize(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
+    static func deserialize(_ markdown: String, baseFont: UIFont) -> NSAttributedString {
         MarkdownBlockParser.deserialize(markdown, baseFont: baseFont)
     }
 }
