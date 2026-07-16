@@ -34,11 +34,11 @@ struct TargetSheetView: View {
 
     // MARK: - Helper
 
-    private var navigationTitle: NavigationModifier.Navititle {
+    private var navigationTitle: NavigationTitle.Shared {
         switch sheetType {
-        case .branch: return .branchSelection
-        case .school: return .schoolSelection
-        case .part:   return .partSelection
+        case .branch: return .branch
+        case .school: return .school
+        case .part:   return .part
         }
     }
 

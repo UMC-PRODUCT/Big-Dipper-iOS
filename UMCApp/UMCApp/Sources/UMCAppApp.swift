@@ -12,6 +12,7 @@ import GoogleSignIn
 import KakaoSDKAuth
 import KakaoSDKCommon
 import MaintenancePresentation
+import NoticeDomain
 import NoticeData
 import NoticePresentation
 import SwiftData

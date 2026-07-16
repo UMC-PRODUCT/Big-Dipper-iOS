@@ -181,7 +181,7 @@ extension NoticeEditorViewModel {
 
     /// 공지 생성 API용 TargetInfoDTO를 구성합니다.
     public func buildTargetInfo() -> NoticeTargetInfo {
-        let currentGeneration = resolvedGisuId > 0 ? resolvedGisuId : 0
+        let currentGeneration = resolvedGisuIdValue
         let selectedBranchId = subCategorySelection.selectedBranch?.id
         let selectedSchoolFromSheet = subCategorySelection.selectedSchool?.id
         let selectedParts = subCategorySelection.selectedParts.isEmpty
@@ -208,7 +208,7 @@ extension NoticeEditorViewModel {
         case .branch:
             let resolvedChapterId: String? = if memberRole?.canWriteChallengerChapterNotice == true,
                                              selectedBranchId == nil,
-                                             let chapterId = userChapterId, chapterId > 0 {
+                                             let chapterId = userChapterId, (Int(chapterId) ?? 0) > 0 {
                 String(chapterId)
             } else {
                 selectedBranchId

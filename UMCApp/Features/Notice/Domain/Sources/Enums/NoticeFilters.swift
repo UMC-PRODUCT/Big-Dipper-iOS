@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import NoticeDomain
 
 // MARK: - NoticeSubFilterType
 /// 서브필터 타입 (전체, 운영진 공지, 파트)
@@ -149,6 +148,14 @@ public struct MainFilterState: Equatable {
 public struct GenerationFilterState: Equatable {
     public var mainFilter: NoticeMainFilterType = .all
     public var mainFilterStates: [MainFilterKey: MainFilterState] = [:]
+    
+    public init(
+          mainFilter: NoticeMainFilterType = .all,
+          mainFilterStates: [MainFilterKey: MainFilterState] = [:]
+    ) {
+        self.mainFilter = mainFilter
+        self.mainFilterStates = mainFilterStates
+    }
 
     /// 특정 메인필터의 서브필터 상태 조회
     public func state(for key: MainFilterKey) -> MainFilterState {

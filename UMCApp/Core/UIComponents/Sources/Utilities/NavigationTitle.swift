@@ -35,6 +35,7 @@ public enum NavigationTitle {
         case detail = "공지사항"
         case readStatus = "공지 열람 현황"
         case alarmArchive = "알림 보관"
+        case noticeAISummary = "AI 요약"
     }
 
     /// 커뮤니티 화면용 타이틀

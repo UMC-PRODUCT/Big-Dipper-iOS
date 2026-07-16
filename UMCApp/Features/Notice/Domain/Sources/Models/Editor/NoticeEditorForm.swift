@@ -1,12 +1,11 @@
 //
 //  NoticeEditorForm.swift
-//  NoticePresentation
+//  NoticeDomain
 //
 //  Created by 이예지 on 5/9/26.
 //
 
 import Foundation
-import NoticeDomain
 
 // MARK: - TargetSheetType
 /// 게시판 분류별 타겟 설정 sheet(지부, 학교, 파트)
@@ -33,7 +32,7 @@ public struct NoticeLinkItem: Identifiable, Equatable {
     public let id = UUID()
     public var link: String = ""
     
-    public init(link: String) {
+    public init(link: String = "") {
         self.link = link
     }
 }

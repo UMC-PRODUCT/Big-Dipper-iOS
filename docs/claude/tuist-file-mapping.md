@@ -619,7 +619,7 @@
 | `Data/Router/NoticeEditorTargetRouter.swift` | NoticeData |
 | `Data/Router/NoticeRouter.swift` | NoticeData |
 | `Domain/Enums/NoticeItemTag.swift` | NoticeDomain |
-| `Domain/Enums/NoticeRequestFactory.swift` | NoticeDomain |
+| `Domain/Enums/NoticeRequestFactory.swift` | NoticeData (`Sources/DTOs/`) — 요청 Query DTO(`NoticeListQuery`) 생성 → Data 레이어 |
 | `Domain/Enums/NoticeType.swift` | NoticeDomain |
 | `Domain/Enums/StaffNoticeTab.swift` | NoticeDomain |
 | `Domain/Interfaces/NoticeEditorTargetRepositoryProtocol.swift` | NoticeDomain |
@@ -871,7 +871,7 @@
 | `Modifier/KeyboardToolbarModifier.swift` | CoreUIComponents |
 | `Modifier/NavigationModifier.swift` | CoreUIComponents — 이미 이관됨 |
 | `Modifier/RainbowBorderModifier.swift` | CoreDesignSystem |
-| `Modifier/SymbolDrawOnModifier.swift` | CoreDesignSystem |
+| `Modifier/SymbolDrawOnModifier.swift` | CoreDesignSystem (Modifiers) — 이미 이관됨 |
 | `RemoteImage/RemoteImage.swift` | CoreUIComponents (Utilities) |
 | `Shadow/ShadowReuse.swift` | CoreDesignSystem |
 | `ToolBar/ToolBarCollection.swift` | CoreUIComponents (ToolBar) |

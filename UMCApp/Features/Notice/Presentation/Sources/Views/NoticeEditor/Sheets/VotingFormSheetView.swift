@@ -129,8 +129,8 @@ struct VotingFormSheetView: View, Equatable {
     }
 
     /// 모드에 따른 네비게이션 타이틀
-    private var navigationTitle: NavigationModifier.Navititle {
-        mode == .create ? .voteCreate : .voteEdit
+    private var navigationTitle: NavigationTitle.Community {
+        mode == .create ? .createVote : .editVote
     }
     
     // MARK: - Title Section
