@@ -6,16 +6,17 @@
 //
 
 import SwiftUI
+import CoreDesignSystem
 
 // MARK: - MainButtonSize
 
 /// MainButton 사이즈 유형 (향후 확장용)
-enum MainButtonSize {
+public enum MainButtonSize {
     case small
     case medium
     case large
 
-    var height: CGFloat {
+    public var height: CGFloat {
         switch self {
         case .small: return 36
         case .medium: return 44
@@ -23,7 +24,7 @@ enum MainButtonSize {
         }
     }
 
-    var font: Font {
+    public var font: Font {
         switch self {
         case .small: return .app(.footnote, weight: .semibold)
         case .medium: return .app(.body, weight: .semibold)
