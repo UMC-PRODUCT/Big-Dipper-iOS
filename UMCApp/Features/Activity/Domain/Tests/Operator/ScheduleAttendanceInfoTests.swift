@@ -46,7 +46,7 @@ private func makeInfo(participants: [ParticipantAttendance]) -> ScheduleAttendan
 
 // MARK: - Suite
 
-@Suite("ScheduleAttendanceInfo — 카운팅 / 출석률 도메인 규칙")
+@Suite("ScheduleAttendanceInfo — 카운팅 / 출석률 / 진행 판정 (도메인 규칙)")
 struct ScheduleAttendanceInfoTests {
 
     // MARK: - presentCount
@@ -164,5 +164,29 @@ struct ScheduleAttendanceInfoTests {
 
         // Then
         #expect(rate == 1.0)
+    }
+
+    // MARK: - isOngoing (경계값 포함)
+
+    // makeInfo 고정 범위: startsAt 1_736_942_400 ... endsAt 1_736_949_600
+    @Test(
+        "isOngoing 은 startsAt...endsAt 경계를 포함해 판정한다",
+        arguments: [
+            (timestamp: 1_736_942_399.0, expected: false),  // 시작 1초 전
+            (timestamp: 1_736_942_400.0, expected: true),   // 시작 시각 (경계)
+            (timestamp: 1_736_946_000.0, expected: true),   // 진행 중
+            (timestamp: 1_736_949_600.0, expected: true),   // 종료 시각 (경계)
+            (timestamp: 1_736_949_601.0, expected: false)   // 종료 1초 후
+        ]
+    )
+    func isOngoingIncludesBoundaries(testCase: (timestamp: Double, expected: Bool)) {
+        // Given
+        let info = makeInfo(participants: [])
+
+        // When
+        let result = info.isOngoing(at: Date(timeIntervalSince1970: testCase.timestamp))
+
+        // Then
+        #expect(result == testCase.expected)
     }
 }
