@@ -47,6 +47,10 @@ final class OperatorAttendanceViewModel {
     /// (`if state.isLoading { return }`)는 이 가변 식별자를 몰라서 진행 중 스케줄 전환을
     /// 통째로 막거나(요청 유실) 오래된 응답이 새 식별자에 바인딩되는 문제가 생긴다. 토큰은
     /// 이 둘을 함께 풀고 롤백 기준을 비-`.loading` 으로 잡아 stuck-loading 까지 막는다.
+    ///
+    /// mutation(결정·위치 변경) 경로는 토큰 대신 진입 시점에 캡처한 `scheduleId` 로 대상
+    /// 일정을 고정하고, 성공 시 `detailRequestID` 를 올려 변경 이전 스냅샷을 실은
+    /// in-flight 폴 응답이 결과를 되돌리지 못하게 한다.
     @ObservationIgnored private var listRequestID = 0
     @ObservationIgnored private var detailRequestID = 0
 
@@ -124,11 +128,10 @@ final class OperatorAttendanceViewModel {
         return Self.isPermissionDenied(error)
     }
 
-    /// 진행 중인 세션이 하나라도 있는지 (KST 기준, 폴링 트리거용)
+    /// 진행 중인 세션이 하나라도 있는지 (폴링 트리거용)
     private var hasActiveSession: Bool {
         guard case .loaded(let infos) = listState else { return false }
-        let now = Date()
-        return infos.contains { now >= $0.startsAt && now <= $0.endsAt }
+        return infos.contains { $0.isOngoing() }
     }
 
     // MARK: - List Fetch
@@ -155,6 +158,12 @@ final class OperatorAttendanceViewModel {
         let requestID = listRequestID
         // 롤백 기준: 진행 중(.loading) 상태는 복원 대상이 아니므로 .idle 로 대체(stuck-loading 방지).
         let restore: Loadable<[ScheduleAttendanceInfo]> = listState.isComplete ? listState : .idle
+        // 프리셋 범위는 조회 시점 기준으로 재계산 — VM 이 오래 살아도 창이 init 시점에 고정되지
+        // 않는다. `.custom` 은 dateRange 가 nil 이라 사용자가 지정한 from/to 를 그대로 쓴다.
+        if let range = periodPreset.dateRange {
+            fromDate = range.fromDate
+            toDate = range.toDate
+        }
         // 요청 파라미터를 시작 시점에 고정 — 응답 적용은 토큰이 최신일 때만 이뤄진다.
         let from = fromDate
         let to = toDate
@@ -198,12 +207,7 @@ final class OperatorAttendanceViewModel {
     /// `.task` 에서 호출하면 뷰 소멸 시 자동 취소됩니다.
     func startListPollingIfNeeded() async {
         guard listState.isComplete else { return }
-        while !Task.isCancelled {
-            guard hasActiveSession else { return }
-            try? await Task.sleep(for: .seconds(PollingConfig.intervalSeconds))
-            guard !Task.isCancelled else { break }
-            await refreshList()
-        }
+        await poll(while: { hasActiveSession }, refresh: { await refreshList() })
     }
 
     // MARK: - List Filter
@@ -221,22 +225,26 @@ final class OperatorAttendanceViewModel {
         await fetchList()
     }
 
-    /// 기간 프리셋 선택 — `.custom` 은 from/to 를 유지하고 사용자가 직접 조정.
+    /// 기간 프리셋 선택 — 변경 즉시 재조회 (범위는 조회 시점에 재계산).
+    ///
+    /// `.custom` 은 표시 중인 from/to 가 그대로라 즉시 재조회하면 동일 범위 중복 조회만
+    /// 발생하므로, 사용자가 날짜를 조정한 뒤 조회한다.
     func presetSelected(_ preset: AttendancePeriodPreset) async {
         periodPreset = preset
-        if let range = preset.dateRange {
-            fromDate = range.fromDate
-            toDate = range.toDate
-        }
+        guard preset != .custom else { return }
         await fetchList()
     }
 
     // MARK: - Detail Fetch
 
     /// 단일 일정 상세 조회 대상 선택 + 즉시 조회.
+    ///
+    /// 이전 일정 기준으로 띄운 확인 다이얼로그가 새 일정 위에서 실행되지 않도록
+    /// `alertPrompt` 를 함께 닫는다.
     func selectSchedule(_ scheduleId: String) async {
         selectedScheduleId = scheduleId
         selectedDetailFilter = nil
+        alertPrompt = nil
         await loadDetail(showLoading: true)
     }
 
@@ -263,6 +271,8 @@ final class OperatorAttendanceViewModel {
         let requestID = detailRequestID
         let restore: Loadable<ScheduleAttendanceInfo> =
             detailState.isComplete ? detailState : .idle
+        // 취소 롤백 시 상태와 페어로 복원해야 하므로 리셋 전에 함께 캡처한다.
+        let restoreScheduleDeleted = isScheduleDeleted
         if showLoading {
             detailState = .loading
             isScheduleDeleted = false
@@ -277,10 +287,12 @@ final class OperatorAttendanceViewModel {
         } catch is CancellationError {
             guard requestID == detailRequestID, showLoading else { return }
             detailState = restore
+            isScheduleDeleted = restoreScheduleDeleted
         } catch let error as NSError
             where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
             guard requestID == detailRequestID, showLoading else { return }
             detailState = restore
+            isScheduleDeleted = restoreScheduleDeleted
         } catch let error as AppError {
             guard requestID == detailRequestID, showLoading else { return }
             detailState = .failed(error)
@@ -291,10 +303,15 @@ final class OperatorAttendanceViewModel {
             guard requestID == detailRequestID, showLoading else { return }
             detailState = .failed(.network(error))
         } catch let error as RepositoryError {
-            guard requestID == detailRequestID, showLoading else { return }
+            guard requestID == detailRequestID else { return }
+            // 일정 삭제는 배경 갱신에서도 감지해야 하는 터미널 상태 —
+            // showLoading 가드보다 먼저 판정한다. 진입 후 삭제의 현실적 트리거가 폴링이다.
             if case .serverError(let code, _) = error, code == "SCHEDULE-0009" {
                 isScheduleDeleted = true
+                detailState = .failed(.repository(error))
+                return
             }
+            guard showLoading else { return }
             detailState = .failed(.repository(error))
         } catch {
             guard requestID == detailRequestID, showLoading else { return }
@@ -305,12 +322,7 @@ final class OperatorAttendanceViewModel {
     /// 진행 중인 일정일 때만 15초 폴링.
     func startDetailPollingIfNeeded() async {
         guard detailState.isComplete else { return }
-        while !Task.isCancelled {
-            guard isCurrentlyActive else { return }
-            try? await Task.sleep(for: .seconds(PollingConfig.intervalSeconds))
-            guard !Task.isCancelled else { break }
-            await refreshDetail()
-        }
+        await poll(while: { isCurrentlyActive }, refresh: { await refreshDetail() })
     }
 
     // MARK: - Detail Filter
@@ -329,14 +341,26 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Approval Button (AlertPrompt)
 
+    // 확인 Alert 액션은 실행 시점의 `selectedScheduleId` 를 재해석하지 않도록, 탭 시점에
+    // 캡처한 scheduleId(전체 결정은 대상 목록까지)를 클로저에 고정해 결정 코어로 전달한다.
+    // Alert 가 떠 있는 동안 선택 일정이 바뀌어도 결정은 탭한 화면의 일정으로만 전송된다.
+
     /// 개별 승인 버튼 탭 (확인 AlertPrompt 표시).
     func approveButtonTapped(participant: ParticipantAttendance) {
+        guard let scheduleId = selectedScheduleId else { return }
         alertPrompt = AlertPrompt(
             title: "출석 승인",
             message: "\(participant.name)님의 출석을 승인하시겠습니까?",
             positiveBtnTitle: "승인",
             positiveBtnAction: { [weak self] in
-                Task { await self?.decideAttendance(participant: participant, isApproved: true) }
+                Task {
+                    await self?.decide(
+                        scheduleId: scheduleId,
+                        participants: [participant],
+                        isApproved: true,
+                        action: "approveAttendance"
+                    )
+                }
             },
             negativeBtnTitle: "취소"
         )
@@ -344,39 +368,69 @@ final class OperatorAttendanceViewModel {
 
     /// 개별 반려 버튼 탭 (확인 AlertPrompt 표시).
     func rejectButtonTapped(participant: ParticipantAttendance) {
+        guard let scheduleId = selectedScheduleId else { return }
         alertPrompt = AlertPrompt(
             title: "출석 반려",
             message: "\(participant.name)님의 출석을 반려하시겠습니까?",
             positiveBtnTitle: "반려",
             positiveBtnAction: { [weak self] in
-                Task { await self?.decideAttendance(participant: participant, isApproved: false) }
+                Task {
+                    await self?.decide(
+                        scheduleId: scheduleId,
+                        participants: [participant],
+                        isApproved: false,
+                        action: "rejectAttendance"
+                    )
+                }
             },
             negativeBtnTitle: "취소",
             isPositiveBtnDestructive: true
         )
     }
 
-    /// 전체 승인 버튼 탭.
+    /// 전체 승인 버튼 탭 — 승인 대기 대상도 탭 시점 기준으로 캡처한다.
     func approveAllButtonTapped() {
+        guard let scheduleId = selectedScheduleId,
+              case .loaded(let info) = detailState else { return }
+        let pending = info.participants.filter(\.attendanceStatus.isPending)
+        guard !pending.isEmpty else { return }
         alertPrompt = AlertPrompt(
             title: "전체 승인",
             message: "모든 승인 대기 출석을 승인하시겠습니까?",
             positiveBtnTitle: "전체 승인",
             positiveBtnAction: { [weak self] in
-                Task { await self?.decideAllAttendances(isApproved: true) }
+                Task {
+                    await self?.decide(
+                        scheduleId: scheduleId,
+                        participants: pending,
+                        isApproved: true,
+                        action: "approveAllAttendances"
+                    )
+                }
             },
             negativeBtnTitle: "취소"
         )
     }
 
-    /// 전체 반려 버튼 탭.
+    /// 전체 반려 버튼 탭 — 승인 대기 대상도 탭 시점 기준으로 캡처한다.
     func rejectAllButtonTapped() {
+        guard let scheduleId = selectedScheduleId,
+              case .loaded(let info) = detailState else { return }
+        let pending = info.participants.filter(\.attendanceStatus.isPending)
+        guard !pending.isEmpty else { return }
         alertPrompt = AlertPrompt(
             title: "전체 거절",
             message: "모든 승인 대기 출석을 거절하시겠습니까?",
             positiveBtnTitle: "전체 거절",
             positiveBtnAction: { [weak self] in
-                Task { await self?.decideAllAttendances(isApproved: false) }
+                Task {
+                    await self?.decide(
+                        scheduleId: scheduleId,
+                        participants: pending,
+                        isApproved: false,
+                        action: "rejectAllAttendances"
+                    )
+                }
             },
             negativeBtnTitle: "취소",
             isPositiveBtnDestructive: true
@@ -385,16 +439,18 @@ final class OperatorAttendanceViewModel {
 
     /// 선택 승인 버튼 탭.
     func approveSelectedButtonTapped(participants: [ParticipantAttendance]) {
-        guard !participants.isEmpty else { return }
+        guard let scheduleId = selectedScheduleId, !participants.isEmpty else { return }
         alertPrompt = AlertPrompt(
             title: "선택 승인",
             message: "\(participants.count)명의 출석을 승인하시겠습니까?",
             positiveBtnTitle: "승인",
             positiveBtnAction: { [weak self] in
                 Task {
-                    await self?.decideSelectedAttendances(
+                    await self?.decide(
+                        scheduleId: scheduleId,
                         participants: participants,
-                        isApproved: true
+                        isApproved: true,
+                        action: "approveSelectedAttendances"
                     )
                 }
             },
@@ -404,16 +460,18 @@ final class OperatorAttendanceViewModel {
 
     /// 선택 반려 버튼 탭.
     func rejectSelectedButtonTapped(participants: [ParticipantAttendance]) {
-        guard !participants.isEmpty else { return }
+        guard let scheduleId = selectedScheduleId, !participants.isEmpty else { return }
         alertPrompt = AlertPrompt(
             title: "선택 거절",
             message: "\(participants.count)명의 출석을 거절하시겠습니까?",
             positiveBtnTitle: "거절",
             positiveBtnAction: { [weak self] in
                 Task {
-                    await self?.decideSelectedAttendances(
+                    await self?.decide(
+                        scheduleId: scheduleId,
                         participants: participants,
-                        isApproved: false
+                        isApproved: false,
+                        action: "rejectSelectedAttendances"
                     )
                 }
             },
@@ -424,77 +482,70 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Decision (낙관적 갱신)
 
-    /// 단건 승인/반려 — 성공 시 pending → present/absent 로 낙관적 갱신.
+    /// 단건 승인/반려 — 호출 시점의 선택 일정 기준.
     func decideAttendance(
         participant: ParticipantAttendance,
         isApproved: Bool
     ) async {
         guard let scheduleId = selectedScheduleId else { return }
-        alertPrompt = nil
-        let memberId = participant.memberId
-        processingMemberIds.insert(memberId)
-        defer { processingMemberIds.remove(memberId) }
-
-        let decision = AttendanceDecisionInput(
+        await decide(
+            scheduleId: scheduleId,
+            participants: [participant],
             isApproved: isApproved,
-            participantMemberId: memberId,
-            reason: ""
+            action: isApproved ? "approveAttendance" : "rejectAttendance"
         )
-        do {
-            _ = try await useCase.decideAttendances(
-                scheduleId: scheduleId,
-                decisions: [decision]
-            )
-            updateParticipants(memberIds: [memberId], isApproved: isApproved)
-        } catch {
-            await handleDecisionError(
-                error,
-                action: isApproved ? "approveAttendance" : "rejectAttendance"
-            )
-        }
     }
 
-    /// 전체 승인 대기 일괄 처리.
+    /// 전체 승인 대기 일괄 처리 — 호출 시점의 선택 일정·승인 대기 목록 기준.
     func decideAllAttendances(isApproved: Bool) async {
-        guard let scheduleId = selectedScheduleId else { return }
-        alertPrompt = nil
-        guard case .loaded(let info) = detailState else { return }
-
+        guard let scheduleId = selectedScheduleId,
+              case .loaded(let info) = detailState else { return }
         let pending = info.participants.filter(\.attendanceStatus.isPending)
         guard !pending.isEmpty else { return }
-
-        let decisions = pending.map {
-            AttendanceDecisionInput(
-                isApproved: isApproved,
-                participantMemberId: $0.memberId,
-                reason: ""
-            )
-        }
-        do {
-            _ = try await useCase.decideAttendances(
-                scheduleId: scheduleId,
-                decisions: decisions
-            )
-            updateParticipants(
-                memberIds: Set(pending.map(\.memberId)),
-                isApproved: isApproved
-            )
-        } catch {
-            await handleDecisionError(
-                error,
-                action: isApproved ? "approveAllAttendances" : "rejectAllAttendances"
-            )
-        }
+        await decide(
+            scheduleId: scheduleId,
+            participants: pending,
+            isApproved: isApproved,
+            action: isApproved ? "approveAllAttendances" : "rejectAllAttendances"
+        )
     }
 
-    /// 선택 참여자 일괄 처리.
+    /// 선택 참여자 일괄 처리 — 호출 시점의 선택 일정 기준.
     func decideSelectedAttendances(
         participants: [ParticipantAttendance],
         isApproved: Bool
     ) async {
-        guard let scheduleId = selectedScheduleId else { return }
+        guard let scheduleId = selectedScheduleId, !participants.isEmpty else { return }
+        await decide(
+            scheduleId: scheduleId,
+            participants: participants,
+            isApproved: isApproved,
+            action: isApproved ? "approveSelectedAttendances" : "rejectSelectedAttendances"
+        )
+    }
+
+    /// 결정 공용 코어 — 단건/전체/선택 진입점과 확인 Alert 액션이 공유한다.
+    ///
+    /// - `scheduleId` 는 진입 시점 값으로 고정된다. 요청 진행 중 다른 일정으로 전환되면
+    ///   낙관적 갱신이 전환된 화면으로 새지 않는다(일정-정체성 가드는 반영 단계에서 수행).
+    /// - 성공 시 상세/목록 요청 토큰을 올려, 결정 이전 스냅샷을 실은 in-flight 배경 폴
+    ///   응답이 낙관적 갱신을 되돌리지 못하게 한다. 스피너 로드(`.loading`)가 진행 중이면
+    ///   bump 가 그 정당한 응답까지 폐기해 stuck-loading 이 되므로 건너뛴다
+    ///   (배경 폴은 complete 상태에서만 돌아 그 창에는 존재하지 않는다).
+    /// - 대상 전원을 `processingMemberIds` 에 등록해 배치 진행 중 행별 버튼의 중복 결정과
+    ///   in-flight 대상 재결정을 막는다.
+    private func decide(
+        scheduleId: String,
+        participants: [ParticipantAttendance],
+        isApproved: Bool,
+        action: String
+    ) async {
         alertPrompt = nil
-        guard !participants.isEmpty else { return }
+        let memberIds = Set(participants.map(\.memberId))
+        // 같은 대상 결정이 in-flight 면 무시 — 중복 전송 + defer 조기 해제 방지.
+        guard processingMemberIds.isDisjoint(with: memberIds) else { return }
+        processingMemberIds.formUnion(memberIds)
+        defer { processingMemberIds.subtract(memberIds) }
 
         let decisions = participants.map {
             AttendanceDecisionInput(
@@ -508,15 +559,19 @@ final class OperatorAttendanceViewModel {
                 scheduleId: scheduleId,
                 decisions: decisions
             )
+            if selectedScheduleId == scheduleId, !detailState.isLoading {
+                detailRequestID &+= 1
+            }
+            if !listState.isLoading {
+                listRequestID &+= 1
+            }
             updateParticipants(
-                memberIds: Set(participants.map(\.memberId)),
+                scheduleId: scheduleId,
+                memberIds: memberIds,
                 isApproved: isApproved
             )
         } catch {
-            await handleDecisionError(
-                error,
-                action: isApproved ? "approveSelectedAttendances" : "rejectSelectedAttendances"
-            )
+            await handleDecisionError(error, action: action, scheduleId: scheduleId)
         }
     }
 
@@ -553,6 +608,14 @@ final class OperatorAttendanceViewModel {
                 latitude: latitude,
                 longitude: longitude
             )
+            applyLocationChange(
+                scheduleId: scheduleId,
+                location: ScheduleLocation(
+                    latitude: latitude,
+                    longitude: longitude,
+                    locationName: trimmedName
+                )
+            )
             return true
         } catch {
             errorHandler.handle(error, context: ErrorContext(
@@ -563,15 +626,38 @@ final class OperatorAttendanceViewModel {
         }
     }
 
+    /// 위치 변경 성공을 화면 상태에 즉시 반영한다.
+    ///
+    /// 시작 전 일정은 폴링이 돌지 않아 재조회 없이는 옛 위치가 계속 남으므로 직접 교체한다.
+    /// 변경 이전 위치를 실은 in-flight 폴 응답은 토큰으로 무효화한다(결정 경로와 동일 규칙).
+    /// bump 는 해당 일정이 `.loaded` 일 때만 도달하므로 진행 중 스피너 로드를 폐기해
+    /// stuck-loading 을 만들 위험이 없다.
+    private func applyLocationChange(scheduleId: String, location: ScheduleLocation) {
+        guard case .loaded(let info) = detailState, info.scheduleId == scheduleId else { return }
+        if selectedScheduleId == scheduleId {
+            detailRequestID &+= 1
+        }
+        detailState = .loaded(
+            rebuild(info, participants: info.participants, location: location)
+        )
+    }
+
     // MARK: - Private (Error)
 
-    private func handleDecisionError(_ error: Error, action: String) async {
+    private func handleDecisionError(
+        _ error: Error,
+        action: String,
+        scheduleId: String
+    ) async {
         if Self.isPermissionDenied(error) {
             presentAlert(
                 title: "권한이 없어요",
                 message: "출석을 처리할 권한이 없습니다. 운영진 권한을 확인해 주세요."
             )
-            await refreshDetail()
+            // 결정을 보낸 일정을 여전히 보고 있을 때만 재조회한다 (일정-정체성 가드).
+            if selectedScheduleId == scheduleId {
+                await refreshDetail()
+            }
             return
         }
         errorHandler.handle(error, context: ErrorContext(
@@ -596,12 +682,36 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Private (낙관적 갱신)
 
-    /// 지정한 멤버들을 pending → present/absent 로 낙관적 갱신.
+    /// 결정 성공 결과를 화면 상태에 반영한다.
     ///
-    /// 단건·전체·선택 결정이 동일 규칙을 공유하므로 대상 memberId 집합만 달리해 재사용합니다.
-    private func updateParticipants(memberIds: Set<String>, isApproved: Bool) {
-        guard case .loaded(let info) = detailState else { return }
-        let newStatus: ParticipantAttendanceStatus = isApproved ? .present : .absent
+    /// 상세는 결정을 보낸 일정이 그대로 로드돼 있을 때만 갱신하고(일정-정체성 가드),
+    /// 목록은 같은 scheduleId 항목만 갱신해 per-card 승인 대기 배지(`pendingCount`)가
+    /// 수동 재조회 없이 결정 결과를 즉시 반영하게 한다.
+    private func updateParticipants(
+        scheduleId: String,
+        memberIds: Set<String>,
+        isApproved: Bool
+    ) {
+        if case .loaded(let info) = detailState, info.scheduleId == scheduleId {
+            detailState = .loaded(
+                applyingDecision(to: info, memberIds: memberIds, isApproved: isApproved)
+            )
+        }
+        if case .loaded(let infos) = listState {
+            listState = .loaded(infos.map { info in
+                guard info.scheduleId == scheduleId else { return info }
+                return applyingDecision(to: info, memberIds: memberIds, isApproved: isApproved)
+            })
+        }
+        notifySharedSessionChange()
+    }
+
+    /// 지정한 멤버들의 승인 대기 상태를 결정 확정 상태로 치환한 사본을 만든다.
+    private func applyingDecision(
+        to info: ScheduleAttendanceInfo,
+        memberIds: Set<String>,
+        isApproved: Bool
+    ) -> ScheduleAttendanceInfo {
         let updated = info.participants.map { participant -> ParticipantAttendance in
             guard memberIds.contains(participant.memberId),
                   participant.attendanceStatus.isPending else {
@@ -614,18 +724,37 @@ final class OperatorAttendanceViewModel {
                 profileImageURL: participant.profileImageURL,
                 schoolId: participant.schoolId,
                 schoolName: participant.schoolName,
-                attendanceStatus: newStatus,
+                attendanceStatus: decidedStatus(
+                    from: participant.attendanceStatus,
+                    isApproved: isApproved
+                ),
                 isLocationVerified: participant.isLocationVerified,
                 excuseReason: participant.excuseReason
             )
         }
-        detailState = .loaded(rebuild(info, participants: updated))
-        notifySharedSessionChange()
+        return rebuild(info, participants: updated, location: info.location)
+    }
+
+    /// pending 종류별 확정 상태 매핑 — 서버 확정 규칙과 동일하게 승인은 대기 종류를 보존한다.
+    ///
+    /// 지각/사유 승인을 일괄 `.present` 로 뭉개면 배지·presentCount·상세 필터 소속이
+    /// 서버 확정값과 어긋난다. 반려는 종류와 무관하게 일괄 `.absent`.
+    private func decidedStatus(
+        from pendingStatus: ParticipantAttendanceStatus,
+        isApproved: Bool
+    ) -> ParticipantAttendanceStatus {
+        guard isApproved else { return .absent }
+        switch pendingStatus {
+        case .latePending: return .late
+        case .excusedPending: return .excused
+        default: return .present
+        }
     }
 
     private func rebuild(
         _ info: ScheduleAttendanceInfo,
-        participants: [ParticipantAttendance]
+        participants: [ParticipantAttendance],
+        location: ScheduleLocation?
     ) -> ScheduleAttendanceInfo {
         ScheduleAttendanceInfo(
             scheduleId: info.scheduleId,
@@ -633,7 +762,7 @@ final class OperatorAttendanceViewModel {
             description: info.description,
             startsAt: info.startsAt,
             endsAt: info.endsAt,
-            location: info.location,
+            location: location,
             isOnline: info.isOnline,
             authorMemberId: info.authorMemberId,
             attendancePolicy: info.attendancePolicy,
@@ -644,11 +773,27 @@ final class OperatorAttendanceViewModel {
 
     // MARK: - Private (Helper)
 
-    /// 일정이 현재 진행 중인지 (KST 기준, 폴링용).
+    /// 일정이 현재 진행 중인지 (폴링용).
     private var isCurrentlyActive: Bool {
         guard case .loaded(let info) = detailState else { return false }
-        let now = Date()
-        return now >= info.startsAt && now <= info.endsAt
+        return info.isOngoing()
+    }
+
+    /// 공용 폴링 루프 — 목록·상세가 주기·취소 처리를 공유한다.
+    ///
+    /// - Parameters:
+    ///   - predicate: 매 주기 시작 시 평가해 거짓이면 루프를 종료한다.
+    ///   - refresh: 주기마다 실행할 배경 갱신.
+    private func poll(
+        while predicate: () -> Bool,
+        refresh: () async -> Void
+    ) async {
+        while !Task.isCancelled {
+            guard predicate() else { return }
+            try? await Task.sleep(for: .seconds(PollingConfig.intervalSeconds))
+            guard !Task.isCancelled else { return }
+            await refresh()
+        }
     }
 
     /// 챌린저 뷰를 실시간 갱신하도록 Notification 발송.

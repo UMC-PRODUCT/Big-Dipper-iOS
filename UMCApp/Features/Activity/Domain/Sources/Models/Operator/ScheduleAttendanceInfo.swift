@@ -103,4 +103,11 @@ public struct ScheduleAttendanceInfo: Equatable, Sendable, Identifiable {
         guard totalCount > 0 else { return 0.0 }
         return Double(presentCount) / Double(totalCount)
     }
+
+    /// 일정이 진행 중인지 (`startsAt...endsAt` 경계 포함)
+    ///
+    /// 목록·상세 폴링 트리거가 같은 판정을 공유하도록 모델에 둡니다.
+    public func isOngoing(at now: Date = Date()) -> Bool {
+        now >= startsAt && now <= endsAt
+    }
 }
