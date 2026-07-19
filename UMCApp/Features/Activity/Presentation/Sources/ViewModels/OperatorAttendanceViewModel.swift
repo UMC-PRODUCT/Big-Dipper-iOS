@@ -207,7 +207,11 @@ final class OperatorAttendanceViewModel {
     /// `.task` 에서 호출하면 뷰 소멸 시 자동 취소됩니다.
     func startListPollingIfNeeded() async {
         guard listState.isComplete else { return }
-        await poll(while: { hasActiveSession }, refresh: { await refreshList() })
+        await PollingLoop.run(
+            intervalSeconds: PollingConfig.intervalSeconds,
+            while: { hasActiveSession },
+            refresh: { await refreshList() }
+        )
     }
 
     // MARK: - List Filter
@@ -322,7 +326,11 @@ final class OperatorAttendanceViewModel {
     /// 진행 중인 일정일 때만 15초 폴링.
     func startDetailPollingIfNeeded() async {
         guard detailState.isComplete else { return }
-        await poll(while: { isCurrentlyActive }, refresh: { await refreshDetail() })
+        await PollingLoop.run(
+            intervalSeconds: PollingConfig.intervalSeconds,
+            while: { isCurrentlyActive },
+            refresh: { await refreshDetail() }
+        )
     }
 
     // MARK: - Detail Filter
@@ -777,23 +785,6 @@ final class OperatorAttendanceViewModel {
     private var isCurrentlyActive: Bool {
         guard case .loaded(let info) = detailState else { return false }
         return info.isOngoing()
-    }
-
-    /// 공용 폴링 루프 — 목록·상세가 주기·취소 처리를 공유한다.
-    ///
-    /// - Parameters:
-    ///   - predicate: 매 주기 시작 시 평가해 거짓이면 루프를 종료한다.
-    ///   - refresh: 주기마다 실행할 배경 갱신.
-    private func poll(
-        while predicate: () -> Bool,
-        refresh: () async -> Void
-    ) async {
-        while !Task.isCancelled {
-            guard predicate() else { return }
-            try? await Task.sleep(for: .seconds(PollingConfig.intervalSeconds))
-            guard !Task.isCancelled else { return }
-            await refresh()
-        }
     }
 
     /// 챌린저 뷰를 실시간 갱신하도록 Notification 발송.
