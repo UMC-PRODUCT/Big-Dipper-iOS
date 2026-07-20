@@ -15,7 +15,7 @@ public final class MyActivePostsViewModel {
     // MARK: - Property
     
     /// 사용자의 활동 내역 타입을 정의하는 열거형
-    private let logType: MyActiveLogsType
+    internal let logType: MyActiveLogsType
     private let useCaseProvider: MyPageUseCaseProviding
     
     public var postState: Loadable<[CommunityItemModel]> = .idle
