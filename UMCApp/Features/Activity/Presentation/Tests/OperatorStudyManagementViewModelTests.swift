@@ -90,20 +90,7 @@ private func makeViewModel(
     )
 }
 
-/// 백그라운드 새로고침처럼 fire-and-forget `Task` 가 완료될 때까지 조건을 폴링한다.
-/// mock 은 실제 I/O 지연이 없어 몇 번의 yield 로 끝난다. `maxYields` 는 무한 루프 방지 상한.
-@MainActor
-private func drainUntil(
-    _ viewModel: OperatorStudyManagementViewModel,
-    maxYields: Int = 10_000,
-    _ condition: (OperatorStudyManagementViewModel) -> Bool
-) async {
-    var yields = 0
-    while !condition(viewModel), yields < maxYields {
-        await Task.yield()
-        yields += 1
-    }
-}
+// drainUntil 은 Tests 타깃 공용 `ConcurrencyTestSupport.swift` 의 헬퍼를 사용한다.
 
 private struct DummyError: Error {}
 
@@ -305,8 +292,8 @@ struct OperatorStudyManagementViewModelLoadTests {
         #expect(created == true)
 
         // 새로고침 Task 가 placeholder 를 서버 데이터로 교체할 때까지 대기
-        await drainUntil(viewModel) { vm in
-            !vm.studyGroupDetails.contains { $0.serverID.hasPrefix("new_") }
+        await drainUntil {
+            !viewModel.studyGroupDetails.contains { $0.serverID.hasPrefix("new_") }
         }
 
         // 첫 페이지(20)로 잘리지 않고 로드 윈도우(40)가 복원돼야 한다.

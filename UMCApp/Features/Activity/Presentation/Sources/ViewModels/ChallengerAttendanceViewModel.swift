@@ -153,14 +153,19 @@ final class ChallengerAttendanceViewModel {
     /// `.task` 모디파이어에서 호출하면 뷰 사라질 때 자동 취소됩니다.
     /// 세션 시간 기반으로 진행 중 여부를 판단합니다.
     func startPollingIfNeeded(sessions: [Session]) async {
-        while !Task.isCancelled {
-            guard hasActiveSession(in: sessions) else { return }
-            await refreshAvailableSchedules()
-            await refreshMyHistory()
-            try? await Task.sleep(for: .seconds(
-                PollingConfig.intervalSeconds
-            ))
-        }
+        // 공용 루프는 sleep-first 라, 문서화된 refresh-first 동작(진입 직후 대기 구간 없음)은
+        // 루프 시작 전 1회 갱신으로 표현한다.
+        guard !Task.isCancelled, hasActiveSession(in: sessions) else { return }
+        await refreshAvailableSchedules()
+        await refreshMyHistory()
+        await PollingLoop.run(
+            intervalSeconds: PollingConfig.intervalSeconds,
+            while: { hasActiveSession(in: sessions) },
+            refresh: {
+                await refreshAvailableSchedules()
+                await refreshMyHistory()
+            }
+        )
     }
 
     /// 진행 중인 세션이 하나라도 있는지 확인
