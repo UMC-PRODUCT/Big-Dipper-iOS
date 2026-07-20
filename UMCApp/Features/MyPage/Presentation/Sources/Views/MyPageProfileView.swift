@@ -40,9 +40,7 @@ public struct MyPageProfileView: View {
     }
     
     public var body: some View {
-        Form {
-//            sectionContentImpl()
-        }
+        Text("")
     }
     
     /// 섹션 구현부
