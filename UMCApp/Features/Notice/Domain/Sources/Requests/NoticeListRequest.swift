@@ -13,6 +13,7 @@ public struct NoticeListRequest {
     public let chapterId: String?
     public let schoolId: String?
     public let part: UMCPartType?
+    public let noticeTab: String
     public let page: Int
     public let size: Int
     public let sort: [String]
@@ -22,6 +23,7 @@ public struct NoticeListRequest {
         chapterId: String?,
         schoolId: String?,
         part: UMCPartType?,
+        noticeTab: String = ManagementTeam.challenger.rawValue,
         page: Int,
         size: Int,
         sort: [String]
@@ -30,6 +32,7 @@ public struct NoticeListRequest {
         self.chapterId = chapterId
         self.schoolId = schoolId
         self.part = part
+        self.noticeTab = noticeTab
         self.page = page
         self.size = size
         self.sort = sort
