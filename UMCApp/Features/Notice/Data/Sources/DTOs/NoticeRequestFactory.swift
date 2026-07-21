@@ -12,7 +12,7 @@ import NoticeDomain
 // MARK: - NoticeRequestFactory
 /// 공지 목록/검색 요청 DTO를 생성합니다.
 enum NoticeRequestFactory {
-    /// 메인필터에 따라 적절한 NoticeListRequestDTO를 생성합니다.
+    /// 메인필터에 따라 적절한 NoticeListRequest를 생성합니다.
     ///
     /// - Parameters:
     ///   - gisuId: 조회할 기수 ID
@@ -36,6 +36,7 @@ enum NoticeRequestFactory {
         let requestChapterId: String?
         let requestSchoolId: String?
         let requestPart: UMCPartType?
+        let requestNoticeTab = ManagementTeam.challenger.rawValue
 
         switch selectedMainFilter {
         case .all, .central:
@@ -65,6 +66,7 @@ enum NoticeRequestFactory {
             chapterId: requestChapterId,
             schoolId: requestSchoolId,
             part: requestPart,
+            noticeTab: requestNoticeTab,
             page: page,
             size: pageSize,
             sort: sort

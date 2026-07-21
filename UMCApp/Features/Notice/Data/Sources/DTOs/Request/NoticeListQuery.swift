@@ -18,6 +18,7 @@ public struct NoticeListQuery: Encodable {
     public let chapterId: String?
     public let schoolId: String?
     public let part: UMCPartType?
+    public let noticeTab: String
     public let page: Int
     public let size: Int
     public let sort: [String]
@@ -27,6 +28,7 @@ public struct NoticeListQuery: Encodable {
         chapterId: String?,
         schoolId: String?,
         part: UMCPartType?,
+        noticeTab: String,
         page: Int,
         size: Int,
         sort: [String]
@@ -35,6 +37,7 @@ public struct NoticeListQuery: Encodable {
         self.chapterId = chapterId
         self.schoolId = schoolId
         self.part = part
+        self.noticeTab = noticeTab
         self.page = page
         self.size = size
         self.sort = sort
@@ -76,6 +79,7 @@ extension NoticeListQuery {
             chapterId: request.chapterId,
             schoolId: request.schoolId,
             part: request.part,
+            noticeTab: request.noticeTab,
             page: request.page,
             size: request.size,
             sort: request.sort

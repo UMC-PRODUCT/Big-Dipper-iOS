@@ -309,7 +309,7 @@ extension NoticeViewModel {
         error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled
     }
 
-    /// NoticeListRequestDTO 생성
+    /// NoticeListRequest 생성
     private func buildNoticeListRequest(gisuId: String, page: Int) -> NoticeListRequest {
         let myChapterId: String? = chapterId.isEmpty || chapterId == "0"
         ? nil : chapterId
