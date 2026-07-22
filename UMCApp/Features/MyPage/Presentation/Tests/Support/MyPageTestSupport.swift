@@ -42,9 +42,11 @@ final class MockMyPageRepository: MyPageRepositoryProtocol, @unchecked Sendable 
 
     var fetchMyProfileResult: Result<ProfileData, Error> = .failure(MockError.notStubbed)
     private(set) var fetchMyProfileCallCount = 0
+    private(set) var fetchMyProfileReceivedForceRefresh: Bool?
 
-    func fetchMyProfile() async throws -> ProfileData {
+    func fetchMyProfile(forceRefresh: Bool) async throws -> ProfileData {
         fetchMyProfileCallCount += 1
+        fetchMyProfileReceivedForceRefresh = forceRefresh
         return try fetchMyProfileResult.get()
     }
 

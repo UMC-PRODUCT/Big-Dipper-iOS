@@ -123,6 +123,70 @@ struct MyPageProfileViewModelTests {
         #expect(mock.updateProfileLinksCallCount == 1)
     }
 
+    @Test("이미지 업로드 실패 — 에러 전파 + 링크 UseCase 미호출 + 진행 플래그 복구 + 재시도용 pending 유지")
+    func submitImageFailurePropagatesAndKeepsPendingState() async {
+        let mock = MockMyPageRepository()
+        mock.updateProfileImageResult = .failure(MyPageTestError.boom)
+        let viewModel = makeViewModel(profile: makeStubProfileData(challengeId: 1), repository: mock)
+
+        await viewModel.didLoadImage(image: makeStubImage())
+        await #expect(throws: MyPageTestError.boom) {
+            try await viewModel.submitProfileUpdate()
+        }
+
+        #expect(mock.updateProfileImageCallCount == 1)
+        // 이미지 단계에서 throw되므로 링크 단계는 실행되지 않음
+        #expect(mock.updateProfileLinksCallCount == 0)
+        #expect(viewModel.profileData.challengeId == 1)
+        // defer로 진행 플래그 복구 + 선택 이미지가 남아 있어 재시도 가능
+        #expect(viewModel.isUpdatingProfileImage == false)
+        #expect(viewModel.canSubmit == true)
+    }
+
+    @Test("링크 수정 실패 — 에러 전파 + 진행 플래그 복구 + 링크 diff 보존")
+    func submitLinkFailurePropagatesAndKeepsLinkDiff() async {
+        let mock = MockMyPageRepository()
+        mock.updateProfileLinksResult = .failure(MyPageTestError.boom)
+        let viewModel = makeViewModel(profile: makeStubProfileData(challengeId: 1, profileLink: []), repository: mock)
+
+        viewModel.profileData.profileLink = [
+            ProfileLink(type: .github, url: "https://github.com/tester")
+        ]
+        await #expect(throws: MyPageTestError.boom) {
+            try await viewModel.submitProfileUpdate()
+        }
+
+        #expect(mock.updateProfileImageCallCount == 0)
+        #expect(mock.updateProfileLinksCallCount == 1)
+        #expect(viewModel.profileData.challengeId == 1)
+        // 스냅샷이 갱신되지 않아 링크 diff가 남아 있어야 재시도 가능
+        #expect(viewModel.isUpdatingProfileImage == false)
+        #expect(viewModel.canSubmit == true)
+    }
+
+    @Test("이미지 성공 후 링크 실패 — 에러 전파 + 서버 응답 미반영 + 이미지/링크 pending 모두 보존")
+    func submitLinkFailureAfterImageSuccessKeepsBothPendingStates() async {
+        let mock = MockMyPageRepository()
+        mock.updateProfileImageResult = .success(makeStubProfileData(challengeId: 100))
+        mock.updateProfileLinksResult = .failure(MyPageTestError.boom)
+        let viewModel = makeViewModel(profile: makeStubProfileData(challengeId: 1, profileLink: []), repository: mock)
+
+        await viewModel.didLoadImage(image: makeStubImage())
+        viewModel.profileData.profileLink = [
+            ProfileLink(type: .blog, url: "https://blog.example.com")
+        ]
+        await #expect(throws: MyPageTestError.boom) {
+            try await viewModel.submitProfileUpdate()
+        }
+
+        #expect(mock.updateProfileImageCallCount == 1)
+        #expect(mock.updateProfileLinksCallCount == 1)
+        // 링크 단계에서 throw되어 이미지 응답(challengeId 100)도 반영되지 않음
+        #expect(viewModel.profileData.challengeId == 1)
+        #expect(viewModel.isUpdatingProfileImage == false)
+        #expect(viewModel.canSubmit == true)
+    }
+
     // MARK: - addActivityLog
 
     @Test("addActivityLog 성공 — record 추가 후 프로필 재조회 + 성공 플래그 노출 + socialConnections 보존")

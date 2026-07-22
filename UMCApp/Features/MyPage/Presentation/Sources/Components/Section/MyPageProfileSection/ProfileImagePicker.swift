@@ -32,7 +32,7 @@ public struct ProfileImagePicker: View {
         fileprivate static let imageSize:CGFloat = 112
         
         /// 버튼 텍스트
-        fileprivate static let btnText: String = "사진 변경"
+        fileprivate static let changePhotoButtonTitle: String = "사진 변경"
         
         /// 프로필 이미지 곡률
         fileprivate static let cornerRadius: CGFloat = 60
@@ -58,7 +58,7 @@ public struct ProfileImagePicker: View {
                         cornerRadius: Constants.cornerRadius
                     )
                 }
-                Text(Constants.btnText)
+                Text(Constants.changePhotoButtonTitle)
                     .appFont(.caption1, color: .blue)
             })
             .frame(maxWidth: .infinity)
