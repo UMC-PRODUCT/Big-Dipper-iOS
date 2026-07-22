@@ -43,7 +43,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     public var didRecentlyAddActivityLog: Bool = false
     
     /// 소셜 연동 해제 API 진행 상태
-    public var disconnectingSocialType: SocialLinkType?
+    public var disconnectingSocialType: SocialType?
     
     /// 최초 조회 / 수정 화면 진입 시 링크 스냅샷
     private var initialPorfileLinkState: [SocialLinkType: String]
