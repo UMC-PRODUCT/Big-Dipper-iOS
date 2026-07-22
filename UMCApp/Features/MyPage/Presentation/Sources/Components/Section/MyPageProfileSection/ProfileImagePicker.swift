@@ -27,6 +27,8 @@ public struct ProfileImagePicker: View {
     /// 기존 프로필 이미지 URL (서버에서 받은 값)
     public var profileImage: String?
     
+    // MARK: - Constant
+    
     private enum Constants {
         /// 프로필 이미지 크기
         fileprivate static let imageSize:CGFloat = 112
@@ -38,7 +40,7 @@ public struct ProfileImagePicker: View {
         fileprivate static let cornerRadius: CGFloat = 60
     }
     
-    // MARK: - Function
+    // MARK: - Body
     
     public var body: some View {
         PhotosPicker(selection: $selectedPhotoItem, matching: .images) {

@@ -47,30 +47,24 @@ struct MyActivePostsViewModelTests {
         #expect(mock.fetchMyPostsReceivedQuery?.sort == ["createdAt,DESC"])
     }
 
-    @Test("logType .myWriteComment은 fetchCommentedPosts로 라우팅")
-    func commentLogTypeRoutesToCommentedUseCase() async {
+    @Test(
+        "logType은 대응하는 repository 메서드만 정확히 1회 호출",
+        arguments: MyActiveLogsType.allCases
+    )
+    func logTypeRoutesToMatchingUseCase(logType: MyActiveLogsType) async {
         let mock = MockMyPageRepository()
-        mock.fetchCommentedPostsResult = .success(makeStubPostPage(items: [makeStubCommunityItem(postId: "c1")]))
-        let viewModel = makeViewModel(logType: .myWriteComment, repository: mock)
+        // 세 경로 모두 스텁해 두고, 실제로 호출된 경로만 카운터로 판별
+        let page = makeStubPostPage(items: [makeStubCommunityItem(postId: "1")])
+        mock.fetchMyPostsResult = .success(page)
+        mock.fetchCommentedPostsResult = .success(page)
+        mock.fetchScrappedPostsResult = .success(page)
+        let viewModel = makeViewModel(logType: logType, repository: mock)
 
         await viewModel.fetchInitialIfNeeded()
 
-        #expect(mock.fetchCommentedPostsCallCount == 1)
-        #expect(mock.fetchMyPostsCallCount == 0)
-        #expect(mock.fetchScrappedPostsCallCount == 0)
-    }
-
-    @Test("logType .myScrapPost은 fetchScrappedPosts로 라우팅")
-    func scrapLogTypeRoutesToScrappedUseCase() async {
-        let mock = MockMyPageRepository()
-        mock.fetchScrappedPostsResult = .success(makeStubPostPage(items: [makeStubCommunityItem(postId: "s1")]))
-        let viewModel = makeViewModel(logType: .myScrapPost, repository: mock)
-
-        await viewModel.fetchInitialIfNeeded()
-
-        #expect(mock.fetchScrappedPostsCallCount == 1)
-        #expect(mock.fetchMyPostsCallCount == 0)
-        #expect(mock.fetchCommentedPostsCallCount == 0)
+        for counter in MyActivePostFetchCounter.allCases {
+            #expect(mock[keyPath: counter.callCountKeyPath] == (counter == .expected(for: logType) ? 1 : 0))
+        }
     }
 
     @Test("이미 .loaded면 fetchInitialIfNeeded는 재요청하지 않음")
@@ -217,6 +211,32 @@ struct MyActivePostsViewModelTests {
 }
 
 // MARK: - Helpers
+
+/// `MyActiveLogsType` → repository 호출 카운터 대응표.
+///
+/// `MyActiveLogsType`에 케이스가 추가되면 `expected(for:)`의 switch가 컴파일 에러를 내므로,
+/// 새 케이스의 기대 라우팅을 반드시 정의하게 됩니다.
+private enum MyActivePostFetchCounter: CaseIterable {
+    case myPosts
+    case commentedPosts
+    case scrappedPosts
+
+    var callCountKeyPath: KeyPath<MockMyPageRepository, Int> {
+        switch self {
+        case .myPosts: \.fetchMyPostsCallCount
+        case .commentedPosts: \.fetchCommentedPostsCallCount
+        case .scrappedPosts: \.fetchScrappedPostsCallCount
+        }
+    }
+
+    static func expected(for logType: MyActiveLogsType) -> Self {
+        switch logType {
+        case .myWritePost: .myPosts
+        case .myWriteComment: .commentedPosts
+        case .myScrapPost: .scrappedPosts
+        }
+    }
+}
 
 @MainActor
 private func makeViewModel(
