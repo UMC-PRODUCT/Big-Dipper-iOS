@@ -46,7 +46,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     public var disconnectingSocialType: SocialType?
     
     /// 최초 조회 / 수정 화면 진입 시 링크 스냅샷
-    private var initialPorfileLinkState: [SocialLinkType: String]
+    private var initialProfileLinkState: [SocialLinkType: String]
     /// 활동 이력 추가 성공 문구 자동 복귀 제어 태스크
     private var activityLogAddedResetTask: Task<Void, Never>?
     
@@ -62,7 +62,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     
     /// 현재 링크 상태가 최초 스냅샷과 달라져 서버 반영이 필요한지 여부
     private var hasPendingLinkUpdate: Bool {
-        Self.makeProfileLinkState(from: normalizedProfileLinksForSubmit) != initialPorfileLinkState
+        Self.makeProfileLinkState(from: normalizedProfileLinksForSubmit) != initialProfileLinkState
     }
     
     /// 현재 프로필 링크를 정규화하여 서버 제출용 배열로 반환합니다.
@@ -91,7 +91,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
         self.profileData = profileData
         self.useCaseProvider = useCaseProvider
 //        self.authUseCaseProvider = authUseCaseProvider
-        self.initialPorfileLinkState = Self.makeProfileLinkState(from: profileData.profileLink)
+        self.initialProfileLinkState = Self.makeProfileLinkState(from: profileData.profileLink)
     }
     
     /// 갤러리에서 이미지를 선택했을 때 호출되는 콜백입니다.
@@ -144,7 +144,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
         
         updatedProfile.socialConnections = currentSocialConnections
         profileData = updatedProfile
-        initialPorfileLinkState = Self.makeProfileLinkState(from: updatedProfile.profileLink)
+        initialProfileLinkState = Self.makeProfileLinkState(from: updatedProfile.profileLink)
         selectedImageData = nil
         selectedPhotoItem = nil
     }
@@ -163,7 +163,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
         try await useCaseProvider.addChallengerRecordUseCase.execute(code: code)
         profileData = try await useCaseProvider.fetchMyPageProfileUseCase.execute()
         profileData.socialConnections = currentSocialConnections
-        initialPorfileLinkState = Self.makeProfileLinkState(from: profileData.profileLink)
+        initialProfileLinkState = Self.makeProfileLinkState(from: profileData.profileLink)
         showRecentActivityLogAddedState()
     }
     
