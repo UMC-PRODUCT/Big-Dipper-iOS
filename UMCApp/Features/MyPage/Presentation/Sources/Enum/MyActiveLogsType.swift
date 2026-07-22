@@ -23,7 +23,7 @@ public enum MyActiveLogsType: String, CaseIterable {
     public var icon: String {
         switch self {
         case .myWritePost:
-            return "sqaure.and.pencil"
+            return "square.and.pencil"
         case .myWriteComment:
             return "bubble.right"
         case .myScrapPost:
