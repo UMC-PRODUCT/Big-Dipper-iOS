@@ -38,7 +38,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     public var isUpdatingProfileImage: Bool = false
     
     /// 활동 이력 추가 API 진행 상태
-    public var isAddingACtivityLog: Bool = false
+    public var isAddingActivityLog: Bool = false
     /// 활동 이력 추가 성공 후 버튼 성공 문구 노출 상태
     public var didRecentlyAddActivityLog: Bool = false
     
@@ -152,12 +152,12 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     /// 운영진 발급 코드로 활동 이력을 추가하고 프로필 정보를 갱신합니다.
     @MainActor
     public func addActivityLog(code: String) async throws {
-        guard !isAddingACtivityLog else {
+        guard !isAddingActivityLog else {
             return
         }
         
-        isAddingACtivityLog = true
-        defer { isAddingACtivityLog = false }
+        isAddingActivityLog = true
+        defer { isAddingActivityLog = false }
         
         let currentSocialConnections = profileData.socialConnections
         try await useCaseProvider.addChallengerRecordUseCase.execute(code: code)

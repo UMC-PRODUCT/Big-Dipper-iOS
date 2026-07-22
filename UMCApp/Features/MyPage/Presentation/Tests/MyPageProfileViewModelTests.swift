@@ -144,7 +144,7 @@ struct MyPageProfileViewModelTests {
         #expect(viewModel.profileData.challengeId == 55)
         #expect(viewModel.profileData.socialConnections == original.socialConnections)
         #expect(viewModel.didRecentlyAddActivityLog == true)
-        #expect(viewModel.isAddingACtivityLog == false)
+        #expect(viewModel.isAddingActivityLog == false)
     }
 
     @Test("addActivityLog에서 record 추가 실패 시 에러 전파 + 프로필 미갱신 + 플래그 미노출")
@@ -161,7 +161,7 @@ struct MyPageProfileViewModelTests {
         #expect(mock.fetchMyProfileCallCount == 0)
         #expect(viewModel.profileData.challengeId == 1)
         #expect(viewModel.didRecentlyAddActivityLog == false)
-        #expect(viewModel.isAddingACtivityLog == false)
+        #expect(viewModel.isAddingActivityLog == false)
     }
 }
 
