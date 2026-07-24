@@ -31,7 +31,7 @@ public struct ProfileImagePicker: View {
     
     private enum Constants {
         /// 프로필 이미지 크기
-        fileprivate static let imageSize:CGFloat = 112
+        fileprivate static let imageSize: CGFloat = 112
         
         /// 버튼 텍스트
         fileprivate static let changePhotoButtonTitle: String = "사진 변경"
