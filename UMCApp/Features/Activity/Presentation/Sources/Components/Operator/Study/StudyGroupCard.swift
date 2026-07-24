@@ -462,3 +462,23 @@ struct StudyGroupCard: View, Equatable {
         .accessibilityLabel("멘토 추가")
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("StudyGroupCard") {
+    ScrollView {
+        StudyGroupCard(
+            detail: OperatorStudyPreviewData.groups[0],
+            onEdit: {},
+            onDelete: {},
+            onAddMember: {},
+            onAddMentor: {},
+            onSchedule: {},
+            onRemoveMember: { _ in },
+            onRemoveMentor: { _ in }
+        )
+        .padding()
+    }
+}
+#endif

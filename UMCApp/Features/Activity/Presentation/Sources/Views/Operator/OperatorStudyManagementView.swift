@@ -342,3 +342,49 @@ struct OperatorStudyManagementView: View {
         }
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("스터디 관리 · 목록") {
+    NavigationStack {
+        OperatorStudyManagementView(
+            viewModel: previewOperatorStudyManagementViewModel(),
+            userSession: previewCreateCapableSession()
+        )
+    }
+}
+
+#Preview("스터디 관리 · 빈 목록") {
+    NavigationStack {
+        OperatorStudyManagementView(
+            viewModel: previewOperatorStudyManagementViewModel(
+                outcome: .page(OperatorStudyPreviewData.emptyPage)
+            ),
+            userSession: previewCreateCapableSession()
+        )
+    }
+}
+
+#Preview("스터디 관리 · 권한 없음") {
+    NavigationStack {
+        OperatorStudyManagementView(
+            viewModel: previewOperatorStudyManagementViewModel(
+                outcome: .page(OperatorStudyPreviewData.emptyPage)
+            ),
+            userSession: previewChallengerSession()
+        )
+    }
+}
+
+#Preview("스터디 관리 · 에러") {
+    NavigationStack {
+        OperatorStudyManagementView(
+            viewModel: previewOperatorStudyManagementViewModel(
+                outcome: .failure(PreviewSampleError.failed)
+            ),
+            userSession: previewCreateCapableSession()
+        )
+    }
+}
+#endif

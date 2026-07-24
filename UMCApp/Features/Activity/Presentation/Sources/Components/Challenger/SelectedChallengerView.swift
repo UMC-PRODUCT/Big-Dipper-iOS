@@ -122,3 +122,12 @@ struct SelectedChallengerView: View {
         challenger.removeAll { $0.id == info.id }
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("SelectedChallengerView") {
+    @Previewable @State var challengers = OperatorStudyPreviewData.challengers
+    SelectedChallengerView(challenger: $challengers)
+}
+#endif

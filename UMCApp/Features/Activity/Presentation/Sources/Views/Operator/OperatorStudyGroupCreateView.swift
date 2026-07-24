@@ -329,3 +329,13 @@ struct OperatorStudyGroupCreateView: View {
         name = String(text.prefix(Constants.groupNameMaxLength))
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("OperatorStudyGroupCreateView") {
+    NavigationStack {
+        OperatorStudyGroupCreateView(viewModel: previewOperatorStudyManagementViewModel())
+    }
+}
+#endif

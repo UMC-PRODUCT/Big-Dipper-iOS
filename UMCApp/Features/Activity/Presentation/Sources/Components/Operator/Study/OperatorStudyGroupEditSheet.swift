@@ -114,3 +114,11 @@ struct OperatorStudyGroupEditSheet: View {
         }
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("OperatorStudyGroupEditSheet") {
+    OperatorStudyGroupEditSheet(viewModel: previewEditingViewModel())
+}
+#endif
