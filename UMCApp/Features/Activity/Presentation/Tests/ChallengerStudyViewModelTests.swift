@@ -30,11 +30,30 @@ private func makeProgress(
     )
 }
 
+/// 검증 대상은 `week`/`status` 뿐이며, `platform`/`title`/`missionTitle` 은
+/// 상태 검증과 무관한 고정 filler 값이다.
+private func makeMission(
+    week: Int = 1,
+    status: MissionStatus = .inProgress
+) -> MissionCardModel {
+    MissionCardModel(
+        week: week,
+        platform: "iOS",
+        title: "\(week)주차 OT",
+        missionTitle: "링크를 제출하세요",
+        status: status
+    )
+}
+
 @MainActor
 private func makeViewModel(
-    useCase: any FetchCurriculumUseCaseProtocol
+    curriculumUseCase: any FetchCurriculumUseCaseProtocol = MockFetchCurriculumUseCase(),
+    missionsUseCase: any FetchMissionsUseCaseProtocol = MockFetchMissionsUseCase()
 ) -> ChallengerStudyViewModel {
-    ChallengerStudyViewModel(fetchCurriculumUseCase: useCase)
+    ChallengerStudyViewModel(
+        fetchCurriculumUseCase: curriculumUseCase,
+        fetchMissionsUseCase: missionsUseCase
+    )
 }
 
 // MARK: - Mocks
@@ -74,6 +93,38 @@ private final class SlowMockFetchCurriculumUseCase: @unchecked Sendable,
         executeCallCount += 1
         try? await Task.sleep(nanoseconds: delayNanoseconds)
         return progress
+    }
+}
+
+private final class MockFetchMissionsUseCase: @unchecked Sendable,
+    FetchMissionsUseCaseProtocol {
+
+    var result: Result<[MissionCardModel], Error> = .success([makeMission()])
+    private(set) var executeCallCount = 0
+
+    func execute() async throws -> [MissionCardModel] {
+        executeCallCount += 1
+        return try result.get()
+    }
+}
+
+/// 재진입 가드 검증용. `execute()` 가 지정 시간만큼 suspend 해 로딩 상태를 유지한다.
+private final class SlowMockFetchMissionsUseCase: @unchecked Sendable,
+    FetchMissionsUseCaseProtocol {
+
+    private let missions: [MissionCardModel]
+    private let delayNanoseconds: UInt64
+    private(set) var executeCallCount = 0
+
+    init(missions: [MissionCardModel], delayNanoseconds: UInt64) {
+        self.missions = missions
+        self.delayNanoseconds = delayNanoseconds
+    }
+
+    func execute() async throws -> [MissionCardModel] {
+        executeCallCount += 1
+        try? await Task.sleep(nanoseconds: delayNanoseconds)
+        return missions
     }
 }
 
@@ -147,7 +198,7 @@ private enum CancellationCase: CaseIterable {
 // Suite 전체 @MainActor — SUT(ChallengerStudyViewModel)가 @MainActor 격리이므로 필요.
 @MainActor
 @Suite("ChallengerStudyViewModel — 커리큘럼 조회 (도메인 규칙)")
-struct ChallengerStudyViewModelTests {
+struct ChallengerStudyViewModelCurriculumTests {
 
     @Test("정상 — execute 위임 + .loaded 전이 + 1회 호출")
     func fetchCurriculumLoadsProgress() async {
@@ -159,7 +210,7 @@ struct ChallengerStudyViewModelTests {
         )
         let useCase = MockFetchCurriculumUseCase()
         useCase.result = .success(expected)
-        let viewModel = makeViewModel(useCase: useCase)
+        let viewModel = makeViewModel(curriculumUseCase: useCase)
 
         await viewModel.fetchCurriculum()
 
@@ -175,7 +226,7 @@ struct ChallengerStudyViewModelTests {
     fileprivate func fetchCurriculumMapsErrorToFailed(errorCase: ErrorMappingCase) async {
         let useCase = MockFetchCurriculumUseCase()
         useCase.result = .failure(errorCase.thrown)
-        let viewModel = makeViewModel(useCase: useCase)
+        let viewModel = makeViewModel(curriculumUseCase: useCase)
 
         await viewModel.fetchCurriculum()
 
@@ -193,7 +244,7 @@ struct ChallengerStudyViewModelTests {
         let previous = makeProgress(curriculumTitle: "이전 주차")
         let useCase = MockFetchCurriculumUseCase()
         useCase.result = .success(previous)
-        let viewModel = makeViewModel(useCase: useCase)
+        let viewModel = makeViewModel(curriculumUseCase: useCase)
 
         // 1차 로드로 직전 상태를 .loaded 로 만든다.
         await viewModel.fetchCurriculum()
@@ -213,7 +264,7 @@ struct ChallengerStudyViewModelTests {
             progress: expected,
             delayNanoseconds: 100_000_000  // 0.1s 지연으로 로딩 상태 유지
         )
-        let viewModel = makeViewModel(useCase: useCase)
+        let viewModel = makeViewModel(curriculumUseCase: useCase)
 
         let first = Task { await viewModel.fetchCurriculum() }
         // 첫 호출이 .loading 을 세팅할 때까지 양보한다.
@@ -225,6 +276,81 @@ struct ChallengerStudyViewModelTests {
 
         #expect(useCase.executeCallCount == 1)
         #expect(viewModel.curriculumState == .loaded(expected))
+    }
+}
+
+// MARK: - 미션 조회
+
+// 미션 상태는 커리큘럼과 동일한 취소/에러 house 패턴을 공유하므로 대칭 검증한다.
+@MainActor
+@Suite("ChallengerStudyViewModel — 미션 조회 (도메인 규칙)")
+struct ChallengerStudyViewModelMissionsTests {
+
+    @Test("정상 — execute 위임 + .loaded 전이 + 1회 호출")
+    func fetchMissionsLoadsMissions() async {
+        let expected = [makeMission(week: 1, status: .pass), makeMission(week: 2)]
+        let useCase = MockFetchMissionsUseCase()
+        useCase.result = .success(expected)
+        let viewModel = makeViewModel(missionsUseCase: useCase)
+
+        await viewModel.fetchMissions()
+
+        #expect(useCase.executeCallCount == 1)
+        #expect(viewModel.missionsState == .loaded(expected))
+    }
+
+    @Test(
+        "에러 타입별 → 대응 AppError 로 매핑된 .failed 전이",
+        arguments: ErrorMappingCase.allCases
+    )
+    fileprivate func fetchMissionsMapsErrorToFailed(errorCase: ErrorMappingCase) async {
+        let useCase = MockFetchMissionsUseCase()
+        useCase.result = .failure(errorCase.thrown)
+        let viewModel = makeViewModel(missionsUseCase: useCase)
+
+        await viewModel.fetchMissions()
+
+        #expect(viewModel.missionsState == .failed(errorCase.expected))
+    }
+
+    @Test(
+        "취소 에러 발생 시 이전 상태로 롤백 (허위 .failed(.unknown) 노출 방지)",
+        arguments: CancellationCase.allCases
+    )
+    fileprivate func cancellationRollsBackToPreviousState(
+        cancellationCase: CancellationCase
+    ) async {
+        let previous = [makeMission(week: 9, status: .locked)]
+        let useCase = MockFetchMissionsUseCase()
+        useCase.result = .success(previous)
+        let viewModel = makeViewModel(missionsUseCase: useCase)
+
+        await viewModel.fetchMissions()
+        #expect(viewModel.missionsState == .loaded(previous))
+
+        useCase.result = .failure(cancellationCase.thrown)
+        await viewModel.fetchMissions()
+
+        #expect(viewModel.missionsState == .loaded(previous))
+    }
+
+    @Test("로딩 중 중복 호출은 무시 (execute 1회만 호출 — 취소 롤백 stuck-loading 방지)")
+    func duplicateFetchWhileLoadingIsIgnored() async {
+        let expected = [makeMission()]
+        let useCase = SlowMockFetchMissionsUseCase(
+            missions: expected,
+            delayNanoseconds: 100_000_000  // 0.1s 지연으로 로딩 상태 유지
+        )
+        let viewModel = makeViewModel(missionsUseCase: useCase)
+
+        let first = Task { await viewModel.fetchMissions() }
+        await Task.yield()
+
+        await viewModel.fetchMissions()
+        await first.value
+
+        #expect(useCase.executeCallCount == 1)
+        #expect(viewModel.missionsState == .loaded(expected))
     }
 }
 
