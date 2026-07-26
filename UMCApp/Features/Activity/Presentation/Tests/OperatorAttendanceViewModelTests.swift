@@ -17,8 +17,9 @@ import UMCFoundation
 
 private func makeParticipant(
     memberId: String = "1",
-    name: String = "김미주",
-    status: ParticipantAttendanceStatus = .present
+    name: String = "이재원",
+    status: ParticipantAttendanceStatus = .present,
+    excuseReason: String? = nil
 ) -> ParticipantAttendance {
     ParticipantAttendance(
         memberId: memberId,
@@ -29,7 +30,7 @@ private func makeParticipant(
         schoolName: "한성대학교",
         attendanceStatus: status,
         isLocationVerified: true,
-        excuseReason: nil
+        excuseReason: excuseReason
     )
 }
 
@@ -646,6 +647,51 @@ struct OperatorAttendanceViewModelDecisionTests {
         #expect(status == .presentPending)
     }
 
+    @Test(
+        "사유 확인 Alert — 반려/승인 액션이 각각 해당 결정을 전송한다",
+        arguments: [false, true]
+    )
+    func excuseReasonAlertSendsDecision(isApproved: Bool) async {
+        let useCase = MockOperatorAttendanceUseCase()
+        let pending = makeParticipant(
+            memberId: "1",
+            status: .excusedPending,
+            excuseReason: "병원 진료"
+        )
+        useCase.fetchDetailResult = makeScheduleInfo(scheduleId: "42", participants: [pending])
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.selectSchedule("42")
+
+        viewModel.excuseReasonButtonTapped(participant: pending)
+        // 반려는 파괴적 액션이라 positive, 승인은 secondary 로 배치된다.
+        let action = isApproved
+            ? viewModel.alertPrompt?.secondaryBtnAction
+            : viewModel.alertPrompt?.positiveBtnAction
+
+        action?()
+        await drainUntil { useCase.decideCalls.count == 1 }
+        await drainUntil { viewModel.processingMemberIds.isEmpty }
+
+        #expect(useCase.decideCalls.first?.decisions.first?.isApproved == isApproved)
+    }
+
+    @Test("사유가 비어 있으면 사유 확인 Alert 를 띄우지 않는다", arguments: [nil, ""] as [String?])
+    func excuseReasonWithoutReasonDoesNotPrompt(reason: String?) async {
+        let useCase = MockOperatorAttendanceUseCase()
+        let pending = makeParticipant(
+            memberId: "1",
+            status: .excusedPending,
+            excuseReason: reason
+        )
+        useCase.fetchDetailResult = makeScheduleInfo(scheduleId: "42", participants: [pending])
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.selectSchedule("42")
+
+        viewModel.excuseReasonButtonTapped(participant: pending)
+
+        #expect(viewModel.alertPrompt == nil)
+    }
+
     @Test("선택 없이 결정 → UseCase 미호출")
     func decideWithoutSelectionIsNoOp() async {
         let useCase = MockOperatorAttendanceUseCase()
@@ -931,6 +977,37 @@ struct OperatorAttendanceViewModelScheduleIdentityTests {
         #expect(useCase.decideCalls.first?.decisions.map(\.participantMemberId) == ["a1"])
         let status = viewModel.detailState.value?.participants.first?.attendanceStatus
         #expect(status == .presentPending)
+    }
+
+    @Test("사유 확인 Alert — 실행 시점이 아니라 탭 시점의 일정으로 결정을 보낸다")
+    func excuseReasonAlertCapturesScheduleAtTapTime() async {
+        let useCase = MockOperatorAttendanceUseCase()
+        let excused = makeParticipant(
+            memberId: "a1",
+            status: .excusedPending,
+            excuseReason: "병원 진료"
+        )
+        useCase.fetchDetailResultByScheduleId = [
+            "A": makeScheduleInfo(scheduleId: "A", participants: [excused]),
+            "B": makeScheduleInfo(
+                scheduleId: "B",
+                participants: [makeParticipant(memberId: "b1", status: .presentPending)]
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.selectSchedule("A")
+
+        // A 화면에서 사유 Alert 를 띄운 뒤(액션 캡처) B 로 전환하고 나서 승인을 실행한다.
+        viewModel.excuseReasonButtonTapped(participant: excused)
+        let approveAction = viewModel.alertPrompt?.secondaryBtnAction
+        await viewModel.selectSchedule("B")
+
+        approveAction?()
+        await drainUntil { useCase.decideCalls.count == 1 }
+        await drainUntil { viewModel.processingMemberIds.isEmpty }
+
+        #expect(useCase.decideCalls.first?.scheduleId == "A")
+        #expect(useCase.decideCalls.first?.decisions.map(\.participantMemberId) == ["a1"])
     }
 
     @Test("결정 성공 — 같은 일정의 스피너 로드가 진행 중이면 토큰을 올리지 않아 로드가 살아남는다")
