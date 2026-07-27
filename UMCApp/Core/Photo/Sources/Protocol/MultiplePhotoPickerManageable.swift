@@ -8,6 +8,12 @@
 import SwiftUI
 import UIKit
 import PhotosUI
+import os
+
+private let logger = Logger(
+    subsystem: "dev.umc.core.photo",
+    category: "MultiplePhotoPickerManageable"
+)
 
 // MARK: - MultiplePhotoPickerManageable
 
@@ -39,7 +45,7 @@ import PhotosUI
 /// }
 /// ```
 public protocol MultiplePhotoPickerManageable: AnyObject {
-    /// PhotsPicker에서 선택된 여러 PhotosPickerItem (SwiftUI View 바인딩 용)
+    /// PhotosPicker에서 선택된 여러 PhotosPickerItem (SwiftUI View 바인딩 용)
     var selectedPhotoItems: [PhotosPickerItem] { get set }
     
     /// 로드된 여러 이미지 데이터 (UIImage 배열)
@@ -79,7 +85,7 @@ public extension MultiplePhotoPickerManageable {
     ///
     /// - Note:
     ///   - 일부 이미지 로드 실패 시에도 성공한 이미지는 `selectedImages`에 포함됩니다.
-    ///   - 로드 실패한 항목은 건너뛰며, 콘솔에 에러 로그가 출력됩니다.
+    ///   - 로드 실패한 항목은 건너뛰며, 통합 로그에 에러가 기록됩니다.
     @MainActor
     func loadSelectedImages() async {
         guard !selectedPhotoItems.isEmpty else {
@@ -95,10 +101,12 @@ public extension MultiplePhotoPickerManageable {
                    let uiImage = UIImage(data: data) {
                     loadedImages.append(uiImage)
                 } else {
-                    print("[MultiplePhotoPickerManageable] 이미지 데이터 변환 실패 (항목 건너뜀)")
+                    logger.error("이미지 데이터 변환 실패 (항목 건너뜀)")
                 }
             } catch {
-                print("[MultiplePhotoPickerManageable] 이미지 로드 실패: \(error.localizedDescription) (항목 건너뜀)")
+                logger.error(
+                    "이미지 로드 실패 (항목 건너뜀): \(error.localizedDescription, privacy: .public)"
+                )
             }
         }
         

@@ -18,7 +18,7 @@ import MyPageDomain
 public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     // MARK: - Property
     
-    /// 프로타일 정보
+    /// 프로필 정보
     public var profileData: ProfileData
     private let useCaseProvider: MyPageUseCaseProviding
     // FIXME: - Auth 모듈 수정 후 고치기
@@ -32,7 +32,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     /// 선택된 아이템에서 로드된 실제 이미지 객체
     public var selectedImage: UIImage?
     
-    ///선택된 원본 이미지 바이너리 (업로드용)
+    /// 선택된 원본 이미지 바이너리 (업로드용)
     private var selectedImageData: Data?
     
     /// 프로필 이미지 수정 API 진행 상태

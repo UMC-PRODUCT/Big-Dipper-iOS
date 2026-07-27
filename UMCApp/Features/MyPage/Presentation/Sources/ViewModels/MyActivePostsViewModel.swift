@@ -79,7 +79,7 @@ public final class MyActivePostsViewModel {
 
 private extension MyActivePostsViewModel {
     @MainActor
-    private func fetchFirstPage() async {
+    func fetchFirstPage() async {
         postState = .loading
         
         do {

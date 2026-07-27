@@ -8,6 +8,12 @@
 import UIKit
 import SwiftUI
 import PhotosUI
+import os
+
+private let logger = Logger(
+    subsystem: "dev.umc.core.photo",
+    category: "SinglePhotoPickerManageable"
+)
 
 // MARK: - SinglePhotoPickerManageable
 
@@ -73,7 +79,7 @@ public protocol SinglePhotoPickerManageable: AnyObject {
 public extension SinglePhotoPickerManageable {
     /// 선택된 단일 이미지를 비동기로 로드하는 기본 구현
     ///
-    /// - Note: 로드 실패 시 `selectedImage`는 nil로 설정되며, 콘솔에 에러 로그가 출력됩니다.
+    /// - Note: 로드 실패 시 `selectedImage`는 nil로 설정되며, 통합 로그에 에러가 기록됩니다.
     @MainActor
     func loadSelectedImage() async {
         guard let item = selectedPhotoItem else {
@@ -88,11 +94,11 @@ public extension SinglePhotoPickerManageable {
                 await didLoadImage(image: uiImage)
             } else {
                 selectedImage = nil
-                print("[SinglePhotoPickerManageable] 이미지 데이터 변환 실패")
+                logger.error("이미지 데이터 변환 실패")
             }
         } catch {
             selectedImage = nil
-            print("[SinglePhotoPickerManageable] 이미지 업로드 실패: \(error.localizedDescription)" )
+            logger.error("이미지 로드 실패: \(error.localizedDescription, privacy: .public)")
         }
     }
     

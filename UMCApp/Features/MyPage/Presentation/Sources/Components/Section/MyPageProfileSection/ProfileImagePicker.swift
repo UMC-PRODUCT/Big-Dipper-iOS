@@ -37,7 +37,7 @@ public struct ProfileImagePicker: View {
         fileprivate static let changePhotoButtonTitle: String = "사진 변경"
         
         /// 프로필 이미지 곡률
-        fileprivate static let cornerRadius: CGFloat = 60
+        fileprivate static let cornerRadius: CGFloat = 56
     }
     
     // MARK: - Body
