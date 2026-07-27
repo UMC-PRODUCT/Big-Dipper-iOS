@@ -22,6 +22,7 @@ let project = Project(
                     "NSBluetoothPeripheralUsageDescription": "주변 명함을 교환하기 위해 블루투스를 사용합니다.",
                     "NFCReaderUsageDescription": "NFC로 명함 정보를 주고받습니다.",
                     "NSNearbyInteractionUsageDescription": "근거리에서 정확한 명함 교환을 위해 위치를 사용합니다.",
+                    "NSLocationWhenInUseUsageDescription": "GPS 기반 스마트 출석 체크를 위해 위치 정보를 사용합니다.",
                     // Secrets/Shared.xcconfig(+ Secrets.xcconfig)에서 주입되는 값.
                     // UMCFoundation의 Config가 이 키들을 읽는다.
                     // (BASE_URL / KAKAO_KEY / TMAP_SECRET_KEY / GOOGLE_CLIENT_ID / GOOGLE_REVERSED_CLIENT_ID)
