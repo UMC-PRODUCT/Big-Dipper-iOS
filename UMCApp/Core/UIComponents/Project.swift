@@ -8,6 +8,7 @@ let project = coreProject(
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
         .external(name: "Kingfisher"),
+        .sdk(name: "MapKit", type: .framework),
     ],
     resources: [
         "Resources/Images.xcassets",
@@ -17,5 +18,8 @@ let project = coreProject(
         "ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS": "NO",
         "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "NO",
     ],
-    includesTests: true
+    includesTests: true,
+    testDependencies: [
+        .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
+    ]
 )
