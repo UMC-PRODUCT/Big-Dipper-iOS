@@ -19,5 +19,6 @@ let project = coreProject(
     testDependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
-    ]
+    ],
+    testEntitlements: "Tests/CoreNetworkTests.entitlements"
 )
