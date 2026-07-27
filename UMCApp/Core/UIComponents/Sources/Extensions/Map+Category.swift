@@ -56,6 +56,7 @@ public extension MKPointOfInterestCategory {
             return .green500
 
         // 교통 및 여행
+        // TODO: CoreDesignSystem에 blue 색상 패밀리 추가 시 토큰화
         case .airport, .carRental, .evCharger, .gasStation, .parking, .publicTransport, .marina:
             return .blue
 
@@ -64,14 +65,17 @@ public extension MKPointOfInterestCategory {
             return .red500
 
         // 쇼핑 및 엔터테인먼트
+        // TODO: CoreDesignSystem에 purple 색상 패밀리 추가 시 토큰화
         case .store, .movieTheater, .theater, .amusementPark, .nightlife:
             return .purple
 
         // 교육 및 문화
+        // TODO: CoreDesignSystem에 brown 색상 패밀리 추가 시 토큰화
         case .library, .museum, .school, .university:
             return .brown
 
         // 금융 및 생활 편의
+        // TODO: CoreDesignSystem에 gray 색상 패밀리 추가 시 토큰화
         case .atm, .bank, .postOffice, .laundry, .restroom, .fitnessCenter:
             return .gray
 

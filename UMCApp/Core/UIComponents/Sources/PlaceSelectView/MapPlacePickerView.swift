@@ -83,7 +83,7 @@ public struct MapPlacePickerView: View {
                         coordinate: selectedCoordinate,
                         anchor: .bottom
                     ) {
-                        SelectionPinView(pinSize: Constants.pinSize)
+                        MapPickerPinView(pinSize: Constants.pinSize)
                     }
                 }
                 UserAnnotation()
@@ -123,7 +123,7 @@ public struct MapPlacePickerView: View {
 
     /// 선택한 장소 정보와 확정 액션을 제공하는 하단 카드
     private var selectionCard: some View {
-        SelectionCardView(
+        MapPickerSelectionCardView(
             selectedPlace: selectedPlace,
             isResolvingPlace: isResolvingPlace,
             confirmSelection: confirmSelection
@@ -139,7 +139,7 @@ public struct MapPlacePickerView: View {
                 await moveToCurrentLocation()
             }
         } label: {
-            CurrentLocationIcon()
+            MapPickerCurrentLocationIcon()
         }
         .accessibilityLabel("현재 위치로 이동")
     }
@@ -152,7 +152,7 @@ public struct MapPlacePickerView: View {
         guard !hasInitializedState else { return }
         hasInitializedState = true
 
-        if initialPlace.coordinate.latitude != 0 || initialPlace.coordinate.longitude != 0 {
+        if !initialPlace.isEmpty {
             let coordinate = initialPlace.coordinate
             selectedCoordinate = coordinate
             selectedPlace = initialPlace

@@ -9,6 +9,7 @@ let project = coreProject(
         .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
         .external(name: "Kingfisher"),
         .sdk(name: "MapKit", type: .framework),
+        .sdk(name: "TipKit", type: .framework),
     ],
     resources: [
         "Resources/Images.xcassets",
