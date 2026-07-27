@@ -819,6 +819,7 @@
 | `Mock/AttendancePreviewData.swift` | ActivityDomain/Sources/Mock |
 | `Mock/AttendanceTestWrapper.swift` | ActivityPresentation/Sources/Mock |
 | `Mock/CurriculumPreviewData.swift` | ActivityDomain/Sources/Mock |
+| `Mock/DesignPreview/ChromaticLens.metal` | App (UMCApp/UMCApp/Sources/Shaders) — staticFramework 는 metallib 이 앱 번들에 실리지 않으므로 앱 타겟 소유 |
 | `Mock/DesignPreview/ChromaticLensPreview.swift` | CoreDesignSystem/Sources/Mock |
 | `Mock/DesignPreview/LiquidIntroPreview.swift` | CoreDesignSystem/Sources/Mock |
 | `Mock/DesignPreview/LoginPreview.swift` | AuthPresentation/Sources/Mock (Home부는 HomePresentation) |
