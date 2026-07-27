@@ -21,11 +21,13 @@ struct NavigationRoutingView: View {
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
     private let destination: NavigationDestination
-
+    private let push: (NavigationDestination) -> Void
+    
     // MARK: - Init
 
-    init(destination: NavigationDestination) {
+    init(destination: NavigationDestination, push: @escaping (NavigationDestination) -> Void) {
         self.destination = destination
+        self.push = push
     }
 
     // MARK: - Body
@@ -45,10 +47,32 @@ private extension NavigationRoutingView {
     func noticeView(_ route: NavigationDestination.Notice) -> some View {
         switch route {
         case .detail(let detailItem):
-            NoticeDetailView(container: di, errorHandler: errorHandler, model: detailItem)
-        case .staffNotice, .editor:
-            // StaffNoticeView / NoticeEditorView는 아직 NoticePresentation에 이식되지 않았다.
-            Text("아직 지원하지 않는 화면입니다")
+            NoticeDetailView(
+                container: di,
+                errorHandler: errorHandler,
+                model: detailItem,
+                onEditRequested: { mode in
+                    push(.notice(.editor(mode: mode, selectedGisuId: nil)))
+                }
+            )
+        case .staffNotice:
+            StaffNoticeView(
+                container: di,
+                errorHandler: errorHandler,
+                onNoticeSelected: { detailItem in
+                    push(.notice(.detail(detailItem: detailItem)))
+                },
+                onCreateNotice: { gisuId, category in
+                    push(.notice(.editor(mode: .create, selectedGisuId: gisuId, initialCategory: category)))
+                }
+            )
+        case .editor(let mode, let selectedGisuId, let initialCategory):
+            NoticeEditorView(
+                container: di,
+                mode: mode,
+                selectedGisuId: selectedGisuId,
+                initialCategory: initialCategory
+            )
         }
     }
 }

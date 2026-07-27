@@ -60,7 +60,10 @@ struct RootTabView: View {
         NavigationStack(path: pathBinding(for: tab)) {
             tabContent(tab)
                 .navigationDestination(for: NavigationDestination.self) { destination in
-                    NavigationRoutingView(destination: destination)
+                    NavigationRoutingView(
+                        destination: destination,
+                        push: { pushDestination($0, for: tab) }
+                    )
                 }
         }
     }
@@ -77,8 +80,14 @@ struct RootTabView: View {
                 pathStore.homePath.append(.notice(.detail(detailItem: detailItem)))
             }
         case .notice:
-            // TODO: NoticePresentation의 실제 NoticeView 연결 (Notice 탭 실연결 후속 이슈)
-            NoticeFeatureView()
+            NoticeFeatureView(
+                onNoticeSelected: { detailItem in
+                    pathStore.noticePath.append(.notice(.detail(detailItem: detailItem)))
+                },
+                onStaffNoticeSelected: {
+                    pathStore.noticePath.append(.notice(.staffNotice))
+                }
+            )
         case .activity:
             // TODO: ActivityPresentation의 실제 ActivityView 연결 (Activity 탭 실연결 후속 이슈)
             ActivityFeatureView()
@@ -104,6 +113,20 @@ struct RootTabView: View {
             Binding(get: { pathStore.communityPath }, set: { pathStore.communityPath = $0 })
         case .mypage:
             Binding(get: { pathStore.myPagePath }, set: { pathStore.myPagePath = $0 })
+        }
+    }
+    
+    /// 목적지를 현재 탭의 path에 push한다.
+    ///
+    /// `NavigationRoutingView`가 라우팅 도중 추가 push가 필요할 때(예: 공지 상세 → 수정) 호출된다.
+    /// 어느 탭에서 진입했는지에 따라 push 대상 배열을 나눠, 탭별 path 독립성을 유지한다.
+    private func pushDestination(_ destination: NavigationDestination, for tab: TabCase) {
+        switch tab {
+        case .home: pathStore.homePath.append(destination)
+        case .notice: pathStore.noticePath.append(destination)
+        case .activity: pathStore.activityPath.append(destination)
+        case .community: pathStore.communityPath.append(destination)
+        case .mypage: pathStore.myPagePath.append(destination)
         }
     }
 }

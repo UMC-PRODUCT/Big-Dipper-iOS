@@ -20,8 +20,6 @@ import NoticeDomain
 public struct StaffNoticeView: View {
 
     // MARK: - Properties
-
-    @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
     @AppStorage(AppStorageKey.memberRole) private var memberRoleRaw: String = ""
     @AppStorage(AppStorageKey.schoolId) private var schoolId: String = ""
@@ -30,14 +28,18 @@ public struct StaffNoticeView: View {
     @State private var search: String = ""
     @State private var searchTask: Task<Void, Never>?
     @State private var isRetryingNotices: Bool = false
-
-    private var pathStore: PathStore {
-        di.resolve(PathStore.self)
-    }
+    private let onNoticeSelected: (NoticeDetail) -> Void
+    private let onCreateNotice: (String?, EditorMainCategory) -> Void
 
     // MARK: - Initializer
-
-    public init(container: DIContainer, errorHandler: ErrorHandler) {
+    public init(
+        container: DIContainer,
+        errorHandler: ErrorHandler,
+        onNoticeSelected: @escaping (NoticeDetail) -> Void,
+        onCreateNotice: @escaping (String?, EditorMainCategory) -> Void
+    ) {
+        self.onNoticeSelected = onNoticeSelected
+        self.onCreateNotice = onCreateNotice
         _viewModel = State(
             initialValue: StaffNoticeViewModel(container: container, errorHandler: errorHandler)
         )
@@ -214,8 +216,7 @@ public struct StaffNoticeView: View {
 
     private func noticeRow(_ item: NoticeItemModel) -> some View {
         NoticeItem(model: item) {
-            let noticeDetail = item.toNoticeDetail()
-            pathStore.noticePath.append(.notice(.detail(detailItem: noticeDetail)))
+            onNoticeSelected(item.toNoticeDetail())
         }
         .task(id: item.id) {
             await viewModel.loadNextPageIfNeeded(currentItem: item)
@@ -229,9 +230,7 @@ public struct StaffNoticeView: View {
         if let category = writableCategoryForSelectedTab {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    pathStore.noticePath.append(
-                        .notice(.editor(mode: .create, selectedGisuId: gisuId, initialCategory: category))
-                    )
+                    onCreateNotice(gisuId, category)
                 } label: {
                     Image(systemName: "square.and.pencil")
                         .imageScale(.medium)
