@@ -21,6 +21,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     /// 프로타일 정보
     public var profileData: ProfileData
     private let useCaseProvider: MyPageUseCaseProviding
+    // FIXME: - Auth 모듈 수정 후 고치기
 //    private let authUseCaseProvider: AuthUseCaseProviding
 //    private let kakaoLoginManager = KakaoLoginManager()
 //    private let googleLoginManager = GoogleLoginManager()
@@ -168,7 +169,7 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     }
     
     /// 특정 소셜 연동을 해제하고 최신 연동 목록으로 갱신합니다.
-    // MARK: - Todo -> Auth완성되면 진행필요
+    // FIXME: - Auth 모듈 수정 후 고치기
     /*
     @MainActor
     public func disconnectSocial(_ connection: SocialConnection) async throws {
