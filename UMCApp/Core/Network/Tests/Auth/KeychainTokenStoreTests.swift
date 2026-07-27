@@ -22,14 +22,21 @@ struct KeychainTokenStoreTests {
 
         // 코드사이닝 없이 실행되는 샌드박스에서는 keychain-access-groups entitlement가
         // 임베드되지 않아 SecItemAdd가 errSecMissingEntitlement로 실패한다.
-        // 실제 개발 인증서로 서명되는 로컬/CI 환경에서는 아래 라운드트립이 그대로 통과한다.
-        try await withKnownIssue("샌드박스 환경의 codesign 제약으로 Keychain entitlement가 누락될 수 있다") {
+        // 실제 개발 인증서로 서명되는 로컬/CI 환경에서는 아래 라운드트립이 그대로 통과해야 하므로
+        // isIntermittent: true로 지정해 known issue 미발생(=정상 통과)도 허용한다.
+        try await withKnownIssue(
+            "샌드박스 환경의 codesign 제약으로 Keychain entitlement가 누락될 수 있다",
+            isIntermittent: true
+        ) {
             let writer = KeychainTokenStore(
                 service: service,
                 accessTokenKey: accessTokenKey,
                 refreshTokenKey: refreshTokenKey
             )
-            try await writer.save(accessToken: "test-access-token", refreshToken: "test-refresh-token")
+            try await writer.save(
+                accessToken: "test-access-token",
+                refreshToken: "test-refresh-token"
+            )
 
             // 저장 인스턴스가 아닌 별도 인스턴스로 조회해 메모리 캐시가 아닌 Keychain 자체를 검증한다.
             let reader = KeychainTokenStore(

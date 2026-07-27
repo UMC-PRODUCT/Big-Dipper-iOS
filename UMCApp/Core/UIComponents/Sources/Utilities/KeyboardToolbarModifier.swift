@@ -102,7 +102,8 @@ public struct KeyboardToolbarModifier<Field: Hashable & CaseIterable>: ViewModif
 
     private func nextField(from field: Field) -> Field? {
         let allCases = Array(Field.allCases)
-        guard let currentIndex = allCases.firstIndex(of: field), currentIndex < allCases.count - 1 else {
+        guard let currentIndex = allCases.firstIndex(of: field),
+              currentIndex < allCases.count - 1 else {
             return nil
         }
         return allCases[currentIndex + 1]
