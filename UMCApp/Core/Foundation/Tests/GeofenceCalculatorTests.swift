@@ -72,4 +72,54 @@ struct GeofenceCalculatorTests {
         )
         #expect(isInside == true)
     }
+
+    // MARK: - isInside(geofenceId:current:geofences:)
+
+    @Test("등록된 식별자의 반경 안이면 true")
+    func isInsideGeofenceIdTrueWhenWithinRadius() {
+        let nearbyPoint = CLLocationCoordinate2D(
+            latitude: seoulCityHall.latitude + 0.0001,
+            longitude: seoulCityHall.longitude
+        )
+        let isInside = GeofenceCalculator.isInside(
+            geofenceId: "schedule-100",
+            current: nearbyPoint,
+            geofences: ["schedule-100": MonitoredGeofence(center: seoulCityHall, radius: 100)]
+        )
+        #expect(isInside == true)
+    }
+
+    @Test("등록된 식별자의 반경 밖이면 false")
+    func isInsideGeofenceIdFalseWhenOutsideRadius() {
+        let farPoint = CLLocationCoordinate2D(
+            latitude: seoulCityHall.latitude + 1,
+            longitude: seoulCityHall.longitude
+        )
+        let isInside = GeofenceCalculator.isInside(
+            geofenceId: "schedule-100",
+            current: farPoint,
+            geofences: ["schedule-100": MonitoredGeofence(center: seoulCityHall, radius: 100)]
+        )
+        #expect(isInside == false)
+    }
+
+    @Test("다른 식별자가 반경 안이어도 요청한 식별자가 미등록이면 false")
+    func isInsideGeofenceIdFalseWhenIdentifierNotRegistered() {
+        let isInside = GeofenceCalculator.isInside(
+            geofenceId: "schedule-999",
+            current: seoulCityHall,
+            geofences: ["schedule-100": MonitoredGeofence(center: seoulCityHall, radius: 100)]
+        )
+        #expect(isInside == false)
+    }
+
+    @Test("현재 위치를 모르면 등록된 식별자여도 false")
+    func isInsideGeofenceIdFalseWhenCurrentLocationMissing() {
+        let isInside = GeofenceCalculator.isInside(
+            geofenceId: "schedule-100",
+            current: nil,
+            geofences: ["schedule-100": MonitoredGeofence(center: seoulCityHall, radius: 100)]
+        )
+        #expect(isInside == false)
+    }
 }

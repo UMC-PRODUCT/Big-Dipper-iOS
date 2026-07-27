@@ -17,7 +17,7 @@ import Observation
 /// conform 하지 않으며, 이는 후속 어댑터(#992 Phase B)에서 처리합니다.
 ///
 /// Core 모듈은 Feature 모듈(Coordinate/Address 등)에 의존할 수 없으므로, 이 타입은
-/// `CLLocationCoordinate2D`/`String` 같은 CoreLocation 원시 타입만 노출합니다.
+/// `CLLocationCoordinate2D`/`GeocodedAddress` 같은 Feature-독립 타입만 노출합니다.
 /// 어댑터가 이를 도메인 타입으로 변환합니다.
 ///
 /// - Important: `CLMonitor`는 watchOS에서 지원되지 않습니다(`API_UNAVAILABLE(watchos)`).
@@ -47,6 +47,10 @@ public final class LocationManager: NSObject {
     private var monitor: CLMonitor?
     private var monitorTask: Task<Void, Never>?
     private let monitorName = "LocationGeofenceMonitor"
+    /// 식별자별로 모니터링 중인 지오펜스의 중심/반경 캐시.
+    /// `CLMonitor`는 식별자 단위 조회 API가 async라 `isInside(geofenceId:)`를 동기로
+    /// 노출하기 위해 등록 시점 값을 별도로 들고 있다.
+    private var monitoredGeofences: [String: MonitoredGeofence] = [:]
     #endif
 
     // MARK: - Lifecycle
@@ -97,11 +101,11 @@ public final class LocationManager: NSObject {
 
     // MARK: - Reverse Geocoding
 
-    /// 좌표를 주소 문자열로 변환
+    /// 좌표를 구조화된 주소로 변환
     /// - Parameter coordinate: 변환할 좌표
-    /// - Returns: 주소 문자열 (예: "서울특별시 강남구 테헤란로 123")
+    /// - Returns: `GeocodedAddress`(전체/짧은 주소 + 시/구 후보 필드, 정보 손실 없이 보존)
     /// - Throws: `LocationError.geocodingFailed`
-    public func reverseGeocode(coordinate: CLLocationCoordinate2D) async throws -> String {
+    public func reverseGeocode(coordinate: CLLocationCoordinate2D) async throws -> GeocodedAddress {
         let location = CLLocation(
             latitude: coordinate.latitude,
             longitude: coordinate.longitude
@@ -113,11 +117,16 @@ public final class LocationManager: NSObject {
 
         do {
             let mapItems = try await request.mapItems
-            guard let address = mapItems.first?.address?.shortAddress else {
+            guard let mapItem = mapItems.first, let address = mapItem.address else {
                 throw LocationError.geocodingFailed("주소 정보가 없습니다.")
             }
 
-            return address
+            return GeocodedAddress(
+                fullAddress: address.fullAddress,
+                shortAddress: address.shortAddress,
+                city: mapItem.addressRepresentations?.regionName,
+                district: mapItem.addressRepresentations?.cityName
+            )
         } catch let error as LocationError {
             throw error
         } catch {
@@ -128,21 +137,19 @@ public final class LocationManager: NSObject {
     // MARK: - Geofence
 
     #if !os(watchOS)
+    /// 여러 지오펜스를 동시에 등록할 수 있다(활동별 스케줄 ID 등). 기존에 등록된 다른
+    /// 식별자는 유지되며, 같은 식별자로 다시 호출하면 조건(중심/반경)만 갱신된다.
     public func startGeofenceMonitoring(
         at coordinate: CLLocationCoordinate2D,
         identifier: String,
         radius: CLLocationDistance
     ) async {
-        if activeGeofenceId == identifier {
-            checkCurrentLocationInGeofence(center: coordinate, radius: radius)
-        }
-
-        if let currentId = activeGeofenceId {
-            await monitor?.remove(currentId)
-        }
+        monitoredGeofences[identifier] = MonitoredGeofence(center: coordinate, radius: radius)
 
         if monitor == nil {
             monitor = await CLMonitor(monitorName)
+        }
+        if monitorTask == nil {
             startMonitoringEvents()
         }
 
@@ -155,6 +162,7 @@ public final class LocationManager: NSObject {
 
     public func stopGeofenceMonitoring(identifier: String) async {
         await monitor?.remove(identifier)
+        monitoredGeofences.removeValue(forKey: identifier)
 
         if activeGeofenceId == identifier {
             activeGeofenceId = nil
@@ -172,9 +180,22 @@ public final class LocationManager: NSObject {
             }
         }
 
+        monitoredGeofences.removeAll()
         activeGeofenceId = nil
         isInsideGeofence = false
         geofenceEvent = nil
+    }
+
+    /// 특정 지오펜스 식별자 안에 현재 위치가 있는지 판정
+    ///
+    /// 여러 지오펜스가 동시에 모니터링 중이어도 요청한 식별자만 정확히 조회한다.
+    /// 등록되지 않은 식별자거나 현재 위치를 모르면 `false`.
+    public func isInside(geofenceId: String) -> Bool {
+        GeofenceCalculator.isInside(
+            geofenceId: geofenceId,
+            current: currentLocation,
+            geofences: monitoredGeofences
+        )
     }
     #endif
 
@@ -239,24 +260,17 @@ public final class LocationManager: NSObject {
         }
     }
 
+    /// 현재 `activeGeofenceId` 하나만 갱신한다. 다른 모니터링 대상 지오펜스는
+    /// `isInside(geofenceId:)`로 별도 조회하므로 이 상태와 무관하다.
     private func updateGeofenceStatus() {
-        guard let currentLocation, activeGeofenceId != nil else { return }
+        guard let currentLocation, let activeGeofenceId,
+              let geofence = monitoredGeofences[activeGeofenceId] else { return }
 
-        Task {
-            guard let monitor else { return }
-
-            for identifier in await monitor.identifiers {
-                guard let record = await monitor.record(for: identifier) else { continue }
-
-                if let condition = record.condition as? CLMonitor.CircularGeographicCondition {
-                    isInsideGeofence = GeofenceCalculator.isInside(
-                        current: currentLocation,
-                        center: condition.center,
-                        radius: condition.radius
-                    )
-                }
-            }
-        }
+        isInsideGeofence = GeofenceCalculator.isInside(
+            current: currentLocation,
+            center: geofence.center,
+            radius: geofence.radius
+        )
     }
     #endif
 
