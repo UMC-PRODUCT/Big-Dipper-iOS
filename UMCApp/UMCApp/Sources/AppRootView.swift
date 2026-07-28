@@ -39,7 +39,7 @@ struct AppRootView: View {
         ZStack {
             switch viewModel.state {
             case .bootstrap:
-                BootstrapView(container: di)
+                BootstrapView(container: di, errorHandler: errorHandler)
 
             case .login:
                 LoginView(container: di, errorHandler: errorHandler)
