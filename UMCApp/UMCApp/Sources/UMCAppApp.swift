@@ -17,6 +17,7 @@ import NoticeData
 import NoticePresentation
 import SwiftData
 import SwiftUI
+import TipKit
 import UMCFoundation
 import os.log
 
@@ -53,6 +54,7 @@ struct UMCAppApp: App {
         // RemoteConfig 접근은 lazy이므로, FirebaseApp.configure() 이전에 이 ViewModel을
         // 만들어도 실제 RemoteConfig 인스턴스는 생성되지 않는다.
         _maintenanceViewModel = State(initialValue: MaintenanceViewModel(container: container))
+        try? Tips.configure()
     }
 
     // MARK: - Body

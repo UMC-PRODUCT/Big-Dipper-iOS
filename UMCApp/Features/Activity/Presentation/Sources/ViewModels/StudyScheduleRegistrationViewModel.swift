@@ -39,8 +39,10 @@ final class StudyScheduleRegistrationViewModel {
 
     /// 선택된 장소 이름
     ///
-    /// 장소 선택 UI(`PlaceSelectView`)와 좌표 모델은 위치 검색 서브시스템과 함께
-    /// View 이식 시점에 결선됩니다. 현재 단계에서는 입력 이름만 보관합니다.
+    /// 장소 선택 UI(`PlaceSelectView`/`MapPlacePickerView`)와 좌표 모델(`PlaceSelection`)은
+    /// CoreUIComponents로 이식이 완료되어 결선 준비가 되어 있습니다(#1018). 본 뷰모델의
+    /// 실제 View 결선은 `StudyScheduleRegistrationView` 이식 이슈(#1014)에서 진행되며,
+    /// 그 전까지는 입력 이름만 보관합니다.
     var placeName: String = ""
 
     /// 비대면 일정 여부
