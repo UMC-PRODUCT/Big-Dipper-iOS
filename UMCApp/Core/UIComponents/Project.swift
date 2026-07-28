@@ -16,5 +16,6 @@ let project = coreProject(
         // CoreDesignSystem과 동일한 규칙 — 자동 생성 심볼 대신 문자열 이름으로 접근한다.
         "ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS": "NO",
         "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "NO",
-    ]
+    ],
+    includesTests: true
 )
