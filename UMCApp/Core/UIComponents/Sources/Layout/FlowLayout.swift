@@ -10,10 +10,6 @@ import SwiftUI
 /// 자식 뷰를 가로로 배치하다가 폭을 넘으면 다음 줄로 넘기는 flow(wrap) 레이아웃입니다.
 ///
 /// 태그·칩처럼 개수가 가변인 요소를 자연스럽게 줄바꿈 배치할 때 사용합니다.
-///
-/// - Note: 같은 `FlowLayout` 이 NoticePresentation 에도 로컬로 하나 더 있습니다.
-///   여러 피처가 함께 쓰는 순수 레이아웃이라, 앞으로 이 canonical 하나로 합치는 게 목표입니다.
-///   // TODO: NoticePresentation 로컬 FlowLayout 을 이 canonical 로 통합 - [26.07.15] 이재원
 public struct FlowLayout: Layout {
     public var alignment: Alignment
     public var spacing: CGFloat
@@ -28,33 +24,17 @@ public struct FlowLayout: Layout {
         self.spacing = spacing
     }
 
+    // MARK: - Layout
+
     public func sizeThatFits(
         proposal: ProposedViewSize,
         subviews: Subviews,
         cache: inout ()
     ) -> CGSize {
         let maxWidth = proposal.width ?? 0
-        var height: CGFloat = 0
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
 
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-
-            if x + size.width > maxWidth {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-
-            rowHeight = max(rowHeight, size.height)
-            x += size.width + spacing
-        }
-
-        height = y + rowHeight
-
-        return CGSize(width: maxWidth, height: height)
+        return Self.wrapLayout(sizes: sizes, maxWidth: maxWidth, spacing: spacing).totalSize
     }
 
     public func placeSubviews(
@@ -63,27 +43,47 @@ public struct FlowLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) {
-        let maxWidth = bounds.width
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let wrap = Self.wrapLayout(sizes: sizes, maxWidth: bounds.width, spacing: spacing)
+        let origins = wrap.origins
+
+        for (index, subview) in subviews.enumerated() {
+            subview.place(
+                at: CGPoint(x: bounds.minX + origins[index].x, y: bounds.minY + origins[index].y),
+                proposal: .init(sizes[index])
+            )
+        }
+    }
+
+    // MARK: - Function
+
+    /// 각 자식의 크기 배열을 순서대로 순회하며 wrap(줄바꿈) 배치 원점과 전체 크기를 계산합니다.
+    ///
+    /// `sizeThatFits`/`placeSubviews` 가 공유하는 순수 계산 로직이며, `Subviews`(SwiftUI 런타임 전용 타입)
+    /// 없이도 `[CGSize]` 입력만으로 단위 테스트가 가능하도록 분리되어 있습니다.
+    static func wrapLayout(
+        sizes: [CGSize],
+        maxWidth: CGFloat,
+        spacing: CGFloat
+    ) -> (origins: [CGPoint], totalSize: CGSize) {
+        var origins: [CGPoint] = []
         var x: CGFloat = 0
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
 
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-
+        for size in sizes {
             if x + size.width > maxWidth {
                 x = 0
                 y += rowHeight + spacing
                 rowHeight = 0
             }
 
-            subview.place(
-                at: CGPoint(x: bounds.minX + x, y: bounds.minY + y),
-                proposal: .init(size)
-            )
+            origins.append(CGPoint(x: x, y: y))
 
             rowHeight = max(rowHeight, size.height)
             x += size.width + spacing
         }
+
+        return (origins, CGSize(width: maxWidth, height: y + rowHeight))
     }
 }
