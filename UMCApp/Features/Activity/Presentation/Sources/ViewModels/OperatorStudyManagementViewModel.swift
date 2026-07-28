@@ -94,6 +94,11 @@ final class OperatorStudyManagementViewModel {
         self.gisuIdProvider = gisuIdProvider
     }
 
+    // MARK: - Computed Property
+
+    /// 현재 사용자 기수 ID (서버 응답 `String`). 그룹 생성 화면의 표시·검증용.
+    var currentGisuId: String? { gisuIdProvider() }
+
     // MARK: - Function (조회 / 페이지네이션)
 
     /// 스터디 그룹 관리 탭 진입 시 그룹 목록 및 상세 조회
