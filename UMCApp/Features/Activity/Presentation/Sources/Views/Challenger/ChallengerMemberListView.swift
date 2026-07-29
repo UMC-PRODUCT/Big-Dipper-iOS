@@ -127,6 +127,10 @@ struct ChallengerMemberListView: View {
                         } label: {
                             CoreMemberManagementRow(memberManagementItem: item)
                         }
+                        // 상세 조회가 진행 중이면 다른 행 탭을 막는다. 가드가 없으면 서로
+                        // 다른 멤버의 조회 Task 가 동시에 떠서 늦게 끝난 쪽이
+                        // `selectedMember` 를 덮어써 엉뚱한 멤버의 시트가 열린다.
+                        .disabled(viewModel.isLoadingMemberDetail)
                         .onAppear {
                             if item.id == group.members.last?.id,
                                group.part == viewModel.groupedMembers.last?.part {
