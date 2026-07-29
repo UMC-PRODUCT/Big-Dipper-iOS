@@ -149,7 +149,7 @@
 | `Presentation/Components/CoreStudyManagementList.swift` | ActivityPresentation |
 | `Presentation/Components/Map/ActivityCompactMapView.swift` | ActivityPresentation |
 | `Presentation/Components/Map/BaseMapComponent.swift` | ActivityPresentation |
-| `Presentation/Components/Member/CoreMemberManagementList.swift` | ActivityPresentation |
+| `Presentation/Components/Member/CoreMemberManagementList.swift` | ActivityPresentation (이식 시 `CoreMemberManagementRow.swift` 로 개명 — 리스트가 아니라 행 뷰) |
 | `Presentation/Components/Member/MemberManagementCard.swift` | ActivityPresentation |
 | `Presentation/Components/Member/PointGrantFormSheet.swift` | ActivityPresentation |
 | `Presentation/Components/Operation/Attendance/OperatorLocationChangeSheetView.swift` | ActivityPresentation |

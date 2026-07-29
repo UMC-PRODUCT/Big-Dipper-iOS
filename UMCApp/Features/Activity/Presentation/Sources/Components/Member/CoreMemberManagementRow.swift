@@ -1,5 +1,5 @@
 //
-//  CoreMemberManagementList.swift
+//  CoreMemberManagementRow.swift
 //  ActivityPresentation
 //
 //  Created by jaewon Lee on 7/15/26.
@@ -11,13 +11,13 @@ import CoreUIComponents
 import SwiftUI
 import UMCFoundation
 
-// MARK: - CoreMemberManagementList
+// MARK: - CoreMemberManagementRow
 
-/// 구성원 목록의 리스트 아이템 뷰입니다.
+/// 구성원 목록의 리스트 아이템(행) 뷰입니다.
 ///
 /// 프로필 이미지, 이름·파트, 운영진 직책 배지를 가로로 배치합니다.
 /// 챌린저 구성원 목록과 운영진 멤버 관리 화면(후속 이슈)에서 공유합니다.
-struct CoreMemberManagementList: View {
+struct CoreMemberManagementRow: View {
 
     // MARK: - Property
 
@@ -110,38 +110,12 @@ struct ManagementTeamBadgePresenter: View {
     }
 }
 
-// MARK: - PenaltyBadgePresenter
-
-/// 운영진 화면에서 멤버의 벌점을 표시하는 배지입니다.
-struct PenaltyBadgePresenter: View {
-
-    let penalty: Double
-
-    private enum Constants {
-        static let verticalPadding: CGFloat = 6
-        static let horizontalPadding: CGFloat = 8
-        static let bgOpacity: Double = 0.2
-    }
-
-    var body: some View {
-        Text("벌점 \(String(format: "%.0f", penalty))")
-            .font(.app(.footnote, weight: .regular))
-            .foregroundStyle(.red)
-            .padding(.vertical, Constants.verticalPadding)
-            .padding(.horizontal, Constants.horizontalPadding)
-            .background {
-                RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
-                    .fill(.red.opacity(Constants.bgOpacity))
-            }
-    }
-}
-
 // MARK: - Preview
 
 #if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     VStack(spacing: 4) {
-        CoreMemberManagementList(
+        CoreMemberManagementRow(
             memberManagementItem: MemberManagementItem(
                 profile: nil,
                 name: "이예지",
@@ -158,7 +132,7 @@ struct PenaltyBadgePresenter: View {
             )
         )
 
-        CoreMemberManagementList(
+        CoreMemberManagementRow(
             memberManagementItem: MemberManagementItem(
                 profile: nil,
                 name: "홍길동",

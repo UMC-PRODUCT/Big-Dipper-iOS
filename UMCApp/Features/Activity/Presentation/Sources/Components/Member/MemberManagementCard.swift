@@ -13,10 +13,15 @@ import UMCFoundation
 
 // MARK: - MemberManagementCard
 
+// TODO: OperatorMemberManagementView 이식 시 이 카드 연결 (#898) - [26.07.29] 이재원
+
 /// 멤버 관리 리스트에서 사용하는 카드 뷰입니다.
 ///
 /// 프로필 이미지, 이름·기수·직책·파트, 상벌점 배지, chevron 을 가로로 배치합니다.
-/// 운영진 멤버 관리 화면(후속 이슈)에서 공유하는 컴포넌트입니다.
+///
+/// - Note: 현재 이 카드를 소비하는 화면은 없고 프리뷰에서만 렌더링됩니다.
+///   챌린저 구성원 목록은 행 높이가 낮은 ``CoreMemberManagementRow`` 를 사용하며,
+///   이 카드는 운영진 멤버 관리 화면이 이식될 때 첫 소비자가 생깁니다.
 struct MemberManagementCard: View, Equatable {
 
     // MARK: - Property
@@ -28,7 +33,7 @@ struct MemberManagementCard: View, Equatable {
     fileprivate enum Constants {
         static let hstackSpacing: CGFloat = 15
         static let chevronSize: CGSize = .init(width: 4, height: 8)
-        static let innerPadding: CGFloat = 16
+        static let innerPadding: CGFloat = DefaultSpacing.spacing16
         static let radius: CGFloat = 14
         static let strokeWidth: CGFloat = 1
     }
@@ -61,7 +66,7 @@ struct MemberManagementCard: View, Equatable {
 
 /// 프로필 사진과 선물 상자 배지를 표시합니다.
 ///
-/// ``CoreMemberManagementList`` 에서도 사용하는 공유 컴포넌트입니다.
+/// ``CoreMemberManagementRow`` 에서도 사용하는 공유 컴포넌트입니다.
 struct MemberImagePresenter: View, Equatable {
 
     // MARK: - Property
@@ -188,9 +193,9 @@ private struct MemberPenaltyPresenter: View, Equatable {
     // MARK: - Constants
 
     fileprivate enum Constants {
-        static let hstackSpacing: CGFloat = 4
-        static let horizonSpacing: CGFloat = 8
-        static let verticalSpacing: CGFloat = 4
+        static let hstackSpacing: CGFloat = DefaultSpacing.spacing4
+        static let horizonSpacing: CGFloat = DefaultSpacing.spacing8
+        static let verticalSpacing: CGFloat = DefaultSpacing.spacing4
         static let radius: CGFloat = 8
         static let strokeWidth: CGFloat = 0.5
     }
@@ -203,9 +208,9 @@ private struct MemberPenaltyPresenter: View, Equatable {
                 pointBadge(
                     label: "상점",
                     value: memberManagementItem.rewardPoints,
-                    fgColor: .green,
-                    bgColor: Color.green.opacity(0.1),
-                    borderColor: Color.green.opacity(0.3)
+                    fgColor: Color.green700,
+                    bgColor: Color.green100,
+                    borderColor: Color.green300
                 )
             }
             if memberManagementItem.penalty > 0 {

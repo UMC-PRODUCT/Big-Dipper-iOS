@@ -125,7 +125,7 @@ struct ChallengerMemberListView: View {
                                 await viewModel.openChallengerMemberDetail(item)
                             }
                         } label: {
-                            CoreMemberManagementList(memberManagementItem: item)
+                            CoreMemberManagementRow(memberManagementItem: item)
                         }
                         .onAppear {
                             if item.id == group.members.last?.id,
