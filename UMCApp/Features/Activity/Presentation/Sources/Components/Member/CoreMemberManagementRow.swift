@@ -83,29 +83,21 @@ struct CoreMemberTextPresenter: View {
 // MARK: - ManagementTeamBadgePresenter
 
 /// 운영진 직책 배지입니다. 일반 챌린저(`.challenger`)는 아무것도 표시하지 않습니다.
+///
+/// 렌더링은 ``InfoBadge`` 에 위임해 앱 전역 배지 스타일(Glass Effect)을 따릅니다.
+/// 이 타입은 `.challenger` 를 걸러내는 도메인 규칙만 담당합니다.
 struct ManagementTeamBadgePresenter: View {
 
     /// 운영진 직책 타입
     let managementTeam: ManagementTeam
 
-    private enum Constants {
-        static let verticalPadding: CGFloat = 6
-        static let horizontalPadding: CGFloat = 8
-    }
-
     var body: some View {
-        Group {
-            if managementTeam != .challenger {
-                Text(managementTeam.korean)
-                    .font(.app(.footnote, weight: .regular))
-                    .foregroundStyle(managementTeam.textColor)
-                    .padding(.vertical, Constants.verticalPadding)
-                    .padding(.horizontal, Constants.horizontalPadding)
-                    .background {
-                        RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
-                            .fill(managementTeam.backgroundColor)
-                    }
-            }
+        if managementTeam != .challenger {
+            InfoBadge(
+                managementTeam.korean,
+                textColor: managementTeam.textColor,
+                tintColor: managementTeam.backgroundColor
+            )
         }
     }
 }
