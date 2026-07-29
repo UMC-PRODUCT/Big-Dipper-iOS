@@ -19,7 +19,6 @@ struct ChallengerMemberDetailSheetView: View {
 
     // MARK: - Property
 
-    @Environment(\.dismiss) private var dismiss
     let member: MemberManagementItem
     @State private var selectedGisu: Int
 
@@ -33,7 +32,13 @@ struct ChallengerMemberDetailSheetView: View {
         static let partStrokeWidth: CGFloat = 1
         static let pointIconSize: CGFloat = 14
         static let dividerHeight: CGFloat = 44
-        static let detentHeight: CGFloat = 280
+
+        /// Apple HIG 최소 터치 타겟(44pt).
+        static let minimumTapTarget: CGFloat = 44
+
+        /// 기수 칩 탭 영역을 44pt 로 넓히면서 활동 기수 행이 약 21pt 높아져,
+        /// 기존 280pt 로는 여유가 10pt 남짓만 남는다. 여유를 되돌려 잡은 값.
+        static let detentHeight: CGFloat = 300
     }
 
     // MARK: - Init
@@ -47,11 +52,10 @@ struct ChallengerMemberDetailSheetView: View {
 
     // MARK: - Computed Property
 
+    /// 기수가 하나뿐인 멤버의 기수 문자열.
+    ///
+    /// - Note: 복수 기수 멤버는 ``generationChips`` 로 분기하므로 이 프로퍼티를 읽지 않습니다.
     private var currentGeneration: String {
-        if hasMultipleGenerations,
-           let lastGisu = uniqueGenerationPoints.map(\.gisu).max() {
-            return "\(lastGisu)기"
-        }
         let gens = member.generation
             .components(separatedBy: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -147,10 +151,15 @@ struct ChallengerMemberDetailSheetView: View {
             HStack {
                 Text("활동 기수")
                     .appFont(.subheadline, color: .grey700)
-                Spacer()
+
+                // 복수 기수일 때는 `Spacer` 를 두지 않는다. 칩 스크롤뷰가 남은 폭을
+                // 전부 차지해야 기수가 많아도 스크롤로 닿을 수 있고, 칩이 적을 때는
+                // `defaultScrollAnchor(.trailing)` 이 우측 정렬을 대신한다.
                 if hasMultipleGenerations {
                     generationChips
                 } else {
+                    Spacer()
+
                     Text(currentGeneration)
                         .appFont(.subheadline, weight: .semibold)
                         .contentTransition(.numericText())
@@ -162,10 +171,10 @@ struct ChallengerMemberDetailSheetView: View {
             HStack(spacing: .zero) {
                 pointColumn(
                     icon: "plus.circle.fill",
-                    iconColor: .green,
+                    iconColor: .green700,
                     label: "상점",
                     value: displayRewardPoints,
-                    valueColor: .green
+                    valueColor: .green700
                 )
 
                 Divider()
@@ -173,10 +182,10 @@ struct ChallengerMemberDetailSheetView: View {
 
                 pointColumn(
                     icon: "minus.circle.fill",
-                    iconColor: .red,
+                    iconColor: .red700,
                     label: "벌점",
                     value: displayPenaltyPoints,
-                    valueColor: .red
+                    valueColor: .red700
                 )
             }
         }
@@ -189,29 +198,37 @@ struct ChallengerMemberDetailSheetView: View {
     }
 
     private var generationChips: some View {
-        HStack(spacing: DefaultSpacing.spacing4) {
-            ForEach(uniqueGenerationPoints) { summary in
-                Button {
-                    withAnimation(.smooth(duration: 0.3)) {
-                        selectedGisu = summary.gisu
+        ScrollView(.horizontal) {
+            HStack(spacing: DefaultSpacing.spacing4) {
+                ForEach(uniqueGenerationPoints) { summary in
+                    Button {
+                        withAnimation(.smooth(duration: 0.3)) {
+                            selectedGisu = summary.gisu
+                        }
+                    } label: {
+                        Text("\(summary.gisu)기")
+                            .appFont(
+                                .subheadline,
+                                weight: selectedGisu == summary.gisu ? .semibold : .regular,
+                                color: selectedGisu == summary.gisu ? .white : .grey700
+                            )
+                            .padding(Constants.tagPadding)
+                            .background(
+                                selectedGisu == summary.gisu
+                                    ? Color.accentColor : Color.grey200,
+                                in: Capsule()
+                            )
+                            // 캡슐 자체는 그대로 두고 탭 영역만 HIG 최소 높이까지 넓힌다.
+                            .frame(minHeight: Constants.minimumTapTarget)
+                            .contentShape(Rectangle())
                     }
-                } label: {
-                    Text("\(summary.gisu)기")
-                        .appFont(
-                            .subheadline,
-                            weight: selectedGisu == summary.gisu ? .semibold : .regular,
-                            color: selectedGisu == summary.gisu ? .white : .grey700
-                        )
-                        .padding(Constants.tagPadding)
-                        .background(
-                            selectedGisu == summary.gisu
-                                ? Color.accentColor : Color.grey200,
-                            in: Capsule()
-                        )
+                    .accessibilityLabel("\(summary.gisu)기 선택")
                 }
-                .accessibilityLabel("\(summary.gisu)기 선택")
             }
         }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .defaultScrollAnchor(.trailing)
     }
 
     // MARK: - Function
