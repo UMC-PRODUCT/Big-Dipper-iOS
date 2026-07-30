@@ -19,9 +19,9 @@ import UMCFoundation
 /// - `.task` 라이프사이클 취소(`CancellationError`)는 실패가 아니므로 이전 상태로 롤백합니다
 ///   (형제 `MemberListViewModel`/`ChallengerStudyViewModel` house 패턴).
 ///
-/// > Note: 위치 변경은 특정 장소 검색 모델(`PlaceSearchInfo`)에 묶이지 않도록 검증된 원시
-///   좌표 파라미터를 받는 ``changeLocation(name:latitude:longitude:)`` 로 노출합니다.
-///   시트(``OperatorLocationChangeSheet``)가 장소 선택 결과를 이 좌표로 넘겨줍니다.
+/// > Note: 위치 변경은 UI 계층의 장소 선택 모델(`CoreUIComponents.PlaceSelection`)에 묶이지
+///   않도록 검증된 원시 좌표 파라미터를 받는 ``changeLocation(name:latitude:longitude:)`` 로
+///   노출합니다. 시트(``OperatorLocationChangeSheet``)가 선택 결과를 이 좌표로 풀어 넘깁니다.
 @MainActor
 @Observable
 final class OperatorAttendanceViewModel {
@@ -588,7 +588,7 @@ final class OperatorAttendanceViewModel {
     /// 세션 출석 위치 변경.
     ///
     /// 좌표 유효성(유한값·위경도 범위)을 검증한 뒤 UseCase 에 위임합니다. 성공하면 `true`.
-    /// - Note: 레거시 `PlaceSearchInfo` 커플링을 제거하고 검증된 원시 좌표를 받습니다.
+    /// - Note: UI 계층 장소 모델에 커플링되지 않도록 검증된 원시 좌표를 받습니다.
     func changeLocation(
         name: String,
         latitude: Double,

@@ -51,7 +51,7 @@ struct ParticipantAttendanceRow: View, Equatable {
                 ProgressView()
                     .frame(width: Constants.avatarSize, height: Constants.avatarSize)
             } else {
-                AttendanceStatusBadge(status: participant.attendanceStatus)
+                AttendanceStatusBadge(status: participant.attendanceStatus.badgeStatus)
             }
         }
         .padding(DefaultSpacing.spacing12)

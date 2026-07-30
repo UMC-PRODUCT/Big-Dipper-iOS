@@ -21,13 +21,9 @@ import UMCFoundation
 ///
 /// - Important: 자체 `NavigationStack` 을 만들지 않습니다. 활동 탭의 스택 안에서 섹션 루트로
 ///   렌더되는 화면이라, 스택은 상위가 제공합니다(중첩 스택 방지).
-/// - Note: 위치 변경 시트의 장소 검색 화면은 `placeSearch` 로 주입받습니다
-///   (``OperatorLocationChangeSheet`` 참고).
-/// - Note: `#Preview` 를 두지 않습니다. 이 화면은 주입 seam 때문에 제네릭 타입이고, 정적
-///   프레임워크만 JIT 링크하는 Xcode 프리뷰가 제네릭 인스턴스화에 필요한 동시성 back-deploy
-///   심볼(`swift_getFunctionTypeMetadataGlobalActorBackDeploy`)을 찾지 못해 캔버스가 실패합니다.
-///   시각 확인은 비제네릭 하위 컴포넌트(카드·행·뱃지) 프리뷰나 시뮬레이터 실행으로 합니다.
-public struct OperatorAttendanceView<PlaceSearch: View>: View {
+/// - Note: 위치 변경 시트는 공용 장소 선택기(`CoreUIComponents.PlaceSelectView`)를 그대로
+///   사용합니다 — 별도 주입 seam 없이 시트 안에서 완결됩니다.
+public struct OperatorAttendanceView: View {
 
     // MARK: - Property
 
@@ -41,19 +37,14 @@ public struct OperatorAttendanceView<PlaceSearch: View>: View {
     /// push 된 상세 대상 일정 — `nil` 이면 목록만 표시한다.
     @State private var pushedScheduleId: String?
 
-    private let placeSearch: (@escaping (PlaceSelection) -> Void) -> PlaceSearch
-
     // MARK: - Init
 
     /// - Parameters:
     ///   - errorHandler: 전역 에러 핸들러
     ///   - useCase: 운영진 출석 UseCase
-    ///   - placeSearch: 위치 변경 시트에 주입할 장소 검색 화면 빌더.
-    ///     인자로 받은 콜백에 선택 결과를 전달하면 시트가 변경 요청으로 이어간다.
     public init(
         errorHandler: ErrorHandler,
-        useCase: OperatorAttendanceUseCaseProtocol,
-        @ViewBuilder placeSearch: @escaping (@escaping (PlaceSelection) -> Void) -> PlaceSearch
+        useCase: OperatorAttendanceUseCaseProtocol
     ) {
         _viewModel = State(
             initialValue: OperatorAttendanceViewModel(
@@ -61,7 +52,6 @@ public struct OperatorAttendanceView<PlaceSearch: View>: View {
                 useCase: useCase
             )
         )
-        self.placeSearch = placeSearch
     }
 
     // MARK: - Body
@@ -100,8 +90,7 @@ public struct OperatorAttendanceView<PlaceSearch: View>: View {
             .navigationDestination(item: $pushedScheduleId) { scheduleId in
                 OperatorAttendanceDetailView(
                     viewModel: viewModel,
-                    scheduleId: scheduleId,
-                    placeSearch: placeSearch
+                    scheduleId: scheduleId
                 )
             }
             .task {

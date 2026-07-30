@@ -19,9 +19,7 @@ import UMCFoundation
 /// 승인/반려는 스와이프 액션과 승인 대기 시트에서 처리합니다.
 /// 목록 화면(``OperatorAttendanceView``)과 **같은 ViewModel 인스턴스**를 공유해
 /// 결정 결과가 목록 배지에도 즉시 반영됩니다.
-///
-/// - Note: `#Preview` 를 두지 않습니다. 사유는 ``OperatorAttendanceView`` 의 같은 항목 참고.
-struct OperatorAttendanceDetailView<PlaceSearch: View>: View {
+struct OperatorAttendanceDetailView: View {
 
     // MARK: - Property
 
@@ -33,9 +31,6 @@ struct OperatorAttendanceDetailView<PlaceSearch: View>: View {
     /// 진입 대상 일정 (목록에서 push 된 값 — 화면 진입 시 ViewModel 선택으로 연결)
     private let scheduleId: String
 
-    /// 위치 변경 시트에 주입할 장소 검색 화면 빌더
-    private let placeSearch: (@escaping (PlaceSelection) -> Void) -> PlaceSearch
-
     @State private var isPendingSheetPresented: Bool = false
 
     /// 위치 변경 대상 — 버튼 탭 시점의 일정 정보를 스냅샷으로 캡처한다.
@@ -46,14 +41,9 @@ struct OperatorAttendanceDetailView<PlaceSearch: View>: View {
 
     // MARK: - Init
 
-    init(
-        viewModel: OperatorAttendanceViewModel,
-        scheduleId: String,
-        @ViewBuilder placeSearch: @escaping (@escaping (PlaceSelection) -> Void) -> PlaceSearch
-    ) {
+    init(viewModel: OperatorAttendanceViewModel, scheduleId: String) {
         self.viewModel = viewModel
         self.scheduleId = scheduleId
-        self.placeSearch = placeSearch
     }
 
     // MARK: - Body
@@ -475,11 +465,10 @@ struct OperatorAttendanceDetailView<PlaceSearch: View>: View {
             onSubmit: { place in
                 await viewModel.changeLocation(
                     name: place.name,
-                    latitude: place.latitude,
-                    longitude: place.longitude
+                    latitude: place.coordinate.latitude,
+                    longitude: place.coordinate.longitude
                 )
-            },
-            placeSearch: placeSearch
+            }
         )
     }
 

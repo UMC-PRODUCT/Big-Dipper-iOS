@@ -6,13 +6,12 @@
 //
 
 import ActivityDomain
-import CoreDesignSystem
-import SwiftUI
+import CoreUIComponents
+import Foundation
 
-/// `ParticipantAttendanceStatus` 의 시각 표현 매핑.
+/// `ParticipantAttendanceStatus` 의 표현 계층 매핑.
 ///
-/// 도메인 enum 이 SwiftUI 의존을 갖지 않도록 아이콘·색상은 Presentation 레이어에 둡니다.
-/// 필터 메뉴(``OperatorAttendanceView``)와 상태 뱃지(``AttendanceStatusBadge``)가 공유합니다.
+/// 도메인 enum 이 SwiftUI 의존을 갖지 않도록 아이콘과 뱃지 매핑은 Presentation 레이어에 둡니다.
 extension ParticipantAttendanceStatus {
 
     /// 필터 메뉴 라벨에 사용할 SF Symbol 이름
@@ -30,37 +29,22 @@ extension ParticipantAttendanceStatus {
         }
     }
 
-    /// 상태 뱃지 글래스 틴트 색상
-    var badgeTintColor: Color {
-        switch self {
-        case .present, .excused:
-            return .green
-        case .late:
-            return .orange
-        case .absent:
-            return .red
-        case .presentPending, .latePending, .excusedPending:
-            return .yellow
-        case .pending, .unknown:
-            return .gray
-        }
-    }
-
-    /// 상태 뱃지 전경(텍스트·아이콘) 색상
+    /// 공용 뱃지(``AttendanceStatusBadge``)가 요구하는 Core-safe 상태로 변환한다.
     ///
-    /// 승인 대기는 노랑 틴트 위에서 대비가 부족해 주황 전경을 사용합니다.
-    var badgeForegroundColor: Color {
+    /// `CoreUIComponents` 는 ActivityDomain 에 의존할 수 없어 같은 케이스 집합을
+    /// ``AttendanceBadgeStatus`` 로 자체 보유하며, 매핑은 각 피처의 Presentation 몫입니다.
+    /// `default` 를 두지 않아 도메인에 케이스가 추가되면 컴파일 단계에서 매핑 누락이 드러납니다.
+    var badgeStatus: AttendanceBadgeStatus {
         switch self {
-        case .present, .excused:
-            return .green
-        case .late:
-            return .orange
-        case .absent:
-            return .red
-        case .presentPending, .latePending, .excusedPending:
-            return .orange
-        case .pending, .unknown:
-            return .grey600
+        case .presentPending: return .presentPending
+        case .latePending:    return .latePending
+        case .excusedPending: return .excusedPending
+        case .present:        return .present
+        case .late:           return .late
+        case .absent:         return .absent
+        case .excused:        return .excused
+        case .pending:        return .pending
+        case .unknown:        return .unknown
         }
     }
 }
