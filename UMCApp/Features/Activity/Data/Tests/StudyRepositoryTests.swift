@@ -206,11 +206,11 @@ private func makeRepository(
 @Suite("StudyRepository — 커리큘럼 조회 매핑 (도메인 규칙)")
 struct StudyRepositoryCurriculumTests {
 
-    @Test("fetchCurriculumProgress — 커리큘럼 엔드포인트를 호출하고 진행률로 매핑한다")
-    func fetchCurriculumProgressMapsSuccess() async throws {
+    @Test("fetchCurriculumOverview — 커리큘럼 엔드포인트를 호출하고 진행률로 매핑한다")
+    func fetchCurriculumOverviewMapsProgress() async throws {
         let (sut, stub) = makeRepository(.success(Fixture.success(Fixture.curriculumObject)))
 
-        let progress = try await sut.fetchCurriculumProgress()
+        let progress = try await sut.fetchCurriculumOverview().progress
 
         #expect(progress.partName == "iOS PART CURRICULUM")
         #expect(progress.totalCount == 2)
@@ -220,24 +220,37 @@ struct StudyRepositoryCurriculumTests {
         #expect(stub.lastMethod == .get)
     }
 
-    @Test("fetchCurriculumProgress — gisuId 가 없으면 네트워크 호출 없이 도메인 에러를 던진다")
-    func fetchCurriculumProgressThrowsWhenNoGeneration() async {
-        let (sut, stub) = makeRepository([], context: StubStudyContext(gisuId: nil))
-
-        await #expect(throws: DomainError.curriculumUnavailableForGeneration) {
-            try await sut.fetchCurriculumProgress()
-        }
-        #expect(stub.requestCount == 0)
-    }
-
-    @Test("fetchMissions — 주차를 미션 카드로 매핑하고 주차 오름차순으로 정렬한다")
-    func fetchMissionsMapsAndSorts() async throws {
+    @Test("fetchCurriculumOverview — 주차를 미션 카드로 매핑하고 주차 오름차순으로 정렬한다")
+    func fetchCurriculumOverviewMapsAndSortsMissions() async throws {
         let (sut, _) = makeRepository(.success(Fixture.success(Fixture.curriculumObject)))
 
-        let missions = try await sut.fetchMissions()
+        let missions = try await sut.fetchCurriculumOverview().missions
 
         #expect(missions.map(\.week) == [1, 2])
         #expect(missions.allSatisfy { $0.platform == "iOS" })
+    }
+
+    /// 진행률과 미션을 각각 조회하던 구조에서는 같은 개요 엔드포인트가 2회 호출됐다.
+    /// 단일 조회로 통합된 구조가 회귀하지 않도록 요청 횟수를 박제한다.
+    @Test("fetchCurriculumOverview — 진행률·미션을 함께 얻어도 네트워크 요청은 1회뿐이다")
+    func fetchCurriculumOverviewRequestsNetworkOnlyOnce() async throws {
+        let (sut, stub) = makeRepository(.success(Fixture.success(Fixture.curriculumObject)))
+
+        let overview = try await sut.fetchCurriculumOverview()
+
+        #expect(stub.requestCount == 1)
+        #expect(overview.progress.totalCount == 2)
+        #expect(overview.missions.count == 2)
+    }
+
+    @Test("fetchCurriculumOverview — gisuId 가 없으면 네트워크 호출 없이 도메인 에러를 던진다")
+    func fetchCurriculumOverviewThrowsWhenNoGeneration() async {
+        let (sut, stub) = makeRepository([], context: StubStudyContext(gisuId: nil))
+
+        await #expect(throws: DomainError.curriculumUnavailableForGeneration) {
+            try await sut.fetchCurriculumOverview()
+        }
+        #expect(stub.requestCount == 0)
     }
 
     @Test("fetchWeeklyCurriculumOptions — 주차를 옵션으로 매핑하고 주차 오름차순으로 정렬한다")
@@ -250,14 +263,14 @@ struct StudyRepositoryCurriculumTests {
         #expect(options.map(\.weekNo) == ["1", "2"])     // 도메인 모델은 weekNo: String
     }
 
-    @Test("fetchCurriculumProgress — isSuccess:false 면 RepositoryError.serverError 를 던진다")
-    func fetchCurriculumProgressThrowsServerError() async {
+    @Test("fetchCurriculumOverview — isSuccess:false 면 RepositoryError.serverError 를 던진다")
+    func fetchCurriculumOverviewThrowsServerError() async {
         let (sut, _) = makeRepository(
             .success(Fixture.failureBody(code: "CUR404", message: "커리큘럼 없음"))
         )
 
         await #expect(throws: RepositoryError.serverError(code: "CUR404", message: "커리큘럼 없음")) {
-            try await sut.fetchCurriculumProgress()
+            try await sut.fetchCurriculumOverview()
         }
     }
 }

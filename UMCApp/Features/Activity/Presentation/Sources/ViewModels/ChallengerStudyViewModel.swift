@@ -11,35 +11,48 @@ import UMCFoundation
 
 /// 챌린저(일반 참여자) 모드의 스터디/활동 섹션 ViewModel
 ///
-/// `FetchCurriculumUseCaseProtocol` 을 통해 커리큘럼 진행 현황을 조회해
-/// `ChallengerStudyView` 커리큘럼 섹션의 상태 소스로 사용됩니다.
+/// 진행률과 미션은 서버의 커리큘럼 개요 응답 하나에서 함께 내려오므로 조회는 단일
+/// `FetchCurriculumOverviewUseCaseProtocol` 로 수행하고, 그 결과를 두 상태에 나눠 담습니다.
+/// - `curriculumState`: 진행률(`CurriculumProgressModel`)
+/// - `missionsState`: 주차별 미션(`[MissionCardModel]`)
 ///
-/// - Note: 레거시는 `Loadable<CurriculumData>`(진행률 + 주차별 미션 카드)를 보유했으나,
-///   주차별 미션 상세(`CurriculumData`)는 정의 위치 미확정으로 #749 에서 동결되어
-///   본 진입점은 진행률(`CurriculumProgressModel`)만 보유합니다. 미션 카드 로딩과
-///   스터디 제출 현황(#586)·커리큘럼 과제 제출(#587)은 백엔드 결선 후 후행 이슈에서
-///   추가됩니다 (하단 TODO 참고).
+/// 상태를 둘로 나눠 두는 이유는 `ChallengerStudyView` 가 둘을 다르게 소비하기 때문입니다
+/// (미션이 비면 진행률 대신 안내 가이드를 노출). 제출 현황(#586)·과제 제출(#587)이 결선되면
+/// 미션은 별도 응답에서 파생돼 진행률과 갈라지므로, 그때 조회 경로만 분리하면 됩니다.
+///
+/// - Note: 스터디 제출 현황(#586)·커리큘럼 과제 제출(#587)은 백엔드 API 미제공으로
+///   비활성화 상태이며 결선 후 후행 이슈에서 추가됩니다 (하단 TODO 참고).
 @MainActor
 @Observable
 final class ChallengerStudyViewModel {
 
     // MARK: - Property
 
-    private let fetchCurriculumUseCase: FetchCurriculumUseCaseProtocol
+    private let fetchCurriculumOverviewUseCase: FetchCurriculumOverviewUseCaseProtocol
 
     // MARK: - State
 
     private(set) var curriculumState: Loadable<CurriculumProgressModel> = .idle
+    private(set) var missionsState: Loadable<[MissionCardModel]> = .idle
+
+    // MARK: - Computed Property
+
+    /// 커리큘럼 개요 조회가 진행 중인지 여부.
+    ///
+    /// `load()` 의 재진입 가드와 재시도 버튼의 로딩 피드백이 함께 사용합니다.
+    var isLoading: Bool {
+        curriculumState.isLoading || missionsState.isLoading
+    }
 
     // MARK: - Init
 
-    init(fetchCurriculumUseCase: FetchCurriculumUseCaseProtocol) {
-        self.fetchCurriculumUseCase = fetchCurriculumUseCase
+    init(fetchCurriculumOverviewUseCase: FetchCurriculumOverviewUseCaseProtocol) {
+        self.fetchCurriculumOverviewUseCase = fetchCurriculumOverviewUseCase
     }
 
     // MARK: - Action
 
-    /// 커리큘럼 진행 현황을 조회합니다.
+    /// 커리큘럼 개요를 조회해 진행률과 미션 상태를 함께 채웁니다. (초기 로드/재시도 공용 경로)
     ///
     /// 이미 로딩 중이면 중복 호출을 무시합니다. `.task` 가 취소되면 던져지는 에러는
     /// 실패가 아니므로 이전 상태로 복원해 허위 에러 카드가 뜨지 않게 합니다. 에러 분기:
@@ -47,41 +60,48 @@ final class ChallengerStudyViewModel {
     /// - `AppError` → 그대로 `.failed` (이미 래핑됨)
     /// - `DomainError` / `NetworkError` / `RepositoryError` → 대응 `AppError` 로 매핑
     /// - 그 외 → `.failed(.unknown(message:))`
-    func fetchCurriculum() async {
-        if curriculumState.isLoading { return }
+    func load() async {
+        if isLoading { return }
 
-        let previousState = curriculumState
+        let previousCurriculum = curriculumState
+        let previousMissions = missionsState
         curriculumState = .loading
+        missionsState = .loading
 
         do {
-            let progress = try await fetchCurriculumUseCase.execute()
-            curriculumState = .loaded(progress)
+            let overview = try await fetchCurriculumOverviewUseCase.execute()
+            curriculumState = .loaded(overview.progress)
+            missionsState = .loaded(overview.missions)
         } catch is CancellationError {
-            curriculumState = previousState
+            curriculumState = previousCurriculum
+            missionsState = previousMissions
         } catch let error as NSError
             where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
-            curriculumState = previousState
+            curriculumState = previousCurriculum
+            missionsState = previousMissions
         } catch let error as AppError {
-            curriculumState = .failed(error)
+            markFailed(error)
         } catch let error as DomainError {
-            curriculumState = .failed(.domain(error))
+            markFailed(.domain(error))
         } catch let error as NetworkError {
-            curriculumState = .failed(.network(error))
+            markFailed(.network(error))
         } catch let error as RepositoryError {
-            curriculumState = .failed(.repository(error))
+            markFailed(.repository(error))
         } catch {
-            curriculumState = .failed(
-                .unknown(message: error.localizedDescription)
-            )
+            markFailed(.unknown(message: error.localizedDescription))
         }
     }
 
-    // MARK: - 미션/제출 현황 (백엔드 후행)
+    // MARK: - Function
 
-    // TODO: 주차별 미션 카드 결선 - [26.06.26] 이재원
-    //  — 레거시 `CurriculumData`(진행률 + 미션 카드)가 의존하던 `fetchCurriculumData(weekNo:)`
-    //    는 `CurriculumData` 정의 위치 미확정으로 #749 에서 동결됨. 정의 확정 후 미션 카드
-    //    Loadable 상태와 주차 선택 로딩을 복원한다.
+    /// 단일 조회가 실패했으므로 두 상태를 같은 에러로 함께 전이시킵니다.
+    private func markFailed(_ error: AppError) {
+        curriculumState = .failed(error)
+        missionsState = .failed(error)
+    }
+
+    // MARK: - 제출 현황 (백엔드 후행)
+
     // TODO: 스터디 제출 현황 조회(#586) 결선 - [26.06.26] 이재원
     //  — 백엔드 제출 현황 API 미제공으로 비활성화.
     // TODO: 커리큘럼 과제 제출(#587) 결선 - [26.06.26] 이재원
