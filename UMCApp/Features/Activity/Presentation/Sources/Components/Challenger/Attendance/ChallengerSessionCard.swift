@@ -45,9 +45,9 @@ struct ChallengerSessionCard: View, Equatable {
             && lhs.session.attendanceStatus == rhs.session.attendanceStatus
     }
 
-    // MARK: - Constant
+    // MARK: - Constants
 
-    private enum Constants {
+    fileprivate enum Constants {
         static let titleLineLimit: Int = 3
     }
 
@@ -104,7 +104,7 @@ struct ChallengerSessionCard: View, Equatable {
                     ? DefaultConstant.chevronUpImage
                     : DefaultConstant.chevronDownImage
             )
-            .foregroundStyle(.gray)
+            .foregroundStyle(Color.grey400)
         }
     }
 

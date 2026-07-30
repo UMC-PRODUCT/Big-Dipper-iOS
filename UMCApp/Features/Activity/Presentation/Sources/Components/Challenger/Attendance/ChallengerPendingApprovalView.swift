@@ -13,9 +13,9 @@ import SwiftUI
 /// Glass Morphing 애니메이션과 함께 출석 버튼에서 전환됩니다.
 struct ChallengerPendingApprovalView: View {
 
-    // MARK: - Constant
+    // MARK: - Constants
 
-    private enum Constant {
+    fileprivate enum Constants {
         static let iconSize: CGFloat = 32
         static let horizontalPadding: CGFloat = 24
         static let verticalPadding: CGFloat = 28
@@ -35,11 +35,11 @@ struct ChallengerPendingApprovalView: View {
             titleText
             descriptionText
         }
-        .padding(.horizontal, Constant.horizontalPadding)
-        .padding(.vertical, Constant.verticalPadding)
+        .padding(.horizontal, Constants.horizontalPadding)
+        .padding(.vertical, Constants.verticalPadding)
         .frame(maxWidth: .infinity)
         .background(
-            Color.yellow.opacity(Constant.backgroundOpacity),
+            Color.yellow500.opacity(Constants.backgroundOpacity),
             in: .rect(
                 corners: .concentric(minimum: DefaultConstant.concentricRadius),
                 isUniform: true
@@ -51,12 +51,12 @@ struct ChallengerPendingApprovalView: View {
 
     private var iconView: some View {
         Image(systemName: "arrow.trianglehead.2.counterclockwise")
-            .font(.system(size: Constant.iconSize))
-            .foregroundStyle(.yellow)
+            .font(.system(size: Constants.iconSize))
+            .foregroundStyle(Color.yellow500)
             .rotationEffect(.degrees(isRotating ? 360 : 0))
             .task {
                 withAnimation(
-                    .linear(duration: Constant.rotationDuration)
+                    .linear(duration: Constants.rotationDuration)
                         .repeatForever(autoreverses: false)
                 ) {
                     isRotating = true
