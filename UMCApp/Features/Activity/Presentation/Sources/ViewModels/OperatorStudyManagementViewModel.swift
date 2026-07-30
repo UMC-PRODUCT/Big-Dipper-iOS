@@ -85,9 +85,7 @@ final class OperatorStudyManagementViewModel {
     init(
         errorHandler: ErrorHandler,
         useCase: OperatorStudyManagementUseCaseProtocol,
-        gisuIdProvider: @escaping () -> String? = {
-            OperatorStudyManagementViewModel.storedGisuId()
-        }
+        gisuIdProvider: @escaping () -> String? = { AppStorageKey.gisuIdString() }
     ) {
         self.errorHandler = errorHandler
         self.useCase = useCase
@@ -908,13 +906,5 @@ final class OperatorStudyManagementViewModel {
             profileImageURL: challenger.profileImage,
             role: role
         )
-    }
-
-    private nonisolated static func storedGisuId(_ defaults: UserDefaults = .standard) -> String? {
-        if let value = defaults.string(forKey: AppStorageKey.gisuId), !value.isEmpty {
-            return value
-        }
-        let legacyInt = defaults.integer(forKey: AppStorageKey.gisuId)
-        return legacyInt > 0 ? String(legacyInt) : nil
     }
 }
