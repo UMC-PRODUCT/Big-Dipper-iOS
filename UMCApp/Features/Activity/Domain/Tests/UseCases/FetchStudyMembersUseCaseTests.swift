@@ -79,11 +79,7 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
 
     // MARK: 본 UseCase 미사용 — 호출 시 unimplemented
 
-    func fetchCurriculumProgress() async throws -> CurriculumProgressModel {
-        throw MockError.unimplemented
-    }
-
-    func fetchMissions() async throws -> [MissionCardModel] {
+    func fetchCurriculumOverview() async throws -> CurriculumOverview {
         throw MockError.unimplemented
     }
 

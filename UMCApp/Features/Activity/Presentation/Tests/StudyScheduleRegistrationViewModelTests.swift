@@ -100,12 +100,8 @@ private final class MockStudyScheduleRepository: @unchecked Sendable,
 
     // MARK: 계약 밖 메서드 (호출 시 실패 — 본 뷰 모델은 사용하지 않음)
 
-    func fetchCurriculumProgress() async throws -> CurriculumProgressModel {
-        fatalError("fetchCurriculumProgress 는 StudyScheduleRegistrationViewModel 계약 밖입니다.")
-    }
-
-    func fetchMissions() async throws -> [MissionCardModel] {
-        fatalError("fetchMissions 는 StudyScheduleRegistrationViewModel 계약 밖입니다.")
+    func fetchCurriculumOverview() async throws -> CurriculumOverview {
+        fatalError("fetchCurriculumOverview 는 StudyScheduleRegistrationViewModel 계약 밖입니다.")
     }
 
     func fetchStudyGroupDetails() async throws -> [StudyGroupInfo] {

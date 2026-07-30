@@ -160,21 +160,17 @@ extension MissionPreviewData {
         missions: [MissionCardModel] = iosMissions
     ) -> ChallengerStudyViewModel {
         ChallengerStudyViewModel(
-            fetchCurriculumUseCase: PreviewFetchCurriculumUseCase(progress: progress),
-            fetchMissionsUseCase: PreviewFetchMissionsUseCase(missions: missions)
+            fetchCurriculumOverviewUseCase: PreviewFetchCurriculumOverviewUseCase(
+                overview: CurriculumOverview(progress: progress, missions: missions)
+            )
         )
     }
 }
 
-// MARK: - Preview Stub UseCases
+// MARK: - Preview Stub UseCase
 
-private struct PreviewFetchCurriculumUseCase: FetchCurriculumUseCaseProtocol {
-    let progress: CurriculumProgressModel
-    func execute() async throws -> CurriculumProgressModel { progress }
-}
-
-private struct PreviewFetchMissionsUseCase: FetchMissionsUseCaseProtocol {
-    let missions: [MissionCardModel]
-    func execute() async throws -> [MissionCardModel] { missions }
+private struct PreviewFetchCurriculumOverviewUseCase: FetchCurriculumOverviewUseCaseProtocol {
+    let overview: CurriculumOverview
+    func execute() async throws -> CurriculumOverview { overview }
 }
 #endif

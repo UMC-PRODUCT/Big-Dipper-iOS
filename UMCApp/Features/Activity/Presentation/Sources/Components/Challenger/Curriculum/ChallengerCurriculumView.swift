@@ -27,7 +27,6 @@ struct ChallengerCurriculumView: View {
     // MARK: - Constants
 
     private enum Constants {
-        static let iconSize: CGFloat = 28
         static let connectorWidth: CGFloat = 2
         static let bottomPadding: CGFloat = 12
     }
@@ -76,16 +75,18 @@ struct ChallengerCurriculumView: View {
                         .padding(.bottom, isLast ? 0 : Constants.bottomPadding)
                 }
                 .overlay(alignment: .topLeading) {
-                    // 연결선: overlay로 HStack 높이에 맞게 자동 확장
+                    // 연결선: overlay로 HStack 높이에 맞게 자동 확장.
+                    // 시작 위치·수평 중심은 좌측 아이콘이 실제로 쓰는 상수를 그대로 기준 삼는다.
                     if !isLast {
                         Rectangle()
                             .fill(Color.grey200)
                             .frame(width: Constants.connectorWidth)
                             .frame(maxHeight: .infinity)
-                            .padding(.top, Constants.iconSize)
+                            .padding(.top, ActivityConstants.statusIconSize.height)
                             .padding(
                                 .leading,
-                                (Constants.iconSize - Constants.connectorWidth) / 2)
+                                (ActivityConstants.statusIconSize.width
+                                    - Constants.connectorWidth) / 2)
                     }
                 }
             }

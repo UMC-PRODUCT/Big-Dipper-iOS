@@ -15,11 +15,11 @@ public protocol StudyRepositoryProtocol {
 
     // MARK: - 커리큘럼 / 미션
 
-    /// 커리큘럼 진행률 정보 조회
-    func fetchCurriculumProgress() async throws -> CurriculumProgressModel
-
-    /// 미션 목록 조회
-    func fetchMissions() async throws -> [MissionCardModel]
+    /// 커리큘럼 개요(진행률 + 주차별 미션) 조회
+    ///
+    /// 서버가 둘을 단일 응답으로 내려주므로 한 번의 요청으로 함께 반환합니다.
+    /// 진행률과 미션을 따로 조회하는 진입점을 두면 같은 엔드포인트를 중복 호출하게 됩니다.
+    func fetchCurriculumOverview() async throws -> CurriculumOverview
 
     /// 주차 커리큘럼 옵션 목록 조회
     ///

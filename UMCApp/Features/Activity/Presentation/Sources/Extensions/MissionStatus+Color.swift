@@ -18,12 +18,12 @@ extension MissionStatus {
     /// 주차 배지 배경 색상
     var backgroundColor: Color {
         switch self {
-        case .notStarted:      return .gray.opacity(0.4)
+        case .notStarted:      return .grey400.opacity(0.4)
         case .inProgress:      return .indigo200
-        case .pendingApproval: return .orange.opacity(0.4)
-        case .pass:            return .green.opacity(0.4)
-        case .fail:            return .red.opacity(0.4)
-        case .completed:       return .green.opacity(0.4)
+        case .pendingApproval: return .orange500.opacity(0.4)
+        case .pass:            return .green500.opacity(0.4)
+        case .fail:            return .red500.opacity(0.4)
+        case .completed:       return .green500.opacity(0.4)
         case .locked:          return .grey200
         }
     }
@@ -31,24 +31,26 @@ extension MissionStatus {
     /// 미션 리스트 좌측 상태 아이콘 색상
     var missionListIconColor: Color {
         switch self {
-        case .notStarted:      return .gray.opacity(0.7)
+        case .notStarted:      return .grey400.opacity(0.7)
         case .inProgress:      return .indigo400
-        case .pendingApproval: return .orange.opacity(0.7)
-        case .pass:            return .green.opacity(0.7)
-        case .fail:            return .red.opacity(0.7)
-        case .completed:       return .green.opacity(0.7)
+        case .pendingApproval: return .orange500.opacity(0.7)
+        case .pass:            return .green500.opacity(0.7)
+        case .fail:            return .red500.opacity(0.7)
+        case .completed:       return .green500.opacity(0.7)
         case .locked:          return .grey400
         }
     }
 
     /// 상태 텍스트/숫자 전경 색상
+    ///
+    /// 배경·아이콘이 500 계조를 쓰는 것과 달리, 텍스트는 대비 확보를 위해 700 계조를 씁니다.
     var foregroundColor: Color {
         switch self {
         case .notStarted:      return .grey600
         case .inProgress:      return .indigo500
-        case .pendingApproval: return .orange
+        case .pendingApproval: return .orange700
         case .pass:            return .green700
-        case .fail:            return .red
+        case .fail:            return .red700
         case .completed:       return .green700
         case .locked:          return .grey400
         }

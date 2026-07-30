@@ -43,7 +43,7 @@ struct ChallengerMissionCardContent: View, Equatable {
 
     private var missionTitleText: some View {
         Text(model.missionTitle)
-            .appFont(.subheadline, color: .gray)
+            .appFont(.subheadline, color: .grey600)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -66,7 +66,7 @@ struct ChallengerMissionCardContent: View, Equatable {
         MissionStatusResultView(
             icon: "hourglass",
             message: "확인 대기 중입니다.",
-            color: .orange
+            color: .orange500
         )
     }
 
@@ -74,7 +74,7 @@ struct ChallengerMissionCardContent: View, Equatable {
         MissionStatusResultView(
             icon: "checkmark.circle.fill",
             message: "미션을 통과하였습니다.",
-            color: .green,
+            color: .green500,
             drawsOnAppear: true
         )
     }
@@ -83,7 +83,7 @@ struct ChallengerMissionCardContent: View, Equatable {
         MissionStatusResultView(
             icon: "xmark.circle.fill",
             message: "미션을 통과하지 못했습니다.",
-            color: .red
+            color: .red500
         )
     }
 }
@@ -105,7 +105,7 @@ struct ChallengerMissionCardContent: View, Equatable {
             ForEach(MissionPreviewData.allStatusMissions) { model in
                 VStack(alignment: .leading, spacing: 8) {
                     Text(model.status.displayText)
-                        .appFont(.title3, color: .gray)
+                        .appFont(.title3, color: .grey600)
                     ChallengerMissionCardContent(model: model)
                         .padding()
                         .background(Color.grey000)

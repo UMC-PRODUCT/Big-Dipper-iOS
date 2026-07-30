@@ -42,14 +42,15 @@ struct ChallengerStudyView: View {
 
     /// 진행률/미션 두 상태를 조합해 화면을 결정합니다.
     ///
-    /// - 어느 한쪽이라도 실패하면 에러 뷰 (진행률 에러를 우선 노출)
+    /// - 조회가 실패하면 에러 뷰
     /// - 둘 다 로드되면 미션 유무에 따라 커리큘럼 뷰 또는 안내 가이드
     /// - 그 외(로딩/대기)는 로딩 뷰
+    ///
+    /// 두 상태는 단일 조회(`load()`)에서 함께 전이되므로 실패 여부는 한쪽만 확인해도
+    /// 충분합니다. 미션만 따로 실패하는 상황은 성립하지 않습니다.
     @ViewBuilder
     private func contentView(viewModel: ChallengerStudyViewModel) -> some View {
         if case .failed(let error) = viewModel.curriculumState {
-            errorView(error: error, viewModel: viewModel)
-        } else if case .failed(let error) = viewModel.missionsState {
             errorView(error: error, viewModel: viewModel)
         } else if case .loaded(let progress) = viewModel.curriculumState,
                   case .loaded(let missions) = viewModel.missionsState {
@@ -106,7 +107,7 @@ struct ChallengerStudyView: View {
                 title: "불러오지 못했어요",
                 systemImage: "exclamationmark.triangle",
                 description: error.userMessage,
-                isRetrying: false
+                isRetrying: viewModel.isLoading
             ) {
                 await viewModel.load()
             }

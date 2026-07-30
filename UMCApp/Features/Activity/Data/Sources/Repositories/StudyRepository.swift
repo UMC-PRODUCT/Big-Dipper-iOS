@@ -68,15 +68,17 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
 
     // MARK: - 커리큘럼 / 미션
 
-    public func fetchCurriculumProgress() async throws -> CurriculumProgressModel {
-        let curriculum = try await fetchCurriculum()
-        return curriculum.dto.toCurriculumProgress(part: curriculum.part)
-    }
-
-    public func fetchMissions() async throws -> [MissionCardModel] {
+    /// 커리큘럼 개요를 한 번 조회해 진행률과 주차별 미션을 함께 매핑한다.
+    ///
+    /// 두 결과 모두 같은 `CurriculumDTO` 에서 파생되므로 네트워크 요청은 1회만 발생한다.
+    public func fetchCurriculumOverview() async throws -> CurriculumOverview {
         let curriculum = try await fetchCurriculum()
         let platform = UMCPartType(apiValue: curriculum.part)?.name ?? curriculum.part
-        return curriculum.dto.toMissionCards(platform: platform)
+
+        return CurriculumOverview(
+            progress: curriculum.dto.toCurriculumProgress(part: curriculum.part),
+            missions: curriculum.dto.toMissionCards(platform: platform)
+        )
     }
 
     /// 주차 커리큘럼 옵션을 조회한다.
