@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum OrganizationType: String, Codable, Equatable, Hashable {
+public enum OrganizationType: String, Codable, Equatable, Hashable, Sendable {
     case central = "CENTRAL"
     case chapter = "CHAPTER"
     case school = "SCHOOL"
