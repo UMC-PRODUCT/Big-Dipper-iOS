@@ -9,6 +9,8 @@ let project = featureProject(
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         // OperatorStudyManagementViewModel 이 멤버/멘토 선택 입력 타입(ChallengerInfo)을 사용.
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
+        // ChallengerMemberListView 가 DIContainer 로 UseCase·세션을 resolve (Home/Notice 동일 패턴).
+        .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
     ],
     includesDomainTests: true,
     includesDataTests: true,
