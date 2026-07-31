@@ -12,8 +12,11 @@ import Moya
 
 /// 일정 V2 API 라우터
 ///
-/// 슬라이스 2(#914)는 홈 일정 캘린더 표시에 필요한 목록 조회만 다룬다. 생성/수정/삭제·출석
-/// 관련 엔드포인트는 등록/출석 기능 이식 시 별도로 추가한다.
+/// 홈 일정 캘린더 표시에 필요한 목록 조회만 다룬다. 출석 관련 엔드포인트
+/// (`/api/v2/schedules/attendance`, `/api/v2/schedules/{id}/attendance`,
+/// `.../attendances/decide`, `.../attendances/excuse`, `.../attendances/request`)는
+/// `ActivityData`의 `AttendanceRouter`에 있다. 일정 생성/수정/삭제는 Schedule 모듈 분리
+/// 이슈(#981)에서 다룬다.
 ///
 /// - Note: `URLEncoding`(Alamofire) 노출을 막기 위해 `internal import Alamofire`를 쓰므로,
 ///   이 라우터와 멤버는 `HomeData` 모듈 내부(`ScheduleRepository`)에서만 사용하는 `internal`로 둔다.
