@@ -27,6 +27,11 @@ public enum AppStorageKey {
     public static let connectedSocialProviders: String = "connectedSocialProviders"
     /// 자동 로그인 허용 여부 (승인/등록 완료 사용자만 true)
     public static let canAutoLogin: String = "canAutoLogin"
+    /// 마지막 앱스토어 리뷰 요청 시각 (`Date`)
+    ///
+    /// - Note: 키 문자열은 레거시 앱(`AppProduct`)과 동일하게 유지한다. 이미 리뷰 요청을 받은
+    ///   사용자가 앱 업데이트 직후 다시 요청받지 않도록 기존 저장값을 그대로 승계해야 한다.
+    public static let lastReviewRequestDate: String = "lastReviewRequestDate"
 
     // MARK: - Profile (최신 기수 기준)
 
