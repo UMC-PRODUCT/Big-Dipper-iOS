@@ -43,4 +43,11 @@ public protocol AuthRepositoryProtocol {
     /// - Parameter accessToken: GoogleSignIn에서 발급받은 OAuth accessToken (서버 검증용)
     /// - Returns: 기존 회원/신규 회원 분기 결과
     func loginGoogle(accessToken: String) async throws -> OAuthLoginResult
+
+    /// 이메일(ID/PW) 로그인을 수행한다.
+    /// - Parameters:
+    ///   - email: 이메일 주소
+    ///   - password: 평문 비밀번호 (TLS 구간 서버 해싱 위임)
+    /// - Returns: 로그인 결과 (회원 ID). 토큰 저장은 Repository가 처리한다.
+    func loginByEmail(email: String, password: String) async throws -> LoginByIdPwResult
 }

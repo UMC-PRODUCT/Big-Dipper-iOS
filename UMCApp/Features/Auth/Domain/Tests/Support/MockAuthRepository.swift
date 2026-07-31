@@ -105,4 +105,18 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         loginGoogleReceivedAccessToken = accessToken
         return try loginGoogleResult.get()
     }
+
+    // MARK: - loginByEmail
+
+    var loginByEmailResult: Result<LoginByIdPwResult, Error> = .failure(MockError.notStubbed)
+    private(set) var loginByEmailCallCount = 0
+    private(set) var loginByEmailReceivedEmail: String?
+    private(set) var loginByEmailReceivedPassword: String?
+
+    func loginByEmail(email: String, password: String) async throws -> LoginByIdPwResult {
+        loginByEmailCallCount += 1
+        loginByEmailReceivedEmail = email
+        loginByEmailReceivedPassword = password
+        return try loginByEmailResult.get()
+    }
 }
