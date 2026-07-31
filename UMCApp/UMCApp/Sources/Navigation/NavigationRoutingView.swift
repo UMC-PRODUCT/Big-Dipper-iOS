@@ -6,6 +6,7 @@
 //
 
 import CoreDI
+import HomePresentation
 import NoticePresentation
 import SwiftUI
 import UMCFoundation
@@ -32,8 +33,25 @@ struct NavigationRoutingView: View {
 
     var body: some View {
         switch destination {
+        case .home(let route):
+            homeView(route)
         case .notice(let route):
             noticeView(route)
+        }
+    }
+}
+
+// MARK: - Home Routing
+
+private extension NavigationRoutingView {
+    @ViewBuilder
+    func homeView(_ route: NavigationDestination.Home) -> some View {
+        switch route {
+        case .alarmHistory:
+            NoticeAlarmView()
+        case .scheduleDetail:
+            // ScheduleDetailView는 Schedule 모듈 분리 이슈(#981)에서 이식된다.
+            Text("아직 지원하지 않는 화면입니다")
         }
     }
 }

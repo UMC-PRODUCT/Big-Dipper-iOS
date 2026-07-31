@@ -9,8 +9,8 @@ import Foundation
 
 /// 홈 일정 캘린더 데이터 접근 계층 인터페이스.
 ///
-/// 조회 전용이다. 일정 생성/수정/삭제·출석 관련 액션은 이 슬라이스(#914)의 범위 밖으로,
-/// 등록/출석 기능 이식 시 별도 Repository로 추가한다.
+/// 조회 전용이다. 출석 관련 액션은 `ActivityDomain`의 `ChallengerAttendanceRepositoryProtocol`
+/// 이 담당하고, 일정 생성/수정/삭제는 Schedule 모듈 분리 이슈(#981)에서 다룬다.
 public protocol ScheduleRepositoryProtocol {
 
     /// 기간 내 내 일정을 조회해 KST 자정 기준 날짜별로 그룹핑한다.

@@ -16,6 +16,8 @@ let project = featureProject(
         "Data/Sources/MLModels/**",
     ],
     presentationExtraDependencies: [
+        // 홈 진입 시 앱스토어 리뷰 요청(requestReview) 환경 값 사용.
+        .sdk(name: "StoreKit", type: .framework),
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
