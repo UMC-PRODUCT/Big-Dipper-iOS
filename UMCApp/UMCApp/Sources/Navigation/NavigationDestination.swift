@@ -21,7 +21,13 @@ import NoticeDomain
 ///   (b) 여러 Feature가 공유할 신규 Core 모듈을 신설해 이 타입을 옮기는 방안 중 하나를
 ///   메인테이너 승인 하에 선택해야 한다.
 enum NavigationDestination: Hashable {
+    case home(Home)
     case notice(Notice)
+
+    enum Home: Hashable {
+        case alarmHistory
+        case scheduleDetail(scheduleId: String)
+    }
 
     enum Notice: Hashable {
         case detail(detailItem: NoticeDetail)
