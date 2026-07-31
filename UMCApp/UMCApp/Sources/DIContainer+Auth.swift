@@ -45,6 +45,9 @@ extension DIContainer {
         register(LoginUseCaseProtocol.self) {
             LoginUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
         }
+        register(LoginByEmailUseCaseProtocol.self) {
+            LoginByEmailUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
+        }
 
         // MARK: - 회원가입(SignUp) 관련 UseCase (#944)
 

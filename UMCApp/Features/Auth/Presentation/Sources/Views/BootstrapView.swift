@@ -18,8 +18,9 @@
 //    - `.approved` / `.pendingApproval` → AppFlow 로 외부 화면 라우팅
 //    - `.notLoggedIn` → **`stage` 를 `.loginReady` 로 전환** → 같은 화면 안에서 layout 이
 //      `withAnimation` 으로 morph (로고가 위로 슬라이드, LoginActionStack 이 아래에서 등장)
-//  - 사용자가 로그인 버튼을 누르면 내부 `LoginViewModel` 이 인증을 진행하고, 결과 상태 변경 시
-//    AppFlow 로 외부 화면 라우팅.
+//  - 사용자가 소셜 로그인 버튼을 누르면 내부 `LoginViewModel` 이 인증을 진행하고, 결과 상태
+//    변경 시 AppFlow 로 외부 화면 라우팅.
+//  - UMC 계정(ID/PW) 로그인은 `LoginView` 와 동일하게 `EmailLoginView` 를 push 한다 (#943).
 //
 //  ## 왜 한 화면인가
 //
@@ -58,8 +59,13 @@ public struct BootstrapView: View {
     /// 슬로건 reveal 투명도(0~1). preDelay 동안 0 (이미지 로고만 보임) → bloom 동안 0 → 1
     /// (lens 가 비춰지면서 슬로건이 차오름) → collapse 동안 1 유지. `revealSlogan()` 가 컨트롤.
     @State private var sloganOpacity: Double = 0
+    @State private var isEmailLoginPresented = false
 
     @Environment(\.appFlow) private var appFlow
+
+    /// 이메일 로그인 화면을 push할 때 그대로 전달하기 위해 보관한다.
+    private let container: DIContainer
+    private let errorHandler: ErrorHandler
 
     private enum Constants {
         /// 시네마틱 종료 시점. `RefractiveCinematic` 시퀀스 총 길이(preDelay 0.4 + bloom 1.0 +
@@ -82,6 +88,8 @@ public struct BootstrapView: View {
     // MARK: - Init
 
     public init(container: DIContainer, errorHandler: ErrorHandler) {
+        self.container = container
+        self.errorHandler = errorHandler
         _bootstrapViewModel = State(initialValue: BootstrapViewModel(container: container))
         _loginViewModel = State(
             initialValue: LoginViewModel(container: container, errorHandler: errorHandler)
@@ -91,16 +99,24 @@ public struct BootstrapView: View {
     // MARK: - Body
 
     public var body: some View {
-        contentLayout
-            .refractiveCinematic()
-            .task { await runBootstrap() }
-            .task { await revealSlogan() }
-            .onChange(of: loginViewModel.loginState) { _, newState in
-                handle(newState: newState)
-            }
-            .onChange(of: loginViewModel.signUpDestination) { _, newDestination in
-                handle(signUpDestination: newDestination)
-            }
+        NavigationStack {
+            contentLayout
+                .refractiveCinematic()
+                // 루트에는 표시할 네비게이션 바가 없다. 숨기지 않으면 빈 바 높이만큼 safe area 가
+                // 줄어 로고(=lens 중심)가 아래로 밀린다 — 시네마틱 중앙 정렬이 어긋난다.
+                .toolbarVisibility(.hidden, for: .navigationBar)
+                .task { await runBootstrap() }
+                .task { await revealSlogan() }
+                .onChange(of: loginViewModel.loginState) { _, newState in
+                    handle(newState: newState)
+                }
+                .onChange(of: loginViewModel.signUpDestination) { _, newDestination in
+                    handle(signUpDestination: newDestination)
+                }
+                .navigationDestination(isPresented: $isEmailLoginPresented) {
+                    EmailLoginView(container: container, errorHandler: errorHandler)
+                }
+        }
     }
 
     // MARK: - Layout
@@ -121,7 +137,8 @@ public struct BootstrapView: View {
                     isLoading: loginViewModel.loginState.isLoading,
                     onKakaoTap: { Task { await loginViewModel.loginWithKakao() } },
                     onAppleTap: { loginViewModel.loginWithApple() },
-                    onGoogleTap: { Task { await loginViewModel.loginWithGoogle() } }
+                    onGoogleTap: { Task { await loginViewModel.loginWithGoogle() } },
+                    onEmailTap: { isEmailLoginPresented = true }
                 )
                 .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
                 .padding(.bottom, DefaultConstant.defaultSafeBottom)

@@ -262,7 +262,41 @@ struct AuthRouterResetPasswordTests {
     }
 }
 
+// MARK: - Suite: 이메일(ID/PW) 로그인 케이스 계약
+
+@Suite("AuthRouter — 이메일(ID/PW) 로그인 케이스 계약")
+struct AuthRouterEmailLoginTests {
+
+    @Test("loginByEmail — path는 /api/v1/auth/login/email, method는 .post")
+    func loginByEmailPathMethod() {
+        let router = AuthRouter.loginByEmail(body: makeEmailLoginRequestDTO())
+        #expect(router.path == "/api/v1/auth/login/email")
+        #expect(router.method == .post)
+    }
+
+    @Test("loginByEmail — task는 .requestJSONEncodable")
+    func loginByEmailTask() {
+        let router = AuthRouter.loginByEmail(body: makeEmailLoginRequestDTO())
+        guard case .requestJSONEncodable = router.task else {
+            Issue.record("task가 .requestJSONEncodable 이어야 함 — 실제: \(router.task)")
+            return
+        }
+    }
+
+    @Test("EmailLoginRequestDTO — { email, password } 로 인코딩")
+    func emailLoginRequestDTOEncoding() throws {
+        let json = try encodeToJSON(makeEmailLoginRequestDTO())
+        #expect(json["email"] as? String == "a@umc.kr")
+        #expect(json["password"] as? String == "password1234")
+        #expect(json.keys.count == 2)
+    }
+}
+
 // MARK: - Test Helpers
+
+private func makeEmailLoginRequestDTO() -> EmailLoginRequestDTO {
+    EmailLoginRequestDTO(email: "a@umc.kr", password: "password1234")
+}
 
 private func makeRegisterRequestDTO(profileImageId: String? = "img-1") -> RegisterRequestDTO {
     RegisterRequestDTO(

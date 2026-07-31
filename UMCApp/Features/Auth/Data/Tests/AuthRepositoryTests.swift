@@ -6,7 +6,7 @@
 //
 
 //  진짜 `AuthRepository`를 대상으로, 그 아래 네트워크 계층만 가짜(`StubAuthNetwork`)로 주입해
-//  `registerByEmail`의 디코딩·도메인 매핑·토큰 저장·에러 매핑 계약을 검증한다.
+//  `registerByEmail`/`loginByEmail`의 디코딩·도메인 매핑·토큰 저장·에러 매핑 계약을 검증한다.
 //  (엔드포인트 path/method/task 계약은 `AuthRouterTests`에서 별도 검증)
 //
 
@@ -95,7 +95,7 @@ private actor FakeTokenStore: TokenStore {
     }
 }
 
-/// ``TokenRefreshService`` 가짜 구현. `registerByEmail`은 갱신 경로를 타지 않으므로 항상 실패한다.
+/// ``TokenRefreshService`` 가짜 구현. 이메일 가입/로그인은 갱신 경로를 타지 않으므로 항상 실패한다.
 private struct FakeTokenRefreshService: TokenRefreshService {
     func refresh(_ refreshToken: String) async throws -> TokenPair {
         throw NetworkError.timeout
@@ -135,6 +135,31 @@ private enum Fixture {
             "refreshToken": "\(refreshToken)"
         }
         """
+    }
+
+    /// 이메일 로그인 result 본문
+    static func loginByEmailObject(
+        memberId: String = "42",
+        accessToken: String = "login-access-token",
+        refreshToken: String = "login-refresh-token"
+    ) -> String {
+        """
+        {
+            "memberId": "\(memberId)",
+            "accessToken": "\(accessToken)",
+            "refreshToken": "\(refreshToken)"
+        }
+        """
+    }
+
+    /// 비-2xx 응답 본문 (서버 에러 코드 매핑 검증용)
+    static func networkRequestFailed(
+        statusCode: Int = 401,
+        code: String,
+        message: String
+    ) -> NetworkError {
+        let body = Data("{ \"code\": \"\(code)\", \"message\": \"\(message)\" }".utf8)
+        return NetworkError.requestFailed(statusCode: statusCode, data: body)
     }
 }
 
@@ -266,6 +291,111 @@ struct AuthRepositoryRegisterByEmailTests {
                 schoolId: "1",
                 termsAgreements: makeTermsAgreements()
             )
+        }
+    }
+}
+
+// MARK: - Suite: 이메일(ID/PW) 로그인
+
+@MainActor
+@Suite("AuthRepository — loginByEmail")
+struct AuthRepositoryLoginByEmailTests {
+
+    @Test("성공 응답이면 토큰을 저장하고 LoginByIdPwResult를 반환하며 /auth/login/email(POST, 비인증)을 호출한다")
+    func loginByEmailSucceeds() async throws {
+        let (sut, stub, tokenStore) = makeRepository(
+            .success(Fixture.success(Fixture.loginByEmailObject()))
+        )
+
+        let result = try await sut.loginByEmail(email: "a@umc.kr", password: "password1234")
+
+        #expect(result.memberId == "42")
+        #expect(stub.requestWithoutAuthCount == 1)
+        #expect(stub.requestCount == 0)
+        #expect(stub.lastPath == "/api/v1/auth/login/email")
+        #expect(stub.lastMethod == .post)
+        #expect(await tokenStore.saveCallCount == 1)
+        #expect(await tokenStore.savedAccessToken == "login-access-token")
+        #expect(await tokenStore.savedRefreshToken == "login-refresh-token")
+    }
+
+    @Test("응답에 토큰이 비어 있으면 RepositoryError.invalidResponse를 던지고 토큰을 저장하지 않는다")
+    func loginByEmailThrowsInvalidResponseWhenTokensMissing() async throws {
+        let (sut, _, tokenStore) = makeRepository(
+            .success(Fixture.success(
+                Fixture.loginByEmailObject(accessToken: "", refreshToken: "")
+            ))
+        )
+
+        await #expect(throws: RepositoryError.invalidResponse(
+            detail: "loginByEmail: 서버 응답에 accessToken/refreshToken이 없습니다"
+        )) {
+            _ = try await sut.loginByEmail(email: "a@umc.kr", password: "password1234")
+        }
+
+        #expect(await tokenStore.saveCallCount == 0)
+    }
+
+    @Test("accessToken만 비어 있어도 RepositoryError.invalidResponse를 던진다")
+    func loginByEmailThrowsInvalidResponseWhenAccessTokenMissing() async throws {
+        let (sut, _, tokenStore) = makeRepository(
+            .success(Fixture.success(Fixture.loginByEmailObject(accessToken: "")))
+        )
+
+        await #expect(throws: RepositoryError.invalidResponse(
+            detail: "loginByEmail: 서버 응답에 accessToken/refreshToken이 없습니다"
+        )) {
+            _ = try await sut.loginByEmail(email: "a@umc.kr", password: "password1234")
+        }
+
+        #expect(await tokenStore.saveCallCount == 0)
+    }
+
+    @Test("isSuccess:false면 RepositoryError.serverError를 던진다")
+    func loginByEmailThrowsServerErrorWhenUnsuccessful() async {
+        let (sut, _, _) = makeRepository(
+            .success(Fixture.failureBody(
+                code: "AUTHENTICATION-0022",
+                message: "이메일 또는 비밀번호가 올바르지 않습니다."
+            ))
+        )
+
+        await #expect(throws: RepositoryError.serverError(
+            code: "AUTHENTICATION-0022", message: "이메일 또는 비밀번호가 올바르지 않습니다."
+        )) {
+            _ = try await sut.loginByEmail(email: "a@umc.kr", password: "wrong-password")
+        }
+    }
+
+    @Test("비-2xx NetworkError는 본문을 파싱해 RepositoryError.serverError로 정규화한다")
+    func loginByEmailMapsNetworkErrorToServerError() async {
+        let (sut, _, _) = makeRepository(.failure(Fixture.networkRequestFailed(
+            code: "AUTHENTICATION-0022",
+            message: "이메일 또는 비밀번호가 올바르지 않습니다."
+        )))
+
+        await #expect(throws: RepositoryError.serverError(
+            code: "AUTHENTICATION-0022", message: "이메일 또는 비밀번호가 올바르지 않습니다."
+        )) {
+            _ = try await sut.loginByEmail(email: "a@umc.kr", password: "wrong-password")
+        }
+    }
+
+    @Test("응답 본문을 파싱할 수 없으면 RepositoryError.decodingError를 던진다")
+    func loginByEmailThrowsDecodingErrorForMalformedBody() async {
+        let (sut, _, _) = makeRepository(.success(Data("not-json".utf8)))
+
+        await #expect(throws: RepositoryError.self) {
+            _ = try await sut.loginByEmail(email: "a@umc.kr", password: "password1234")
+        }
+    }
+
+    @Test("파싱 불가한 NetworkError는 원본 그대로 전파한다")
+    func loginByEmailPropagatesNonMappableError() async {
+        let (sut, _, _) = makeRepository(.failure(NetworkError.timeout))
+
+        await #expect(throws: NetworkError.timeout) {
+            _ = try await sut.loginByEmail(email: "a@umc.kr", password: "password1234")
         }
     }
 }
