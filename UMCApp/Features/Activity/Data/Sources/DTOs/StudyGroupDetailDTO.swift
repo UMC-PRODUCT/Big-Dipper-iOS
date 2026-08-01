@@ -152,6 +152,11 @@ struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
     let memberId: String
     let name: String
     let profileImageURL: String?
+    /// 베스트 워크북 표시 점수.
+    ///
+    /// - Note: 서버가 **아직 내려주지 않는 필드**라 실제 응답에서는 항상 `nil` 이며,
+    ///   ``StudyGroupDetailDTO/toDomain(defaultGroupName:)`` 이 `0` 으로 폴백한다.
+    ///   서버가 멤버별 값을 응답에 포함하면 코드 변경 없이 그대로 반영되도록 자리를 유지한다.
     let bestWorkbookPoint: Int?
 
     // MARK: - CodingKeys
@@ -193,34 +198,27 @@ extension StudyGroupDetailDTO {
 
     /// DTO 를 도메인 모델 ``StudyGroupInfo`` 로 변환한다.
     ///
-    /// - Parameters:
-    ///   - defaultGroupName: 그룹명이 비어 있을 때 대체할 이름
-    ///   - bestWorkbookPointByMemberID: memberId → 베스트 워크북 점수 매핑 (없으면 DTO 내 점수 사용)
+    /// - Note: `bestWorkbookPoint` 는 **서버가 아직 내려주지 않는 필드**라 현재 전 멤버가 `0`
+    ///   으로 폴백된다(스터디 그룹 응답에 해당 필드가 없음). 값 복원은 서버가 멤버별
+    ///   `bestWorkbookPoint` 를 응답에 포함해야 가능하다 — 클라이언트 집계는 불가능한데,
+    ///   포인트 원천인 `GET /api/v1/member/profile/{memberId}` 가 타인 조회 시 상벌점을
+    ///   비공개 처리해 `challengerPoints` 를 빈 배열로 내려주기 때문이다. 서버가 채울 때의
+    ///   집계 규칙은 `BEST_WORKBOOK`·`BEST_WORKBOOK_V2` 선정 횟수 합 × 5 로 확정되었다
+    ///   (두 타입은 배점 관례만 다른 동일 사건이므로 동일 가중치).
+    ///
+    /// - Parameter defaultGroupName: 그룹명이 비어 있을 때 대체할 이름
     /// - Returns: 변환된 ``StudyGroupInfo`` 도메인 모델
-    func toDomain(
-        defaultGroupName: String? = nil,
-        bestWorkbookPointByMemberID: [String: Int] = [:]
-    ) -> StudyGroupInfo {
+    func toDomain(defaultGroupName: String? = nil) -> StudyGroupInfo {
         let partType = UMCPartType(apiValue: part) ?? .front(type: .ios)
         let university = schools.first?.schoolName ?? ""
         let parsedDate = StudyGroupDateParser.parse(createdAt) ?? Date()
 
         let mentorItems = mentors.map { mentor in
-            makeMember(
-                from: mentor,
-                university: university,
-                role: .leader,
-                bestWorkbookPointByMemberID: bestWorkbookPointByMemberID
-            )
+            makeMember(from: mentor, university: university, role: .leader)
         }
 
         let memberItems = members.map { member in
-            makeMember(
-                from: member,
-                university: university,
-                role: .member,
-                bestWorkbookPointByMemberID: bestWorkbookPointByMemberID
-            )
+            makeMember(from: member, university: university, role: .member)
         }
 
         return StudyGroupInfo(
@@ -236,8 +234,7 @@ extension StudyGroupDetailDTO {
     private func makeMember(
         from challenger: StudyGroupChallengerDTO,
         university: String,
-        role: StudyGroupMember.MemberRole,
-        bestWorkbookPointByMemberID: [String: Int]
+        role: StudyGroupMember.MemberRole
     ) -> StudyGroupMember {
         StudyGroupMember(
             serverID: challenger.memberId,
@@ -247,9 +244,7 @@ extension StudyGroupDetailDTO {
             university: university,
             profileImageURL: normalizedURL(challenger.profileImageURL),
             role: role,
-            bestWorkbookPoint: bestWorkbookPointByMemberID[challenger.memberId]
-                ?? challenger.bestWorkbookPoint
-                ?? 0
+            bestWorkbookPoint: challenger.bestWorkbookPoint ?? 0
         )
     }
 

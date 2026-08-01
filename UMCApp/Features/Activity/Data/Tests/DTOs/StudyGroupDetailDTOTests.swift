@@ -68,6 +68,22 @@ private func makeFullDetailJSON(
     """
 }
 
+/// 멘토 1명만 담은 최소 JSON. `bestWorkbookPointField` 에는 `"bestWorkbookPoint": 90` 같은
+/// 완성된 키-값 조각을 넣으며, 빈 문자열을 주면 키 자체가 빠진 응답(= 서버 현행)이 된다.
+private func makeSingleMentorJSON(bestWorkbookPointField: String) -> String {
+    let pointEntry = bestWorkbookPointField.isEmpty ? "" : ", \(bestWorkbookPointField)"
+    return """
+    {
+        "groupId": "1", "name": "g", "part": "IOS",
+        "createdAt": "2026-05-11T09:30:00Z", "memberCount": 1,
+        "mentors": [
+            { "challengerId": "1", "memberId": "2001", "name": "m"\(pointEntry) }
+        ],
+        "members": []
+    }
+    """
+}
+
 @Suite("StudyGroupDetailDTO — 디코딩/매핑")
 struct StudyGroupDetailDTOTests {
 
@@ -188,17 +204,19 @@ struct StudyGroupDetailDTOTests {
 
     // MARK: - StudyGroupChallengerDTO bestWorkbookPoint
 
-    @Test("bestWorkbookPoint 가 숫자 String 으로 와도 Int 로 디코딩한다")
-    func decodesBestWorkbookPointAsString() throws {
-        let json = """
-        { "groupId": "1", "name": "g", "part": "IOS",
-          "createdAt": "2026-05-11T09:30:00Z", "memberCount": 1,
-          "mentors": [ { "challengerId": "1", "memberId": "1", "name": "m",
-                         "bestWorkbookPoint": "70" } ],
-          "members": [] }
-        """
-        let dto = try decodeDetail(json)
-        #expect(dto.mentors.first?.bestWorkbookPoint == 70)
+    @Test(
+        "bestWorkbookPoint 는 숫자·숫자 String 을 Int 로 받고, null·키 부재는 nil 로 둔다",
+        arguments: [
+            ("\"bestWorkbookPoint\": 70", 70),
+            ("\"bestWorkbookPoint\": \"70\"", 70),
+            ("\"bestWorkbookPoint\": 0", 0),
+            ("\"bestWorkbookPoint\": null", nil),
+            ("", nil)
+        ] as [(String, Int?)]
+    )
+    func decodesBestWorkbookPoint(field: String, expected: Int?) throws {
+        let dto = try decodeDetail(makeSingleMentorJSON(bestWorkbookPointField: field))
+        #expect(dto.mentors.first?.bestWorkbookPoint == expected)
     }
 
     // MARK: - Encodable round-trip (custom encode)
@@ -273,18 +291,42 @@ struct StudyGroupDetailDTOTests {
         #expect(info.members[1].profileImageURL == nil)
     }
 
-    @Test("toDomain — bestWorkbookPoint 가 없으면 0 으로 폴백한다")
-    func toDomainFallsBackBestWorkbookPointToZero() throws {
-        let info = try decodeDetail(makeFullDetailJSON()).toDomain()
-        // members[1].bestWorkbookPoint == null → 0
-        #expect(info.members[1].bestWorkbookPoint == 0)
+    @Test(
+        "toDomain — bestWorkbookPoint 는 값이 있으면 그대로, null·키 부재면 0 으로 폴백한다",
+        arguments: [
+            ("\"bestWorkbookPoint\": 70", 70),
+            ("\"bestWorkbookPoint\": \"70\"", 70),
+            ("\"bestWorkbookPoint\": 0", 0),
+            ("\"bestWorkbookPoint\": null", 0),
+            ("", 0)
+        ]
+    )
+    func toDomainResolvesBestWorkbookPoint(field: String, expected: Int) throws {
+        let info = try decodeDetail(makeSingleMentorJSON(bestWorkbookPointField: field))
+            .toDomain()
+        #expect(info.mentors.first?.bestWorkbookPoint == expected)
     }
 
-    @Test("toDomain — bestWorkbookPointByMemberID 오버라이드가 DTO 값보다 우선한다")
-    func toDomainOverridesBestWorkbookPointByMemberID() throws {
-        let info = try decodeDetail(makeFullDetailJSON())
-            .toDomain(bestWorkbookPointByMemberID: ["2001": 100])
-        #expect(info.mentors.first?.bestWorkbookPoint == 100)
+    /// 서버 계약 박제 — 스터디 그룹 응답(`StudyGroupMemberResponse`)에는 `bestWorkbookPoint`
+    /// 필드가 없어 현행 응답에서는 전 멤버가 `0` 이 된다. 서버가 필드를 추가하면 이 테스트가
+    /// 깨지는 게 아니라 위 파라미터화 테스트가 값 반영을 보장한다.
+    @Test("toDomain — 서버 현행 응답처럼 필드가 전혀 없으면 모든 멤버가 0 이다")
+    func toDomainYieldsZeroForEveryMemberWhenServerOmitsField() throws {
+        let json = """
+        {
+            "groupId": "1", "name": "g", "part": "IOS",
+            "createdAt": "2026-05-11T09:30:00Z", "memberCount": 3,
+            "mentors": [ { "challengerId": "1", "memberId": "2001", "name": "멘토" } ],
+            "members": [
+                { "challengerId": "2", "memberId": "2002", "name": "챌린저1" },
+                { "challengerId": "3", "memberId": "2003", "name": "챌린저2" }
+            ]
+        }
+        """
+        let info = try decodeDetail(json).toDomain()
+
+        #expect(info.mentors.allSatisfy { $0.bestWorkbookPoint == 0 })
+        #expect(info.members.allSatisfy { $0.bestWorkbookPoint == 0 })
     }
 
     @Test("toDomain — name 이 비어 있으면 defaultGroupName 으로 대체한다")
