@@ -150,9 +150,14 @@ public struct EmailLoginView: View {
     /// "회원가입"·"비밀번호 찾기"를 한 행에 나란히 배치한다(왼쪽 정렬 회원가입, 오른쪽
     /// 정렬 비밀번호 찾기) — 두 진입점 모두 보조 링크 성격이 같아 한 행에 묶는 편이
     /// 자연스럽다고 판단했다.
+    ///
+    /// 정렬은 `Spacer`가 담당하고 각 링크는 자기 레이블 크기만큼만 히트 영역을 갖는다
+    /// (`resetPasswordLink`가 예전처럼 `.frame(maxWidth: .infinity)`로 남는 폭을 직접
+    /// 차지하면, 두 링크 사이 빈 공간을 탭해도 비밀번호 재설정 화면으로 push된다).
     private var authLinksRow: some View {
         HStack(spacing: DefaultSpacing.spacing16) {
             signUpLink
+            Spacer(minLength: .zero)
             resetPasswordLink
         }
     }
@@ -176,7 +181,6 @@ public struct EmailLoginView: View {
         } label: {
             Text(Constants.resetPasswordTitle)
                 .appFont(.footnote, color: .grey500)
-                .frame(maxWidth: .infinity, alignment: .trailing)
                 .frame(minHeight: Constants.minimumTouchTarget)
                 .contentShape(Rectangle())
         }
