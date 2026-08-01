@@ -73,7 +73,7 @@ final class SignUpByIdPwViewModel {
     /// 가입 성공 후 재조회한 프로필이 승인된 상태인지 여부.
     ///
     /// `registerState`가 `.loaded`로 바뀐 시점에는 항상 확정되어 있으며, View는 이 값으로
-    /// `showMain()`/`showLogin()` 분기를 결정한다.
+    /// `showMain()`/`showPendingApproval()` 분기를 결정한다.
     private(set) var isApprovedAfterRegister = false
 
     /// 이메일 중복 확인 debounce/실행을 담당하는 진행 중인 Task.

@@ -15,7 +15,7 @@ import UMCFoundation
 ///
 /// `LoginView`의 `NavigationStack`에서 push되며, 이메일·비밀번호를 입력받아 로그인한다.
 /// 인증 실패는 인라인 메시지로 표시하고, 승인 여부에 따라 메인 또는 승인 대기 화면으로
-/// 전환한다.
+/// 전환한다. "비밀번호 찾기"·"회원가입"도 이 화면에서 push로 진입한다.
 public struct EmailLoginView: View {
 
     // MARK: - Property
@@ -24,7 +24,7 @@ public struct EmailLoginView: View {
     @FocusState private var focusedField: LoginFocusField?
     @Environment(\.appFlow) private var appFlow
 
-    /// 비밀번호 재설정 화면을 push할 때 그대로 전달하기 위해 보관한다.
+    /// 비밀번호 재설정·회원가입 화면을 push할 때 그대로 전달하기 위해 보관한다.
     private let container: DIContainer
     private let errorHandler: ErrorHandler
 
@@ -37,6 +37,7 @@ public struct EmailLoginView: View {
         static let passwordTitle: String = "비밀번호"
         static let passwordPlaceholder: String = "비밀번호를 입력해 주세요"
         static let resetPasswordTitle: String = "비밀번호 찾기"
+        static let signUpTitle: String = "회원가입"
         static let submitTitle: String = "로그인"
         static let messageLeadingPadding: CGFloat = 10
         static let minimumTouchTarget: CGFloat = 44
@@ -61,7 +62,7 @@ public struct EmailLoginView: View {
                 emailField
                 passwordField
                 loginErrorMessageView
-                resetPasswordLink
+                authLinksRow
                 submitButton
             }
             .safeAreaPadding(.vertical, DefaultConstant.defaultContentTopMargins)
@@ -144,6 +145,29 @@ public struct EmailLoginView: View {
                 .padding(.leading, Constants.messageLeadingPadding)
                 .transition(.opacity)
         }
+    }
+
+    /// "회원가입"·"비밀번호 찾기"를 한 행에 나란히 배치한다(왼쪽 정렬 회원가입, 오른쪽
+    /// 정렬 비밀번호 찾기) — 두 진입점 모두 보조 링크 성격이 같아 한 행에 묶는 편이
+    /// 자연스럽다고 판단했다.
+    private var authLinksRow: some View {
+        HStack(spacing: DefaultSpacing.spacing16) {
+            signUpLink
+            resetPasswordLink
+        }
+    }
+
+    private var signUpLink: some View {
+        NavigationLink {
+            SignUpByIdPwView(container: container, errorHandler: errorHandler)
+        } label: {
+            Text(Constants.signUpTitle)
+                .appFont(.footnote, color: .grey500)
+                .frame(minHeight: Constants.minimumTouchTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Text("회원가입 화면으로 이동합니다"))
     }
 
     private var resetPasswordLink: some View {
