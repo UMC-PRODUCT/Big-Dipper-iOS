@@ -252,7 +252,7 @@ struct SignUpByIdPwViewModelRegisterTests {
         #expect(viewModel.registerState == .idle)
     }
 
-    @Test("가입 성공 + 프로필 승인됨 → registerState.loaded, isApprovedAfterRegister true")
+    @Test("가입 성공 + 프로필 승인됨 → isApprovedAfterRegister true → showMain()")
     func registerSuccessWithApprovedProfile() async throws {
         let registerByEmailUseCase = MockRegisterByEmailUseCase()
         registerByEmailUseCase.result = .success(RegisterByIdPwResult(memberId: "member-1"))
@@ -279,7 +279,7 @@ struct SignUpByIdPwViewModelRegisterTests {
         ])
     }
 
-    @Test("가입 성공 + 프로필 미승인 → registerState.loaded, isApprovedAfterRegister false")
+    @Test("가입 성공 + 프로필 미승인 → isApprovedAfterRegister false → showPendingApproval()")
     func registerSuccessWithUnapprovedProfile() async throws {
         let registerByEmailUseCase = MockRegisterByEmailUseCase()
         registerByEmailUseCase.result = .success(RegisterByIdPwResult(memberId: "member-2"))
@@ -298,7 +298,7 @@ struct SignUpByIdPwViewModelRegisterTests {
         #expect(viewModel.isApprovedAfterRegister == false)
     }
 
-    @Test("가입 성공 + 프로필 재조회 실패 → 미승인으로 안전하게 폴백한다")
+    @Test("가입 성공 + 프로필 재조회 실패 → 미승인 폴백 → showPendingApproval()")
     func registerSuccessWithProfileFetchFailureFallsBackToUnapproved() async throws {
         let registerByEmailUseCase = MockRegisterByEmailUseCase()
         registerByEmailUseCase.result = .success(RegisterByIdPwResult(memberId: "member-3"))

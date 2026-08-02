@@ -15,12 +15,11 @@ import UMCFoundation
 /// 이메일(ID/PW) 신규회원 가입 화면 — 이름/닉네임/비밀번호/이메일/학교/약관을 입력받아
 /// 가입을 완료한다.
 ///
-/// Task 3에서 만들어진 섹션 컴포넌트를 조립하는 역할만 담당하며, `SignUpView`(소셜)와
-/// 동일한 조립 패턴을 따르되 비밀번호 섹션과 이메일 중복 확인 표시가 추가된다.
+/// `SignUpView`(소셜)와 동일한 섹션 컴포넌트 조립 패턴을 따르되, 비밀번호 섹션과 이메일
+/// 중복 확인 표시가 추가된다.
 ///
-/// - Note: 프로덕션 네비게이션 배선은 이 Task의 범위가 아니다(Q1). 실제 진입 경로는
-///   후속 이슈에서 배선되며, 이 화면은 `#if DEBUG` 진입점(`AppRootView`)을 통해서만
-///   현재 리뷰/QA 가능하다.
+/// - Note: `EmailLoginView`의 "회원가입"에서 push되는 화면이므로 자체 `NavigationStack`을
+///   두지 않는다(중첩 시 네비게이션 바가 이중으로 표시된다).
 public struct SignUpByIdPwView: View {
 
     // MARK: - Property
@@ -58,71 +57,69 @@ public struct SignUpByIdPwView: View {
     // MARK: - Body
 
     public var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: DefaultSpacing.spacing24) {
-                    SignUpNameNicknameSection(
-                        name: $viewModel.name,
-                        nickname: $viewModel.nickname,
-                        focusBinding: $focusedField,
-                        onNicknameSubmit: { focusedField = .password }
+        ScrollView {
+            VStack(spacing: DefaultSpacing.spacing24) {
+                SignUpNameNicknameSection(
+                    name: $viewModel.name,
+                    nickname: $viewModel.nickname,
+                    focusBinding: $focusedField,
+                    onNicknameSubmit: { focusedField = .password }
+                )
+
+                SignUpPasswordSection(
+                    password: $viewModel.password,
+                    passwordConfirm: $viewModel.passwordConfirm,
+                    isPasswordValid: viewModel.isPasswordValid,
+                    isPasswordConfirmed: viewModel.isPasswordConfirmed,
+                    focusBinding: $focusedField,
+                    onConfirmSubmit: { focusedField = nil }
+                )
+
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
+                    SignUpEmailSection(
+                        email: $viewModel.emailVerificationFlow.email,
+                        isVerified: $viewModel.emailVerificationFlow.isEmailVerified,
+                        onVerificationRequested: {
+                            try await viewModel.emailVerificationFlow
+                                .requestEmailVerification()
+                        },
+                        onVerificationComplete: { code in
+                            try await viewModel.verifyEmailCode(code)
+                        },
+                        onResend: {
+                            try await viewModel.emailVerificationFlow.resendEmailVerification()
+                        },
+                        onEmailChanged: {
+                            viewModel.emailVerificationFlow.handleEmailChanged()
+                        },
+                        showsVerifiedMessage: false
                     )
 
-                    SignUpPasswordSection(
-                        password: $viewModel.password,
-                        passwordConfirm: $viewModel.passwordConfirm,
-                        isPasswordValid: viewModel.isPasswordValid,
-                        isPasswordConfirmed: viewModel.isPasswordConfirmed,
-                        focusBinding: $focusedField,
-                        onConfirmSubmit: { focusedField = nil }
-                    )
-
-                    VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-                        SignUpEmailSection(
-                            email: $viewModel.emailVerificationFlow.email,
-                            isVerified: $viewModel.emailVerificationFlow.isEmailVerified,
-                            onVerificationRequested: {
-                                try await viewModel.emailVerificationFlow
-                                    .requestEmailVerification()
-                            },
-                            onVerificationComplete: { code in
-                                try await viewModel.verifyEmailCode(code)
-                            },
-                            onResend: {
-                                try await viewModel.emailVerificationFlow.resendEmailVerification()
-                            },
-                            onEmailChanged: {
-                                viewModel.emailVerificationFlow.handleEmailChanged()
-                            },
-                            showsVerifiedMessage: false
-                        )
-
-                        if viewModel.emailVerificationFlow.isEmailVerified {
-                            emailAvailabilityStatusRow
-                        }
+                    if viewModel.emailVerificationFlow.isEmailVerified {
+                        emailAvailabilityStatusRow
                     }
-
-                    SignUpSchoolSection(
-                        schoolsState: viewModel.schoolsState,
-                        selectedSchool: $viewModel.selectedSchool
-                    )
-
-                    SignUpTermsSection(
-                        termsState: viewModel.termsAgreementFlow.termsState,
-                        termsAgreements: viewModel.termsAgreementFlow.termsAgreements,
-                        isAllTermsAgreed: viewModel.termsAgreementFlow.isAllTermsAgreed,
-                        onToggleAll: { viewModel.termsAgreementFlow.toggleAllTerms($0) },
-                        onToggleRow: { viewModel.termsAgreementFlow.toggleTerm($0) }
-                    )
                 }
-                .safeAreaPadding(.vertical, DefaultConstant.defaultContentTopMargins)
-                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+
+                SignUpSchoolSection(
+                    schoolsState: viewModel.schoolsState,
+                    selectedSchool: $viewModel.selectedSchool
+                )
+
+                SignUpTermsSection(
+                    termsState: viewModel.termsAgreementFlow.termsState,
+                    termsAgreements: viewModel.termsAgreementFlow.termsAgreements,
+                    isAllTermsAgreed: viewModel.termsAgreementFlow.isAllTermsAgreed,
+                    onToggleAll: { viewModel.termsAgreementFlow.toggleAllTerms($0) },
+                    onToggleRow: { viewModel.termsAgreementFlow.toggleTerm($0) }
+                )
             }
-            .navigation(naviTitle: NavigationTitle.Auth.signUp, displayMode: .large)
-            .navigationSubtitle(Constants.naviSubtitle)
-            .safeAreaInset(edge: .bottom) {
-                submitButton
-            }
+            .safeAreaPadding(.vertical, DefaultConstant.defaultContentTopMargins)
+            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        }
+        .navigation(naviTitle: NavigationTitle.Auth.signUp, displayMode: .large)
+        .navigationSubtitle(Constants.naviSubtitle)
+        .safeAreaInset(edge: .bottom) {
+            submitButton
         }
         .task {
             await viewModel.fetchSchools()
@@ -196,11 +193,10 @@ public struct SignUpByIdPwView: View {
 
     // MARK: - Function
 
-    /// 가입 완료 처리 (Q2): 재조회한 프로필의 승인 여부에 따라 분기한다.
+    /// 가입 완료 처리: 재조회한 프로필의 승인 여부에 따라 분기한다.
     ///
-    /// 승인된 경우 바로 메인으로 진입하고, 미승인인 경우 로그인 화면으로 안내한다.
-    /// `pendingApproval` 전용 상태는 아직 `AppFlow`에 없으므로 선점하지 않는다.
-    // TODO(#945): pendingApproval 전용 AppFlow 상태가 추가되면 그쪽으로 분기.
+    /// 승인된 경우 바로 메인으로 진입하고, 미승인인 경우 승인 대기 화면으로 안내한다
+    /// (소셜 가입 경로 `SignUpView`와 동일 규약).
     private func handleRegisterStateChange(_ newState: Loadable<String>) {
         guard case .loaded = newState else { return }
 
@@ -213,7 +209,7 @@ public struct SignUpByIdPwView: View {
             title: Constants.completedTitle,
             message: Constants.pendingApprovalMessage,
             positiveBtnTitle: Constants.confirmTitle,
-            positiveBtnAction: { appFlow.showLogin() }
+            positiveBtnAction: { appFlow.showPendingApproval() }
         )
     }
 }
