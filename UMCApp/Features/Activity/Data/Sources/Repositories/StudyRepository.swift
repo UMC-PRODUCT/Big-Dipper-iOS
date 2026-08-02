@@ -22,6 +22,11 @@ import Moya
 /// - Note: 서버 식별자는 전 레이어 `String` 으로 통일된다. 커리큘럼 조회에 필요한 현재
 ///   기수·담당 파트는 ``StudyContextProviding`` 에서 읽는다(신규 모듈에는 레거시
 ///   `AppStorageKey` 세션 저장소가 아직 없어 컨텍스트 제공자를 주입한다).
+/// - Note: 스터디 그룹 조회는 응답에 없는 `challengerId`·`nickname` 을 멤버 프로필
+///   (`GET /api/v1/member/profile/{memberId}`)로 보강하므로 **멤버 수만큼 추가 요청**이 따른다.
+///   중복 제거는 **한 번의 조회 안에서만** 적용되므로(페이지 단위), 전체 페이지를 순회하는
+///   ``fetchStudyGroupDetails()`` 는 페이지에 걸쳐 같은 멤버를 다시 부를 수 있다. 서버가 두
+///   필드를 그룹 응답에 포함해 주면 이 보강 단계는 통째로 사라진다.
 public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Property
@@ -35,6 +40,11 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
     private enum Constants {
         /// 운영진 스터디 그룹 전체 조회 시 페이지당 항목 수.
         static let studyGroupsPageSize = 100
+        /// 멤버 프로필 보강 시 동시에 띄울 최대 요청 수.
+        ///
+        /// 한 페이지에 그룹이 100개면 멤버가 수백 명이 될 수 있어, 무제한으로 띄우면 서버와
+        /// 연결 풀에 과부하가 걸린다. 창(window)을 두고 완료되는 만큼만 새로 채운다.
+        static let memberSupplementConcurrencyLimit = 8
     }
 
     // MARK: - Init
@@ -136,7 +146,9 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
             APIResponse<MyStudyGroupsPageDTO>.self,
             from: response.data
         )
-        return try apiResponse.unwrap().toDomain()
+        let page = try apiResponse.unwrap()
+        let supplements = await fetchMemberSupplements(memberIDs: page.allMemberIDs)
+        return page.toDomain(supplementsByMemberID: supplements)
     }
 
     public func fetchStudyGroupDetail(groupId: String) async throws -> StudyGroupInfo {
@@ -147,38 +159,21 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
             APIResponse<StudyGroupDetailDTO>.self,
             from: response.data
         )
-        return try apiResponse.unwrap().toDomain()
+        let detail = try apiResponse.unwrap()
+        let supplements = await fetchMemberSupplements(memberIDs: detail.allMemberIDs)
+        return detail.toDomain(supplementsByMemberID: supplements)
     }
 
     public func resolveChallengerId(
         memberId: String,
         preferredGeneration: String?
     ) async throws -> String? {
-        let response = try await networkRequesting.request(
-            StudyRouter.getMemberProfile(memberId: memberId)
+        let profile = try await fetchMemberProfile(memberId: memberId)
+        return selectChallengerID(
+            from: profile,
+            memberID: memberId,
+            preferredGeneration: preferredGeneration
         )
-        let apiResponse = try decoder.decode(
-            APIResponse<MemberProfileDTO>.self,
-            from: response.data
-        )
-        let profile = try apiResponse.unwrap()
-
-        let records = profile.challengerRecords.filter {
-            $0.memberId == memberId && !$0.challengerId.isEmpty
-        }
-
-        // 기수는 String 으로 전달받아 숫자 비교 연산 시점에만 Int 로 변환한다.
-        if let preferredGisu = preferredGeneration.flatMap(Int.init), preferredGisu > 0,
-           let matched = records.first(where: { $0.gisu == preferredGisu }) {
-            return matched.challengerId
-        }
-
-        if let preferredGisuId = context.gisuId,
-           let matched = records.first(where: { $0.gisuId == preferredGisuId }) {
-            return matched.challengerId
-        }
-
-        return records.first?.challengerId
     }
 
     // MARK: - 운영진 스터디 그룹 CRUD / 일정 연결
@@ -284,6 +279,123 @@ private extension StudyRepository {
         )
         return (try apiResponse.unwrap(), part)
     }
+
+    // MARK: - 멤버 프로필 보강
+
+    /// 스터디 그룹 응답에 없는 멤버 정보(`challengerId`·`nickname`)를 멤버 프로필로 해석한다.
+    ///
+    /// 서버 `StudyGroupMemberResponse` 는 두 값을 주지 않으므로 `memberId` 마다
+    /// `GET /api/v1/member/profile/{memberId}` 를 조회한다. 중복 `memberId` 는 한 번만 부르고,
+    /// 동시 요청은 ``Constants/memberSupplementConcurrencyLimit`` 개로 제한한다.
+    ///
+    /// 보강은 부가 정보이므로 실패해도 그룹 목록 자체는 반환한다. 취소된 뒤 호출되면 요청을
+    /// 아예 시작하지 않고, 진행 중 취소되면 남은 멤버 없이 그때까지의 결과만 돌려준다
+    /// (이 경로의 결과는 취소된 호출자가 어차피 버린다).
+    ///
+    /// - Parameter memberIDs: 보강할 멤버 식별자 목록 (중복 허용)
+    /// - Returns: `memberId` → 보강 정보. 조회에 실패한 멤버는 매핑에 담기지 않는다.
+    func fetchMemberSupplements(
+        memberIDs: [String]
+    ) async -> [String: StudyGroupMemberSupplement] {
+        let uniqueIDs = Array(Set(memberIDs))
+        // 이 파일은 Moya 를 import 하므로 `Task` 는 `Moya.Task` 로 해석된다. 동시성 타입을 쓰려면
+        // `_Concurrency` 로 한정해야 한다.
+        guard !uniqueIDs.isEmpty, !_Concurrency.Task.isCancelled else { return [:] }
+
+        var result: [String: StudyGroupMemberSupplement] = [:]
+        var nextIndex = 0
+
+        await withTaskGroup(of: (String, StudyGroupMemberSupplement)?.self) { group in
+            let initialCount = min(Constants.memberSupplementConcurrencyLimit, uniqueIDs.count)
+            while nextIndex < initialCount {
+                let memberID = uniqueIDs[nextIndex]
+                group.addTask { await self.makeSupplementEntry(memberID: memberID) }
+                nextIndex += 1
+            }
+
+            // 하나가 끝날 때마다 다음 하나를 채워 in-flight 개수를 창 크기로 유지한다.
+            while let entry = await group.next() {
+                if let entry {
+                    result[entry.0] = entry.1
+                }
+                guard nextIndex < uniqueIDs.count else { continue }
+                let memberID = uniqueIDs[nextIndex]
+                group.addTask { await self.makeSupplementEntry(memberID: memberID) }
+                nextIndex += 1
+            }
+        }
+
+        return result
+    }
+
+    /// 단일 멤버의 보강 정보를 조회한다.
+    ///
+    /// 개별 멤버 조회 실패가 그룹 목록 전체를 막지 않도록 에러를 삼키고 `nil` 을 반환한다.
+    /// 이 경우 해당 멤버는 `challengerID`·`nickname` 이 `nil` 로 남는다.
+    func makeSupplementEntry(
+        memberID: String
+    ) async -> (String, StudyGroupMemberSupplement)? {
+        do {
+            let profile = try await fetchMemberProfile(memberId: memberID)
+            let supplement = StudyGroupMemberSupplement(
+                challengerID: selectChallengerID(
+                    from: profile,
+                    memberID: memberID,
+                    preferredGeneration: nil
+                ),
+                nickname: profile.nickname
+            )
+            return (memberID, supplement)
+        } catch {
+            return nil
+        }
+    }
+
+    /// 멤버 프로필을 조회해 ``MemberProfileDTO`` 로 디코딩한다.
+    func fetchMemberProfile(memberId: String) async throws -> MemberProfileDTO {
+        let response = try await networkRequesting.request(
+            StudyRouter.getMemberProfile(memberId: memberId)
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<MemberProfileDTO>.self,
+            from: response.data
+        )
+        return try apiResponse.unwrap()
+    }
+
+    /// 멤버 프로필의 기수별 챌린저 레코드 중 현재 맥락에 맞는 `challengerId` 를 고른다.
+    ///
+    /// 우선순위는 요청 기수 → 컨텍스트 기수(`gisuId`) → 첫 유효 레코드 순이다.
+    ///
+    /// - Parameters:
+    ///   - profile: 조회한 멤버 프로필
+    ///   - memberID: 대상 멤버 식별자 (레코드가 다른 멤버 것을 섞어 주는 경우를 걸러낸다)
+    ///   - preferredGeneration: 우선 매칭할 기수 번호. `nil` 이면 컨텍스트 기수부터 본다.
+    /// - Returns: 선택된 `challengerId`. 유효 레코드가 없으면 `nil`.
+    func selectChallengerID(
+        from profile: MemberProfileDTO,
+        memberID: String,
+        preferredGeneration: String?
+    ) -> String? {
+        let records = profile.challengerRecords.filter {
+            $0.memberId == memberID && !$0.challengerId.isEmpty
+        }
+
+        // 기수는 String 으로 전달받아 숫자 비교 연산 시점에만 Int 로 변환한다.
+        if let preferredGisu = preferredGeneration.flatMap(Int.init), preferredGisu > 0,
+           let matched = records.first(where: { $0.gisu == preferredGisu }) {
+            return matched.challengerId
+        }
+
+        if let preferredGisuId = context.gisuId,
+           let matched = records.first(where: { $0.gisuId == preferredGisuId }) {
+            return matched.challengerId
+        }
+
+        return records.first?.challengerId
+    }
+
+    // MARK: - 공통 요청
 
     /// 결과 본문이 없는 변경(CRUD/연결) 요청의 공통 호출·검증.
     ///

@@ -13,36 +13,42 @@ import UMCFoundation
 
 /// 스터디 그룹 상세 응답 DTO
 ///
-/// `GET /api/v1/study-groups/{groupId}`
+/// `GET /api/v1/study-groups/{studyGroupId}` · `GET /api/v1/study-groups/managed`
 ///
-/// 서버 식별자(`groupId`, `schoolId`, `challengerId`, `memberId`)는 전 레이어 `String` 통일
-/// 규칙에 따라 `String` 으로 디코딩한다.
+/// 서버 `StudyGroupResponse` 계약에 맞춘 키만 디코딩한다. 서버 식별자(`studyGroupId`,
+/// `memberId`)는 정수로 내려오지만 전 레이어 `String` 통일 규칙에 따라 `String` 으로 받는다.
+///
+/// - Note: 서버가 함께 내려주는 `gisuId` 는 도메인에서 쓰지 않아 디코딩하지 않는다.
 struct StudyGroupDetailDTO: Codable, Sendable, Equatable {
 
     // MARK: - Property
 
-    let groupId: String
+    let studyGroupId: String
     let name: String
-    let part: String
-    let partDisplayName: String?
-    let schools: [StudyGroupSchoolDTO]
+    let studyPart: String
     let createdAt: String
-    let memberCount: Int
     let mentors: [StudyGroupChallengerDTO]
     let members: [StudyGroupChallengerDTO]
+
+    // MARK: - Computed Property
+
+    /// 그룹에 속한 모든 멤버(파트장 + 스터디원)의 `memberId` — 빈 값은 제외한다.
+    ///
+    /// 서버가 주지 않는 `challengerId`·`nickname` 을 멤버 프로필로 보강할 때 조회 대상 목록으로 쓴다.
+    var allMemberIDs: [String] {
+        (mentors + members)
+            .map(\.memberId)
+            .filter { !$0.isEmpty }
+    }
 
     // MARK: - CodingKeys
 
     private enum CodingKeys: String, CodingKey {
-        case groupId
+        case studyGroupId
         case name
-        case part
-        case partDisplayName
-        case schools
+        case studyPart
         case createdAt
-        case memberCount
         case mentors
-        case leader
         case members
     }
 
@@ -50,27 +56,14 @@ struct StudyGroupDetailDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        groupId = container.decodeFlexibleStringOrNil(forKey: .groupId) ?? ""
+        studyGroupId = container.decodeFlexibleStringOrNil(forKey: .studyGroupId) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
-        part = try container.decodeIfPresent(String.self, forKey: .part) ?? ""
-        partDisplayName = try container.decodeIfPresent(String.self, forKey: .partDisplayName)
-        schools = try container.decodeIfPresent([StudyGroupSchoolDTO].self, forKey: .schools) ?? []
+        studyPart = try container.decodeIfPresent(String.self, forKey: .studyPart) ?? ""
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
-        memberCount = try container.decodeIntFlexibleIfPresent(forKey: .memberCount) ?? 0
-
-        if let decodedMentors = try container.decodeIfPresent(
+        mentors = try container.decodeIfPresent(
             [StudyGroupChallengerDTO].self,
             forKey: .mentors
-        ) {
-            mentors = decodedMentors
-        } else if let legacyLeader = try container.decodeIfPresent(
-            StudyGroupChallengerDTO.self,
-            forKey: .leader
-        ) {
-            mentors = [legacyLeader]
-        } else {
-            mentors = []
-        }
+        ) ?? []
         members = try container.decodeIfPresent(
             [StudyGroupChallengerDTO].self,
             forKey: .members
@@ -81,90 +74,43 @@ struct StudyGroupDetailDTO: Codable, Sendable, Equatable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(groupId, forKey: .groupId)
+        try container.encode(studyGroupId, forKey: .studyGroupId)
         try container.encode(name, forKey: .name)
-        try container.encode(part, forKey: .part)
-        try container.encodeIfPresent(partDisplayName, forKey: .partDisplayName)
-        try container.encode(schools, forKey: .schools)
+        try container.encode(studyPart, forKey: .studyPart)
         try container.encode(createdAt, forKey: .createdAt)
-        try container.encode(memberCount, forKey: .memberCount)
         try container.encode(mentors, forKey: .mentors)
         try container.encode(members, forKey: .members)
     }
 }
 
-// MARK: - StudyGroupSchoolDTO
-
-/// 스터디 그룹 소속 학교 정보 DTO
-struct StudyGroupSchoolDTO: Codable, Sendable, Equatable {
-
-    // MARK: - Property
-
-    let schoolId: String
-    let schoolName: String
-    let logoImageId: String?
-    let totalStudyGroupCount: Int
-    let totalMemberCount: Int
-
-    // MARK: - CodingKeys
-
-    private enum CodingKeys: String, CodingKey {
-        case schoolId
-        case schoolName
-        case logoImageId
-        case totalStudyGroupCount
-        case totalMemberCount
-    }
-
-    // MARK: - Decodable
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        schoolId = container.decodeFlexibleStringOrNil(forKey: .schoolId) ?? ""
-        schoolName = try container.decodeIfPresent(String.self, forKey: .schoolName) ?? ""
-        logoImageId = container.decodeFlexibleStringOrNil(forKey: .logoImageId)
-        totalStudyGroupCount =
-            try container.decodeIntFlexibleIfPresent(forKey: .totalStudyGroupCount) ?? 0
-        totalMemberCount =
-            try container.decodeIntFlexibleIfPresent(forKey: .totalMemberCount) ?? 0
-    }
-
-    // MARK: - Encodable
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(schoolId, forKey: .schoolId)
-        try container.encode(schoolName, forKey: .schoolName)
-        try container.encodeIfPresent(logoImageId, forKey: .logoImageId)
-        try container.encode(totalStudyGroupCount, forKey: .totalStudyGroupCount)
-        try container.encode(totalMemberCount, forKey: .totalMemberCount)
-    }
-}
-
 // MARK: - StudyGroupChallengerDTO
 
-/// 스터디 그룹 소속 챌린저(멤버/리더) 정보 DTO
+/// 스터디 그룹 소속 챌린저(파트장/스터디원) 정보 DTO
+///
+/// 서버 `StudyGroupMemberResponse` 계약에 맞춘 키만 디코딩한다. 응답에 함께 오는 `schoolId` 는
+/// 도메인에서 쓰지 않아 생략한다.
 struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
 
     // MARK: - Property
 
-    let challengerId: String
     let memberId: String
-    let name: String
+    let memberName: String
+    let schoolName: String
     let profileImageURL: String?
     /// 베스트 워크북 표시 점수.
     ///
     /// - Note: 서버가 **아직 내려주지 않는 필드**라 실제 응답에서는 항상 `nil` 이며,
-    ///   ``StudyGroupDetailDTO/toDomain(defaultGroupName:)`` 이 `0` 으로 폴백한다.
-    ///   서버가 멤버별 값을 응답에 포함하면 코드 변경 없이 그대로 반영되도록 자리를 유지한다.
+    ///   ``StudyGroupDetailDTO/toDomain(defaultGroupName:supplementsByMemberID:)`` 이 `0` 으로
+    ///   폴백한다. 서버가 멤버별 값을 응답에 포함하면 코드 변경 없이 그대로 반영되도록 자리를
+    ///   유지한다.
     let bestWorkbookPoint: Int?
 
     // MARK: - CodingKeys
 
     private enum CodingKeys: String, CodingKey {
-        case challengerId
         case memberId
-        case name
+        case memberName
+        case schoolName
         case profileImageURL = "profileImageUrl"
         case bestWorkbookPoint
     }
@@ -173,9 +119,9 @@ struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        challengerId = container.decodeFlexibleStringOrNil(forKey: .challengerId) ?? ""
         memberId = container.decodeFlexibleStringOrNil(forKey: .memberId) ?? ""
-        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        memberName = try container.decodeIfPresent(String.self, forKey: .memberName) ?? ""
+        schoolName = try container.decodeIfPresent(String.self, forKey: .schoolName) ?? ""
         profileImageURL = try container.decodeIfPresent(String.self, forKey: .profileImageURL)
         bestWorkbookPoint = try container.decodeIntFlexibleIfPresent(forKey: .bestWorkbookPoint)
     }
@@ -184,11 +130,33 @@ struct StudyGroupChallengerDTO: Codable, Sendable, Equatable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(challengerId, forKey: .challengerId)
         try container.encode(memberId, forKey: .memberId)
-        try container.encode(name, forKey: .name)
+        try container.encode(memberName, forKey: .memberName)
+        try container.encode(schoolName, forKey: .schoolName)
         try container.encodeIfPresent(profileImageURL, forKey: .profileImageURL)
         try container.encodeIfPresent(bestWorkbookPoint, forKey: .bestWorkbookPoint)
+    }
+}
+
+// MARK: - StudyGroupMemberSupplement
+
+/// 스터디 그룹 응답에 없는 멤버 정보를 멤버 프로필에서 보강한 값.
+///
+/// 서버 `StudyGroupMemberResponse` 는 `challengerId` 와 `nickname` 을 주지 않으므로
+/// ``StudyRepository`` 가 `GET /api/v1/member/profile/{memberId}` 로 해석해 채운다.
+/// 해석에 실패한 멤버는 매핑에서 빠지고, 두 값 모두 `nil` 로 남는다.
+struct StudyGroupMemberSupplement: Sendable, Equatable {
+
+    // MARK: - Property
+
+    let challengerID: String?
+    let nickname: String?
+
+    // MARK: - Init
+
+    init(challengerID: String?, nickname: String?) {
+        self.challengerID = challengerID
+        self.nickname = nickname
     }
 }
 
@@ -198,31 +166,40 @@ extension StudyGroupDetailDTO {
 
     /// DTO 를 도메인 모델 ``StudyGroupInfo`` 로 변환한다.
     ///
-    /// - Note: `bestWorkbookPoint` 는 **서버가 아직 내려주지 않는 필드**라 현재 전 멤버가 `0`
-    ///   으로 폴백된다(스터디 그룹 응답에 해당 필드가 없음). 값 복원은 서버가 멤버별
-    ///   `bestWorkbookPoint` 를 응답에 포함해야 가능하다 — 클라이언트 집계는 불가능한데,
-    ///   포인트 원천인 `GET /api/v1/member/profile/{memberId}` 가 타인 조회 시 상벌점을
-    ///   비공개 처리해 `challengerPoints` 를 빈 배열로 내려주기 때문이다. 서버가 채울 때의
-    ///   집계 규칙은 `BEST_WORKBOOK`·`BEST_WORKBOOK_V2` 선정 횟수 합 × 5 로 확정되었다
-    ///   (두 타입은 배점 관례만 다른 동일 사건이므로 동일 가중치).
+    /// - Note: `challengerID`·`nickname` 은 스터디 그룹 응답에 없어
+    ///   `supplementsByMemberID` 로만 채워진다. 보강 값이 없으면 두 필드는 `nil` 로 남는다.
+    ///   특히 `challengerID` 는 `memberId` 로 대체하지 않는다 — 챌린저와 멤버는 서로 다른
+    ///   식별자라 대체하면 잘못된 대상으로 서버를 호출하게 된다.
     ///
-    /// - Parameter defaultGroupName: 그룹명이 비어 있을 때 대체할 이름
+    /// - Parameters:
+    ///   - defaultGroupName: 그룹명이 비어 있을 때 대체할 이름
+    ///   - supplementsByMemberID: `memberId` → 멤버 프로필에서 해석한 보강 정보
     /// - Returns: 변환된 ``StudyGroupInfo`` 도메인 모델
-    func toDomain(defaultGroupName: String? = nil) -> StudyGroupInfo {
-        let partType = UMCPartType(apiValue: part) ?? .front(type: .ios)
-        let university = schools.first?.schoolName ?? ""
+    func toDomain(
+        defaultGroupName: String? = nil,
+        supplementsByMemberID: [String: StudyGroupMemberSupplement] = [:]
+    ) -> StudyGroupInfo {
+        let partType = UMCPartType(apiValue: studyPart) ?? .front(type: .ios)
         let parsedDate = StudyGroupDateParser.parse(createdAt) ?? Date()
 
         let mentorItems = mentors.map { mentor in
-            makeMember(from: mentor, university: university, role: .leader)
+            makeMember(
+                from: mentor,
+                role: .leader,
+                supplement: supplementsByMemberID[mentor.memberId]
+            )
         }
 
         let memberItems = members.map { member in
-            makeMember(from: member, university: university, role: .member)
+            makeMember(
+                from: member,
+                role: .member,
+                supplement: supplementsByMemberID[member.memberId]
+            )
         }
 
         return StudyGroupInfo(
-            serverID: groupId,
+            serverID: studyGroupId,
             name: name.isEmpty ? (defaultGroupName ?? "") : name,
             part: partType,
             createdDate: parsedDate,
@@ -233,15 +210,16 @@ extension StudyGroupDetailDTO {
 
     private func makeMember(
         from challenger: StudyGroupChallengerDTO,
-        university: String,
-        role: StudyGroupMember.MemberRole
+        role: StudyGroupMember.MemberRole,
+        supplement: StudyGroupMemberSupplement?
     ) -> StudyGroupMember {
         StudyGroupMember(
             serverID: challenger.memberId,
-            challengerID: challenger.challengerId.isEmpty ? nil : challenger.challengerId,
+            challengerID: supplement?.challengerID,
             memberID: challenger.memberId.isEmpty ? nil : challenger.memberId,
-            name: challenger.name,
-            university: university,
+            name: challenger.memberName,
+            nickname: supplement?.nickname,
+            university: challenger.schoolName,
             profileImageURL: normalizedURL(challenger.profileImageURL),
             role: role,
             bestWorkbookPoint: challenger.bestWorkbookPoint ?? 0

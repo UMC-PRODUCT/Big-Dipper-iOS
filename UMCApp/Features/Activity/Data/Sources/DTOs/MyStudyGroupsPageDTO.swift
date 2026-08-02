@@ -82,12 +82,26 @@ struct MyStudyGroupsPageDTO: Codable, Sendable, Equatable {
         try container.encode(hasNext, forKey: .hasNext)
     }
 
+    // MARK: - Computed Property
+
+    /// 페이지 전체 그룹의 멤버 `memberId` 목록 — 그룹 간 중복이 남아 있으므로 조회 전 중복 제거한다.
+    var allMemberIDs: [String] {
+        studyGroups.flatMap(\.allMemberIDs)
+    }
+
     // MARK: - toDomain
 
     /// DTO 를 도메인 모델 ``StudyGroupDetailsPage`` 로 변환한다.
-    func toDomain() -> StudyGroupDetailsPage {
+    ///
+    /// - Parameter supplementsByMemberID: `memberId` → 멤버 프로필에서 해석한 보강 정보
+    ///   (서버 응답에 없는 `challengerId`·`nickname`). 페이지 전체가 하나의 매핑을 공유한다.
+    func toDomain(
+        supplementsByMemberID: [String: StudyGroupMemberSupplement] = [:]
+    ) -> StudyGroupDetailsPage {
         StudyGroupDetailsPage(
-            content: studyGroups.map { $0.toDomain() },
+            content: studyGroups.map {
+                $0.toDomain(supplementsByMemberID: supplementsByMemberID)
+            },
             hasNext: hasNext,
             nextCursor: nextCursor
         )
