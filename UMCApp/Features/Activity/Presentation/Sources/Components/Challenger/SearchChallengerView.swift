@@ -118,19 +118,21 @@ struct SearchChallengerView: View {
             Progress(message: Constants.loadingMessage, size: .regular)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-        case .loaded:
-            if viewModel.allChallengers.isEmpty {
+        case .loaded(let challengers):
+            if challengers.isEmpty {
                 emptyResultView
             } else {
-                resultList
+                resultList(challengers)
             }
 
         case .failed(let error):
+            // 재시도를 누르면 `.loading` 으로 전이돼 위 분기가 스피너를 그리므로,
+            // 이 분기에서는 재시도 진행 표시가 필요 없다(형제 `ChallengerMemberListView` 동일).
             RetryContentUnavailableView(
                 title: Constants.failedTitle,
                 systemImage: Constants.failedSystemImage,
                 description: error.userMessage,
-                isRetrying: viewModel.loadState.isLoading
+                isRetrying: false
             ) {
                 await viewModel.retrySearch()
             }
@@ -138,9 +140,9 @@ struct SearchChallengerView: View {
         }
     }
 
-    private var resultList: some View {
+    private func resultList(_ challengers: [ChallengerInfo]) -> some View {
         ChallengerFormView(
-            challengers: .constant(viewModel.allChallengers),
+            challengers: .constant(challengers),
             selectedKeys: $viewModel.selectedKeys,
             showCheckBox: true,
             onTap: viewModel.toggleSelection,

@@ -142,7 +142,7 @@ struct SearchChallengerViewModelSearchTests {
 
         await sut.performSearch(keyword: "길동")
 
-        #expect(sut.loadState == .loaded(true))
+        #expect(sut.loadState.value?.map(\.memberId) == ["1"])
         #expect(sut.allChallengers.map(\.memberId) == ["1"])
         #expect(sut.hasNext)
         #expect(useCase.calls == [.init(keyword: "길동", cursor: nil, size: 50)])
@@ -213,7 +213,7 @@ struct SearchChallengerViewModelSearchTests {
 
         #expect(useCase.calls.count == 2)
         #expect(useCase.calls.last?.keyword == "길동")
-        #expect(sut.loadState == .loaded(true))
+        #expect(sut.allChallengers.map(\.memberId) == ["1"])
     }
 
     @Test("검색한 적 없으면 retrySearch 는 서버를 호출하지 않고 idle 로 남는다")
@@ -268,7 +268,8 @@ struct SearchChallengerViewModelCancellationTests {
         sut.showLoading()
         await sut.performSearch(keyword: "철수")
 
-        #expect(sut.loadState == .loaded(true))
+        #expect(sut.loadState.isLoading == false)
+        #expect(sut.allChallengers.map(\.memberId) == ["1"])
     }
 
     @Test("검색 초기화 뒤 도착한 취소가 지워진 결과를 되살리지 않는다")
@@ -393,7 +394,7 @@ struct SearchChallengerViewModelPaginationTests {
         await sut.fetchNextPage()
 
         #expect(sut.allChallengers.map(\.memberId) == ["1"])
-        #expect(sut.loadState == .loaded(true))
+        #expect(sut.loadState.isLoading == false)
         #expect(sut.hasNext == false)
     }
 

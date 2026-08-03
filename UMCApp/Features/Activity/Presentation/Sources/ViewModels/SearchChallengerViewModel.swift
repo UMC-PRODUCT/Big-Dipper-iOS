@@ -37,7 +37,10 @@ final class SearchChallengerViewModel {
     private let searchChallengersUseCase: SearchChallengersUseCaseProtocol
 
     /// 현재 검색 결과 목록
-    private(set) var allChallengers: [ChallengerInfo] = []
+    ///
+    /// 상태(`loadState`)에서 파생합니다. 목록을 따로 저장하면 로드 상태와 어긋날 수 있어
+    /// 형제 `MemberListViewModel` 과 같이 단일 출처로 둡니다.
+    var allChallengers: [ChallengerInfo] { loadState.value ?? [] }
 
     /// 현재 선택된 챌린저들의 행 식별 키 목록
     var selectedKeys: Set<String> = []
@@ -52,7 +55,7 @@ final class SearchChallengerViewModel {
     var alertPrompt: AlertPrompt?
 
     /// 검색 결과 로드 상태
-    private(set) var loadState: Loadable<Bool> = .idle
+    private(set) var loadState: Loadable<[ChallengerInfo]> = .idle
 
     /// 다음 페이지 존재 여부
     private(set) var hasNext: Bool = false
@@ -74,7 +77,7 @@ final class SearchChallengerViewModel {
     /// `.loading` 자체를 되돌릴 지점으로 삼으면 취소 후 스피너에서 못 빠져나옵니다.
     /// 그래서 이미 `.loading` 인 동안에는 갱신하지 않습니다(디바운스로 `showLoading()` 이
     /// 여러 번 불릴 수 있음).
-    private var stateBeforeSearch: Loadable<Bool> = .idle
+    private var stateBeforeSearch: Loadable<[ChallengerInfo]> = .idle
 
     // MARK: - Initializer
 
@@ -117,6 +120,7 @@ final class SearchChallengerViewModel {
     /// 다음 페이지를 조회해 기존 목록에 이어 붙입니다.
     func fetchNextPage() async {
         guard hasNext, let cursor = nextCursor, !isFetchingNextPage else { return }
+        guard case .loaded(let existing) = loadState else { return }
 
         let requestID = latestRequestID
         let keyword = currentKeyword
@@ -132,11 +136,11 @@ final class SearchChallengerViewModel {
             // 페이지를 기다리는 사이 키워드가 바뀌었으면 다른 검색의 결과가 되므로 버린다.
             guard latestRequestID == requestID else { return }
 
-            let knownKeys = Set(allChallengers.map(\.selectionKey))
+            let knownKeys = Set(existing.map(\.selectionKey))
             let newChallengers = page.challengers.filter {
                 !knownKeys.contains($0.selectionKey)
             }
-            allChallengers.append(contentsOf: newChallengers)
+            loadState = .loaded(existing + newChallengers)
             hasNext = page.hasNext
             nextCursor = page.nextCursor
         } catch {
@@ -239,10 +243,9 @@ final class SearchChallengerViewModel {
                 size: Constants.pageSize
             )
             guard latestRequestID == requestID else { return }
-            allChallengers = page.challengers
             hasNext = page.hasNext
             nextCursor = page.nextCursor
-            loadState = .loaded(true)
+            loadState = .loaded(page.challengers)
         } catch is CancellationError {
             guard latestRequestID == requestID else { return }
             loadState = stateBeforeSearch
@@ -268,14 +271,12 @@ final class SearchChallengerViewModel {
 
     private func failSearch(with error: AppError, requestID: UUID) {
         guard latestRequestID == requestID else { return }
-        allChallengers = []
         nextCursor = nil
         hasNext = false
         loadState = .failed(error)
     }
 
     private func resetSearchState() {
-        allChallengers = []
         currentKeyword = ""
         nextCursor = nil
         hasNext = false
