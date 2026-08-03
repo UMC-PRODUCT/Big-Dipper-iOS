@@ -1185,8 +1185,8 @@ final class OperatorStudyManagementViewModel {
 
     /// 취소된 조회 이전으로 목록·필터·페이지 커서를 한꺼번에 되돌린다.
     ///
-    /// 셋 중 하나라도 빠뜨리면 화면이 서로 다른 조회를 가리키게 된다 — 목록만 되돌리면 칩과
-    /// 어긋나고, 커서를 빠뜨리면 남은 목록이 다음 페이지를 못 부른다.
+    /// 하나라도 빠뜨리면 화면이 서로 다른 조회를 가리키게 된다 — 목록만 되돌리면 칩과 어긋나고,
+    /// 커서를 빠뜨리면 남은 목록이 다음 페이지를 못 부른다. 그래서 한 함수로 묶는다.
     private func rollbackSubmissions(
         state: Loadable<[StudyMemberSubmission]>,
         groupId: String?,
