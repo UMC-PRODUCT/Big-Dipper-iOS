@@ -90,12 +90,24 @@ struct ChallengerStudyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// 실패 상태를 에러 성격에 따라 나눠 렌더합니다.
+    ///
+    /// 커리큘럼 미등록·조회 불가는 재시도해도 결과가 달라지지 않는 **정상 상황**이므로
+    /// 재시도 버튼 없는 안내로만 표시하고, 나머지 실패만 재시도 경로로 보냅니다.
+    /// 미등록 안내는 미션이 빈 성공 응답(``emptyCurriculumGuide``)과 시각적으로 동일합니다.
     @ViewBuilder
     private func errorView(
         error: AppError,
         viewModel: ChallengerStudyViewModel
     ) -> some View {
-        if case .domain(.curriculumUnavailableForGeneration) = error {
+        if case .domain(.curriculumNotRegistered) = error {
+            ContentUnavailableView {
+                Label("커리큘럼 준비 중", systemImage: "clock.badge.questionmark")
+            } description: {
+                Text(error.userMessage)
+                    .multilineTextAlignment(.center)
+            }
+        } else if case .domain(.curriculumUnavailableForGeneration) = error {
             ContentUnavailableView {
                 Label("커리큘럼 조회 불가", systemImage: "info.circle")
             } description: {
