@@ -16,7 +16,7 @@ struct MapPickerPinView: View {
     let pinSize: CGFloat
 
     var body: some View {
-        Image("MapPin", bundle: .module)
+        Image.umcMapPin
             .resizable()
             .scaledToFit()
             .frame(width: pinSize, height: pinSize)
