@@ -8,6 +8,7 @@
 import Foundation
 import Testing
 import ActivityDomain
+import HomeDomain
 import UMCFoundation
 @testable import ActivityPresentation
 

@@ -7,6 +7,7 @@
 
 import ActivityDomain
 import Foundation
+import HomeDomain
 import UMCFoundation
 
 /// 챌린저(일반 참여자)의 출석 관련 상태 및 액션을 관리하는 ViewModel
