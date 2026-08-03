@@ -31,6 +31,13 @@ enum StudyRouter: Sendable {
     case getStudyGroupDetail(groupId: String)
     /// 멤버 프로필 조회 (resolveChallengerId · 멤버 관리 용) — `GET /api/v1/member/profile/{memberId}`
     case getMemberProfile(memberId: String)
+    /// 관리 가능한 스터디 그룹 이름 목록 — `GET /api/v1/study-groups/names`
+    case getStudyGroupNames
+
+    // MARK: - 제출 현황
+
+    /// 스터디원 워크북 제출 현황 조회 — `GET /api/v2/curriculums/workbook-submissions`
+    case getStudyMemberSubmissions(query: StudyMemberSubmissionQuery)
 
     // MARK: - 멤버 / 포인트
 
@@ -77,6 +84,10 @@ extension StudyRouter: BaseTargetType {
             return "/api/v1/study-groups/\(groupId)"
         case .getMemberProfile(let memberId):
             return "/api/v1/member/profile/\(memberId)"
+        case .getStudyGroupNames:
+            return "/api/v1/study-groups/names"
+        case .getStudyMemberSubmissions:
+            return "/api/v2/curriculums/workbook-submissions"
         case .searchChallengersOffset:
             return "/api/v1/challenger/search/offset"
         case .createChallengerPoint(let challengerId, _):
@@ -110,6 +121,8 @@ extension StudyRouter: BaseTargetType {
              .getMyStudyGroups,
              .getStudyGroupDetail,
              .getMemberProfile,
+             .getStudyGroupNames,
+             .getStudyMemberSubmissions,
              .searchChallengersOffset,
              .getChallengerProfile:
             return .get
@@ -148,6 +161,14 @@ extension StudyRouter: BaseTargetType {
                 parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
+        case .getStudyMemberSubmissions(let query):
+            // 주차 필터가 리스트라 배열 인코딩을 지정한다. 기본값(.brackets)은 `weekNos[]=1`
+            // 로 직렬화되는데, 서버는 `List<Long> weekNos` 를 `weekNos=1&weekNos=2` 형태로
+            // 바인딩하므로 대괄호가 붙으면 필터가 통째로 무시된다.
+            return .requestParameters(
+                parameters: query.toParameters,
+                encoding: URLEncoding(destination: .queryString, arrayEncoding: .noBrackets)
+            )
         case .createStudyGroup(let body):
             return .requestJSONEncodable(body)
         case .updateStudyGroup(_, let body):
@@ -158,6 +179,7 @@ extension StudyRouter: BaseTargetType {
             return .requestJSONEncodable(body)
         case .getStudyGroupDetail,
              .getMemberProfile,
+             .getStudyGroupNames,
              .getChallengerProfile,
              .deleteStudyGroup,
              .addStudyGroupMember,
