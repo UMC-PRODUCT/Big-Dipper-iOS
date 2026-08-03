@@ -1301,6 +1301,9 @@ struct OperatorStudyManagementSubmissionTests {
         useCase.submissionError = nil
         await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
 
+        // hasNext 뿐 아니라 커서도 되돌아왔는지 함께 고정한다 — Mock 은 커서를 무시하고
+        // 순서대로 페이지를 주므로, 목록만 보면 커서 미복원을 놓친다.
+        #expect(useCase.submissionCalls.last?.cursor == "1")
         #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1", "2"])
     }
 
@@ -1408,9 +1411,9 @@ struct OperatorStudyManagementSubmissionTests {
         // 첫 조회가 .loading 인 상태에서 그룹 칩을 누른다 → 두 번째 조회의 롤백 스냅샷이
         // .loading 이면, 그 조회가 취소될 때 화면이 영구 스피너가 된다.
         let first = Task { await viewModel.fetchSubmissions() }
-        await drainUntil { useCase.submissionCalls.count == 1 }
+        await drainUntil { useCase.pendingSubmissionCount == 1 }
         let second = Task { await viewModel.selectSubmissionGroup("G-7") }
-        await drainUntil { useCase.submissionCalls.count == 2 }
+        await drainUntil { useCase.pendingSubmissionCount == 2 }
 
         useCase.submissionError = CancellationError()
         useCase.releaseSubmissions()
