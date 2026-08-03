@@ -73,12 +73,17 @@ struct StudyRouterSubmissionTests {
         let extracted = try #require(requestParameters(of: router.task))
         let baseURL = try #require(URL(string: "https://example.com/submissions"))
 
+        // 라우터가 실제로 넘긴 파라미터를 인코딩한다. 리터럴 딕셔너리를 넣으면 라우터가
+        // weekNos 전달을 멈춰도 테스트가 통과해 회귀를 놓친다.
         let request = try extracted.encoding.encode(
             URLRequest(url: baseURL),
-            with: ["weekNos": ["1", "2"]]
+            with: extracted.parameters
         )
+        let query = try #require(request.url?.query)
 
-        #expect(request.url?.query == "weekNos=1&weekNos=2")
+        #expect(query.contains("weekNos=1"))
+        #expect(query.contains("weekNos=2"))
+        #expect(!query.contains("weekNos%5B%5D"))
     }
 
     // MARK: - StudyMemberSubmissionQuery.toParameters

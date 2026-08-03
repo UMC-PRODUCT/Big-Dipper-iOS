@@ -243,9 +243,12 @@ struct WeeklySubmissionDTO: Codable, Sendable, Equatable {
         weekNo = container.decodeFlexibleStringOrEmpty(forKey: .weekNo)
         weeklyCurriculumId = container.decodeFlexibleStringOrEmpty(forKey: .weeklyCurriculumId)
         challengerWorkbookId = container.decodeFlexibleStringOrNil(forKey: .challengerWorkbookId)
-        status = ChallengerWorkbookStatus(
-            serverStatus: try container.decodeIfPresent(String.self, forKey: .status)
-        )
+        // 상태 enum 이 자체 `init(from:)` 에서 모르는 값을 `.unknown` 으로 흡수하므로,
+        // 여기서 문자열로 먼저 꺼내지 않고 그대로 디코딩한다.
+        status = try container.decodeIfPresent(
+            ChallengerWorkbookStatus.self,
+            forKey: .status
+        ) ?? .unknown
         isBest = try container.decodeBoolFlexibleIfPresent(forKey: .isBest) ?? false
     }
 

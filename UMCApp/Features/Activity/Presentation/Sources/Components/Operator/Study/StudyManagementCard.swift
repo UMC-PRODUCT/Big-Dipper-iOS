@@ -48,13 +48,17 @@ struct StudyManagementCard: View {
             StudyManagementCardHeader(submission: submission)
                 .equatable()
 
-            Divider()
-                .frame(height: Constants.dividerHeight)
+            // 주차 필터 결과가 비면 구분선 아래가 통째로 비어 카드가 깨져 보인다.
+            let weekItems = submission.managementItems
+            if !weekItems.isEmpty {
+                Divider()
+                    .frame(height: Constants.dividerHeight)
 
-            VStack(spacing: 0) {
-                ForEach(submission.managementItems) { item in
-                    StudyManagementWeekRow(item: item) {
-                        onSelectWeek(item)
+                VStack(spacing: 0) {
+                    ForEach(weekItems) { item in
+                        StudyManagementWeekRow(item: item) {
+                            onSelectWeek(item)
+                        }
                     }
                 }
             }

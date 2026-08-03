@@ -85,8 +85,10 @@ public struct StudyManagementItem: Identifiable, Equatable, Sendable {
     ///   - submission: 스터디원 행 (이름·학교·파트 등 공통 정보)
     ///   - week: 펼칠 주차
     public init(submission: StudyMemberSubmission, week: WeeklySubmission) {
+        // 주차 커리큘럼 ID 는 서버가 빠뜨리면 빈 문자열로 디코딩되므로, 그 경우에도 같은
+        // 스터디원의 주차 카드가 겹치지 않도록 주차 번호까지 식별자에 넣는다.
         self.init(
-            id: "\(submission.studyGroupMemberId)-\(week.weeklyCurriculumId)",
+            id: "\(submission.studyGroupMemberId)-\(week.weeklyCurriculumId)-\(week.weekNo)",
             studyGroupMemberId: submission.studyGroupMemberId,
             memberId: submission.memberId,
             challengerWorkbookId: week.challengerWorkbookId,

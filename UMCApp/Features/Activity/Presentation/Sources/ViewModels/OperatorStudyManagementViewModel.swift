@@ -132,6 +132,13 @@ final class OperatorStudyManagementViewModel {
     /// 제출 현황 다음 페이지 존재 여부
     private var submissionHasNext = false
 
+    /// 제출 현황 첫 페이지 조회가 진행 중인지 여부 (재진입 가드 전용)
+    ///
+    /// 화면 상태(`submissionsState`)를 가드로 쓰면 안 된다 — 취소된 요청이 그 상태를 이전 값으로
+    /// 되돌리기 때문에, 취소와 재진입이 엇갈리면 in-flight 가 없는데도 `.loading` 이 남아 이후
+    /// 조회가 영구히 막힌다(stuck loading). 실제 in-flight 여부는 이 플래그만 안다.
+    private var isReloadingSubmissions = false
+
     /// 제출 현황 요청 토큰 (latest-wins)
     ///
     /// 그룹/주차 필터를 빠르게 바꾸면 이전 필터의 응답이 뒤늦게 도착할 수 있습니다. 요청 시점의
@@ -267,10 +274,24 @@ final class OperatorStudyManagementViewModel {
     /// 제출 현황 화면 진입 시 첫 페이지와 그룹 필터 후보를 조회합니다.
     ///
     /// 이미 조회 중이면 중복 호출을 무시합니다 (`.task` 재실행 대비 재진입 가드).
+    /// 이미 조회 중이거나 목록을 채워 둔 상태면 아무것도 하지 않습니다.
+    ///
+    /// 섹션을 오갈 때마다 `.task` 가 다시 실행되는데, 그때마다 새로 조회하면 스크롤로 쌓아 둔
+    /// 페이지가 통째로 버려집니다. 목록 갱신은 필터 변경과 실패 시 재시도로만 일어납니다.
     func fetchSubmissions() async {
-        if submissionsState.isLoading { return }
-        await loadStudyGroupNamesIfNeeded()
+        if isReloadingSubmissions { return }
+        if case .loaded = submissionsState { return }
+        // 목록을 먼저 조회한다. ``reloadSubmissions()`` 가 await 이전에 in-flight 플래그를
+        // 세우므로, 곧바로 이어진 두 번째 호출이 위 재진입 가드에 걸린다.
         await reloadSubmissions()
+        await loadStudyGroupNamesIfNeeded()
+    }
+
+    /// 실패한 조회를 처음부터 다시 시도합니다 (재시도 버튼 전용 — 로드 여부와 무관하게 실행).
+    func retrySubmissions() async {
+        if isReloadingSubmissions { return }
+        await reloadSubmissions()
+        await loadStudyGroupNamesIfNeeded()
     }
 
     /// 그룹 필터를 바꾸고 첫 페이지부터 다시 조회합니다.
@@ -328,11 +349,16 @@ final class OperatorStudyManagementViewModel {
 
             submissionNextCursor = nextPage.nextCursor
             submissionHasNext = nextPage.hasNext
+            updateAvailableWeekNos(from: submissions)
         } catch is CancellationError {
             // 뷰 라이프사이클 취소 — 실패가 아니므로 목록을 그대로 둔다.
         } catch let error as DomainError {
+            // 성공 경로와 마찬가지로 필터가 바뀐 뒤 도착한 실패는 무시한다. 사용자가 이미 다른
+            // 조건을 보고 있는데 이전 조건의 실패 안내가 뜨면 오해를 준다.
+            guard requestID == submissionRequestID else { return }
             presentAlert(title: "불러오지 못했어요", message: error.userMessage)
         } catch {
+            guard requestID == submissionRequestID else { return }
             errorHandler.handle(error, context: ErrorContext(
                 feature: "Activity",
                 action: "fetchMoreStudyMemberSubmissions"
@@ -1048,7 +1074,13 @@ final class OperatorStudyManagementViewModel {
     private func reloadSubmissions() async {
         submissionRequestID += 1
         let requestID = submissionRequestID
-        let previousState = submissionsState
+        // 롤백 대상이 `.loading` 이면(로딩 중 필터를 탭한 경우) 취소 시 in-flight 없는 `.loading`
+        // 으로 되돌아가 화면이 스피너에 갇힌다. 되돌릴 수 있는 상태만 스냅샷으로 남긴다.
+        let previousState: Loadable<[StudyMemberSubmission]> =
+            submissions.isEmpty ? .idle : .loaded(submissions)
+
+        isReloadingSubmissions = true
+        defer { isReloadingSubmissions = false }
 
         submissionsState = .loading
         isLoadingMoreSubmissions = false
@@ -1107,6 +1139,12 @@ final class OperatorStudyManagementViewModel {
     /// 주차 필터 후보를 갱신한다.
     ///
     /// 주차 필터가 걸린 응답은 선택한 주차만 담고 있어 후보를 좁혀 버리므로 무시한다.
+    ///
+    /// 호출자는 **그 시점까지 로드된 전체 행**을 넘긴다. 첫 페이지 조회는 새 목록을, 추가 로드는
+    /// 누적된 목록을 넘기므로, 첫 페이지에 없던 주차도 스크롤하면 후보에 들어오고 그룹 필터를
+    /// 바꾸면 이전 그룹의 주차가 남지 않는다.
+    ///
+    /// - Parameter rows: 현재 로드된 전체 스터디원 행
     private func updateAvailableWeekNos(from rows: [StudyMemberSubmission]) {
         guard selectedSubmissionWeekNos.isEmpty else { return }
 

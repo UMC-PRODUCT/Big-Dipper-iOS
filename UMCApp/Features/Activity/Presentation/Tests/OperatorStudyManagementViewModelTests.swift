@@ -1119,16 +1119,27 @@ struct OperatorStudyManagementSubmissionTests {
         #expect(useCase.submissionCalls.count == callsAfterFirstPage)
     }
 
-    @Test("주차 필터는 토글되고 선택 목록이 요청에 실린다")
-    func weekFilterTogglesAndForwards() async {
+    @Test("주차를 켜면 선택 목록이 요청에 실린다")
+    func weekFilterOnForwardsSelection() async {
         let useCase = MockOperatorStudyManagementUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         await viewModel.fetchSubmissions()
 
         await viewModel.toggleSubmissionWeek("2")
+
+        #expect(viewModel.selectedSubmissionWeekNos == ["2"])
         #expect(useCase.submissionCalls.last?.weekNos == ["2"])
+    }
+
+    @Test("같은 주차를 다시 누르면 선택이 해제되고 전체 주차로 재조회한다")
+    func weekFilterOffClearsSelection() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+        await viewModel.toggleSubmissionWeek("2")
 
         await viewModel.toggleSubmissionWeek("2")
+
         #expect(viewModel.selectedSubmissionWeekNos.isEmpty)
         #expect(useCase.submissionCalls.last?.weekNos == [])
     }
@@ -1190,6 +1201,113 @@ struct OperatorStudyManagementSubmissionTests {
         #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["new"])
     }
 
+    // MARK: - 재진입 가드 ↔ 취소 롤백 (stuck loading 방지)
+
+    /// 재진입 플래그가 취소 경로에서도 반드시 해제되는지 고정한다.
+    /// (스피너 고착 자체는 아래 `cancelDuringLoadingDoesNotStickInLoading` 이 잡는다.)
+    @Test("취소된 조회가 재진입 가드를 붙잡아 두지 않는다")
+    func cancelledReloadReleasesReentrancyGuard() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.gateSubmissions = true
+        let viewModel = makeViewModel(useCase: useCase)
+
+        // 진행 중인 첫 조회가 아직 응답 전인 동안 두 번째 진입이 들어온다.
+        let first = Task { await viewModel.fetchSubmissions() }
+        await drainUntil { useCase.submissionCalls.count == 1 }
+        let blocked = Task { await viewModel.fetchSubmissions() }
+
+        // 첫 조회가 취소로 끝나 이전 상태(.idle)로 되돌아간다.
+        useCase.submissionError = CancellationError()
+        useCase.releaseSubmissions()
+        await first.value
+        await blocked.value
+
+        // 상태가 .idle 로 돌아왔어도 in-flight 가 없으므로 재조회가 가능해야 한다.
+        useCase.submissionError = nil
+        useCase.gateSubmissions = false
+        useCase.submissionPages = [
+            makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "1")])
+        ]
+
+        await viewModel.fetchSubmissions()
+
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1"])
+    }
+
+    @Test("로딩 중 필터를 눌러 취소돼도 상태가 .loading 에 갇히지 않는다")
+    func cancelDuringLoadingDoesNotStickInLoading() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.gateSubmissions = true
+        let viewModel = makeViewModel(useCase: useCase)
+
+        // 첫 조회가 .loading 인 상태에서 그룹 칩을 누른다 → 두 번째 조회의 롤백 스냅샷이
+        // .loading 이면, 그 조회가 취소될 때 화면이 영구 스피너가 된다.
+        let first = Task { await viewModel.fetchSubmissions() }
+        await drainUntil { useCase.submissionCalls.count == 1 }
+        let second = Task { await viewModel.selectSubmissionGroup("G-7") }
+        await drainUntil { useCase.submissionCalls.count == 2 }
+
+        useCase.submissionError = CancellationError()
+        useCase.releaseSubmissions()
+        await first.value
+        await second.value
+
+        #expect(!viewModel.submissionsState.isLoading)
+    }
+
+    // MARK: - 추가 로드 실패 (형제 대칭)
+
+    @Test("필터가 바뀐 뒤 도착한 추가 로드 실패는 알림을 띄우지 않는다")
+    func staleLoadMoreFailureIsIgnored() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [makeSubmission(studyGroupMemberId: "1")],
+                hasNext: true,
+                nextCursor: "1"
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        // 추가 로드를 게이트로 붙잡아 둔 채 그룹 필터를 바꿔 토큰을 올린다.
+        useCase.gateSubmissions = true
+        let loadMore = Task {
+            await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
+        }
+        await drainUntil { useCase.submissionCalls.count == 2 }
+
+        // 이후 호출은 붙잡지 않는다 — 필터 재조회는 정상 완료돼야 토큰이 올라간다.
+        useCase.gateSubmissions = false
+        await viewModel.selectSubmissionGroup("G-7")
+
+        // 붙잡아 둔 추가 로드만 실패시킨다.
+        useCase.submissionError = DomainError.custom(message: "추가 로드 실패")
+        useCase.releaseSubmissions()
+        await loadMore.value
+
+        #expect(viewModel.alertPrompt == nil)
+    }
+
+    @Test("현재 필터의 추가 로드 실패는 알림으로 알린다")
+    func currentLoadMoreFailureShowsAlert() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [makeSubmission(studyGroupMemberId: "1")],
+                hasNext: true,
+                nextCursor: "1"
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        useCase.submissionError = DomainError.custom(message: "추가 로드 실패")
+        await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
+
+        #expect(viewModel.alertPrompt != nil)
+    }
+
     // MARK: - 그룹 필터 후보
 
     @Test("그룹 이름 목록은 한 번만 조회한다")
@@ -1198,8 +1316,9 @@ struct OperatorStudyManagementSubmissionTests {
         useCase.groupNames = [StudyGroupName(groupId: "G-1", name: "iOS A팀")]
         let viewModel = makeViewModel(useCase: useCase)
 
+        // 재시도로 두 번째 조회를 강제해도(진입 스킵 가드 우회) 이름 목록은 다시 부르지 않는다.
         await viewModel.fetchSubmissions()
-        await viewModel.fetchSubmissions()
+        await viewModel.retrySubmissions()
 
         #expect(useCase.groupNamesCallCount == 1)
         #expect(viewModel.studyGroupNames.map(\.groupId) == ["G-1"])

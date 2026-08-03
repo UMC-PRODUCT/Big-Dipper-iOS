@@ -99,9 +99,12 @@ private struct StudyManagementWeekRowContent: View, Equatable {
 
     // MARK: - View Components
 
+    /// - Note: `appFont` 에 `color:` 를 넘기면 그 모디파이어가 **안쪽에서**
+    ///   `foregroundStyle` 을 걸어 바깥 색을 덮는다. 상태 색을 살리려면 색 인자 없이
+    ///   폰트만 적용하고 색은 바깥 한 곳에서만 지정해야 한다.
     private var statusLabel: some View {
         Label(item.state.displayText, systemImage: item.state.badgeIcon)
-            .appFont(.caption1, color: .grey900)
+            .appFont(.caption1)
             .labelStyle(.titleAndIcon)
             .foregroundStyle(item.state.badgeColor)
             .lineLimit(1)

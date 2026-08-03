@@ -103,7 +103,23 @@ struct StudyManagementItemTests {
 
         let ids = submission.managementItems.map(\.id)
 
-        #expect(ids == ["SGM-1-WC-1", "SGM-1-WC-2"])
+        #expect(ids == ["SGM-1-WC-1-1", "SGM-1-WC-2-2"])
+    }
+
+    @Test("주차 커리큘럼 ID 가 비어도 주차 번호로 카드 id 가 구분된다")
+    func idStaysUniqueWhenCurriculumIdMissing() {
+        // 서버가 weeklyCurriculumId 를 빠뜨리면 DTO 가 빈 문자열로 디코딩한다.
+        // 그때도 같은 스터디원의 주차 카드가 겹치면 ForEach 가 깨진다.
+        let submission = makeSubmission(
+            weeks: [
+                makeWeek(weekNo: "1", weeklyCurriculumId: ""),
+                makeWeek(weekNo: "2", weeklyCurriculumId: "")
+            ]
+        )
+
+        let ids = submission.managementItems.map(\.id)
+
+        #expect(Set(ids).count == 2)
     }
 
     // MARK: - 표시 값 매핑

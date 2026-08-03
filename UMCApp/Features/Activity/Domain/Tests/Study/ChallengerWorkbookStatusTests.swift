@@ -55,36 +55,4 @@ struct ChallengerWorkbookStatusTests {
         #expect(try decodeStatus(from: "\"NEW_SERVER_CASE\"") == .unknown)
     }
 
-    // MARK: - 전송 / 필터 노출
-
-    @Test(".unknown 은 서버로 되돌려 보내지 않는다")
-    func unknownIsNotSentBack() {
-        #expect(ChallengerWorkbookStatus.unknown.serverQueryValue == nil)
-        #expect(ChallengerWorkbookStatus.pass.serverQueryValue == "PASS")
-    }
-
-    @Test(".unknown 은 필터 UI 후보에서 제외된다")
-    func unknownIsExcludedFromFilters() {
-        #expect(!ChallengerWorkbookStatus.filterableCases.contains(.unknown))
-        #expect(ChallengerWorkbookStatus.filterableCases.count == 4)
-    }
-
-    // MARK: - 분류
-
-    @Test(
-        "평가 확정 여부는 통과/미통과에서만 참이다",
-        arguments: [
-            (ChallengerWorkbookStatus.pass, true),
-            (.fail, true),
-            (.inProgress, false),
-            (.notSubmitted, false),
-            (.unknown, false)
-        ]
-    )
-    func isEvaluatedOnlyForDecidedStates(
-        status: ChallengerWorkbookStatus,
-        expected: Bool
-    ) {
-        #expect(status.isEvaluated == expected)
-    }
 }

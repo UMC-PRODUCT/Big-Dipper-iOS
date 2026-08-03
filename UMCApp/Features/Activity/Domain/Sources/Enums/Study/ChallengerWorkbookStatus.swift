@@ -19,8 +19,7 @@ import Foundation
 ///   워크북 단건 조회에서는 나올 수 없고, 미배포 인원도 행으로 포함하는 스터디원 제출 현황
 ///   목록에서만 사용됩니다. 베스트 워크북 여부(`isBest`)는 이 상태와 **독립된 별도 필드**라
 ///   여기에 케이스로 섞지 않습니다.
-public enum ChallengerWorkbookStatus: String, Codable, Sendable, CaseIterable, Equatable,
-    Hashable {
+public enum ChallengerWorkbookStatus: String, Codable, Sendable, Equatable, Hashable {
 
     /// 배포된 워크북이 없음 (미배포 인원)
     case notSubmitted = "NOT_SUBMITTED"
@@ -53,15 +52,6 @@ public enum ChallengerWorkbookStatus: String, Codable, Sendable, CaseIterable, E
         self = ChallengerWorkbookStatus(rawValue: serverStatus) ?? .unknown
     }
 
-    // MARK: - Filterable
-
-    /// 필터 UI 에 노출할 케이스
-    ///
-    /// ``unknown`` 은 사용자 의도와 무관한 시스템 폴백이므로 필터에서 제외합니다.
-    public static var filterableCases: [ChallengerWorkbookStatus] {
-        allCases.filter { $0 != .unknown }
-    }
-
     // MARK: - Display
 
     /// 뱃지/목록에 표시할 한국어 텍스트
@@ -75,17 +65,4 @@ public enum ChallengerWorkbookStatus: String, Codable, Sendable, CaseIterable, E
         }
     }
 
-    /// 서버 쿼리 파라미터로 직렬화한 값 (``unknown`` 은 전송 차단)
-    public var serverQueryValue: String? {
-        self == .unknown ? nil : rawValue
-    }
-
-    // MARK: - Categorization
-
-    /// 평가가 확정된 상태인지 여부 (통과/미통과)
-    ///
-    /// 운영진이 "처리가 끝난 인원"을 구분할 때 사용합니다.
-    public var isEvaluated: Bool {
-        self == .pass || self == .fail
-    }
 }
