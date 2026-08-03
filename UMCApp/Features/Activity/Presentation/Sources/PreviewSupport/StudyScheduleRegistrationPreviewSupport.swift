@@ -71,6 +71,19 @@ final class PreviewStudyScheduleRepository: StudyRepositoryProtocol {
         nil
     }
 
+    func fetchStudyGroupNames() async throws -> [StudyGroupName] {
+        throw DomainError.custom(message: "프리뷰 계약 밖")
+    }
+
+    func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage {
+        throw DomainError.custom(message: "프리뷰 계약 밖")
+    }
+
     func createStudyGroup(
         gisuId: String,
         name: String,
