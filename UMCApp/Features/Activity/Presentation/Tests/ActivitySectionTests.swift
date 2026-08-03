@@ -9,6 +9,11 @@ import CoreDomain
 import Testing
 @testable import ActivityPresentation
 
+// 파라미터 배열의 튜플 원소는 원소마다 타입을 추론하므로 축약 표기(`.admin`)를 쓸 수 없다.
+// 전부 명시하면 줄이 길어져, 파일 전용 별칭으로 짧게 유지한다.
+private typealias Section = ActivitySection
+private typealias Mode = ActivityMode
+
 @Suite("ActivitySection — 모드×섹션 분기 (도메인 규칙)")
 struct ActivitySectionTests {
 
@@ -17,12 +22,8 @@ struct ActivitySectionTests {
     @Test(
         "모드별 섹션 목록은 그 모드 전용 3개로 고정된다",
         arguments: [
-            (ActivityMode.challenger, [
-                ActivitySection.attendanceCheck, .studyActivity, .members,
-            ]),
-            (ActivityMode.admin, [
-                ActivitySection.attendanceManage, .studyManage, .memberManage,
-            ]),
+            (Mode.challenger, [Section.attendanceCheck, .studyActivity, .members]),
+            (Mode.admin, [Section.attendanceManage, .studyManage, .memberManage]),
         ]
     )
     func sectionsPerMode(mode: ActivityMode, expected: [ActivitySection]) {
@@ -43,8 +44,8 @@ struct ActivitySectionTests {
     @Test(
         "모드별 기본 섹션은 출석 계열이다",
         arguments: [
-            (ActivityMode.challenger, ActivitySection.attendanceCheck),
-            (ActivityMode.admin, ActivitySection.attendanceManage),
+            (Mode.challenger, Section.attendanceCheck),
+            (Mode.admin, Section.attendanceManage),
         ]
     )
     func defaultSectionPerMode(mode: ActivityMode, expected: ActivitySection) {
@@ -62,12 +63,12 @@ struct ActivitySectionTests {
     @Test(
         "모드를 바꿔도 같은 성격의 자리를 유지한다",
         arguments: [
-            (ActivitySection.attendanceCheck, ActivityMode.admin, .attendanceManage),
-            (ActivitySection.studyActivity, .admin, .studyManage),
-            (ActivitySection.members, .admin, .memberManage),
-            (ActivitySection.attendanceManage, .challenger, .attendanceCheck),
-            (ActivitySection.studyManage, .challenger, .studyActivity),
-            (ActivitySection.memberManage, .challenger, .members),
+            (Section.attendanceCheck, Mode.admin, Section.attendanceManage),
+            (Section.studyActivity, Mode.admin, Section.studyManage),
+            (Section.members, Mode.admin, Section.memberManage),
+            (Section.attendanceManage, Mode.challenger, Section.attendanceCheck),
+            (Section.studyManage, Mode.challenger, Section.studyActivity),
+            (Section.memberManage, Mode.challenger, Section.members),
         ]
     )
     func mappedKeepsCounterpart(
