@@ -138,6 +138,14 @@ extension AppStorageKey {
         identifierString(forKey: gisuId, in: defaults)
     }
 
+    /// 챌린저 ID를 `String`으로 조회합니다. 미설정 시 `nil`.
+    ///
+    /// 멤버 ID와 별개인 식별자입니다. 스터디 그룹의 멘토 명단은 챌린저 ID로 기록되므로,
+    /// "내가 이 그룹의 담당 멘토인가" 같은 권한 판정은 멤버 ID가 아니라 이 값으로 대조합니다.
+    public static func challengerIdString(in defaults: UserDefaults = .standard) -> String? {
+        identifierString(forKey: challengerId, in: defaults)
+    }
+
     /// 멤버 ID를 레거시 `Int` 형태로 조회합니다.
     ///
     /// 신규 `String` 저장값을 `Int`로 변환해 우선 반환하고, 변환에 실패하거나

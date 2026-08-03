@@ -31,23 +31,26 @@ struct OperatorStudyManagementView: View {
     /// 진입점(+ 버튼)을 게이팅하고 안내만 표시한다. 이식 후 생성 폼 네비게이션을 복원한다.
     @State private var showCreateUnavailable = false
 
-    /// 일정 등록 미결선 안내 표시 여부
+    /// 일정 등록 화면으로 이동을 상위(Activity 탭 루트)에 위임하는 콜백.
     ///
-    /// 레거시는 전역 라우트(`pathStore.activityPath`)로 일정 등록 화면을 push 했으나,
-    /// Activity 라우트 허브와 일정 등록 View 가 아직 미이식이라 네비게이션을 보류한다.
-    @State private var showScheduleUnavailable = false
+    /// 이 화면은 "어느 그룹의 일정을 등록하려 한다"까지만 알고, 그것을 어떤 경로로 띄울지는
+    /// 탭 루트가 정한다. 그래야 이 화면이 라우팅 세부를 몰라도 되고 프리뷰에서도 그대로 뜬다.
+    private let onRegisterSchedule: (StudyGroupInfo) -> Void
 
     // MARK: - Initializer
 
     /// - Parameters:
     ///   - viewModel: 운영진 스터디 관리 ViewModel
     ///   - userSession: 앱 전역 세션(스터디 그룹 생성 권한 확인용)
+    ///   - onRegisterSchedule: 일정 등록 화면 이동 요청 (권한 확인을 통과한 그룹만 전달)
     init(
         viewModel: OperatorStudyManagementViewModel,
-        userSession: UserSessionManager
+        userSession: UserSessionManager,
+        onRegisterSchedule: @escaping (StudyGroupInfo) -> Void
     ) {
         _viewModel = State(wrappedValue: viewModel)
         self.userSession = userSession
+        self.onRegisterSchedule = onRegisterSchedule
     }
 
     // MARK: - Constants
@@ -110,11 +113,6 @@ struct OperatorStudyManagementView: View {
                 Button("확인", role: .cancel) {}
             } message: {
                 Text("스터디 그룹 생성은 챌린저 검색 이식 후 연결됩니다.")
-            }
-            .alert("준비 중", isPresented: $showScheduleUnavailable) {
-                Button("확인", role: .cancel) {}
-            } message: {
-                Text("일정 등록 화면은 Activity 라우터 이식 후 연결됩니다.")
             }
     }
 
@@ -187,8 +185,11 @@ struct OperatorStudyManagementView: View {
                                 viewModel.showAddMentorSheet(for: group)
                             },
                             onSchedule: {
-                                // 일정 등록 화면·라우트 미이식 → 진입은 보류하고 안내만 표시한다.
-                                showScheduleUnavailable = true
+                                guard viewModel.canRegisterSchedule(for: group) else {
+                                    viewModel.presentScheduleRegistrationDenied()
+                                    return
+                                }
+                                onRegisterSchedule(group)
                             },
                             onRemoveMember: { member in
                                 Task {
@@ -350,7 +351,8 @@ struct OperatorStudyManagementView: View {
     NavigationStack {
         OperatorStudyManagementView(
             viewModel: previewOperatorStudyManagementViewModel(),
-            userSession: previewCreateCapableSession()
+            userSession: previewCreateCapableSession(),
+            onRegisterSchedule: { _ in }
         )
     }
 }
@@ -361,7 +363,8 @@ struct OperatorStudyManagementView: View {
             viewModel: previewOperatorStudyManagementViewModel(
                 outcome: .page(OperatorStudyPreviewData.emptyPage)
             ),
-            userSession: previewCreateCapableSession()
+            userSession: previewCreateCapableSession(),
+            onRegisterSchedule: { _ in }
         )
     }
 }
@@ -372,7 +375,8 @@ struct OperatorStudyManagementView: View {
             viewModel: previewOperatorStudyManagementViewModel(
                 outcome: .page(OperatorStudyPreviewData.emptyPage)
             ),
-            userSession: previewChallengerSession()
+            userSession: previewChallengerSession(),
+            onRegisterSchedule: { _ in }
         )
     }
 }
@@ -383,7 +387,8 @@ struct OperatorStudyManagementView: View {
             viewModel: previewOperatorStudyManagementViewModel(
                 outcome: .failure(PreviewSampleError.failed)
             ),
-            userSession: previewCreateCapableSession()
+            userSession: previewCreateCapableSession(),
+            onRegisterSchedule: { _ in }
         )
     }
 }

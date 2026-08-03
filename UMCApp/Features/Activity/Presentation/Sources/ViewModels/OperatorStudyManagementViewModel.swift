@@ -34,6 +34,11 @@ final class OperatorStudyManagementViewModel {
     /// 현재 사용자 기수 ID 제공자 (서버 응답 `String`) — 테스트에서 주입 가능.
     private let gisuIdProvider: () -> String?
 
+    /// 현재 사용자 챌린저 ID 제공자 (서버 응답 `String`) — 테스트에서 주입 가능.
+    ///
+    /// 일정 등록 권한(담당 멘토 여부) 판정에만 쓴다.
+    private let challengerIdProvider: () -> String?
+
     /// 스터디 그룹 관리 로딩 상태
     private(set) var studyGroupDetailsState: Loadable<[StudyGroupInfo]> = .idle
 
@@ -81,21 +86,52 @@ final class OperatorStudyManagementViewModel {
     /// - Parameters:
     ///   - errorHandler: 전역 에러 핸들러
     ///   - useCase: 운영진 스터디 관리 UseCase
-    ///   - gisuIdProvider: 현재 기수 ID 제공자 (기본값: `AppStorageKey.gisuId` 저장값)
+    ///   - gisuIdProvider: 현재 기수 ID 제공자 (기본값: `AppStorageKey.gisuIdString()`)
+    ///   - challengerIdProvider: 현재 챌린저 ID 제공자
+    ///     (기본값: `AppStorageKey.challengerIdString()`)
     init(
         errorHandler: ErrorHandler,
         useCase: OperatorStudyManagementUseCaseProtocol,
-        gisuIdProvider: @escaping () -> String? = { AppStorageKey.gisuIdString() }
+        gisuIdProvider: @escaping () -> String? = { AppStorageKey.gisuIdString() },
+        challengerIdProvider: @escaping () -> String? = { AppStorageKey.challengerIdString() }
     ) {
         self.errorHandler = errorHandler
         self.useCase = useCase
         self.gisuIdProvider = gisuIdProvider
+        self.challengerIdProvider = challengerIdProvider
     }
 
     // MARK: - Computed Property
 
     /// 현재 사용자 기수 ID (서버 응답 `String`). 그룹 생성 화면의 표시·검증용.
     var currentGisuId: String? { gisuIdProvider() }
+
+    // MARK: - Function (일정 등록 권한)
+
+    /// 해당 그룹에 일정을 등록할 수 있는지 — 담당 멘토 본인만, 서버에 실재하는 그룹에만 가능하다.
+    ///
+    /// 챌린저 ID 를 알 수 없으면(로그인 정보 부재 등) 권한 없음으로 본다. 신원을 확인하지
+    /// 못한 상태를 통과시키면 남의 스터디 일정을 등록할 수 있게 되기 때문이다.
+    ///
+    /// - Note: 낙관적 삽입 placeholder(`new_` 접두사)는 아직 서버 식별자가 없어 제외한다.
+    ///   레거시는 `Int(group.serverID)` 변환 실패로 이 경우를 조용히 막았는데, 식별자가
+    ///   `String` 이 되며 그 변환이 사라졌으므로 여기서 명시적으로 판정한다.
+    func canRegisterSchedule(for group: StudyGroupInfo) -> Bool {
+        guard isPersistedServerGroup(group.serverID) else { return false }
+        guard let challengerId = challengerIdProvider(), !challengerId.isEmpty else {
+            return false
+        }
+        return group.mentors.contains { $0.challengerID == challengerId }
+    }
+
+    /// 일정 등록 권한이 없을 때 안내 다이얼로그를 띄운다.
+    func presentScheduleRegistrationDenied() {
+        alertPrompt = AlertPrompt(
+            title: "권한 없음",
+            message: "담당 파트장(멘토)만 일정을 등록할 수 있습니다.",
+            positiveBtnTitle: "확인"
+        )
+    }
 
     // MARK: - Function (조회 / 페이지네이션)
 

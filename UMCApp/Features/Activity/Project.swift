@@ -32,6 +32,8 @@ let project = featureProject(
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         // ChallengerMemberListView 가 DIContainer 로 UseCase·세션을 resolve (Home/Notice 동일 패턴).
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
+        // Activity 탭 루트가 공유 `PathStore` 로 자기 목적지를 push (Feature → App 의존 회피).
+        .project(target: "CoreRouting", path: .relativeToRoot("Core/Routing")),
         // 출석 지도(BaseMapComponent/ActivityCompactMapView)가 Map·MapCircle·MKMapItem 사용.
         // CoreUIComponents·UMCFoundation 과 동일하게 SDK 프레임워크를 명시 링크한다.
         .sdk(name: "MapKit", type: .framework),

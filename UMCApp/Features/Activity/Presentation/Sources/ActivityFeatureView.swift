@@ -10,14 +10,35 @@ import SwiftUI
 import CoreDesignSystem
 import CoreDI
 import CoreDomain
+import CoreRouting
 import CoreUIComponents
 import UMCFoundation
 #endif
 
+/// Activity 탭의 루트.
+///
+/// 탭 스택 자체는 상위 `RootTabView` 가 제공하므로 여기서 `NavigationStack` 을 만들지 않고,
+/// 이 탭이 다루는 목적지(``ActivityDestination``)의 렌더 분기만 등록한다. 라우팅을 App 이
+/// 아니라 이 모듈이 맡기 때문에 목적지 화면들을 `public` 으로 열지 않아도 된다.
 public struct ActivityFeatureView: View {
+
+    // MARK: - Init
+
     public init() {}
 
+    // MARK: - Body
+
     public var body: some View {
+        content
+            .navigationDestination(for: ActivityDestination.self) { destination in
+                ActivityRoutingView(destination: destination)
+            }
+    }
+
+    // MARK: - View Component
+
+    @ViewBuilder
+    private var content: some View {
         #if DEBUG
         DebugActivityHarnessView()
         #else
@@ -43,6 +64,9 @@ public struct ActivityFeatureView: View {
 private struct DebugActivityHarnessView: View {
 
     // MARK: - Property
+
+    /// 탭 스택의 공유 경로. 일정 등록처럼 화면을 push 하는 동작이 이 저장소를 거친다.
+    @Environment(PathStore.self) private var pathStore
 
     /// 하네스가 소유하는 세션. 운영진 권한 계정으로 두어 모드 전환을 확인할 수 있다.
     @State private var userSession: UserSessionManager
@@ -145,7 +169,17 @@ private struct DebugActivityHarnessView: View {
         case .studyManage:
             OperatorStudyManagementView(
                 viewModel: previewOperatorStudyManagementViewModel(),
-                userSession: userSession
+                userSession: userSession,
+                onRegisterSchedule: { group in
+                    // 식별자는 서버 응답 그대로 `String` 이라 변환 단계가 없다.
+                    pathStore.push(
+                        ActivityDestination.studyScheduleRegistration(
+                            studyName: group.name,
+                            studyGroupId: group.serverID
+                        ),
+                        on: .activity
+                    )
+                }
             )
 
         case .memberManage:

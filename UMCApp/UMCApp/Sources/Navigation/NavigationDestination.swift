@@ -13,13 +13,15 @@ import NoticeDomain
 /// 추가하지 않는다. `AppFlowState`와 마찬가지로 각 Feature가 실제로 탭에 연결되는
 /// 후속 이슈에서 케이스가 점진적으로 채워지는 최소 골격이다.
 ///
-/// - Note: `.notice`는 `NoticePresentation`이 자체적으로 들고 있던 로컬 스텁
-///   (`NoticeNavigation.swift`)의 목적지 구조를 그대로 옮겼다. 다만 `NoticePresentation`은
-///   App 타깃을 참조할 수 없어(Feature → App 의존 방향 금지) `NoticeView`/`NoticeDetailView`가
-///   이 타입을 직접 쓰도록 교체할 수는 없다. Notice 탭을 `RootTabView`에 실연결하는 후속
-///   이슈에서 (a) Notice가 로컬 타입을 유지한 채 콜백/클로저로 상위와 연동하거나,
-///   (b) 여러 Feature가 공유할 신규 Core 모듈을 신설해 이 타입을 옮기는 방안 중 하나를
-///   메인테이너 승인 하에 선택해야 한다.
+/// - Note: 이 타입은 **App 에 남은 과도기 목적지**다. 공유 경로 저장소(`CoreRouting.PathStore`)가
+///   타입 소거 `NavigationPath` 를 쓰기 때문에, Feature 는 App 을 참조하지 않고 자기 목적지
+///   타입을 자기 모듈에 두면 된다(예: `ActivityPresentation.ActivityDestination`).
+///   `.notice` 는 연관값이 `NoticeDomain.NoticeDetail` 이라 Notice 모듈로 옮기는 편이 자연스럽고,
+///   그 이전은 Notice 탭 실연결 이슈 소관이라 지금은 App 에 둔다. 옮기고 나면 이 타입은 사라진다.
+/// - Warning: 이 타입과 `NavigationRoutingView` 는 `NoticePresentation` 의 로컬 스텁에도
+///   **같은 이름으로** 선언되어 있다. 지금은 같은 모듈 선언이 우선해 App 것이 잡히지만,
+///   이 파일을 지우면 `RootTabView` 의 참조가 컴파일 에러 없이 구조만 비슷한 `NoticePresentation`
+///   타입으로 조용히 갈아탄다. 삭제는 `RootTabView` 의 목적지 등록·push 갱신과 반드시 함께 한다.
 enum NavigationDestination: Hashable {
     case home(Home)
     case notice(Notice)
