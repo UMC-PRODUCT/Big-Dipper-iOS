@@ -105,9 +105,15 @@ final class ActivityViewModel {
 
     /// 현재 사용자 식별자 조회
     ///
-    /// 실패해도 화면을 막지 않는다 — 출석 액션 시점에 자식 화면이 다시 요구한다.
+    /// 실패해도 세션 조회를 막지 않는다. 다만 세션의 초기 출석 기록에 출석 주체가 실리므로,
+    /// 식별자가 세션보다 늦게(또는 다른 값으로) 도착하면 이미 만들어 둔 세션의 주체가
+    /// 어긋난다. 그 경우에만 같은 일정으로 세션을 다시 만들어 주체를 바로잡는다.
     func fetchUserId() async {
+        let previous = userId
         userId = try? await fetchUserIdUseCase.execute()
+
+        guard userId != nil, userId != previous, sessionsState.value != nil else { return }
+        await fetchSessions()
     }
 
     // MARK: - Function
