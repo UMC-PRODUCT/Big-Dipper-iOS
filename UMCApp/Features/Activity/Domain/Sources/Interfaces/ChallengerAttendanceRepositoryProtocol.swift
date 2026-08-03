@@ -44,9 +44,9 @@ public protocol ChallengerAttendanceRepositoryProtocol {
         longitude: Double
     ) async throws -> AttendanceDecisionResult
 
-    // MARK: - 외부 도메인 의존 (별도 이슈로 추가 예정)
+    // MARK: - 일정 조회는 여기 두지 않는다
     //
-    // `fetchMySchedulesForAttendance(from:to:) async throws -> [ScheduleDetailData]`
-    // 는 `ScheduleDetailData` 가 Schedule Feature 모듈에 정의될 예정이라 본 PR 에서 제외.
-    // Schedule 모듈 이식 후속 이슈에서 추가합니다.
+    // 출석 화면이 쓰는 일정 목록 조회는 `HomeDomain` 의 `ScheduleRepositoryProtocol`
+    // (`GET /api/v2/schedules/me`) 이 canonical 이다. 같은 엔드포인트를 Activity 에 다시
+    // 정의하지 않고 ``ChallengerAttendanceUseCase`` 가 그 Repository 를 주입받아 사용한다.
 }

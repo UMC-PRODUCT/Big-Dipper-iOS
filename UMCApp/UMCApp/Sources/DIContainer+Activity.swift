@@ -9,6 +9,7 @@ import ActivityData
 import ActivityDomain
 import CoreDI
 import CoreNetwork
+import HomeDomain
 
 extension DIContainer {
     /// Activity 계층의 Presentation → Domain → Data 조립을 등록한다.
@@ -20,6 +21,9 @@ extension DIContainer {
     /// - Note: `LocationProviding` 은 canonical `UMCFoundation.LocationManager` 를 감싼
     ///   ``ActivityData/LocationManagerAdapter`` 를 등록한다. 위치 로직을 feature 모듈에
     ///   재구현하지 않는다.
+    /// - Note: 일정 조회/생성에 쓰는 `ScheduleRepositoryProtocol` 은 Home 이 이미 등록한
+    ///   canonical 이므로 여기서 재등록하지 않고 `resolve` 로만 재사용한다
+    ///   (``DIContainer/registerHomeDependencies()``).
     func registerActivityDependencies() {
         registerActivityProviders()
         registerActivityRepositories()
@@ -74,6 +78,7 @@ extension DIContainer {
         register(ChallengerAttendanceUseCaseProtocol.self) {
             ChallengerAttendanceUseCase(
                 repository: self.resolve(ChallengerAttendanceRepositoryProtocol.self),
+                scheduleRepository: self.resolve(ScheduleRepositoryProtocol.self),
                 locationProvider: self.resolve(LocationProviding.self)
             )
         }
