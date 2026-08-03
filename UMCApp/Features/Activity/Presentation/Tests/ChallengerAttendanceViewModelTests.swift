@@ -484,6 +484,48 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
 
         #expect(window == expected)
     }
+
+    // MARK: - 정책 조회 (표시용)
+
+    @Test("주입한 정책은 판정과 같은 캐시에서 조회된다")
+    func attendancePolicyReadsInjectedCache() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+        let session = makeSession()
+        let policy = makePolicy()
+        viewModel.updateSchedulePolicies([session.info.sessionId: policy])
+
+        #expect(viewModel.attendancePolicy(for: session.info.sessionId) == policy)
+    }
+
+    @Test("정책 미조회 세션은 nil 을 반환한다")
+    func attendancePolicyReturnsNilWhenNotFetched() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+        let session = makeSession()
+
+        #expect(viewModel.attendancePolicy(for: session.info.sessionId) == nil)
+    }
+
+    // MARK: - 서버 일정 ID 조회 (제출 경로)
+
+    @Test("주입한 서버 일정 ID가 조회된다")
+    func scheduleIdReadsInjectedCache() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+        let session = makeSession()
+        viewModel.updateScheduleIds([session.info.sessionId: "SCH-1"])
+
+        #expect(viewModel.scheduleId(for: session.info.sessionId) == "SCH-1")
+    }
+
+    /// 회귀 박제 — 일정 ID가 없으면 출석·사유 제출이 서버에 도달할 수 없다.
+    /// 화면은 이 nil 을 근거로 액션 버튼을 비활성화해, 사용자가 작성한 사유가
+    /// 조용히 버려지지 않게 한다.
+    @Test("일정 ID 미조회 세션은 nil 을 반환한다")
+    func scheduleIdReturnsNilWhenNotFetched() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+        let session = makeSession()
+
+        #expect(viewModel.scheduleId(for: session.info.sessionId) == nil)
+    }
 }
 
 // MARK: - 출석 안내 문구
