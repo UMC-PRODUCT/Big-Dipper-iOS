@@ -260,6 +260,25 @@ private enum Fixture {
         if let message { fields.append("\"message\": \"\(message)\"") }
         return Data("{ \(fields.joined(separator: ", ")) }".utf8)
     }
+
+    /// 비-2xx 실패 응답 본문 — 서버 `ApiErrorResponseFactory` 의 실제 모양.
+    ///
+    /// 서버는 `result` 에 객체가 아니라 **예외 메시지 문자열**을 담는다(`BusinessException`
+    /// 의 메시지). 이 모양을 그대로 재현해야 파싱이 실제 응답에서 `code` 를 읽어내는지
+    /// 검증된다 — `result` 를 비운 본문으로만 테스트하면 그 차이를 못 잡는다.
+    static func errorBody(code: String?, message: String) -> Data {
+        var fields: [String] = ["\"success\": false"]
+        if let code { fields.append("\"code\": \"\(code)\"") }
+        fields.append("\"message\": \"\(message)\"")
+        fields.append("\"result\": \"\(message)\"")
+        return Data("{ \(fields.joined(separator: ", ")) }".utf8)
+    }
+
+    /// 서버가 커리큘럼 미등록에 실제로 내려주는 404 본문.
+    static let curriculumNotRegisteredBody = errorBody(
+        code: "CURRICULUM-0001",
+        message: "커리큘럼을 찾을 수 없어요. 선택한 커리큘럼을 확인해주세요."
+    )
 }
 
 private typealias RepositoryPair = (StudyRepository, StubNetworkRequesting)
@@ -382,6 +401,67 @@ struct StudyRepositoryCurriculumTests {
 
         await #expect(throws: RepositoryError.serverError(code: "CUR404", message: "커리큘럼 없음")) {
             try await sut.fetchCurriculumOverview()
+        }
+    }
+
+    // MARK: - 커리큘럼 미등록 승격
+
+    /// 서버는 커리큘럼 미등록을 404 + `CURRICULUM-0001` 로 알린다. 학기 초에는 정상 상황이라
+    /// 일반 서버 오류로 흘리면 사용자에게 "알 수 없는 오류" 카드로 보인다.
+    ///
+    /// 두 조회는 같은 `fetchCurriculum()` 헬퍼를 공유하므로 형제 대칭으로 함께 고정한다.
+    ///
+    /// 파라미터 타입 `CurriculumFetch` 가 file-private 이라 메서드도 fileprivate 로 맞춘다.
+    @Test(
+        "커리큘럼 미등록(404 CURRICULUM-0001)은 두 조회 모두 전용 도메인 에러로 승격된다",
+        arguments: [CurriculumFetch.overview, .weeklyOptions]
+    )
+    fileprivate func promotesCurriculumNotRegistered(_ fetch: CurriculumFetch) async {
+        let (sut, _) = makeRepository(
+            .failure(
+                NetworkError.requestFailed(
+                    statusCode: 404,
+                    data: Fixture.curriculumNotRegisteredBody
+                )
+            )
+        )
+
+        await #expect(throws: DomainError.curriculumNotRegistered) {
+            try await fetch.run(sut)
+        }
+    }
+
+    /// 승격 범위를 코드로 좁히지 않으면 401·5xx 같은 진짜 오류까지 "커리큘럼 준비 중"
+    /// 안내로 뭉개져 전역 에러 처리를 우회한다.
+    @Test(
+        "미등록 코드가 아닌 실패는 원본 NetworkError 를 그대로 전파한다",
+        arguments: [
+            (404, Fixture.errorBody(code: "CURRICULUM-0014", message: "주차 없음")),
+            (500, Fixture.errorBody(code: nil, message: "서버 오류")),
+            (403, nil)
+        ] as [(Int, Data?)]
+    )
+    func propagatesNonCurriculumFailures(statusCode: Int, body: Data?) async {
+        let networkError = NetworkError.requestFailed(statusCode: statusCode, data: body)
+        let (sut, _) = makeRepository(.failure(networkError))
+
+        await #expect(throws: networkError) {
+            try await sut.fetchCurriculumOverview()
+        }
+    }
+}
+
+/// ``fetchCurriculum()`` 헬퍼를 공유하는 두 공개 조회 — 미등록 승격을 형제 대칭으로 검증한다.
+private enum CurriculumFetch: Sendable {
+    case overview
+    case weeklyOptions
+
+    func run(_ sut: StudyRepository) async throws {
+        switch self {
+        case .overview:
+            _ = try await sut.fetchCurriculumOverview()
+        case .weeklyOptions:
+            _ = try await sut.fetchWeeklyCurriculumOptions()
         }
     }
 }
