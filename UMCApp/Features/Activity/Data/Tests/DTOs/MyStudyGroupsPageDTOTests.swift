@@ -16,17 +16,22 @@ private func decodePage(_ json: String) throws -> MyStudyGroupsPageDTO {
     try JSONDecoder().decode(MyStudyGroupsPageDTO.self, from: Data(json.utf8))
 }
 
-/// 단일 스터디 그룹 상세 JSON (페이지 항목용). part/createdAt 고정.
-private func makeGroupJSON(groupId: String = "\"10\"", name: String = "\"iOS 1팀\"") -> String {
+/// 단일 스터디 그룹 상세 JSON (페이지 항목용). 서버 `StudyGroupResponse` 실제 키를 쓴다.
+private func makeGroupJSON(
+    studyGroupId: String = "\"10\"",
+    name: String = "\"iOS 1팀\"",
+    memberId: String = "\"2001\""
+) -> String {
     """
     {
-        "groupId": \(groupId),
+        "studyGroupId": \(studyGroupId),
         "name": \(name),
-        "part": "IOS",
+        "gisuId": 7,
+        "studyPart": "IOS",
         "createdAt": "2026-05-11T09:30:00Z",
-        "memberCount": 1,
-        "schools": [],
-        "mentors": [ { "challengerId": "1", "memberId": "1", "name": "재원" } ],
+        "mentors": [
+            { "memberId": \(memberId), "memberName": "재원", "schoolName": "한성대학교" }
+        ],
         "members": []
     }
     """
@@ -51,7 +56,7 @@ struct MyStudyGroupsPageDTOTests {
         let dto = try decodePage(json)
 
         #expect(dto.studyGroups.count == 1)
-        #expect(dto.studyGroups.first?.groupId == "10")
+        #expect(dto.studyGroups.first?.studyGroupId == "10")
         #expect(dto.nextCursor == "cursor-2")
         #expect(dto.hasNext == true)
     }
@@ -73,7 +78,10 @@ struct MyStudyGroupsPageDTOTests {
     func decodesFlatContentFormat() throws {
         let json = """
         {
-            "content": [\(makeGroupJSON()), \(makeGroupJSON(groupId: "\"11\"", name: "\"iOS 2팀\""))],
+            "content": [
+                \(makeGroupJSON()),
+                \(makeGroupJSON(studyGroupId: "\"11\"", name: "\"iOS 2팀\""))
+            ],
             "nextCursor": "next-1",
             "hasNext": true
         }
@@ -177,5 +185,60 @@ struct MyStudyGroupsPageDTOTests {
         #expect(page.content.isEmpty)
         #expect(page.hasNext == false)
         #expect(page.nextCursor == nil)
+    }
+
+    // MARK: - allMemberIDs / 멤버 프로필 보강
+
+    @Test("allMemberIDs — 페이지 내 모든 그룹의 memberId 를 모은다")
+    func allMemberIDsSpansEveryGroup() throws {
+        let json = """
+        {
+            "studyGroups": [
+                \(makeGroupJSON(memberId: "\"2001\"")),
+                \(makeGroupJSON(studyGroupId: "\"11\"", memberId: "\"2002\""))
+            ],
+            "hasNext": false
+        }
+        """
+        #expect(try Set(decodePage(json).allMemberIDs) == ["2001", "2002"])
+    }
+
+    /// 같은 멤버가 여러 그룹에 속하면 `allMemberIDs` 에 중복이 남는다. 중복 제거는 조회 직전
+    /// ``StudyRepository`` 가 담당하므로, 여기서는 원본을 그대로 노출하는 것이 계약이다.
+    @Test("allMemberIDs — 그룹 간 중복 memberId 는 제거하지 않고 그대로 넘긴다")
+    func allMemberIDsKeepsDuplicatesAcrossGroups() throws {
+        let json = """
+        {
+            "studyGroups": [
+                \(makeGroupJSON(memberId: "\"2001\"")),
+                \(makeGroupJSON(studyGroupId: "\"11\"", memberId: "\"2001\""))
+            ],
+            "hasNext": false
+        }
+        """
+        #expect(try decodePage(json).allMemberIDs == ["2001", "2001"])
+    }
+
+    @Test("toDomain — 보강 매핑이 페이지 내 모든 그룹에 적용된다")
+    func toDomainAppliesSupplementAcrossGroups() throws {
+        let json = """
+        {
+            "studyGroups": [
+                \(makeGroupJSON(memberId: "\"2001\"")),
+                \(makeGroupJSON(studyGroupId: "\"11\"", memberId: "\"2002\""))
+            ],
+            "hasNext": false
+        }
+        """
+        let page = try decodePage(json).toDomain(
+            supplementsByMemberID: [
+                "2001": StudyGroupMemberSupplement(challengerID: "C1", nickname: "닉1"),
+                "2002": StudyGroupMemberSupplement(challengerID: "C2", nickname: "닉2")
+            ]
+        )
+
+        #expect(page.content[0].mentors.first?.challengerID == "C1")
+        #expect(page.content[1].mentors.first?.challengerID == "C2")
+        #expect(page.content[1].mentors.first?.nickname == "닉2")
     }
 }
