@@ -23,16 +23,27 @@ final class PreviewChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
     let isLocationAuthorized: Bool
 
     private let timeWindow: AttendanceTimeWindow
+    private let schedules: [ScheduleDetailData]
 
     init(
         timeWindow: AttendanceTimeWindow = .onTime,
         isInsideGeofence: Bool = true,
-        isLocationAuthorized: Bool = true
+        isLocationAuthorized: Bool = true,
+        schedules: [ScheduleDetailData] = []
     ) {
         self.timeWindow = timeWindow
         self.isInsideGeofence = isInsideGeofence
         self.isLocationAuthorized = isLocationAuthorized
+        self.schedules = schedules
     }
+
+    /// 프리뷰가 미리 세팅한 것과 같은 목록을 돌려준다.
+    ///
+    /// 화면의 `.task` 가 `loadOnAppear()` 로 배경 갱신을 돌리므로, 여기서 빈 배열을 주면
+    /// 세팅해 둔 일정이 지워져 프리뷰가 비어 버린다.
+    func fetchAvailableSchedules(now: Date) async throws -> [ScheduleDetailData] { schedules }
+
+    func fetchMyHistory(now: Date) async throws -> [ScheduleDetailData] { [] }
 
     func requestGPSAttendance(
         sessionId: SessionID,
@@ -239,15 +250,16 @@ enum AttendancePreviewData {
         timeWindow: AttendanceTimeWindow = .onTime,
         sessions: [Session] = []
     ) -> ChallengerAttendanceViewModel {
+        let schedules = sessions.map { schedule(for: $0, timeWindow: timeWindow) }
         let viewModel = ChallengerAttendanceViewModel(
             errorHandler: ErrorHandler(),
             challengerAttendanceUseCase: PreviewChallengerAttendanceUseCase(
-                timeWindow: timeWindow
+                timeWindow: timeWindow,
+                schedules: schedules
             )
         )
-        viewModel.seedSchedulesForPreview(
-            sessions.map { schedule(for: $0, timeWindow: timeWindow) }
-        )
+        // 첫 렌더부터 일정이 보이도록 즉시 세팅한다 (`.task` 갱신도 같은 목록을 돌려준다).
+        viewModel.seedSchedulesForPreview(schedules)
         return viewModel
     }
 

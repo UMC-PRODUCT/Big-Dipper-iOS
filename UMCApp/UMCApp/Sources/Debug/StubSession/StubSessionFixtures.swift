@@ -258,6 +258,9 @@ enum StubSessionFixtures {
 
     // MARK: - Schedule
 
+    /// 일정 생성 stub 이 돌려주는 고정 식별자.
+    static let createdScheduleId = "9001"
+
     /// 요청 기간(`from ~ to`) 안에 상대 날짜로 일정 픽스처를 생성한다.
     ///
     /// 달을 이동해도 항상 일정이 보이도록 기간 기준으로 며칠을 골라 채우고,

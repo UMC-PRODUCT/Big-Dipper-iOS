@@ -563,12 +563,17 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
 
     // MARK: - 정책 조회 (표시용)
 
-    @Test("주입한 정책은 판정과 같은 캐시에서 조회된다")
-    func attendancePolicyReadsInjectedCache() {
-        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+    @Test("조회된 정책은 판정과 같은 페이로드에서 읽힌다")
+    func attendancePolicyReadsLoadedPayload() async {
+        let useCase = MockChallengerAttendanceUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
         let policy = makePolicy()
-        viewModel.updateSchedulePolicies([session.info.sessionId: policy])
+        await seedSchedules(
+            viewModel,
+            useCase: useCase,
+            schedules: [makeScheduleDetail(policy: policy)]
+        )
 
         #expect(viewModel.attendancePolicy(for: session.info.sessionId) == policy)
     }
@@ -583,13 +588,18 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
 
     // MARK: - 서버 일정 ID 조회 (제출 경로)
 
-    @Test("주입한 서버 일정 ID가 조회된다")
-    func scheduleIdReadsInjectedCache() {
-        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+    @Test("조회된 일정의 서버 ID가 반환된다")
+    func scheduleIdReadsLoadedPayload() async {
+        let useCase = MockChallengerAttendanceUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        viewModel.updateScheduleIds([session.info.sessionId: "SCH-1"])
+        await seedSchedules(
+            viewModel,
+            useCase: useCase,
+            schedules: [makeScheduleDetail(scheduleId: "S-1")]
+        )
 
-        #expect(viewModel.scheduleId(for: session.info.sessionId) == "SCH-1")
+        #expect(viewModel.scheduleId(for: session.info.sessionId) == "S-1")
     }
 
     /// 회귀 박제 — 일정 ID가 없으면 출석·사유 제출이 서버에 도달할 수 없다.
