@@ -22,7 +22,8 @@ import Foundation
 /// 여러 활동이 동시에 진행될 수 있으므로 지오펜스 판정은 **식별자 기반**(`isInside(geofenceId:)`)을 권장합니다.
 /// 단순 "어느 하나라도 안에 있는지"는 `isInsideAnyGeofence` 가 fallback 으로 노출됩니다 (UI 상태 표시 등).
 ///
-/// - Note: 실제 구현체(`LocationManager`)는 후속 Core 모듈 이관에서 제공됩니다.
+/// - Note: 운영 구현체는 canonical `UMCFoundation.LocationManager` 를 감싼
+///   ``ActivityData/LocationManagerAdapter`` 이며, 앱 DI 가 이 프로토콜에 등록합니다.
 public protocol LocationProviding: Sendable {
 
     // MARK: - 상태
