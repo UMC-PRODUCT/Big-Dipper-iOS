@@ -397,13 +397,21 @@ struct StudyScheduleRegistrationViewModelPrefillTests {
 @Suite("StudyScheduleRegistrationViewModel — 대면/비대면 토글 (도메인 규칙)")
 struct StudyScheduleRegistrationViewModelToggleTests {
 
-    @Test("비대면 전환 → isOnline true + 장소 초기화")
+    @Test("비대면 전환 → isOnline true + 이름·주소·좌표를 함께 비운다")
     func switchingToOnlineClearsPlace() {
         let viewModel = makeViewModel()
-        viewModel.placeName = "한성대 상상관"
+        viewModel.placeSelectionChanged(
+            name: "한성대 상상관",
+            address: "서울 성북구 삼선교로16길 116",
+            coordinate: Coordinate(latitude: 37.5, longitude: 127.0)
+        )
+
         viewModel.inPersonModeToggleChanged(to: false)
+
         #expect(viewModel.isOnline == true)
         #expect(viewModel.placeName.isEmpty)
+        #expect(viewModel.placeAddress.isEmpty)
+        #expect(viewModel.placeCoordinate == nil)
     }
 
     @Test("대면 전환 → isOnline false + 장소 보존")
@@ -413,6 +421,100 @@ struct StudyScheduleRegistrationViewModelToggleTests {
         viewModel.inPersonModeToggleChanged(to: true)
         #expect(viewModel.isOnline == false)
         #expect(viewModel.placeName == "한성대 상상관")
+    }
+}
+
+// MARK: - 장소 선택 반영
+
+@MainActor
+@Suite("StudyScheduleRegistrationViewModel — 장소 선택 반영 (도메인 규칙)")
+struct StudyScheduleRegistrationViewModelPlaceSelectionTests {
+
+    @Test("장소 선택 → 이름·주소·좌표를 모두 반영한다")
+    func selectingPlaceStoresAllFields() {
+        let viewModel = makeViewModel()
+
+        viewModel.placeSelectionChanged(
+            name: "한성대 상상관",
+            address: "서울 성북구 삼선교로16길 116",
+            coordinate: Coordinate(latitude: 37.582, longitude: 127.010)
+        )
+
+        #expect(viewModel.placeName == "한성대 상상관")
+        #expect(viewModel.placeAddress == "서울 성북구 삼선교로16길 116")
+        #expect(viewModel.placeCoordinate == Coordinate(latitude: 37.582, longitude: 127.010))
+    }
+
+    @Test(
+        "이름이 공백/개행뿐 → 선택 해제로 보고 좌표까지 비운다",
+        arguments: ["", "   ", "\n", " \n "]
+    )
+    func selectingBlankNameClearsCoordinate(name: String) {
+        let viewModel = makeViewModel()
+        viewModel.placeSelectionChanged(
+            name: "한성대 상상관",
+            address: "서울 성북구 삼선교로16길 116",
+            coordinate: Coordinate(latitude: 37.582, longitude: 127.010)
+        )
+
+        viewModel.placeSelectionChanged(
+            name: name,
+            address: "",
+            coordinate: Coordinate(latitude: 0, longitude: 0)
+        )
+
+        #expect(viewModel.placeName.isEmpty)
+        #expect(viewModel.placeAddress.isEmpty)
+        #expect(viewModel.placeCoordinate == nil)
+    }
+}
+
+// MARK: - 로딩 취소
+
+@MainActor
+@Suite("StudyScheduleRegistrationViewModel — 로딩 취소 (도메인 규칙)")
+struct StudyScheduleRegistrationViewModelCancellationTests {
+
+    @Test("주차 옵션 조회 취소 → 실패로 전이하지 않고 직전 결과를 유지한다")
+    func cancelledWeeklyOptionsKeepsPreviousState() async {
+        let repository = MockStudyScheduleRepository()
+        let option = makeOption()
+        repository.weeklyOptionsResult = .success([option])
+        let viewModel = makeViewModel(repository: repository)
+        await viewModel.loadWeeklyOptions()
+
+        repository.weeklyOptionsResult = .failure(CancellationError())
+        await viewModel.loadWeeklyOptions()
+
+        #expect(viewModel.weeklyOptionsState == .loaded([option]))
+    }
+
+    @Test("참여자 조회 취소 → 실패로 전이하지 않고 직전 결과를 유지한다")
+    func cancelledParticipantsKeepsPreviousState() async {
+        let useCase = MockFetchStudyMembersUseCase()
+        let member = makeMember(memberID: "M-1")
+        useCase.result = .success([member])
+        let viewModel = makeViewModel(membersUseCase: useCase)
+        await viewModel.loadParticipantMembers()
+
+        useCase.result = .failure(CancellationError())
+        await viewModel.loadParticipantMembers()
+
+        #expect(viewModel.participantsState == .loaded([member]))
+    }
+
+    @Test("네트워크 요청 취소(URLError.cancelled)도 같은 취소로 다룬다")
+    func cancelledURLErrorKeepsPreviousState() async {
+        let repository = MockStudyScheduleRepository()
+        let option = makeOption()
+        repository.weeklyOptionsResult = .success([option])
+        let viewModel = makeViewModel(repository: repository)
+        await viewModel.loadWeeklyOptions()
+
+        repository.weeklyOptionsResult = .failure(URLError(.cancelled))
+        await viewModel.loadWeeklyOptions()
+
+        #expect(viewModel.weeklyOptionsState == .loaded([option]))
     }
 }
 
@@ -721,18 +823,6 @@ struct StudyScheduleRegistrationViewModelPayloadTests {
         #expect(request.attendancePolicy?.checkInStartAt == viewModel.attendanceCheckInStartAt)
         #expect(request.attendancePolicy?.onTimeEndAt == viewModel.attendanceOnTimeEndAt)
         #expect(request.attendancePolicy?.lateEndAt == viewModel.attendanceLateEndAt)
-    }
-
-    @Test("비대면 전환 → 장소명과 좌표를 함께 비운다")
-    func switchingToOnlineClearsPlace() {
-        let viewModel = makeViewModel()
-        viewModel.placeName = "한성대 상상관"
-        viewModel.placeCoordinate = Coordinate(latitude: 37.5, longitude: 127.0)
-
-        viewModel.inPersonModeToggleChanged(to: false)
-
-        #expect(viewModel.placeName.isEmpty)
-        #expect(viewModel.placeCoordinate == nil)
     }
 }
 
