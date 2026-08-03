@@ -9,6 +9,7 @@ import ActivityDomain
 import CoreDesignSystem
 import CoreDI
 import CoreDomain
+import CoreRouting
 import CoreUIComponents
 import HomeDomain
 import SwiftUI
@@ -25,6 +26,9 @@ import UMCFoundation
 struct ActivityView: View {
 
     // MARK: - Property
+
+    /// 탭 스택의 공유 경로. 자식 화면이 요청한 push 를 이 저장소로 넘긴다.
+    @Environment(PathStore.self) private var pathStore
 
     @State private var viewModel: ActivityViewModel
     @State private var selectedSection: ActivitySection?
@@ -145,7 +149,17 @@ struct ActivityView: View {
                     errorHandler: errorHandler,
                     useCase: container.resolve(OperatorStudyManagementUseCaseProtocol.self)
                 ),
-                userSession: userSession
+                userSession: userSession,
+                onRegisterSchedule: { group in
+                    // 식별자는 서버 응답 그대로 `String` 이라 변환 단계가 없다.
+                    pathStore.push(
+                        ActivityDestination.studyScheduleRegistration(
+                            studyName: group.name,
+                            studyGroupId: group.serverID
+                        ),
+                        on: .activity
+                    )
+                }
             )
 
         case (.admin, .memberManage):
