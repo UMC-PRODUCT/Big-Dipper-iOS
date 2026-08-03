@@ -18,6 +18,21 @@
 - `Provider` 폴더(프리뷰/목) → 해당 레이어 안에서 `Sources/Mock` + `#if DEBUG`
 - = 목적지는 확정했으나 신규 모듈 신설/외부 의존성 추가/파일 분할 등 **메인테이너 최종 승인**이 필요한 항목
 
+> ⚠️ **이 표는 기계적 매핑이다 — "표에 있다 = 지금 이식해야 한다" 가 아니다.**
+> 레거시 전 파일을 폴더 구조 규칙으로 일괄 분류한 결과라, 실제로는 참조 0건인 dead code
+> 나 이미 다른 형태로 대체된 파일도 그대로 한 줄을 차지한다. 이식에 착수하기 전 **소비자
+> 존재 여부를 직접 확인**하고, 아래 상태 표기가 붙은 행은 그 지시를 따를 것.
+
+### 상태 표기 범례
+
+| 표기 | 의미 | 행동 |
+|---|---|---|
+| (없음) | 정상 이식 대상 | 목적지 모듈로 이식 |
+| **이식 제외(dead)** | 레거시 참조 0건으로 확인된 dead code | 이식하지 말 것. UMCApp 에 이미 있으면 제거 대상 |
+| **보류 — #N 선행** | 살아날 예정이나 선행 이슈가 열려 있음 | 단독 이식 금지. 해당 이슈 범위에서 함께 처리 |
+| **superseded → X** | UMCApp 에서 다른 설계로 대체됨 | 이식하지 말 것. 대체 컴포넌트 X 를 사용 |
+| **dormant** | UMCApp 에 이식됐으나 소비자 0건 (의도적 존치) | 삭제 금지. 재활성화 이슈를 먼저 닫을 것 |
+
 ## 목적지별 파일 수 (요약)
 
 | 목적지 | 파일 수 |
@@ -60,7 +75,7 @@
 | `Data/DTOs/MyStudyGroupsPageDTO.swift` | ActivityData |
 | `Data/DTOs/RequestAttendanceRequestDTO.swift` | ActivityData |
 | `Data/DTOs/ScheduleAttendanceInfoDTO.swift` | ActivityData |
-| `Data/DTOs/ScheduleListDTO.swift` | ActivityData |
+| `Data/DTOs/ScheduleListDTO.swift` | **이식 제외(dead)** — 레거시 참조 0건(생산자·소비자 모두 없음). 유일한 출력 대상이던 `ScheduleAttendanceStats` 도 dead 로 확정돼 UMCApp 에서 제거됨. 실사용 경로는 `ScheduleAttendanceInfoDTO` |
 | `Data/DTOs/StudyGroupCreateRequestDTO.swift` | ActivityData |
 | `Data/DTOs/StudyGroupDetailDTO.swift` | ActivityData |
 | `Data/DTOs/StudyGroupNameItemDTO.swift` | ActivityData |
@@ -108,7 +123,7 @@
 | `Domain/Models/Operator/OperatorMemberPenaltyHistory.swift` | ActivityDomain |
 | `Domain/Models/Operator/ParticipantAttendance.swift` | ActivityDomain |
 | `Domain/Models/Operator/ScheduleAttendanceInfo.swift` | ActivityDomain |
-| `Domain/Models/Operator/ScheduleAttendanceStats.swift` | ActivityDomain |
+| `Domain/Models/Operator/ScheduleAttendanceStats.swift` | **이식 제외(dead)** — 선이식됐으나 UMCApp 참조 0건이라 제거됨(#1016). 유일한 생산자가 dead 인 `ScheduleListDTO.toDomain()` 이었음. 실사용 경로는 `ScheduleAttendanceInfo` |
 | `Domain/Models/Session/Session.swift` | ActivityDomain |
 | `Domain/Models/Session/SessionInfo.swift` | ActivityDomain |
 | `Domain/Models/Study/CurriculumProgressModel.swift` | ActivityDomain |
@@ -118,7 +133,7 @@
 | `Domain/Models/Study/StudyGroupItem.swift` | ActivityDomain |
 | `Domain/Models/Study/StudyGroupMember.swift` | ActivityDomain |
 | `Domain/Models/Study/WeeklyCurriculumOption.swift` | ActivityDomain |
-| `Domain/Models/StudyManagement/StudyManagementItem.swift` | ActivityDomain |
+| `Domain/Models/StudyManagement/StudyManagementItem.swift` | ActivityDomain · **dormant** — 이식 완료됐으나 소비자 0건. `#586` 으로 제출 현황 UI 가 꺼지며 소비자가 사라졌고 `#999` 에서 재활성화 예정(서버 API 대기). 삭제 금지 |
 | `Domain/UseCases/ChallengerAttendanceUseCaseProtocol.swift` | ActivityDomain |
 | `Domain/UseCases/FetchCurriculumUseCaseProtocol.swift` | ActivityDomain |
 | `Domain/UseCases/FetchMembersUseCaseProtocol.swift` | ActivityDomain |
@@ -146,10 +161,10 @@
 | `Presentation/Components/Challenger/Mission/ChallengerMissionCardContent.swift` | ActivityPresentation |
 | `Presentation/Components/Challenger/Mission/ChallengerMissionCardHeader.swift` | ActivityPresentation |
 | `Presentation/Components/Challenger/Mission/ChallengerMissionStatusIcon.swift` | ActivityPresentation |
-| `Presentation/Components/CoreStudyManagementList.swift` | ActivityPresentation |
+| `Presentation/Components/CoreStudyManagementList.swift` | ActivityPresentation · **보류 — #999 선행** — 레거시 외부 소비자 0건(Preview 상호 참조뿐)이라 단독 이식 금지. `#999` 가 제출 현황 UI 신규 구현과 함께 포팅 대상으로 지정 |
 | `Presentation/Components/Map/ActivityCompactMapView.swift` | ActivityPresentation |
 | `Presentation/Components/Map/BaseMapComponent.swift` | ActivityPresentation |
-| `Presentation/Components/Member/CoreMemberManagementList.swift` | ActivityPresentation (이식 시 `CoreMemberManagementRow.swift` 로 개명 — 리스트가 아니라 행 뷰) |
+| `Presentation/Components/Member/CoreMemberManagementList.swift` | **superseded → `CoreMemberManagementRow`** — 이식 누락이 아니라 의도적 대체. `#897` 이 리스트 컨테이너를 행 단위 `CoreMemberManagementRow` 로 재설계해 이식했고, 레거시 소비자 2곳(`ChallengerMemberListView`·`OperatorMemberManagementView`)은 UMCApp 에서 해당 Row 조립으로 대체됨. 이 파일 자체는 이식하지 말 것 |
 | `Presentation/Components/Member/MemberManagementCard.swift` | ActivityPresentation |
 | `Presentation/Components/Member/PointGrantFormSheet.swift` | ActivityPresentation |
 | `Presentation/Components/Operation/Attendance/OperatorLocationChangeSheetView.swift` | ActivityPresentation |
@@ -159,7 +174,7 @@
 | `Presentation/Components/Operation/Study/StudyGroupCard.swift` | ActivityPresentation |
 | `Presentation/Components/Operation/Study/StudyGroupLeaderRow.swift` | ActivityPresentation |
 | `Presentation/Components/Operation/Study/StudyGroupMemberChip.swift` | ActivityPresentation |
-| `Presentation/Components/StudyManagementCard.swift` | ActivityPresentation |
+| `Presentation/Components/StudyManagementCard.swift` | ActivityPresentation · **보류 — #999 선행** — `CoreStudyManagementList` 와 한 쌍. 레거시 외부 소비자 0건이라 단독 이식 금지. 운영 스터디 목록은 `StudyGroupCard` 가, 멤버 관리는 `CoreMemberManagementRow` 가 이미 담당 |
 | `Presentation/Enum/AttendancePeriodPreset.swift` | ActivityPresentation |
 | `Presentation/Extensions/OperatorSessionStatus+UI.swift` | ActivityPresentation |
 | `Presentation/Provider/ActivityUseCaseProvider.swift` | ActivityPresentation |
