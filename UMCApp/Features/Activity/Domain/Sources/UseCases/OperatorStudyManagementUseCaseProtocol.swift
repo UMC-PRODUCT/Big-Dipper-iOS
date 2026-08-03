@@ -43,6 +43,25 @@ public protocol OperatorStudyManagementUseCaseProtocol {
         preferredGeneration: String?
     ) async throws -> String?
 
+    // MARK: - 제출 현황
+
+    /// 관리 가능한 스터디 그룹 이름 목록 조회 (제출 현황 그룹 필터용)
+    func fetchStudyGroupNames() async throws -> [StudyGroupName]
+
+    /// 스터디원 워크북 제출 현황 페이지 조회
+    ///
+    /// - Parameters:
+    ///   - studyGroupId: 특정 그룹만 조회 (`nil` 이면 관리 가능한 전체 그룹, 서버 응답 `String`)
+    ///   - weekNos: 조회할 주차 번호 목록 (비어 있으면 전체 주차, 서버 응답 `String`)
+    ///   - cursor: 직전 페이지 마지막 `studyGroupMemberId` (첫 페이지는 `nil`)
+    ///   - size: 페이지 크기 (스터디원 기준)
+    func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage
+
     // MARK: - 그룹 CRUD
 
     /// 스터디 그룹 생성

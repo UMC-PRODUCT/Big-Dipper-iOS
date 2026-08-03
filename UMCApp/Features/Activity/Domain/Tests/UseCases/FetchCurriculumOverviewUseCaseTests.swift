@@ -107,6 +107,19 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
         fatalError("resolveChallengerId 는 FetchCurriculumOverviewUseCase 계약 밖입니다.")
     }
 
+    func fetchStudyGroupNames() async throws -> [StudyGroupName] {
+        fatalError("fetchStudyGroupNames 는 FetchCurriculumOverviewUseCase 계약 밖입니다.")
+    }
+
+    func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage {
+        fatalError("fetchStudyMemberSubmissions 는 FetchCurriculumOverviewUseCase 계약 밖입니다.")
+    }
+
     func createStudyGroup(
         gisuId: String,
         name: String,

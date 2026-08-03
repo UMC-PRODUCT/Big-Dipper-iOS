@@ -105,6 +105,19 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
         throw MockError.unimplemented
     }
 
+    func fetchStudyGroupNames() async throws -> [StudyGroupName] {
+        throw MockError.unimplemented
+    }
+
+    func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage {
+        throw MockError.unimplemented
+    }
+
     func createStudyGroup(
         gisuId: String,
         name: String,

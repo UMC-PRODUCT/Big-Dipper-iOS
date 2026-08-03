@@ -176,6 +176,44 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
         )
     }
 
+    public func fetchStudyGroupNames() async throws -> [StudyGroupName] {
+        let response = try await networkRequesting.request(StudyRouter.getStudyGroupNames)
+        let apiResponse = try decoder.decode(
+            APIResponse<StudyGroupNamesDTO>.self,
+            from: response.data
+        )
+        return try apiResponse.unwrap().toDomain()
+    }
+
+    // MARK: - 스터디원 제출 현황
+
+    /// 스터디원 제출 현황 한 페이지를 조회한다.
+    ///
+    /// 그룹 상세 조회와 달리 멤버 프로필 보강이 필요 없다 — 서버가 이름·학교·프로필을
+    /// 응답에 함께 내려주기 때문이다.
+    public func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage {
+        let response = try await networkRequesting.request(
+            StudyRouter.getStudyMemberSubmissions(
+                query: StudyMemberSubmissionQuery(
+                    studyGroupId: studyGroupId,
+                    weekNos: weekNos,
+                    cursor: cursor,
+                    size: size
+                )
+            )
+        )
+        let apiResponse = try decoder.decode(
+            APIResponse<StudyMemberSubmissionPageDTO>.self,
+            from: response.data
+        )
+        return try apiResponse.unwrap().toDomain()
+    }
+
     // MARK: - 운영진 스터디 그룹 CRUD / 일정 연결
 
     public func createStudyGroup(

@@ -22,10 +22,23 @@ final class PreviewOperatorStudyManagementUseCase: OperatorStudyManagementUseCas
         case failure(Error)
     }
 
-    private let outcome: Outcome
+    /// 제출 현황 조회 시나리오 — 그룹 목록과 독립적으로 상태를 흉내낸다.
+    enum SubmissionOutcome {
+        case page(StudyMemberSubmissionPage)
+        case failure(Error)
+    }
 
-    init(outcome: Outcome = .page(OperatorStudyPreviewData.loadedPage)) {
+    private let outcome: Outcome
+    private let submissionOutcome: SubmissionOutcome
+
+    init(
+        outcome: Outcome = .page(OperatorStudyPreviewData.loadedPage),
+        submissionOutcome: SubmissionOutcome = .page(
+            OperatorStudyPreviewData.loadedSubmissionPage
+        )
+    ) {
         self.outcome = outcome
+        self.submissionOutcome = submissionOutcome
     }
 
     func fetchStudyGroupDetailsPage(
@@ -44,6 +57,24 @@ final class PreviewOperatorStudyManagementUseCase: OperatorStudyManagementUseCas
         memberId: String,
         preferredGeneration: String?
     ) async throws -> String? { nil }
+
+    func fetchStudyGroupNames() async throws -> [StudyGroupName] {
+        OperatorStudyPreviewData.groupNames
+    }
+
+    func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage {
+        switch submissionOutcome {
+        case .page(let page):
+            return page
+        case .failure(let error):
+            throw error
+        }
+    }
 
     func createStudyGroup(
         gisuId: String,
@@ -133,6 +164,83 @@ enum OperatorStudyPreviewData {
         nextCursor: nil
     )
 
+    /// 그룹 필터 드롭다운용 이름 목록.
+    static let groupNames: [StudyGroupName] = groups.map {
+        StudyGroupName(groupId: $0.serverID, name: $0.name)
+    }
+
+    /// 제출 현황 샘플 — 상태 4종과 **미배포(워크북 없음)** 경로를 함께 노출한다.
+    static let submissions: [StudyMemberSubmission] = [
+        StudyMemberSubmission(
+            studyGroupMemberId: "SGM-1",
+            memberId: "M-2",
+            memberName: "박철수",
+            nickname: "철수",
+            schoolName: "한성대학교",
+            profileImageURL: nil,
+            studyGroupId: "G-1",
+            studyGroupName: "iOS 스터디 A팀",
+            part: .front(type: .ios),
+            partLabel: "iOS",
+            weeks: [
+                WeeklySubmission(
+                    weekNo: "1",
+                    weeklyCurriculumId: "WC-1",
+                    challengerWorkbookId: "CW-1",
+                    status: .pass,
+                    isBest: true
+                ),
+                WeeklySubmission(
+                    weekNo: "2",
+                    weeklyCurriculumId: "WC-2",
+                    challengerWorkbookId: "CW-2",
+                    status: .inProgress
+                )
+            ]
+        ),
+        // 닉네임·학교 미설정 + 미배포 주차 → 이름 폴백과 상세 진입 차단 경로 확인용.
+        StudyMemberSubmission(
+            studyGroupMemberId: "SGM-2",
+            memberId: "M-3",
+            memberName: "이영희",
+            nickname: nil,
+            schoolName: nil,
+            profileImageURL: nil,
+            studyGroupId: "G-1",
+            studyGroupName: "iOS 스터디 A팀",
+            part: .front(type: .ios),
+            partLabel: "iOS",
+            weeks: [
+                WeeklySubmission(
+                    weekNo: "1",
+                    weeklyCurriculumId: "WC-1",
+                    challengerWorkbookId: "CW-3",
+                    status: .fail
+                ),
+                WeeklySubmission(
+                    weekNo: "2",
+                    weeklyCurriculumId: "WC-2",
+                    challengerWorkbookId: nil,
+                    status: .notSubmitted
+                )
+            ]
+        )
+    ]
+
+    /// 제출 현황 조회 성공 페이지.
+    static let loadedSubmissionPage = StudyMemberSubmissionPage(
+        content: submissions,
+        hasNext: false,
+        nextCursor: nil
+    )
+
+    /// 제출 현황이 비어 있는 페이지(빈 상태 재현용).
+    static let emptySubmissionPage = StudyMemberSubmissionPage(
+        content: [],
+        hasNext: false,
+        nextCursor: nil
+    )
+
     static let challengers: [ChallengerInfo] = [
         ChallengerInfo(
             memberId: "M-2",
@@ -190,6 +298,20 @@ func previewOperatorStudyManagementViewModel(
 ) -> OperatorStudyManagementViewModel {
     makePreviewViewModel(
         useCase: PreviewOperatorStudyManagementUseCase(outcome: outcome),
+        gisuId: gisuId
+    )
+}
+
+/// 지정한 제출 현황 결과(빈 목록·조회 실패)로 상태를 재현하는 프리뷰용 ViewModel.
+@MainActor
+func previewOperatorStudyManagementViewModel(
+    submissionOutcome: PreviewOperatorStudyManagementUseCase.SubmissionOutcome,
+    gisuId: String? = "11"
+) -> OperatorStudyManagementViewModel {
+    makePreviewViewModel(
+        useCase: PreviewOperatorStudyManagementUseCase(
+            submissionOutcome: submissionOutcome
+        ),
         gisuId: gisuId
     )
 }
