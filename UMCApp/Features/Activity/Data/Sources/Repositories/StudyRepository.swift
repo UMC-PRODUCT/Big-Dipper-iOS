@@ -45,6 +45,11 @@ public final class StudyRepository: StudyRepositoryProtocol, @unchecked Sendable
         /// 한 페이지에 그룹이 100개면 멤버가 수백 명이 될 수 있어, 무제한으로 띄우면 서버와
         /// 연결 풀에 과부하가 걸린다. 창(window)을 두고 완료되는 만큼만 새로 채운다.
         static let memberSupplementConcurrencyLimit = 8
+
+        /// 서버가 커리큘럼 미등록을 알리는 에러 코드.
+        ///
+        /// 서버 `CurriculumErrorCode.CURRICULUM_NOT_FOUND`(HTTP 404) 와 짝을 이룬다.
+        static let curriculumNotRegisteredCode = "CURRICULUM-0001"
     }
 
     // MARK: - Init
@@ -296,26 +301,56 @@ private extension StudyRepository {
     /// 현재 운영 기수(`gisuId`)가 없으면 네트워크 호출 없이
     /// ``DomainError/curriculumUnavailableForGeneration`` 을 던진다.
     ///
-    /// - Note: 레거시는 `CURRICULUM-0001`(커리큘럼 미등록) 본문을 별도 도메인 에러로
-    ///   승격했으나, 신규 모듈에는 대응 case 가 아직 없어 서버 실패는 표준
-    ///   ``RepositoryError/serverError(code:message:)`` 경로로 노출한다(도메인 vocabulary
-    ///   추가 시 후속 보강).
+    /// 커리큘럼이 아직 등록되지 않아 서버가 `CURRICULUM-0001` 로 응답하면
+    /// ``DomainError/curriculumNotRegistered`` 로 승격한다. 학기 초에는 미등록이 정상
+    /// 상황이라 화면이 오류 카드 대신 전용 안내를 띄워야 하기 때문이다. 그 외 실패는
+    /// 원본 에러를 그대로 전파한다.
+    ///
+    /// 요청을 `do` 블록 안에 두어야 비-2xx 응답으로 발생한
+    /// ``NetworkError/requestFailed(statusCode:data:)`` 가 이 변환을 거친다.
+    ///
     /// - Returns: 디코딩한 ``CurriculumDTO`` 와 조회에 사용한 파트 문자열
     func fetchCurriculum() async throws -> (dto: CurriculumDTO, part: String) {
         guard let gisuId = context.gisuId else {
             throw DomainError.curriculumUnavailableForGeneration
         }
         let part = context.part
-        let response = try await networkRequesting.request(
-            StudyRouter.getCurriculum(
-                query: CurriculumOverviewQuery(gisuId: gisuId, part: part, weekNo: nil)
+        let response: Response
+        do {
+            response = try await networkRequesting.request(
+                StudyRouter.getCurriculum(
+                    query: CurriculumOverviewQuery(gisuId: gisuId, part: part, weekNo: nil)
+                )
             )
-        )
+        } catch let error as NetworkError {
+            throw Self.mapCurriculumNotRegistered(error) ?? error
+        }
         let apiResponse = try decoder.decode(
             APIResponse<CurriculumDTO>.self,
             from: response.data
         )
         return (try apiResponse.unwrap(), part)
+    }
+
+    /// 커리큘럼 조회 실패 본문이 미등록 코드인지 판별한다.
+    ///
+    /// 미등록 코드일 때만 ``DomainError/curriculumNotRegistered`` 를 돌려주고, 다른 코드·
+    /// 비-`requestFailed` 실패는 `nil` 을 반환해 원본 에러가 그대로 전파되게 한다. 범위를
+    /// 코드로 좁히지 않으면 401·5xx 까지 미등록 안내로 뭉개진다.
+    ///
+    /// - Note: 본문 파싱에 `JSONSerialization` 을 쓰는 이유는 서버가 실패 응답의 `result` 에
+    ///   객체가 아니라 **문자열**(예외 메시지)을 담기 때문이다. `APIResponse<EmptyResult>` 로
+    ///   디코딩하면 그 문자열에서 실패해 `code` 를 읽지 못한다.
+    static func mapCurriculumNotRegistered(_ error: NetworkError) -> DomainError? {
+        guard
+            case .requestFailed(_, let data) = error,
+            let data,
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            json["code"] as? String == Constants.curriculumNotRegisteredCode
+        else {
+            return nil
+        }
+        return .curriculumNotRegistered
     }
 
     // MARK: - 멤버 프로필 보강
