@@ -267,9 +267,7 @@ final class StudyScheduleRegistrationViewModel {
     ///   - coordinate: 선택한 장소 좌표
     func placeSelectionChanged(name: String, address: String, coordinate: Coordinate) {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            placeName = ""
-            placeAddress = ""
-            placeCoordinate = nil
+            clearPlaceSelection()
             return
         }
         placeName = name
@@ -283,10 +281,17 @@ final class StudyScheduleRegistrationViewModel {
     func inPersonModeToggleChanged(to isInPerson: Bool) {
         isOnline = !isInPerson
         if isOnline {
-            placeName = ""
-            placeAddress = ""
-            placeCoordinate = nil
+            clearPlaceSelection()
         }
+    }
+
+    /// 장소 선택을 완전히 비웁니다.
+    ///
+    /// 이름·주소·좌표는 항상 함께 채워지고 함께 비워져야 하므로 해제 경로를 한 곳에 모읍니다.
+    private func clearPlaceSelection() {
+        placeName = ""
+        placeAddress = ""
+        placeCoordinate = nil
     }
 
     /// 스케줄 등록 실행 (2단계)
