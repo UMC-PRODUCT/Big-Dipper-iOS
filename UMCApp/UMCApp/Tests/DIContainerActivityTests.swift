@@ -10,6 +10,8 @@ import ActivityDomain
 import CoreDI
 import CoreNetwork
 import Foundation
+import HomeData
+import HomeDomain
 import Testing
 
 @testable import UMCApp
@@ -32,9 +34,14 @@ private struct ActivityResolution: Sendable, CustomStringConvertible {
 /// `DIContainer.configured(modelContext:)` 는 SwiftData 컨테이너를 요구하므로, Activity 조립이
 /// 실제로 소비하는 공유 인프라(`MoyaNetworkAdapter`)만 운영과 같은 방식으로 먼저 등록한다.
 /// 등록·해석 시점에는 네트워크 왕복이 없어 실제 어댑터를 그대로 쓴다.
+///
+/// Home 등록을 함께 태우는 이유: 출석·스터디 일정이 `HomeDomain` 의 canonical
+/// `ScheduleRepositoryProtocol` 을 재사용하므로 Activity 단독 등록은 운영 부트스트랩
+/// (`UMCAppApp`)과 다른 상태가 된다. 운영과 같은 순서로 조립해 실제 해석 경로를 검증한다.
 private func makeContainer() throws -> DIContainer {
     let container = DIContainer()
     try registerNetworkAdapter(in: container)
+    container.registerHomeDependencies()
     container.registerActivityDependencies()
     return container
 }
@@ -105,6 +112,9 @@ private let useCaseResolutions: [ActivityResolution] = [
     },
     ActivityResolution(name: "FetchUserIdUseCaseProtocol") {
         $0.resolveIfRegistered(FetchUserIdUseCaseProtocol.self)
+    },
+    ActivityResolution(name: "RegisterStudyScheduleUseCaseProtocol") {
+        $0.resolveIfRegistered(RegisterStudyScheduleUseCaseProtocol.self)
     }
 ]
 
@@ -182,5 +192,26 @@ struct DIContainerActivityTests {
         _ = container.resolve(OperatorAttendanceRepositoryProtocol.self)
 
         #expect(adapterFactoryCallCount == 1)
+    }
+
+    /// 완료 조건 "`ScheduleDetailData` 재사용 (중복 모델/조회 경로 신설 금지)" 의 회귀 가드.
+    ///
+    /// Activity 가 일정 Repository 를 자체 등록하면 미리 등록된 canonical 팩토리가 밀려나
+    /// 호출 횟수가 0 이 된다. 1 이어야 Home 의 등록을 그대로 재사용했다는 뜻이다.
+    @Test("일정 Repository 는 Home 이 등록한 canonical 을 재사용한다")
+    func reusesCanonicalScheduleRepository() throws {
+        let container = DIContainer()
+        try registerNetworkAdapter(in: container)
+        var scheduleRepositoryFactoryCallCount = 0
+        container.register(ScheduleRepositoryProtocol.self) {
+            scheduleRepositoryFactoryCallCount += 1
+            return ScheduleRepository(adapter: container.resolve(MoyaNetworkAdapter.self))
+        }
+        container.registerActivityDependencies()
+
+        _ = container.resolve(ChallengerAttendanceUseCaseProtocol.self)
+        _ = container.resolve(RegisterStudyScheduleUseCaseProtocol.self)
+
+        #expect(scheduleRepositoryFactoryCallCount == 1)
     }
 }
