@@ -44,6 +44,14 @@ public struct ParticipantAttendance: Equatable, Sendable, Identifiable {
 
     public var id: String { memberId }
 
+    /// 표시용 이름 (닉네임이 있으면 "닉네임/이름", 없으면 이름만)
+    ///
+    /// 형제 모델 ``OperatorPendingMember/displayName`` 과 같은 규칙입니다. 다만 이 모델의
+    /// `nickname` 은 옵셔널이 아니라 빈 문자열로 부재를 표현하므로 공백 여부로 판정합니다.
+    public var displayName: String {
+        nickname.isEmpty ? name : "\(nickname)/\(name)"
+    }
+
     public init(
         memberId: String,
         name: String,

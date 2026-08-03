@@ -57,6 +57,10 @@ public enum NavigationTitle {
         case editSchedule = "일정 수정"
         case scheduleDetail = "일정 상세"
         case studyScheduleRegistration = "스터디 일정 등록"
+        case attendanceStatus = "출석 현황"
+        case attendancePeriod = "기간"
+        case pendingApproval = "승인 대기 명단"
+        case locationChange = "위치 변경"
     }
 
     /// 마이페이지 화면용 타이틀

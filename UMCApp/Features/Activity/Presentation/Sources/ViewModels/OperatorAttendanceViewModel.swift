@@ -19,9 +19,9 @@ import UMCFoundation
 /// - `.task` 라이프사이클 취소(`CancellationError`)는 실패가 아니므로 이전 상태로 롤백합니다
 ///   (형제 `MemberListViewModel`/`ChallengerStudyViewModel` house 패턴).
 ///
-/// > Note: 레거시 위치 변경 시트(`OperatorLocationChangeSheetView`)와 `PlaceSearchInfo` 는
-///   아직 이식 전이라, 위치 변경은 검증된 원시 좌표 파라미터를 받는
-///   ``changeLocation(name:latitude:longitude:)`` 로 노출합니다.
+/// > Note: 위치 변경은 UI 계층의 장소 선택 모델(`CoreUIComponents.PlaceSelection`)에 묶이지
+///   않도록 검증된 원시 좌표 파라미터를 받는 ``changeLocation(name:latitude:longitude:)`` 로
+///   노출합니다. 시트(``OperatorLocationChangeSheet``)가 선택 결과를 이 좌표로 풀어 넘깁니다.
 @MainActor
 @Observable
 final class OperatorAttendanceViewModel {
@@ -396,6 +396,44 @@ final class OperatorAttendanceViewModel {
         )
     }
 
+    /// 사유 확인 버튼 탭 (사유 본문 + 승인/반려 선택 AlertPrompt 표시).
+    ///
+    /// 사유 결석 신청을 읽고 그 자리에서 결정하는 동선이라, 형제 확인 다이얼로그와 동일하게
+    /// 탭 시점의 scheduleId 를 캡처해 결정 코어로 전달한다.
+    func excuseReasonButtonTapped(participant: ParticipantAttendance) {
+        guard let scheduleId = selectedScheduleId,
+              let reason = participant.excuseReason,
+              !reason.isEmpty else { return }
+        alertPrompt = AlertPrompt(
+            title: "출석 사유 확인",
+            message: "\(participant.name)님이 작성한 사유입니다.\n\n\"\(reason)\"",
+            positiveBtnTitle: "반려",
+            positiveBtnAction: { [weak self] in
+                Task {
+                    await self?.decide(
+                        scheduleId: scheduleId,
+                        participants: [participant],
+                        isApproved: false,
+                        action: "rejectAttendance"
+                    )
+                }
+            },
+            secondaryBtnTitle: "승인",
+            secondaryBtnAction: { [weak self] in
+                Task {
+                    await self?.decide(
+                        scheduleId: scheduleId,
+                        participants: [participant],
+                        isApproved: true,
+                        action: "approveAttendance"
+                    )
+                }
+            },
+            negativeBtnTitle: "닫기",
+            isPositiveBtnDestructive: true
+        )
+    }
+
     /// 전체 승인 버튼 탭 — 승인 대기 대상도 탭 시점 기준으로 캡처한다.
     func approveAllButtonTapped() {
         guard let scheduleId = selectedScheduleId,
@@ -445,48 +483,10 @@ final class OperatorAttendanceViewModel {
         )
     }
 
-    /// 선택 승인 버튼 탭.
-    func approveSelectedButtonTapped(participants: [ParticipantAttendance]) {
-        guard let scheduleId = selectedScheduleId, !participants.isEmpty else { return }
-        alertPrompt = AlertPrompt(
-            title: "선택 승인",
-            message: "\(participants.count)명의 출석을 승인하시겠습니까?",
-            positiveBtnTitle: "승인",
-            positiveBtnAction: { [weak self] in
-                Task {
-                    await self?.decide(
-                        scheduleId: scheduleId,
-                        participants: participants,
-                        isApproved: true,
-                        action: "approveSelectedAttendances"
-                    )
-                }
-            },
-            negativeBtnTitle: "취소"
-        )
-    }
-
-    /// 선택 반려 버튼 탭.
-    func rejectSelectedButtonTapped(participants: [ParticipantAttendance]) {
-        guard let scheduleId = selectedScheduleId, !participants.isEmpty else { return }
-        alertPrompt = AlertPrompt(
-            title: "선택 거절",
-            message: "\(participants.count)명의 출석을 거절하시겠습니까?",
-            positiveBtnTitle: "거절",
-            positiveBtnAction: { [weak self] in
-                Task {
-                    await self?.decide(
-                        scheduleId: scheduleId,
-                        participants: participants,
-                        isApproved: false,
-                        action: "rejectSelectedAttendances"
-                    )
-                }
-            },
-            negativeBtnTitle: "취소",
-            isPositiveBtnDestructive: true
-        )
-    }
+    // 선택 승인/반려의 확인 다이얼로그는 ViewModel 이 갖지 않는다. 선택 결정의 유일한 진입점인
+    // 승인 대기 시트는 ViewModel 의 `alertPrompt`(시트 뒤 화면 바인딩)가 보이지 않아 확인을
+    // 시트 내부에서 띄우고, 확정만 ``decideSelectedAttendances(participants:isApproved:)`` 로
+    // 위임한다. 비-시트 선택 UI 가 생기면 형제 alert 빌더를 그때 추가한다.
 
     // MARK: - Decision (낙관적 갱신)
 
@@ -588,7 +588,7 @@ final class OperatorAttendanceViewModel {
     /// 세션 출석 위치 변경.
     ///
     /// 좌표 유효성(유한값·위경도 범위)을 검증한 뒤 UseCase 에 위임합니다. 성공하면 `true`.
-    /// - Note: 레거시 `PlaceSearchInfo` 커플링을 제거하고 검증된 원시 좌표를 받습니다.
+    /// - Note: UI 계층 장소 모델에 커플링되지 않도록 검증된 원시 좌표를 받습니다.
     func changeLocation(
         name: String,
         latitude: Double,

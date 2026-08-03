@@ -546,7 +546,24 @@ public struct ToolBarCollection {
         public var onRejectSelected: () -> Void
         public var onApproveAll: () -> Void
         public var onRejectAll: () -> Void
-        
+
+        /// 기본 memberwise init 은 internal 이라 다른 모듈에서 쓸 수 없어 public init 을 노출한다.
+        public init(
+            isSelecting: Binding<Bool>,
+            selectedCount: Int,
+            onApproveSelected: @escaping () -> Void,
+            onRejectSelected: @escaping () -> Void,
+            onApproveAll: @escaping () -> Void,
+            onRejectAll: @escaping () -> Void
+        ) {
+            self._isSelecting = isSelecting
+            self.selectedCount = selectedCount
+            self.onApproveSelected = onApproveSelected
+            self.onRejectSelected = onRejectSelected
+            self.onApproveAll = onApproveAll
+            self.onRejectAll = onRejectAll
+        }
+
         private var hasSelection: Bool {
             selectedCount > 0
         }
