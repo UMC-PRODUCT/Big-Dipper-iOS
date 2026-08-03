@@ -9,6 +9,7 @@ import ActivityData
 import ActivityDomain
 import CoreDI
 import CoreNetwork
+import HomeDomain
 
 extension DIContainer {
     /// Activity 계층의 Presentation → Domain → Data 조립을 등록한다.
@@ -20,6 +21,10 @@ extension DIContainer {
     /// - Note: `LocationProviding` 은 canonical `UMCFoundation.LocationManager` 를 감싼
     ///   ``ActivityData/LocationManagerAdapter`` 를 등록한다. 위치 로직을 feature 모듈에
     ///   재구현하지 않는다.
+    /// - Important: 출석·스터디 일정이 `HomeDomain` 의 canonical `ScheduleRepositoryProtocol`
+    ///   을 쓰므로 ``DIContainer/registerHomeDependencies()`` 가 **먼저** 호출돼 있어야 한다.
+    ///   같은 엔드포인트를 Activity 에 다시 등록하면 Repository 인스턴스가 두 벌 생기므로
+    ///   재등록하지 않고 `resolve` 로만 재사용한다.
     func registerActivityDependencies() {
         registerActivityProviders()
         registerActivityRepositories()
@@ -74,6 +79,7 @@ extension DIContainer {
         register(ChallengerAttendanceUseCaseProtocol.self) {
             ChallengerAttendanceUseCase(
                 repository: self.resolve(ChallengerAttendanceRepositoryProtocol.self),
+                scheduleRepository: self.resolve(ScheduleRepositoryProtocol.self),
                 locationProvider: self.resolve(LocationProviding.self)
             )
         }
@@ -93,6 +99,12 @@ extension DIContainer {
         }
         register(FetchStudyMembersUseCaseProtocol.self) {
             FetchStudyMembersUseCase(repository: self.resolve(StudyRepositoryProtocol.self))
+        }
+        register(RegisterStudyScheduleUseCaseProtocol.self) {
+            RegisterStudyScheduleUseCase(
+                scheduleRepository: self.resolve(ScheduleRepositoryProtocol.self),
+                studyRepository: self.resolve(StudyRepositoryProtocol.self)
+            )
         }
         register(FetchUserIdUseCaseProtocol.self) {
             FetchUserIdUseCase(provider: self.resolve(CurrentUserIdProviding.self))

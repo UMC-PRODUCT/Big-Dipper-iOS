@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import HomeDomain
 import UMCFoundation
 
 // MARK: - MyAttendanceItemModel

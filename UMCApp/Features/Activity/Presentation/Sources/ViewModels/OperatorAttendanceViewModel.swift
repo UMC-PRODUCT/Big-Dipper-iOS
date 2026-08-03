@@ -7,6 +7,7 @@
 
 import ActivityDomain
 import Foundation
+import HomeDomain
 import UMCFoundation
 
 /// 운영진 출석 관리 화면(단일 통합, Direction A)의 상태·액션을 관리하는 ViewModel.

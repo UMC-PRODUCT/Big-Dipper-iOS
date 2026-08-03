@@ -21,5 +21,13 @@ struct StubScheduleRepository: ScheduleRepositoryProtocol {
     ) async throws -> [Date: [ScheduleDetailData]] {
         StubSessionFixtures.schedules(from: from, to: to)
     }
+
+    /// 서버 없이 화면을 보는 용도라 생성은 고정 식별자만 돌려준다.
+    func createSchedule(_ request: ScheduleCreationRequest) async throws -> String {
+        StubSessionFixtures.createdScheduleId
+    }
+
+    /// 저장소가 없으므로 삭제는 no-op 이다 (호출부의 롤백 흐름만 통과시킨다).
+    func deleteSchedule(scheduleId: String) async throws {}
 }
 #endif

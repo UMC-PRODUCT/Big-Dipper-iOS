@@ -7,13 +7,13 @@
 
 import ActivityDomain
 import Foundation
+import HomeDomain
 import UMCFoundation
 
 /// 챌린저(일반 참여자)의 출석 관련 상태 및 액션을 관리하는 ViewModel
 ///
-/// 출석 요청(GPS)·사유 제출·시간대 판정·지오펜스/권한 상태 등 액션·상태 로직은
-/// `ChallengerAttendanceUseCaseProtocol` 에 연결되어 동작합니다.
-/// 세션 목록/이력 로딩은 Schedule 모듈 이식 후 결선됩니다 (하단 TODO 스텁 참고).
+/// 출석 요청(GPS)·사유 제출·시간대 판정·지오펜스/권한 상태와 함께, 출석 가능 일정 목록과
+/// 내 출석 이력을 `ChallengerAttendanceUseCaseProtocol` 로 조회합니다.
 @MainActor
 @Observable
 final class ChallengerAttendanceViewModel {
@@ -22,6 +22,12 @@ final class ChallengerAttendanceViewModel {
 
     private let errorHandler: ErrorHandler
     private let challengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol
+
+    /// 출석 가능 일정 목록
+    private(set) var availableSchedules: Loadable<[ScheduleDetailData]> = .idle
+
+    /// 내 출석 이력
+    private(set) var myHistory: Loadable<[ScheduleDetailData]> = .idle
 
     /// 출석 상태 변경 알림 관찰 토큰
     ///
@@ -36,17 +42,6 @@ final class ChallengerAttendanceViewModel {
 
     /// 폴링 시 Session 상태 업데이트용 userId
     private var pollingUserId: UserID?
-
-    /// 세션별 서버 출석 정책 캐시 (available schedules 조회 결과에서 추출)
-    ///
-    /// 시간대 판정(`timeWindow(for:now:)`)이 클라이언트 상수보다 서버 정책을
-    /// 우선하도록 보관합니다. Schedule 모듈 결선 전까지는 비어 있습니다.
-    private var schedulePolicies: [SessionID: ScheduleAttendancePolicy] = [:]
-
-    /// 세션별 서버 일정 ID 캐시 (available schedules 조회 결과에서 추출)
-    ///
-    /// 출석·사유 제출 API가 요구하는 값입니다. Schedule 모듈 결선 전까지는 비어 있습니다.
-    private var scheduleIds: [SessionID: String] = [:]
 
     /// 폴링 설정
     private enum PollingConfig {
@@ -84,39 +79,80 @@ final class ChallengerAttendanceViewModel {
         }
     }
 
-    // MARK: - 세션 목록/이력 로딩 (Schedule 모듈 후행)
-
-    // TODO: Schedule 모듈 이식 후 세션 목록/이력 로딩 결선 - [26.06.12] 이재원
-    // — `ScheduleDetailData` 가 Schedule Feature 모듈에 정의 예정이라
-    //   `ChallengerAttendanceUseCaseProtocol` 의 fetchAvailableSchedules / fetchMyHistory 와
-    //   함께 동결됨 (PR #797 동결과 동일 사유).
-    // — 결선 시 복원 대상: availableSchedules / myHistory Loadable 상태,
-    //   syncSessionStates() 폴링 동기화, schedule(for:) 일정 매핑,
-    //   updateSchedulePolicies(_:) 호출부.
+    // MARK: - 세션 목록/이력 로딩
 
     /// 화면 등장 시 로드 결정 메서드
+    ///
+    /// - `availableSchedules` 가 `.idle`(첫 마운트)이면 부모가 넘긴 sessions prop 이 즉시
+    ///   렌더되도록 `.loaded([])` 로 먼저 시드한 뒤 배경 갱신으로 페이로드를 채웁니다.
+    ///   페이로드는 출석 버튼의 `scheduleId` 조회와 서버 정책 기반 시간대 판정에 필요합니다.
+    /// - 재등장 시에는 두 목록 모두 로딩 스피너 없이 배경 갱신만 합니다.
     func loadOnAppear() async {
-        // TODO: Schedule 모듈 이식 후 available schedules 시드 + 이력 로딩 복원 - [26.06.12] 이재원
+        if availableSchedules.isIdle {
+            availableSchedules = .loaded([])
+        }
+        await refreshAvailableSchedules()
+
+        guard !Task.isCancelled else { return }
+
+        if myHistory.isIdle {
+            // 첫 마운트: 자식 화면 고유 데이터라 정상 로딩 UI와 함께 조회
+            await fetchMyHistory()
+        } else {
+            await refreshMyHistory()
+        }
     }
 
     /// 출석 가능 일정 갱신 (로딩 상태 변경 없이)
+    ///
+    /// 세션 목록 변화(`onChange`)와 폴링에서도 호출하므로 internal 로 노출합니다.
     func refreshAvailableSchedules() async {
-        // TODO: Schedule 모듈 이식 후 fetchAvailableSchedules 결선 - [26.06.12] 이재원
+        guard !availableSchedules.isLoading else { return }
+        do {
+            let schedules = try await challengerAttendanceUseCase.fetchAvailableSchedules()
+            availableSchedules = .loaded(schedules)
+            syncSessionStates()
+        } catch {
+            // 배경 갱신 실패는 화면을 막지 않는다 (취소 포함). 기존 목록을 유지한다.
+        }
     }
 
     /// 출석 이력 배경 갱신 (로딩 상태 변경 없이)
     private func refreshMyHistory() async {
-        // TODO: Schedule 모듈 이식 후 fetchMyHistory 결선 - [26.06.12] 이재원
+        guard !myHistory.isLoading else { return }
+        do {
+            let history = try await challengerAttendanceUseCase.fetchMyHistory()
+            myHistory = .loaded(history)
+        } catch {
+            // 배경 갱신 실패는 화면을 막지 않는다 (취소 포함). 기존 이력을 유지한다.
+        }
     }
 
-    /// 출석 가능 일정 조회 (로딩 스피너 표시, .failed 재시도 버튼용)
+    /// 출석 가능 일정 조회 (로딩 스피너 표시, `.failed` 재시도 버튼용)
     func fetchAvailableSchedules() async {
-        // TODO: Schedule 모듈 이식 후 fetchAvailableSchedules 결선 - [26.06.12] 이재원
+        guard !availableSchedules.isLoading else { return }
+        let previous = availableSchedules
+        availableSchedules = .loading
+        do {
+            let schedules = try await challengerAttendanceUseCase.fetchAvailableSchedules()
+            availableSchedules = .loaded(schedules)
+            syncSessionStates()
+        } catch {
+            availableSchedules = state(after: error, previous: previous)
+        }
     }
 
-    /// 내 출석 이력 조회 (로딩 스피너 표시, .failed 재시도 버튼용)
+    /// 내 출석 이력 조회 (로딩 스피너 표시, `.failed` 재시도 버튼용)
     func fetchMyHistory() async {
-        // TODO: Schedule 모듈 이식 후 fetchMyHistory 결선 - [26.06.12] 이재원
+        guard !myHistory.isLoading else { return }
+        let previous = myHistory
+        myHistory = .loading
+        do {
+            let history = try await challengerAttendanceUseCase.fetchMyHistory()
+            myHistory = .loaded(history)
+        } catch {
+            myHistory = state(after: error, previous: previous)
+        }
     }
 
     /// 앱 foreground 복귀 시 전체 갱신 (두 API 병렬 호출)
@@ -126,27 +162,57 @@ final class ChallengerAttendanceViewModel {
         _ = await (schedules, history)
     }
 
+    /// SessionID → 일정 매핑 (available schedules 기반)
+    ///
+    /// 첫 마운트에는 `loadOnAppear()` 가 빈 배열로 시드하므로 `nil` 일 수 있습니다.
+    /// 호출 측은 `nil` 이면 `refreshAvailableSchedules()` 로 페이로드를 채웁니다.
+    func schedule(for sessionId: SessionID) -> ScheduleDetailData? {
+        guard case .loaded(let schedules) = availableSchedules else { return nil }
+        return schedules.first { $0.scheduleId == sessionId.value }
+    }
+
     /// SessionID → scheduleId 매핑 (available schedules 기반)
-    ///
-    /// 값이 없으면 출석·사유 제출을 서버로 보낼 수 없으므로, 화면은 이 값이 `nil` 인 동안
-    /// 액션 진입점을 비활성화해야 합니다.
     func scheduleId(for sessionId: SessionID) -> String? {
-        scheduleIds[sessionId]
+        schedule(for: sessionId)?.scheduleId
     }
 
-    /// available schedules 조회 결과의 세션별 서버 일정 ID를 반영합니다.
+    /// 조회된 서버 상태를 폴링 대상 Session 객체에 동기화
     ///
-    /// `updateSchedulePolicies(_:)` 와 같은 시점에 채워지는 짝입니다 — 정책만 있고 일정 ID가
-    /// 없으면 시간대 판정은 되는데 제출은 못 하는 반쪽 상태가 됩니다.
-    // TODO: Schedule 모듈 이식 후 refreshAvailableSchedules() 내부에서 호출하도록 결선 - [26.06.12] 이재원
-    func updateScheduleIds(_ ids: [SessionID: String]) {
-        scheduleIds = ids
+    /// `ScheduleDetailData.scheduleId` 와 `Session.id` 를 맞춰 상태를 전파합니다.
+    ///
+    /// 서버가 `attendanceStatus` 를 안 내려준 일정(`nil`)은 건너뜁니다. `nil` 은 "출석 전"
+    /// 이라는 판정이 아니라 정보 없음이므로, 이를 `.beforeAttendance` 로 치환하면 방금 제출해
+    /// 지각/승인 대기로 올라간 로컬 상태를 되돌려 버립니다.
+    private func syncSessionStates() {
+        guard case .loaded(let schedules) = availableSchedules,
+              let userId = pollingUserId else { return }
+
+        let statusByScheduleId: [String: AttendanceStatus] = schedules.reduce(into: [:]) {
+            partialResult, schedule in
+            guard let status = schedule.attendanceStatus else { return }
+            partialResult[schedule.scheduleId] = AttendanceStatus(scheduleStatus: status)
+        }
+
+        for session in pollingSessions {
+            guard let serverStatus = statusByScheduleId[session.id.value] else { continue }
+            session.updateStatusFromPolling(serverStatus, userId: userId)
+        }
     }
 
-    /// 폴링으로 받은 서버 상태를 Session 객체에 동기화
-    private func syncSessionStates() {
-        // TODO: Schedule 모듈 이식 후 available schedules 상태 전파 복원 - [26.06.12] 이재원
-        // — pollingSessions / pollingUserId 를 사용해 schedule 상태를 매칭합니다.
+    /// 조회 실패 시 반영할 상태
+    ///
+    /// `.task` 라이프사이클 취소(빠른 화면 이탈·탭 전환)는 실패가 아니므로 `.failed` 로
+    /// 전이시키지 않고 이전 상태로 되돌립니다. 첫 마운트에서 취소되면 `.idle` 로 남아
+    /// 다음 등장 때 다시 조회합니다. 형제 ViewModel(Home/Notice/MyPage)의 취소 처리 관례와
+    /// 동일합니다.
+    private func state(
+        after error: Error,
+        previous: Loadable<[ScheduleDetailData]>
+    ) -> Loadable<[ScheduleDetailData]> {
+        guard !error.isCancellation else { return previous }
+        if let appError = error as? AppError { return .failed(appError) }
+        if let domainError = error as? DomainError { return .failed(.domain(domainError)) }
+        return .failed(.unknown(message: error.localizedDescription))
     }
 
     // MARK: - Polling
@@ -312,7 +378,7 @@ final class ChallengerAttendanceViewModel {
         guard session.attendanceStatus == .beforeAttendance else { return nil }
 
         let timeWindow = currentTimeWindow(for: session, now: now)
-        let policy = schedulePolicies[session.info.sessionId]
+        let policy = schedule(for: session.info.sessionId)?.attendancePolicy
 
         switch timeWindow {
         case .tooEarly:
@@ -373,20 +439,12 @@ final class ChallengerAttendanceViewModel {
         )
     }
 
-    /// available schedules 조회 결과의 세션별 출석 정책을 반영합니다.
+    /// 세션의 출석 정책 (`nil` = 아직 조회 전이거나 출석 비필수 일정)
     ///
-    /// 시간대 판정(`timeWindow(for:now:)`)이 서버 정책을 우선 사용하도록 캐시를 갱신합니다.
-    // TODO: Schedule 모듈 이식 후 refreshAvailableSchedules() 내부에서 호출하도록 결선 - [26.06.12] 이재원
-    func updateSchedulePolicies(_ policies: [SessionID: ScheduleAttendancePolicy]) {
-        schedulePolicies = policies
-    }
-
-    /// 세션의 출석 정책 (`nil` = 아직 조회 전)
-    ///
-    /// 시간대 판정과 같은 캐시를 읽으므로, 화면이 보여주는 정책 시각과 실제 판정 기준이
+    /// 시간대 판정과 같은 페이로드를 읽으므로, 화면이 보여주는 정책 시각과 실제 판정 기준이
     /// 어긋나지 않습니다. 정책 팝오버·출석 이력 카드가 표시용으로 사용합니다.
     func attendancePolicy(for sessionId: SessionID) -> ScheduleAttendancePolicy? {
-        schedulePolicies[sessionId]
+        schedule(for: sessionId)?.attendancePolicy
     }
 
     // MARK: - Helper Methods
@@ -400,7 +458,7 @@ final class ChallengerAttendanceViewModel {
         for session: Session,
         now: Date = Date()
     ) -> AttendanceTimeWindow {
-        guard let policy = schedulePolicies[session.info.sessionId] else {
+        guard let policy = schedule(for: session.info.sessionId)?.attendancePolicy else {
             return challengerAttendanceUseCase.isWithinAttendanceTime(
                 info: session.info,
                 now: now
@@ -457,3 +515,19 @@ final class ChallengerAttendanceViewModel {
         await challengerAttendanceUseCase.stopGeofenceMonitoring()
     }
 }
+
+#if DEBUG
+
+extension ChallengerAttendanceViewModel {
+
+    /// 프리뷰 전용 — 네트워크 조회 없이 일정 페이로드를 적재합니다.
+    ///
+    /// 일정 ID·출석 정책은 모두 `availableSchedules` 에서 파생되므로, 프리뷰도 실제 조회가
+    /// 채우는 것과 같은 상태를 세팅해야 화면이 프로덕션과 같은 분기를 탑니다.
+    /// (별도 캐시를 두면 프리뷰만 통과하고 실제 화면은 비는 상태가 만들어집니다.)
+    func seedSchedulesForPreview(_ schedules: [ScheduleDetailData]) {
+        availableSchedules = .loaded(schedules)
+    }
+}
+
+#endif

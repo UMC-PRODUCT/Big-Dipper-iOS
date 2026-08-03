@@ -10,6 +10,7 @@ import ActivityDomain
 import CoreDesignSystem
 import CoreDI
 import Foundation
+import HomeDomain
 import SwiftUI
 import UMCFoundation
 
@@ -22,16 +23,27 @@ final class PreviewChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
     let isLocationAuthorized: Bool
 
     private let timeWindow: AttendanceTimeWindow
+    private let schedules: [ScheduleDetailData]
 
     init(
         timeWindow: AttendanceTimeWindow = .onTime,
         isInsideGeofence: Bool = true,
-        isLocationAuthorized: Bool = true
+        isLocationAuthorized: Bool = true,
+        schedules: [ScheduleDetailData] = []
     ) {
         self.timeWindow = timeWindow
         self.isInsideGeofence = isInsideGeofence
         self.isLocationAuthorized = isLocationAuthorized
+        self.schedules = schedules
     }
+
+    /// 프리뷰가 미리 세팅한 것과 같은 목록을 돌려준다.
+    ///
+    /// 화면의 `.task` 가 `loadOnAppear()` 로 배경 갱신을 돌리므로, 여기서 빈 배열을 주면
+    /// 세팅해 둔 일정이 지워져 프리뷰가 비어 버린다.
+    func fetchAvailableSchedules(now: Date) async throws -> [ScheduleDetailData] { schedules }
+
+    func fetchMyHistory(now: Date) async throws -> [ScheduleDetailData] { [] }
 
     func requestGPSAttendance(
         sessionId: SessionID,
@@ -228,27 +240,46 @@ enum AttendancePreviewData {
 
     // MARK: - ViewModel / Container
 
-    /// - Parameter sessions: 이 세션들에 대해 시간대 정책과 서버 일정 ID를 함께 채운다.
-    ///   일정 ID가 없으면 화면이 출석·사유 버튼을 비활성화하므로 프리뷰가 비어 보인다.
+    /// - Parameter sessions: 이 세션들에 대응하는 일정 페이로드를 채운다.
+    ///   일정이 없으면 화면이 출석·사유 버튼을 비활성화하므로 프리뷰가 비어 보인다.
+    ///
+    /// - Note: 일정 ID는 세션 ID와 같은 값이어야 한다. 화면이 쓰는 일정 ID·출석 정책은
+    ///   모두 이 페이로드에서 `SessionID` 로 조회되므로, 다른 값을 넣으면 매칭에 실패한다.
     @MainActor
     static func viewModel(
         timeWindow: AttendanceTimeWindow = .onTime,
         sessions: [Session] = []
     ) -> ChallengerAttendanceViewModel {
+        let schedules = sessions.map { schedule(for: $0, timeWindow: timeWindow) }
         let viewModel = ChallengerAttendanceViewModel(
             errorHandler: ErrorHandler(),
             challengerAttendanceUseCase: PreviewChallengerAttendanceUseCase(
-                timeWindow: timeWindow
+                timeWindow: timeWindow,
+                schedules: schedules
             )
         )
-        let sessionIds = sessions.map(\.info.sessionId)
-        viewModel.updateSchedulePolicies(
-            Dictionary(uniqueKeysWithValues: sessionIds.map { ($0, policy(for: timeWindow)) })
-        )
-        viewModel.updateScheduleIds(
-            Dictionary(uniqueKeysWithValues: sessionIds.map { ($0, "SCH-\($0.value)") })
-        )
+        // 첫 렌더부터 일정이 보이도록 즉시 세팅한다 (`.task` 갱신도 같은 목록을 돌려준다).
+        viewModel.seedSchedulesForPreview(schedules)
         return viewModel
+    }
+
+    /// 세션 하나에 대응하는 프리뷰 일정 페이로드
+    @MainActor
+    private static func schedule(
+        for session: Session,
+        timeWindow: AttendanceTimeWindow
+    ) -> ScheduleDetailData {
+        let info = session.info
+        return ScheduleDetailData(
+            scheduleId: info.sessionId.value,
+            name: info.title,
+            description: "",
+            tags: [],
+            startsAt: info.startTime,
+            endsAt: info.endTime,
+            isParticipant: true,
+            attendancePolicy: policy(for: timeWindow)
+        )
     }
 
     /// 화면 init 의 `container:` 를 채우기 위한 스텁 컨테이너

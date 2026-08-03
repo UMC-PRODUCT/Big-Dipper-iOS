@@ -6,11 +6,15 @@
 //
 
 import Foundation
+import HomeDomain
 
 /// 운영진 시점의 일정 출석 현황
 ///
 /// 한 일정에 참여한 멤버 전원의 출석 상태와 통계를 단일 값으로 표현합니다.
 /// 목록·단일 조회 응답 스키마가 동일하므로 단일 모델로 합쳤습니다.
+///
+/// 장소·출석 정책은 `HomeDomain` 의 canonical 일정 모델을 그대로 사용합니다
+/// (Activity 에 같은 모양의 타입을 다시 두지 않습니다).
 ///
 /// - SeeAlso: ``ParticipantAttendance``, ``ParticipantAttendanceStatus``
 public struct ScheduleAttendanceInfo: Equatable, Sendable, Identifiable {

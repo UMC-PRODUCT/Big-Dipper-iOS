@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import HomeDomain
 
 /// 챌린저 시점의 출석 도메인 진입점
 ///
@@ -27,6 +28,26 @@ public protocol ChallengerAttendanceUseCaseProtocol {
 
     /// 시스템 위치 권한이 부여된 상태인지
     var isLocationAuthorized: Bool { get }
+
+    // MARK: - 일정 조회
+
+    /// 출석 가능한 일정 목록 조회
+    ///
+    /// 출석 정책이 붙어 있고, 본인이 참여자이며, 출석 창이 아직 닫히지 않은 일정만 돌려줍니다.
+    /// 출석 창이 아직 열리지 않은 일정도 포함해 View 가 "출석 전" 으로 표시할 수 있게 합니다.
+    ///
+    /// - Parameter now: 기준 시각. 테스트는 결정론적 epoch 를 주입하고, 프로덕션 호출은
+    ///   기본 오버로드(`Date()`) 를 사용합니다 (`isWithinAttendanceTime(info:now:)` 와 동일 패턴).
+    /// - Returns: 시작 시각 오름차순 정렬된 일정 목록
+    func fetchAvailableSchedules(now: Date) async throws -> [ScheduleDetailData]
+
+    /// 내 출석 이력 조회
+    ///
+    /// 최근 6개월 구간에서 출석 정책이 붙은 일정을 돌려줍니다.
+    ///
+    /// - Parameter now: 기준 시각. `fetchAvailableSchedules(now:)` 와 동일 규약.
+    /// - Returns: 시작 시각 오름차순 정렬된 일정 목록
+    func fetchMyHistory(now: Date) async throws -> [ScheduleDetailData]
 
     // MARK: - 출석 액션
 
@@ -93,10 +114,6 @@ public protocol ChallengerAttendanceUseCaseProtocol {
 
     /// 등록된 모든 지오펜스 모니터링 중지
     func stopGeofenceMonitoring() async
-
-    // TODO: Schedule Feature 모듈 이관 후 fetchAvailableSchedules / fetchMyHistory 추가 - [25.05.22] 이재원
-    // — `ScheduleDetailData` 가 Schedule Feature 모듈에 정의 예정.
-    // — PR #797 의 `fetchMySchedulesForAttendance(from:to:)` 동결과 동일 사유.
 }
 
 // MARK: - Default Implementations
@@ -106,5 +123,15 @@ extension ChallengerAttendanceUseCaseProtocol {
     /// 프로덕션 편의 오버로드 — 기준 시각으로 `Date()` 를 사용
     public func isWithinAttendanceTime(info: SessionInfo) -> AttendanceTimeWindow {
         isWithinAttendanceTime(info: info, now: Date())
+    }
+
+    /// 프로덕션 편의 오버로드 — 기준 시각으로 `Date()` 를 사용
+    public func fetchAvailableSchedules() async throws -> [ScheduleDetailData] {
+        try await fetchAvailableSchedules(now: Date())
+    }
+
+    /// 프로덕션 편의 오버로드 — 기준 시각으로 `Date()` 를 사용
+    public func fetchMyHistory() async throws -> [ScheduleDetailData] {
+        try await fetchMyHistory(now: Date())
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import HomeDomain
 import Testing
 import UMCFoundation
 @testable import ActivityDomain
@@ -55,11 +56,48 @@ private func makeSessionInfo(
 
 private func makeUseCase(
     repository: MockChallengerAttendanceRepository = MockChallengerAttendanceRepository(),
+    scheduleRepository: MockScheduleRepository = MockScheduleRepository(),
     locationProvider: MockLocationProvider = MockLocationProvider()
 ) -> ChallengerAttendanceUseCase {
     ChallengerAttendanceUseCase(
         repository: repository,
+        scheduleRepository: scheduleRepository,
         locationProvider: locationProvider
+    )
+}
+
+/// 출석 정책이 붙은 일정 픽스처.
+///
+/// `policyOffsets` 는 기준 시각 대비 (체크인 시작, 정시 마감, 지각 마감) 초 오프셋.
+/// `nil` 이면 출석 비필수 일정(정책 미부착)을 뜻한다.
+private func makeSchedule(
+    scheduleId: String,
+    startsAt: Date,
+    endsAt: Date,
+    isParticipant: Bool = true,
+    policy: ScheduleAttendancePolicy?
+) -> ScheduleDetailData {
+    ScheduleDetailData(
+        scheduleId: scheduleId,
+        name: "일정 \(scheduleId)",
+        description: "",
+        tags: [],
+        startsAt: startsAt,
+        endsAt: endsAt,
+        isParticipant: isParticipant,
+        attendancePolicy: policy
+    )
+}
+
+private func makePolicy(
+    checkInStartAt: Date,
+    onTimeEndAt: Date,
+    lateEndAt: Date
+) -> ScheduleAttendancePolicy {
+    ScheduleAttendancePolicy(
+        checkInStartAt: checkInStartAt,
+        onTimeEndAt: onTimeEndAt,
+        lateEndAt: lateEndAt
     )
 }
 
@@ -114,6 +152,38 @@ private final class MockChallengerAttendanceRepository: @unchecked Sendable,
     ) async throws -> AttendanceDecisionResult {
         submitExcuseCalls.append((scheduleId, excuseReason, isVerified, latitude, longitude))
         return submitExcuseResult
+    }
+}
+
+private final class MockScheduleRepository: @unchecked Sendable, ScheduleRepositoryProtocol {
+
+    /// 반환할 일정 목록 (Repository 계약대로 KST 자정 기준 날짜별로 그룹핑해 돌려준다)
+    var schedules: [ScheduleDetailData] = []
+    var fetchError: Error?
+
+    private(set) var fetchCalls: [(from: Date, to: Date, isAttendanceRequired: Bool)] = []
+
+    func fetchMySchedules(
+        from: Date,
+        to: Date,
+        isAttendanceRequired: Bool
+    ) async throws -> [Date: [ScheduleDetailData]] {
+        fetchCalls.append((from, to, isAttendanceRequired))
+        if let fetchError {
+            throw fetchError
+        }
+        let calendar = Calendar.kstGregorian
+        return Dictionary(grouping: schedules) { calendar.startOfDay(for: $0.startsAt) }
+    }
+
+    // MARK: 계약 밖 메서드 (호출 시 실패 — 출석 UseCase 는 조회만 사용)
+
+    func createSchedule(_ request: ScheduleCreationRequest) async throws -> String {
+        fatalError("createSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
+    }
+
+    func deleteSchedule(scheduleId: String) async throws {
+        fatalError("deleteSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
     }
 }
 
@@ -506,5 +576,207 @@ struct ChallengerAttendanceUseCaseLocationTests {
         await useCase.stopGeofenceMonitoring()
 
         #expect(location.stopAllGeofenceMonitoringCallCount == 1)
+    }
+}
+
+// MARK: - 출석 가능 일정 조회
+
+@Suite("ChallengerAttendanceUseCase — 출석 가능 일정 조회 (도메인 규칙)")
+struct ChallengerAttendanceUseCaseAvailableSchedulesTests {
+
+    /// 결정론적 기준 시각 (epoch 1_700_000_000)
+    private let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    /// 기준 시각 대비 초 오프셋으로 만든 일정 픽스처
+    private func schedule(
+        id: String,
+        startOffset: TimeInterval,
+        isParticipant: Bool = true,
+        hasPolicy: Bool = true,
+        lateEndOffset: TimeInterval? = nil
+    ) -> ScheduleDetailData {
+        let start = now.addingTimeInterval(startOffset)
+        let policy = hasPolicy
+            ? makePolicy(
+                checkInStartAt: start.addingTimeInterval(-600),
+                onTimeEndAt: start.addingTimeInterval(600),
+                lateEndAt: start.addingTimeInterval(lateEndOffset ?? 1_800)
+            )
+            : nil
+        return makeSchedule(
+            scheduleId: id,
+            startsAt: start,
+            endsAt: start.addingTimeInterval(3_600),
+            isParticipant: isParticipant,
+            policy: policy
+        )
+    }
+
+    @Test("출석 필수 필터를 켜고 -1일 ~ +14일 구간을 조회한다")
+    func fetchAvailableSchedulesQueriesExpectedWindow() async throws {
+        let scheduleRepository = MockScheduleRepository()
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        _ = try await useCase.fetchAvailableSchedules(now: now)
+
+        let call = try #require(scheduleRepository.fetchCalls.first)
+        let calendar = Calendar.kstGregorian
+        #expect(call.isAttendanceRequired)
+        #expect(call.from == calendar.date(byAdding: .day, value: -1, to: now))
+        #expect(call.to == calendar.date(byAdding: .day, value: 14, to: now))
+    }
+
+    @Test("출석 정책이 없는 일정은 제외한다")
+    func fetchAvailableSchedulesExcludesScheduleWithoutPolicy() async throws {
+        let scheduleRepository = MockScheduleRepository()
+        scheduleRepository.schedules = [
+            schedule(id: "1", startOffset: 3_600),
+            schedule(id: "2", startOffset: 3_600, hasPolicy: false),
+        ]
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        let result = try await useCase.fetchAvailableSchedules(now: now)
+
+        #expect(result.map(\.scheduleId) == ["1"])
+    }
+
+    @Test("본인이 참여자가 아닌 일정은 제외한다")
+    func fetchAvailableSchedulesExcludesNonParticipant() async throws {
+        let scheduleRepository = MockScheduleRepository()
+        scheduleRepository.schedules = [
+            schedule(id: "1", startOffset: 3_600),
+            schedule(id: "2", startOffset: 3_600, isParticipant: false),
+        ]
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        let result = try await useCase.fetchAvailableSchedules(now: now)
+
+        #expect(result.map(\.scheduleId) == ["1"])
+    }
+
+    @Test("출석 창이 이미 닫힌 일정은 제외하고, 아직 열리지 않은 일정은 포함한다")
+    func fetchAvailableSchedulesKeepsOpenWindowOnly() async throws {
+        let scheduleRepository = MockScheduleRepository()
+        scheduleRepository.schedules = [
+            // 지각 마감·종료 모두 과거 → 창이 닫힘
+            schedule(id: "closed", startOffset: -7_200, lateEndOffset: -3_600),
+            // 아직 시작 전 → 창이 열리기 전이지만 목록에는 남아야 함
+            schedule(id: "upcoming", startOffset: 7_200),
+        ]
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        let result = try await useCase.fetchAvailableSchedules(now: now)
+
+        #expect(result.map(\.scheduleId) == ["upcoming"])
+    }
+
+    @Test("날짜별 그룹 응답을 시작 시각 오름차순 단일 목록으로 펼친다")
+    func fetchAvailableSchedulesFlattensSortedByStart() async throws {
+        let scheduleRepository = MockScheduleRepository()
+        scheduleRepository.schedules = [
+            schedule(id: "late", startOffset: 3 * 86_400),
+            schedule(id: "early", startOffset: 3_600),
+            schedule(id: "mid", startOffset: 86_400),
+        ]
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        let result = try await useCase.fetchAvailableSchedules(now: now)
+
+        #expect(result.map(\.scheduleId) == ["early", "mid", "late"])
+    }
+
+    @Test("Repository 에러는 그대로 전파한다")
+    func fetchAvailableSchedulesPropagatesError() async {
+        let scheduleRepository = MockScheduleRepository()
+        scheduleRepository.fetchError = DomainError.attendanceOutOfRange
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        await #expect(throws: DomainError.attendanceOutOfRange) {
+            _ = try await useCase.fetchAvailableSchedules(now: now)
+        }
+    }
+}
+
+// MARK: - 출석 이력 조회
+
+@Suite("ChallengerAttendanceUseCase — 출석 이력 조회 (도메인 규칙)")
+struct ChallengerAttendanceUseCaseHistoryTests {
+
+    /// 결정론적 기준 시각 (epoch 1_700_000_000)
+    private let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    private func pastSchedule(
+        id: String,
+        startOffset: TimeInterval,
+        isParticipant: Bool = true,
+        hasPolicy: Bool = true
+    ) -> ScheduleDetailData {
+        let start = now.addingTimeInterval(startOffset)
+        let policy = hasPolicy
+            ? makePolicy(
+                checkInStartAt: start.addingTimeInterval(-600),
+                onTimeEndAt: start.addingTimeInterval(600),
+                lateEndAt: start.addingTimeInterval(1_800)
+            )
+            : nil
+        return makeSchedule(
+            scheduleId: id,
+            startsAt: start,
+            endsAt: start.addingTimeInterval(3_600),
+            isParticipant: isParticipant,
+            policy: policy
+        )
+    }
+
+    @Test("출석 필수 필터를 켜고 -6개월 ~ 현재 구간을 조회한다")
+    func fetchMyHistoryQueriesExpectedWindow() async throws {
+        let scheduleRepository = MockScheduleRepository()
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        _ = try await useCase.fetchMyHistory(now: now)
+
+        let call = try #require(scheduleRepository.fetchCalls.first)
+        #expect(call.isAttendanceRequired)
+        #expect(call.from == Calendar.kstGregorian.date(byAdding: .month, value: -6, to: now))
+        #expect(call.to == now)
+    }
+
+    @Test("출석 정책이 없는 일정은 이력에서 제외한다")
+    func fetchMyHistoryExcludesScheduleWithoutPolicy() async throws {
+        let scheduleRepository = MockScheduleRepository()
+        scheduleRepository.schedules = [
+            pastSchedule(id: "1", startOffset: -86_400),
+            pastSchedule(id: "2", startOffset: -86_400, hasPolicy: false),
+        ]
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        let result = try await useCase.fetchMyHistory(now: now)
+
+        #expect(result.map(\.scheduleId) == ["1"])
+    }
+
+    @Test("참여 여부·출석 창 마감은 이력 필터에 관여하지 않는다")
+    func fetchMyHistoryKeepsClosedAndNonParticipantSchedules() async throws {
+        let scheduleRepository = MockScheduleRepository()
+        scheduleRepository.schedules = [
+            pastSchedule(id: "closed", startOffset: -172_800),
+            pastSchedule(id: "notParticipant", startOffset: -86_400, isParticipant: false),
+        ]
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        let result = try await useCase.fetchMyHistory(now: now)
+
+        #expect(result.map(\.scheduleId) == ["closed", "notParticipant"])
+    }
+
+    @Test("Repository 에러는 그대로 전파한다")
+    func fetchMyHistoryPropagatesError() async {
+        let scheduleRepository = MockScheduleRepository()
+        scheduleRepository.fetchError = DomainError.attendanceOutOfRange
+        let useCase = makeUseCase(scheduleRepository: scheduleRepository)
+
+        await #expect(throws: DomainError.attendanceOutOfRange) {
+            _ = try await useCase.fetchMyHistory(now: now)
+        }
     }
 }

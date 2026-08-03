@@ -8,6 +8,7 @@
 import Foundation
 import Testing
 import ActivityDomain
+import HomeDomain
 import UMCFoundation
 @testable import ActivityPresentation
 
@@ -45,6 +46,8 @@ private func makeViewModel(
     studyGroupId: String = "1",
     membersUseCase: MockFetchStudyMembersUseCase = MockFetchStudyMembersUseCase(),
     repository: MockStudyScheduleRepository = MockStudyScheduleRepository(),
+    registerUseCase: MockRegisterStudyScheduleUseCase = MockRegisterStudyScheduleUseCase(),
+    errorHandler: ErrorHandler = ErrorHandler(),
     currentMemberId: String? = nil
 ) -> StudyScheduleRegistrationViewModel {
     StudyScheduleRegistrationViewModel(
@@ -52,14 +55,19 @@ private func makeViewModel(
         studyGroupId: studyGroupId,
         studyMembersUseCase: membersUseCase,
         studyRepository: repository,
+        registerScheduleUseCase: registerUseCase,
+        errorHandler: errorHandler,
         currentMemberId: currentMemberId
     )
 }
 
 /// `canSubmit == true` 를 만족하는 기본 뷰 모델 (비대면 + 주차 선택 완료)
 @MainActor
-private func makeReadyViewModel() -> StudyScheduleRegistrationViewModel {
-    let viewModel = makeViewModel()
+private func makeReadyViewModel(
+    registerUseCase: MockRegisterStudyScheduleUseCase = MockRegisterStudyScheduleUseCase(),
+    errorHandler: ErrorHandler = ErrorHandler()
+) -> StudyScheduleRegistrationViewModel {
+    let viewModel = makeViewModel(registerUseCase: registerUseCase, errorHandler: errorHandler)
     viewModel.isOnline = true
     viewModel.selectedWeeklyOption = makeOption()
     return viewModel
@@ -165,7 +173,57 @@ private final class MockStudyScheduleRepository: @unchecked Sendable,
         studyGroupId: String,
         weeklyCurriculumId: String
     ) async throws {
-        fatalError("linkStudyGroupSchedule 은 StudyScheduleRegistrationViewModel 계약 밖입니다.")
+        fatalError("연결은 RegisterStudyScheduleUseCase 경유이므로 본 Mock 계약 밖입니다.")
+    }
+}
+
+/// 일정 등록 2단계(생성 → 연결 → 롤백)를 제어하는 Mock.
+private final class MockRegisterStudyScheduleUseCase: @unchecked Sendable,
+    RegisterStudyScheduleUseCaseProtocol {
+
+    var createResult: Result<String, Error> = .success("SCH-1")
+    var linkResult: Result<Void, Error> = .success(())
+    var deleteResult: Result<Void, Error> = .success(())
+
+    /// `true` 면 일정 생성이 ``openCreateGate()`` 전까지 반환하지 않는다.
+    ///
+    /// 등록이 "진행 중" 인 순간을 관찰해야 하는 중복 제출 테스트에서 쓴다. 생성은 MainActor
+    /// 밖에서 재개되므로 continuation 등록/해제가 실행자에 걸치지 않도록 플래그 폴링을 쓴다.
+    var gateCreate: Bool = false
+
+    private(set) var createdRequests: [ScheduleCreationRequest] = []
+    private(set) var linkCalls: [(
+        scheduleId: String,
+        studyGroupId: String,
+        weeklyCurriculumId: String
+    )] = []
+    private(set) var deletedScheduleIds: [String] = []
+
+    func createSchedule(_ request: ScheduleCreationRequest) async throws -> String {
+        createdRequests.append(request)
+        while gateCreate {
+            await Task.yield()
+        }
+        return try createResult.get()
+    }
+
+    /// 게이트에 걸려 있던 일정 생성을 재개시킨다.
+    func openCreateGate() {
+        gateCreate = false
+    }
+
+    func linkStudyGroupSchedule(
+        scheduleId: String,
+        studyGroupId: String,
+        weeklyCurriculumId: String
+    ) async throws {
+        linkCalls.append((scheduleId, studyGroupId, weeklyCurriculumId))
+        try linkResult.get()
+    }
+
+    func deleteSchedule(scheduleId: String) async throws {
+        deletedScheduleIds.append(scheduleId)
+        try deleteResult.get()
     }
 }
 
@@ -192,14 +250,24 @@ struct StudyScheduleRegistrationViewModelCanSubmitTests {
         let viewModel = makeReadyViewModel()
         viewModel.isOnline = false
         viewModel.placeName = place
+        viewModel.placeCoordinate = Coordinate(latitude: 37.5, longitude: 127.0)
         #expect(viewModel.canSubmit == false)
     }
 
-    @Test("대면 + 장소 입력 → 가능")
+    @Test("대면인데 좌표 미선택 → 불가 (지오펜스 기준점이 없으므로)")
+    func inPersonWithoutCoordinateBlocksSubmit() {
+        let viewModel = makeReadyViewModel()
+        viewModel.isOnline = false
+        viewModel.placeName = "한성대 상상관"
+        #expect(viewModel.canSubmit == false)
+    }
+
+    @Test("대면 + 장소명 + 좌표 → 가능")
     func inPersonWithPlaceAllowsSubmit() {
         let viewModel = makeReadyViewModel()
         viewModel.isOnline = false
         viewModel.placeName = "한성대 상상관"
+        viewModel.placeCoordinate = Coordinate(latitude: 37.5, longitude: 127.0)
         #expect(viewModel.canSubmit == true)
     }
 
@@ -471,20 +539,200 @@ struct StudyScheduleRegistrationViewModelWeeklyOptionsTests {
     }
 }
 
-// MARK: - 일정 등록 스텁
+// MARK: - 일정 등록 (2단계)
 
 @MainActor
-@Suite("StudyScheduleRegistrationViewModel — 일정 등록 스텁 (도메인 규칙)")
-struct StudyScheduleRegistrationViewModelSubmitStubTests {
+@Suite("StudyScheduleRegistrationViewModel — 일정 등록 (도메인 규칙)")
+struct StudyScheduleRegistrationViewModelSubmitTests {
 
-    @Test("필수 입력 충족이어도 false — Schedule 모듈 이식 전 스텁 계약")
-    func submitReturnsFalseWhileStubbed() async {
-        let viewModel = makeReadyViewModel()
-        #expect(viewModel.canSubmit == true)
+    @Test("필수 입력 미충족 → 서버 호출 없이 false")
+    func submitSkipsWhenNotSubmittable() async {
+        let register = MockRegisterStudyScheduleUseCase()
+        let viewModel = makeViewModel(registerUseCase: register)
+        // 주차 미선택 상태라 canSubmit == false
+        #expect(viewModel.canSubmit == false)
 
         let result = await viewModel.submitSchedule()
 
         #expect(result == false)
+        #expect(register.createdRequests.isEmpty)
+    }
+
+    @Test("생성 → 연결 모두 성공 → true")
+    func submitSucceedsWhenBothStepsSucceed() async {
+        let register = MockRegisterStudyScheduleUseCase()
+        register.createResult = .success("SCH-9")
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+
+        let result = await viewModel.submitSchedule()
+
+        #expect(result == true)
+        #expect(register.linkCalls.count == 1)
+        #expect(register.linkCalls.first?.scheduleId == "SCH-9")
+        #expect(register.linkCalls.first?.studyGroupId == "1")
+        #expect(register.linkCalls.first?.weeklyCurriculumId == "W-1")
+        #expect(register.deletedScheduleIds.isEmpty)
+    }
+
+    @Test("1단계 생성 실패 → false + 연결 미시도")
+    func submitFailsWhenCreateFails() async {
+        let register = MockRegisterStudyScheduleUseCase()
+        register.createResult = .failure(DummyError())
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+
+        let result = await viewModel.submitSchedule()
+
+        #expect(result == false)
+        #expect(register.linkCalls.isEmpty)
+        #expect(register.deletedScheduleIds.isEmpty)
+    }
+
+    @Test("등록 진행 중 재호출 → 일정을 두 번 만들지 않는다")
+    func concurrentSubmitIsGuarded() async {
+        let register = MockRegisterStudyScheduleUseCase()
+        register.gateCreate = true
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+
+        let first = Task { await viewModel.submitSchedule() }
+        await drainUntil { register.createdRequests.count == 1 }
+
+        let duplicate = await viewModel.submitSchedule()
+
+        #expect(duplicate == false)
+        #expect(register.createdRequests.count == 1)
+
+        register.openCreateGate()
+        #expect(await first.value == true)
+    }
+
+    @Test("2단계 연결 실패 → false + 재시도/취소 Alert 노출 (즉시 롤백하지 않음)")
+    func submitPresentsAlertWhenLinkFails() async {
+        let register = MockRegisterStudyScheduleUseCase()
+        register.linkResult = .failure(DummyError())
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+
+        let result = await viewModel.submitSchedule()
+
+        #expect(result == false)
+        #expect(viewModel.alertPrompt != nil)
+        #expect(register.deletedScheduleIds.isEmpty)
+    }
+
+    @Test("2단계 실패 후 재시도 성공 → 롤백 없이 연결 완료")
+    func retryAfterLinkFailureLinksWithoutRollback() async {
+        let register = MockRegisterStudyScheduleUseCase()
+        register.linkResult = .failure(DummyError())
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+        _ = await viewModel.submitSchedule()
+
+        register.linkResult = .success(())
+        viewModel.alertPrompt?.positiveBtnAction?()
+        await drainUntil { register.linkCalls.count == 2 }
+
+        #expect(register.linkCalls.count == 2)
+        #expect(register.deletedScheduleIds.isEmpty)
+    }
+
+    @Test("2단계 실패 후 취소 → 생성된 일정을 베스트 에포트로 삭제")
+    func cancelAfterLinkFailureRollsBackSchedule() async {
+        let register = MockRegisterStudyScheduleUseCase()
+        register.createResult = .success("SCH-9")
+        register.linkResult = .failure(DummyError())
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+        _ = await viewModel.submitSchedule()
+
+        viewModel.alertPrompt?.negativeBtnAction?()
+        await drainUntil { register.deletedScheduleIds.isEmpty == false }
+
+        #expect(register.deletedScheduleIds == ["SCH-9"])
+    }
+
+    @Test("롤백 삭제 실패 → 예외를 삼키고 화면 흐름을 막지 않는다")
+    func rollbackFailureIsSwallowed() async {
+        let register = MockRegisterStudyScheduleUseCase()
+        register.linkResult = .failure(DummyError())
+        register.deleteResult = .failure(DummyError())
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+        _ = await viewModel.submitSchedule()
+
+        viewModel.alertPrompt?.negativeBtnAction?()
+        await drainUntil { register.deletedScheduleIds.isEmpty == false }
+
+        #expect(register.deletedScheduleIds == ["SCH-1"])
+    }
+}
+
+// MARK: - 일정 등록 페이로드
+
+@MainActor
+@Suite("StudyScheduleRegistrationViewModel — 일정 생성 페이로드 (도메인 규칙)")
+struct StudyScheduleRegistrationViewModelPayloadTests {
+
+    @Test("비대면 → 장소 없이 전송하고 스터디 태그를 붙인다")
+    func onlineScheduleOmitsLocation() async throws {
+        let register = MockRegisterStudyScheduleUseCase()
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+
+        _ = await viewModel.submitSchedule()
+
+        let request = try #require(register.createdRequests.first)
+        #expect(request.location == nil)
+        #expect(request.tags == ["STUDY"])
+    }
+
+    @Test("대면 → 선택한 좌표와 장소명을 실어 보낸다")
+    func inPersonScheduleSendsSelectedPlace() async throws {
+        let register = MockRegisterStudyScheduleUseCase()
+        let viewModel = makeReadyViewModel(registerUseCase: register)
+        viewModel.isOnline = false
+        viewModel.placeName = "  한성대 상상관  "
+        viewModel.placeCoordinate = Coordinate(latitude: 37.582, longitude: 127.010)
+
+        _ = await viewModel.submitSchedule()
+
+        let location = try #require(register.createdRequests.first?.location)
+        #expect(location.locationName == "한성대 상상관")
+        #expect(location.latitude == 37.582)
+        #expect(location.longitude == 127.010)
+    }
+
+    @Test("본인을 뺀 참여자 목록과 출석 정책 세 시각을 그대로 전송한다")
+    func payloadCarriesParticipantsAndPolicy() async throws {
+        let membersUseCase = MockFetchStudyMembersUseCase()
+        membersUseCase.result = .success([
+            makeMember(memberID: "M-self"),
+            makeMember(memberID: "M-1"),
+            makeMember(memberID: "M-2"),
+        ])
+        let register = MockRegisterStudyScheduleUseCase()
+        let viewModel = makeViewModel(
+            membersUseCase: membersUseCase,
+            registerUseCase: register,
+            currentMemberId: "M-self"
+        )
+        viewModel.isOnline = true
+        viewModel.selectedWeeklyOption = makeOption()
+        await viewModel.loadParticipantMembers()
+
+        _ = await viewModel.submitSchedule()
+
+        let request = try #require(register.createdRequests.first)
+        #expect(request.participantMemberIds == ["M-1", "M-2"])
+        #expect(request.attendancePolicy?.checkInStartAt == viewModel.attendanceCheckInStartAt)
+        #expect(request.attendancePolicy?.onTimeEndAt == viewModel.attendanceOnTimeEndAt)
+        #expect(request.attendancePolicy?.lateEndAt == viewModel.attendanceLateEndAt)
+    }
+
+    @Test("비대면 전환 → 장소명과 좌표를 함께 비운다")
+    func switchingToOnlineClearsPlace() {
+        let viewModel = makeViewModel()
+        viewModel.placeName = "한성대 상상관"
+        viewModel.placeCoordinate = Coordinate(latitude: 37.5, longitude: 127.0)
+
+        viewModel.inPersonModeToggleChanged(to: false)
+
+        #expect(viewModel.placeName.isEmpty)
+        #expect(viewModel.placeCoordinate == nil)
     }
 }
 

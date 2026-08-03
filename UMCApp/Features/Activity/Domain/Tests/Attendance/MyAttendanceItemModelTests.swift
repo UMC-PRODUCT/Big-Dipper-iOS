@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import HomeDomain
 import Testing
 import UMCFoundation
 @testable import ActivityDomain

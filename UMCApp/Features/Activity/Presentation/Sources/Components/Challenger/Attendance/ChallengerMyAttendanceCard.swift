@@ -8,6 +8,7 @@
 import ActivityDomain
 import CoreDesignSystem
 import CoreUIComponents
+import HomeDomain
 import SwiftUI
 import UMCFoundation
 

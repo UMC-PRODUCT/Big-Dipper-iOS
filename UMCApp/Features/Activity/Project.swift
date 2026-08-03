@@ -5,7 +5,28 @@ let project = featureProject(
     name: "Activity",
     domainDestinations: [.iPhone, .appleWatch],
     domainDeploymentTargets: .multiplatform(iOS: "26.4", watchOS: "26.4"),
+    domainExtraDependencies: [
+        // 출석 도메인이 일정 조회/생성을 HomeDomain 의 canonical 자산으로 수행한다.
+        // (ScheduleDetailData·ScheduleLocation·ScheduleAttendancePolicy·ScheduleRepositoryProtocol)
+        // Activity 안에 일정 모델을 다시 만들지 않는다 — #994 에서 확정한 재사용 경계.
+        //
+        // HomeDomain 은 iOS 전용이라 watchOS 까지 확장된 ActivityDomain 의 destination 을
+        // 그대로 두려면 의존을 iOS 로 한정해야 한다. 현재 UMCWatchApp 은 CoreWatchConnectivity
+        // 만 링크하므로 watch 빌드에 영향이 없다. watch 가 출석 도메인을 쓰게 되는 시점에
+        // 일정 모델의 공용 위치(Core 승격 등)를 다시 판단한다.
+        .project(
+            target: "HomeDomain",
+            path: .relativeToRoot("Features/Home"),
+            condition: .when([.ios])
+        ),
+    ],
+    dataExtraDependencies: [
+        // 출석 응답 DTO 가 HomeDomain 의 일정 장소/출석 정책 모델로 매핑한다.
+        .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
+    ],
     presentationExtraDependencies: [
+        // 출석 ViewModel 이 ScheduleDetailData·ScheduleAttendancePolicy 를 직접 다룬다.
+        .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         // OperatorStudyManagementViewModel 이 멤버/멘토 선택 입력 타입(ChallengerInfo)을 사용.
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
@@ -16,9 +37,21 @@ let project = featureProject(
         .sdk(name: "MapKit", type: .framework),
     ],
     includesDomainTests: true,
+    domainTestDependencies: [
+        // UseCase 테스트가 ScheduleDetailData 픽스처를 직접 만든다.
+        // 테스트 타겟도 domainDestinations 를 물려받으므로 메인 타겟과 같은 iOS 한정 조건이 필요하다.
+        .project(
+            target: "HomeDomain",
+            path: .relativeToRoot("Features/Home"),
+            condition: .when([.ios])
+        ),
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+    ],
     includesDataTests: true,
     dataTestDependencies: [
         .external(name: "Moya"),
+        // Repository 테스트가 매핑 결과의 ScheduleLocation/ScheduleAttendancePolicy 를 검증.
+        .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
         // Repository 테스트가 도메인 반환 타입(ScheduleAttendanceInfo 등)과
         // 에러 enum(DomainError/RepositoryError/NetworkError)을 직접 참조하므로 명시 주입.
         .target(name: "ActivityDomain"),
@@ -28,5 +61,7 @@ let project = featureProject(
     presentationTestDependencies: [
         // VM 테스트가 ChallengerInfo 를 직접 생성하므로 명시 주입.
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
+        // VM 테스트가 ScheduleDetailData·ScheduleAttendancePolicy 픽스처를 직접 만든다.
+        .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
     ]
 )

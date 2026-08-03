@@ -101,7 +101,8 @@ public protocol StudyRepositoryProtocol {
     /// 일정 생성 후 받은 `scheduleId` 를 스터디 그룹/주차 커리큘럼에 연결
     ///
     /// `POST /api/v1/study-groups/schedules` 엔드포인트의 단순 래퍼.
-    /// 1단계 일정 생성은 별도 `ScheduleRepositoryProtocol.generateSchedule(...)` 사용.
+    /// 1단계 일정 생성은 `HomeDomain` 의 `ScheduleRepositoryProtocol.createSchedule(_:)` 사용.
+    /// 두 단계를 묶는 조립은 ``RegisterStudyScheduleUseCaseProtocol`` 이 맡는다.
     ///
     /// 모두 서버 응답 식별자 → `String`.
     func linkStudyGroupSchedule(

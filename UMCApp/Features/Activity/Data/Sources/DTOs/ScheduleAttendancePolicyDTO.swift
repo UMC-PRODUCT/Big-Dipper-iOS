@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import ActivityDomain
+import HomeDomain
 import UMCFoundation
 
 /// 출석 현황 응답의 `attendancePolicy` 객체 DTO
@@ -14,7 +14,7 @@ import UMCFoundation
 /// 일정에 부착된 동적 출석 시각 임계값(체크인 시작 · 정시 종료 · 지각 종료). 응답이
 /// `null` 이면 출석 비필수 일정을 의미하므로 상위 DTO 에서 옵셔널로 보유합니다.
 ///
-/// - SeeAlso: ``ActivityDomain/ScheduleAttendancePolicy``
+/// - SeeAlso: ``HomeDomain/ScheduleAttendancePolicy``
 struct ScheduleAttendancePolicyDTO: Codable, Sendable, Equatable {
 
     /// 출석 체크인 시작 시각 (UTC ISO8601)
