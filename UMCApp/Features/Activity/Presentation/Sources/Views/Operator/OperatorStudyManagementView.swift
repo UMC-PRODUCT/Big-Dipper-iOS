@@ -87,7 +87,8 @@ struct OperatorStudyManagementView: View {
         static let sectionPickerTitle: String = "스터디 관리 섹션"
         static let allGroupsFilterTitle: String = "전체 그룹"
         static let submissionLoadingMessage: String = "제출 현황 불러오는 중..."
-        static let submissionIdleDescription: String = "제출 현황을 아직 불러오지 않았어요."
+        static let submissionIdleTitle: String = "제출 현황을 불러올 준비가 됐어요"
+        static let submissionIdleDescription: String = "아래 버튼을 눌러 불러올 수 있어요."
         static let submissionEmptyDescription: String =
             "선택한 조건에 해당하는 스터디원이 없어요.\n그룹이나 주차 필터를 바꿔보세요."
     }
@@ -293,7 +294,11 @@ struct OperatorStudyManagementView: View {
             // `.idle` 을 스피너로 그리지 않는다. 조회가 취소되면 이 상태로 되돌아오는데,
             // 그때 in-flight 가 없으므로 스피너는 영원히 돌기만 한다. 재시도 수단을 준다.
             case .idle:
-                submissionRetryView(description: Constants.submissionIdleDescription)
+                submissionRetryView(
+                    title: Constants.submissionIdleTitle,
+                    systemImage: "doc.text.magnifyingglass",
+                    description: Constants.submissionIdleDescription
+                )
 
             case .loading:
                 loadingView(message: Constants.submissionLoadingMessage)
@@ -306,7 +311,11 @@ struct OperatorStudyManagementView: View {
                 }
 
             case .failed(let error):
-                submissionRetryView(description: error.userMessage)
+                submissionRetryView(
+                    title: "불러오지 못했어요",
+                    systemImage: "exclamationmark.triangle",
+                    description: error.userMessage
+                )
             }
         }
         .task {
@@ -314,10 +323,14 @@ struct OperatorStudyManagementView: View {
         }
     }
 
-    private func submissionRetryView(description: String) -> some View {
+    private func submissionRetryView(
+        title: String,
+        systemImage: String,
+        description: String
+    ) -> some View {
         RetryContentUnavailableView(
-            title: "불러오지 못했어요",
-            systemImage: "exclamationmark.triangle",
+            title: title,
+            systemImage: systemImage,
             description: description,
             isRetrying: false,
             topPadding: DefaultSpacing.spacing32

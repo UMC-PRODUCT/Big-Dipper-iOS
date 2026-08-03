@@ -1174,6 +1174,139 @@ struct OperatorStudyManagementSubmissionTests {
         #expect(viewModel.availableSubmissionWeekNos == ["1", "2"])
     }
 
+    @Test("주차 후보는 다음 페이지의 주차까지 누적한다")
+    func weekOptionsGrowAcrossPages() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [
+                    makeSubmission(
+                        studyGroupMemberId: "1",
+                        weeks: [makeWeek(weekNo: "1")]
+                    )
+                ],
+                hasNext: true,
+                nextCursor: "1"
+            ),
+            makeSubmissionPage(
+                content: [
+                    makeSubmission(
+                        studyGroupMemberId: "2",
+                        weeks: [makeWeek(weekNo: "2")]
+                    )
+                ]
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+        #expect(viewModel.availableSubmissionWeekNos == ["1"])
+
+        await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
+
+        #expect(viewModel.availableSubmissionWeekNos == ["1", "2"])
+    }
+
+    @Test("그룹을 바꾸면 이전 그룹의 주차 후보가 남지 않는다")
+    func weekOptionsResetOnGroupChange() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPagesByGroupId = [
+            "": makeSubmissionPage(
+                content: [
+                    makeSubmission(
+                        studyGroupMemberId: "1",
+                        weeks: [makeWeek(weekNo: "1"), makeWeek(weekNo: "2")]
+                    )
+                ]
+            ),
+            "G-7": makeSubmissionPage(
+                content: [
+                    makeSubmission(
+                        studyGroupMemberId: "9",
+                        weeks: [makeWeek(weekNo: "3")]
+                    )
+                ]
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        await viewModel.selectSubmissionGroup("G-7")
+
+        #expect(viewModel.availableSubmissionWeekNos == ["3"])
+    }
+
+    // MARK: - 필터 ↔ 목록 정합
+
+    @Test("필터 변경이 취소되면 칩 선택도 이전 필터로 되돌아간다")
+    func cancelledFilterChangeRevertsSelection() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "1")])
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        useCase.submissionError = CancellationError()
+        await viewModel.selectSubmissionGroup("G-7")
+
+        // 목록은 전체 그룹의 결과 그대로이므로 칩도 전체 그룹이어야 한다.
+        #expect(viewModel.selectedSubmissionGroupId == nil)
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1"])
+    }
+
+    @Test("같은 필터로 재진입하면 로드된 페이지를 버리지 않는다")
+    func reentryKeepsLoadedPageWhenFilterMatches() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPagesByGroupId = [
+            "": makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "1")]),
+            "G-7": makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "9")])
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+        await viewModel.selectSubmissionGroup("G-7")
+        let callsAfterFilter = useCase.submissionCalls.count
+
+        await viewModel.fetchSubmissions()
+
+        #expect(useCase.submissionCalls.count == callsAfterFilter)
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["9"])
+    }
+
+    @Test("목록과 필터가 어긋난 채 재진입하면 건너뛰지 않고 다시 조회한다")
+    func reentryRefetchesWhenFilterDoesNotMatchList() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPagesByGroupId = [
+            "": makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "1")]),
+            "G-B": makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "2")]),
+            "G-C": makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "3")])
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        // 필터를 연달아 바꾸고 둘 다 취소시키면, 마지막 요청의 롤백이 목록(전체 그룹)과
+        // 어긋나는 중간 필터(G-B)를 복원한다 — 칩과 목록이 다른 조건을 가리키는 상태.
+        useCase.gateSubmissions = true
+        let toB = Task { await viewModel.selectSubmissionGroup("G-B") }
+        await drainUntil { useCase.submissionCalls.count == 2 }
+        let toC = Task { await viewModel.selectSubmissionGroup("G-C") }
+        await drainUntil { useCase.submissionCalls.count == 3 }
+
+        useCase.submissionError = CancellationError()
+        useCase.releaseSubmissions()
+        await toB.value
+        await toC.value
+
+        #expect(viewModel.selectedSubmissionGroupId == "G-B")
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1"])
+
+        // 어긋난 상태로 재진입하면 건너뛰지 않고 선택된 필터로 다시 조회해야 한다.
+        useCase.submissionError = nil
+        useCase.gateSubmissions = false
+        await viewModel.fetchSubmissions()
+
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["2"])
+    }
+
     // MARK: - 요청 토큰 (latest-wins)
 
     @Test("필터 변경 전 요청의 응답은 최신 목록을 덮어쓰지 않는다")

@@ -132,6 +132,12 @@ final class OperatorStudyManagementViewModel {
     /// 제출 현황 다음 페이지 존재 여부
     private var submissionHasNext = false
 
+    /// 현재 목록이 어떤 그룹 필터의 결과인지 (조회 성공 시점에 기록)
+    private var loadedSubmissionGroupId: String?
+
+    /// 현재 목록이 어떤 주차 필터의 결과인지 (조회 성공 시점에 기록)
+    private var loadedSubmissionWeekNos: [String] = []
+
     /// 제출 현황 첫 페이지 조회가 진행 중인지 여부 (재진입 가드 전용)
     ///
     /// 화면 상태(`submissionsState`)를 가드로 쓰면 안 된다 — 취소된 요청이 그 상태를 이전 값으로
@@ -170,6 +176,14 @@ final class OperatorStudyManagementViewModel {
 
     /// 현재 사용자 기수 ID (서버 응답 `String`). 그룹 생성 화면의 표시·검증용.
     var currentGisuId: String? { gisuIdProvider() }
+
+    /// 화면에 떠 있는 목록이 지금 선택된 필터의 결과인지 여부.
+    ///
+    /// 둘이 어긋나면(취소로 필터 적용이 무산된 경우) 재진입 시 반드시 다시 조회해야 한다.
+    private var isLoadedListMatchingCurrentFilter: Bool {
+        loadedSubmissionGroupId == selectedSubmissionGroupId
+            && loadedSubmissionWeekNos == selectedSubmissionWeekNos
+    }
 
     // MARK: - Function (일정 등록 권한)
 
@@ -273,24 +287,37 @@ final class OperatorStudyManagementViewModel {
 
     /// 제출 현황 화면 진입 시 첫 페이지와 그룹 필터 후보를 조회합니다.
     ///
-    /// 이미 조회 중이면 중복 호출을 무시합니다 (`.task` 재실행 대비 재진입 가드).
-    /// 이미 조회 중이거나 목록을 채워 둔 상태면 아무것도 하지 않습니다.
-    ///
     /// 섹션을 오갈 때마다 `.task` 가 다시 실행되는데, 그때마다 새로 조회하면 스크롤로 쌓아 둔
-    /// 페이지가 통째로 버려집니다. 목록 갱신은 필터 변경과 실패 시 재시도로만 일어납니다.
+    /// 페이지가 통째로 버려집니다. 그래서 **현재 필터로 이미 채워 둔 목록이 있으면** 재조회를
+    /// 건너뜁니다. 목록이 다른 필터의 결과라면(취소로 필터 적용이 무산된 경우) 그대로 두면
+    /// 칩과 목록이 어긋난 채 굳으므로 반드시 다시 조회합니다.
+    ///
+    /// 그룹 이름 목록은 조회를 건너뛰는 경우에도 시도합니다 — 첫 조회 때 이름만 실패하면
+    /// 필터 칩이 영영 비어 있게 되기 때문입니다.
     func fetchSubmissions() async {
         if isReloadingSubmissions { return }
-        if case .loaded = submissionsState { return }
-        // 목록을 먼저 조회한다. ``reloadSubmissions()`` 가 await 이전에 in-flight 플래그를
-        // 세우므로, 곧바로 이어진 두 번째 호출이 위 재진입 가드에 걸린다.
-        await reloadSubmissions()
+
+        if case .loaded = submissionsState, isLoadedListMatchingCurrentFilter {
+            await loadStudyGroupNamesIfNeeded()
+            return
+        }
+
+        // 목록을 먼저 조회한다. ``reloadSubmissions(groupId:weekNos:)`` 가 await 이전에
+        // in-flight 플래그를 세우므로, 곧바로 이어진 두 번째 호출이 위 재진입 가드에 걸린다.
+        await reloadSubmissions(
+            groupId: selectedSubmissionGroupId,
+            weekNos: selectedSubmissionWeekNos
+        )
         await loadStudyGroupNamesIfNeeded()
     }
 
     /// 실패한 조회를 처음부터 다시 시도합니다 (재시도 버튼 전용 — 로드 여부와 무관하게 실행).
     func retrySubmissions() async {
         if isReloadingSubmissions { return }
-        await reloadSubmissions()
+        await reloadSubmissions(
+            groupId: selectedSubmissionGroupId,
+            weekNos: selectedSubmissionWeekNos
+        )
         await loadStudyGroupNamesIfNeeded()
     }
 
@@ -299,20 +326,20 @@ final class OperatorStudyManagementViewModel {
     /// - Parameter groupId: 조회할 그룹 (`nil` 이면 관리 가능한 전체 그룹)
     func selectSubmissionGroup(_ groupId: String?) async {
         guard selectedSubmissionGroupId != groupId else { return }
-        selectedSubmissionGroupId = groupId
-        await reloadSubmissions()
+        await reloadSubmissions(groupId: groupId, weekNos: selectedSubmissionWeekNos)
     }
 
     /// 주차 필터를 토글하고 첫 페이지부터 다시 조회합니다.
     ///
     /// - Parameter weekNo: 토글할 주차 번호 (서버 응답 `String`)
     func toggleSubmissionWeek(_ weekNo: String) async {
-        if let index = selectedSubmissionWeekNos.firstIndex(of: weekNo) {
-            selectedSubmissionWeekNos.remove(at: index)
+        var weekNos = selectedSubmissionWeekNos
+        if let index = weekNos.firstIndex(of: weekNo) {
+            weekNos.remove(at: index)
         } else {
-            selectedSubmissionWeekNos.append(weekNo)
+            weekNos.append(weekNo)
         }
-        await reloadSubmissions()
+        await reloadSubmissions(groupId: selectedSubmissionGroupId, weekNos: weekNos)
     }
 
     /// 제출 현황 목록 마지막 카드 도달 시 다음 페이지를 로드합니다.
@@ -1071,13 +1098,23 @@ final class OperatorStudyManagementViewModel {
     ///
     /// `.task` 취소로 던져지는 에러는 실패가 아니므로 이전 상태로 되돌려, 화면 이탈·필터 연타
     /// 직후에 허위 에러 카드가 뜨지 않게 한다 (형제 ViewModel 의 취소-우선 롤백 관례).
-    private func reloadSubmissions() async {
+    /// - Parameters:
+    ///   - groupId: 적용할 그룹 필터
+    ///   - weekNos: 적용할 주차 필터
+    private func reloadSubmissions(groupId: String?, weekNos: [String]) async {
         submissionRequestID += 1
         let requestID = submissionRequestID
         // 롤백 대상이 `.loading` 이면(로딩 중 필터를 탭한 경우) 취소 시 in-flight 없는 `.loading`
         // 으로 되돌아가 화면이 스피너에 갇힌다. 되돌릴 수 있는 상태만 스냅샷으로 남긴다.
         let previousState: Loadable<[StudyMemberSubmission]> =
             submissions.isEmpty ? .idle : .loaded(submissions)
+        let previousGroupId = selectedSubmissionGroupId
+        let previousWeekNos = selectedSubmissionWeekNos
+
+        // 필터 적용과 그 롤백을 한 곳에 둔다. 필터만 바뀌고 조회가 취소되면 칩은 새 필터를,
+        // 목록은 옛 필터의 결과를 가리켜 둘이 어긋난 채로 굳는다.
+        selectedSubmissionGroupId = groupId
+        selectedSubmissionWeekNos = weekNos
 
         isReloadingSubmissions = true
         defer { isReloadingSubmissions = false }
@@ -1100,14 +1137,20 @@ final class OperatorStudyManagementViewModel {
             submissionNextCursor = page.nextCursor
             submissionHasNext = page.hasNext
             submissionsState = .loaded(submissions)
+            loadedSubmissionGroupId = groupId
+            loadedSubmissionWeekNos = weekNos
             updateAvailableWeekNos(from: page.content)
         } catch is CancellationError {
             guard requestID == submissionRequestID else { return }
             submissionsState = previousState
+            selectedSubmissionGroupId = previousGroupId
+            selectedSubmissionWeekNos = previousWeekNos
         } catch let error as NSError
             where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
             guard requestID == submissionRequestID else { return }
             submissionsState = previousState
+            selectedSubmissionGroupId = previousGroupId
+            selectedSubmissionWeekNos = previousWeekNos
         } catch let error as AppError {
             guard requestID == submissionRequestID else { return }
             submissionsState = .failed(error)
