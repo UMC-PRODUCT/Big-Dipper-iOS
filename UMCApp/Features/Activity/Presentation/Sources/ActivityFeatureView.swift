@@ -10,6 +10,7 @@ import SwiftUI
 import CoreDesignSystem
 import CoreDI
 import CoreDomain
+import CoreUIComponents
 import UMCFoundation
 #endif
 
@@ -27,136 +28,110 @@ public struct ActivityFeatureView: View {
 
 #if DEBUG
 
-// MARK: - Harness Entry
+// MARK: - Harness
 
 /// 이식 완료된 Activity 화면을 서버·로그인 없이 확인하기 위한 DEBUG 전용 하네스
 ///
-/// Activity 라우터·탭바 실연결(#997) 전까지 쓰는 임시 진입점이다. 각 화면은 스텁
-/// UseCase(`PreviewSupport`)로 조립한 ViewModel을 주입받으므로 네트워크를 타지 않는다.
-/// 상위 `RootTabView`가 탭별 `NavigationStack`을 제공하므로 여기서 스택을 만들지 않는다.
-/// // TODO: Activity 라우터·탭바 실연결 후 실제 배선으로 교체 - [26.08.03] 이재원
-private struct DebugActivityHarnessView: View {
-
-    // MARK: - Body
-
-    var body: some View {
-        List {
-            Section {
-                ForEach(DebugActivityScreen.allCases) { screen in
-                    // 상위 `RootTabView`의 `NavigationStack`이 `[NavigationDestination]`
-                    // 타입 경로를 쓰므로, 다른 타입의 value 링크는 무시된다. 하네스는
-                    // 앱 라우팅에 끼어들지 않도록 목적지 뷰를 직접 들고 있는 링크를 쓴다.
-                    NavigationLink {
-                        DebugActivityScreenView(screen: screen)
-                    } label: {
-                        row(for: screen)
-                    }
-                }
-            } header: {
-                Text("이식 완료 화면")
-            } footer: {
-                Text("서버·로그인 없이 스텁 데이터로 렌더됩니다. 실제 배선은 Activity 탭 연결 이슈에서 교체됩니다.")
-            }
-        }
-        .navigationTitle("Activity 하네스")
-    }
-
-    // MARK: - View Components
-
-    private func row(for screen: DebugActivityScreen) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
-                Text(screen.title)
-                    .appFont(.callout)
-
-                Text(screen.detail)
-                    .appFont(.footnote, color: .grey500)
-            }
-        } icon: {
-            Image(systemName: screen.systemImageName)
-                .foregroundStyle(Color.indigo500)
-        }
-    }
-}
-
-// MARK: - Screen Catalog
-
-/// 하네스가 노출하는 화면 목록
-private enum DebugActivityScreen: String, CaseIterable, Identifiable, Hashable {
-    case challengerStudy
-    case challengerMemberList
-    case operatorAttendance
-    case operatorMemberManagement
-    case operatorStudyManagement
-    case operatorStudyGroupCreate
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .challengerStudy: "챌린저 — 스터디(커리큘럼)"
-        case .challengerMemberList: "챌린저 — 구성원 목록"
-        case .operatorAttendance: "운영진 — 출석 관리"
-        case .operatorMemberManagement: "운영진 — 멤버 관리"
-        case .operatorStudyManagement: "운영진 — 스터디 관리"
-        case .operatorStudyGroupCreate: "운영진 — 스터디 그룹 생성 폼"
-        }
-    }
-
-    var detail: String {
-        switch self {
-        case .challengerStudy: "진행률 게이지 + 주차별 미션 카드"
-        case .challengerMemberList: "파트별 그룹핑 · 검색 · 멤버 상세 시트"
-        case .operatorAttendance: "일정 목록 → 상세 · 승인 대기 결정 · 위치 변경"
-        case .operatorMemberManagement: "멤버 목록 + 상벌점 부여/삭제 시트"
-        case .operatorStudyManagement: "스터디 그룹 목록 · 멘토/스터디원 관리"
-        case .operatorStudyGroupCreate: "그룹 생성 폼 (운영 화면에서는 게이팅됨)"
-        }
-    }
-
-    var systemImageName: String {
-        switch self {
-        case .challengerStudy: "book.closed"
-        case .challengerMemberList: "person.2"
-        case .operatorAttendance: "checkmark.circle"
-        case .operatorMemberManagement: "person.badge.shield.checkmark"
-        case .operatorStudyManagement: "rectangle.grid.2x2"
-        case .operatorStudyGroupCreate: "plus.rectangle.on.folder"
-        }
-    }
-}
-
-// MARK: - Screen Host
-
-/// 선택한 화면을 스텁 의존성으로 조립해 표시한다.
+/// 레거시 `AppProduct`의 `ActivityView`와 같은 구성을 따른다 — 탭 진입 시 기본 섹션(출석)을
+/// 바로 보여주고, 상단 타이틀 메뉴로 섹션을 전환한다. 챌린저/운영진 모드 전환은 레거시가
+/// 하단 액세서리에서 처리하지만, 하네스는 그 배선이 없어 툴바 버튼으로 대신한다.
 ///
-/// 화면마다 필요한 ViewModel·세션이 달라, 조립은 각 `case`에서 직접 수행한다.
-/// `ErrorHandler`는 하네스가 소유해 화면 전환 간에도 알럿 상태가 유지되게 한다.
-private struct DebugActivityScreenView: View {
+/// 각 화면은 스텁 UseCase(`PreviewSupport`)로 조립한 ViewModel을 주입받아 네트워크를 타지
+/// 않는다. 상위 `RootTabView`가 탭별 `NavigationStack`을 제공하므로 여기서 스택을 만들지 않는다.
+/// // TODO: Activity 라우터·탭바 실연결 후 실제 배선으로 교체 - [26.08.03] 이재원
+@MainActor
+private struct DebugActivityHarnessView: View {
 
     // MARK: - Property
 
-    let screen: DebugActivityScreen
-
+    /// 하네스가 소유하는 세션. 운영진 권한 계정으로 두어 모드 전환을 확인할 수 있다.
+    @State private var userSession: UserSessionManager
     @State private var errorHandler = ErrorHandler()
+    @State private var selectedSection: DebugActivitySection?
+    @State private var showsStudyGroupCreate = false
+
+    // MARK: - Init
+
+    /// 운영진 모드로 시작한다.
+    ///
+    /// 레거시 기본 모드는 챌린저지만, 그 기본 섹션인 출석 체크 화면
+    /// (`ChallengerAttendanceSessionView`)이 아직 이식되지 않아 진입 화면이 안내 문구가 된다.
+    /// 하네스의 목적은 이식된 화면 확인이므로, 실제로 볼 수 있는 출석 화면이 바로 뜨도록
+    /// 운영진 모드를 초기값으로 둔다. 툴바 버튼으로 챌린저 모드로 전환할 수 있다.
+    init() {
+        let session = previewCreateCapableSession()
+        session.toggleAdminMode()
+        _userSession = State(wrappedValue: session)
+    }
+
+    // MARK: - Computed Property
+
+    private var mode: ActivityMode {
+        userSession.currentActivityMode
+    }
+
+    private var availableSections: [DebugActivitySection] {
+        DebugActivitySection.sections(for: mode)
+    }
+
+    private var currentSection: DebugActivitySection {
+        selectedSection ?? DebugActivitySection.defaultSection(for: mode)
+    }
+
+    private var sectionBinding: Binding<DebugActivitySection> {
+        Binding(
+            get: { currentSection },
+            set: { selectedSection = $0 }
+        )
+    }
 
     // MARK: - Body
 
     var body: some View {
-        content
-            .navigationTitle(screen.title)
+        sectionContent
+            .navigationTitle(currentSection.title)
             .navigationBarTitleDisplayMode(.inline)
+            .umcDefaultBackground()
+            .toolbar {
+                ToolBarCollection.ToolBarCenterMenu(
+                    items: availableSections,
+                    selection: sectionBinding,
+                    itemLabel: { $0.title },
+                    itemIcon: { $0.icon }
+                )
+                modeToggleItem
+                studyGroupCreateItem
+            }
+            .navigationDestination(isPresented: $showsStudyGroupCreate) {
+                OperatorStudyGroupCreateView(
+                    viewModel: previewOperatorStudyManagementViewModel()
+                )
+            }
+            // 레거시 `ActivityView`와 동일하게, 모드가 바뀌면 보고 있던 섹션을
+            // 대응 섹션으로 옮겨 같은 성격의 화면을 유지한다.
+            .onChange(of: mode) { oldMode, newMode in
+                let previous = selectedSection
+                    ?? DebugActivitySection.defaultSection(for: oldMode)
+                selectedSection = previous.mapped(to: newMode)
+            }
     }
 
     // MARK: - View Components
 
     @ViewBuilder
-    private var content: some View {
-        switch screen {
-        case .challengerStudy:
+    private var sectionContent: some View {
+        switch currentSection {
+        case .attendanceCheck:
+            // `ChallengerAttendanceSessionView`는 아직 이식되지 않았다.
+            notPortedGuide(
+                title: "출석 체크",
+                description: "챌린저 출석 화면은 아직 이식되지 않았습니다.\n운영진 모드로 전환하면 출석 관리 화면을 확인할 수 있습니다."
+            )
+
+        case .studyActivity:
             ChallengerStudyView(viewModel: MissionPreviewData.makeViewModel())
 
-        case .challengerMemberList:
+        case .members:
             ChallengerMemberListView(
                 container: DIContainer(),
                 errorHandler: errorHandler,
@@ -166,32 +141,132 @@ private struct DebugActivityScreenView: View {
                 )
             )
 
-        case .operatorAttendance:
+        case .attendanceManage:
             OperatorAttendanceView(
                 errorHandler: errorHandler,
                 useCase: PreviewOperatorAttendanceUseCase()
             )
 
-        case .operatorMemberManagement:
+        case .studyManage:
+            OperatorStudyManagementView(
+                viewModel: previewOperatorStudyManagementViewModel(),
+                userSession: userSession
+            )
+
+        case .memberManage:
             OperatorMemberManagementView(
                 container: DIContainer(),
                 errorHandler: errorHandler,
                 viewModel: previewMemberListViewModel(
                     errorHandler: errorHandler,
-                    session: previewCreateCapableSession()
+                    session: userSession
                 )
             )
+        }
+    }
 
-        case .operatorStudyManagement:
-            OperatorStudyManagementView(
-                viewModel: previewOperatorStudyManagementViewModel(),
-                userSession: previewCreateCapableSession()
-            )
+    /// 챌린저 ↔ 운영진 모드 전환 버튼 (레거시의 하단 액세서리 토글 대체)
+    private var modeToggleItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                userSession.toggleAdminMode()
+            } label: {
+                Label(
+                    mode == .admin ? "운영진" : "챌린저",
+                    systemImage: mode == .admin ? "person.badge.shield.checkmark" : "person"
+                )
+            }
+        }
+    }
 
-        case .operatorStudyGroupCreate:
-            OperatorStudyGroupCreateView(
-                viewModel: previewOperatorStudyManagementViewModel()
-            )
+    /// 스터디 그룹 생성 폼 진입 버튼
+    ///
+    /// 운영 화면에서는 멘토·스터디원 선택 이식 전까지 진입점이 게이팅("준비 중")돼 있어,
+    /// 하네스에서만 직접 열 수 있게 둔다.
+    @ToolbarContentBuilder
+    private var studyGroupCreateItem: some ToolbarContent {
+        if currentSection == .studyManage {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("생성 폼") {
+                    showsStudyGroupCreate = true
+                }
+            }
+        }
+    }
+
+    private func notPortedGuide(title: String, description: String) -> some View {
+        ContentUnavailableView {
+            Label(title, systemImage: "hammer")
+        } description: {
+            Text(description)
+        }
+    }
+}
+
+// MARK: - Section Catalog
+
+/// 하네스가 노출하는 Activity 섹션
+///
+/// 레거시 `ActivitySection`과 같은 구성이다. 프로덕션 `ActivitySection`은 Activity 탭 루트
+/// 이식 이슈에서 별도로 들어오므로, 하네스는 DEBUG 전용 사본을 쓴다.
+private enum DebugActivitySection: String, Identifiable, Hashable, CaseIterable {
+    case attendanceCheck
+    case studyActivity
+    case members
+    case attendanceManage
+    case studyManage
+    case memberManage
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .attendanceCheck: "출석 체크"
+        case .studyActivity: "스터디/활동"
+        case .members: "구성원"
+        case .attendanceManage: "출석 관리"
+        case .studyManage: "스터디 관리"
+        case .memberManage: "멤버 관리"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .attendanceCheck, .attendanceManage: "checkmark.circle"
+        case .studyActivity, .studyManage: "book.pages"
+        case .members, .memberManage: "person.3"
+        }
+    }
+
+    static func sections(for mode: ActivityMode) -> [DebugActivitySection] {
+        switch mode {
+        case .challenger: [.attendanceCheck, .studyActivity, .members]
+        case .admin: [.attendanceManage, .studyManage, .memberManage]
+        }
+    }
+
+    static func defaultSection(for mode: ActivityMode) -> DebugActivitySection {
+        switch mode {
+        case .challenger: .attendanceCheck
+        case .admin: .attendanceManage
+        }
+    }
+
+    /// 모드 전환 시 같은 성격의 섹션으로 매핑한다.
+    func mapped(to mode: ActivityMode) -> DebugActivitySection {
+        switch mode {
+        case .challenger:
+            switch self {
+            case .attendanceCheck, .attendanceManage: .attendanceCheck
+            case .studyActivity, .studyManage: .studyActivity
+            case .members, .memberManage: .members
+            }
+        case .admin:
+            switch self {
+            case .attendanceCheck, .attendanceManage: .attendanceManage
+            case .studyActivity, .studyManage: .studyManage
+            case .members, .memberManage: .memberManage
+            }
         }
     }
 }
