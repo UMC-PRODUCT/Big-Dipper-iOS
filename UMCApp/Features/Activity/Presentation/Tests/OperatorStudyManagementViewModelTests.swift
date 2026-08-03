@@ -137,6 +137,32 @@ private final class MockOperatorStudyManagementUseCase: @unchecked Sendable,
     var removeMentorError: Error?
     private(set) var removeMentorCalls: [(groupId: String, mentorId: String)] = []
 
+    // 제출 현황: 페이지 결과를 호출 순서대로 소비. 모두 소비되면 빈 페이지 반환.
+    var submissionPages: [StudyMemberSubmissionPage] = []
+    var submissionError: Error?
+    private var submissionIndex = 0
+    private(set) var submissionCalls: [(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    )] = []
+
+    var groupNames: [StudyGroupName] = []
+    var groupNamesError: Error?
+    private(set) var groupNamesCallCount = 0
+
+    /// 제출 현황 응답을 ``releaseSubmissions()`` 까지 붙잡아 둘지 여부.
+    var gateSubmissions = false
+    private var submissionContinuations: [CheckedContinuation<Void, Never>] = []
+
+    /// 그룹 필터별 응답 (키: `studyGroupId`, 전체 그룹은 `""`).
+    ///
+    /// 지정하면 FIFO 큐 대신 이 매핑을 사용한다. 게이트로 여러 요청을 동시에 띄우면 재개 순서에
+    /// 따라 FIFO 큐의 소비 순서가 흔들려 테스트가 불안정해지므로, 레이스 테스트는 **요청 인자**로
+    /// 응답을 고정한다.
+    var submissionPagesByGroupId: [String: StudyMemberSubmissionPage] = [:]
+
     func fetchStudyGroupDetailsPage(
         cursor: String?,
         size: Int
@@ -157,6 +183,52 @@ private final class MockOperatorStudyManagementUseCase: @unchecked Sendable,
         resolveCalls.append((memberId, preferredGeneration))
         if let mapped = resolveMap[memberId] { return mapped }
         return resolveDefault
+    }
+
+    func fetchStudyGroupNames() async throws -> [StudyGroupName] {
+        groupNamesCallCount += 1
+        if let groupNamesError { throw groupNamesError }
+        return groupNames
+    }
+
+    func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage {
+        submissionCalls.append((studyGroupId, weekNos, cursor, size))
+
+        // 게이트가 열려 있으면 응답을 붙잡아 둔다 — 필터 변경과 응답 도착 순서를
+        // 결정론적으로 뒤집어 stale 응답 경로를 재현하기 위함.
+        if gateSubmissions {
+            await withCheckedContinuation { continuation in
+                submissionContinuations.append(continuation)
+            }
+        }
+
+        if let submissionError { throw submissionError }
+
+        if !submissionPagesByGroupId.isEmpty {
+            return submissionPagesByGroupId[studyGroupId ?? ""]
+                ?? StudyMemberSubmissionPage(content: [], hasNext: false, nextCursor: nil)
+        }
+
+        defer { submissionIndex += 1 }
+        return submissionIndex < submissionPages.count
+            ? submissionPages[submissionIndex]
+            : StudyMemberSubmissionPage(content: [], hasNext: false, nextCursor: nil)
+    }
+
+    /// 붙잡아 둔 제출 현황 호출을 **최신 요청부터** 재개한다.
+    ///
+    /// 역순으로 재개해야 오래된 요청의 응답이 **마지막에** 도착한다. 토큰 가드가 없으면 그
+    /// 응답이 최신 목록을 덮어쓰는데, 순서대로(FIFO) 재개하면 최신 응답이 나중에 도착해
+    /// 가드가 없어도 결과가 맞아떨어져 회귀를 놓친다.
+    func releaseSubmissions() {
+        let pending = submissionContinuations
+        submissionContinuations.removeAll()
+        pending.reversed().forEach { $0.resume() }
     }
 
     func createStudyGroup(
@@ -834,6 +906,318 @@ struct OperatorStudyManagementScheduleAuthorizationTests {
 
         #expect(viewModel.alertPrompt?.title == "권한 없음")
         #expect(viewModel.alertPrompt?.message == "담당 파트장(멘토)만 일정을 등록할 수 있습니다.")
+    }
+}
+
+// MARK: - 제출 현황 Helpers
+
+private func makeWeek(
+    weekNo: String,
+    weeklyCurriculumId: String? = nil,
+    challengerWorkbookId: String? = "CW-1",
+    status: ChallengerWorkbookStatus = .pass
+) -> WeeklySubmission {
+    WeeklySubmission(
+        weekNo: weekNo,
+        weeklyCurriculumId: weeklyCurriculumId ?? "WC-\(weekNo)",
+        challengerWorkbookId: challengerWorkbookId,
+        status: status
+    )
+}
+
+/// - Parameter partLabel: 표시 전용 라벨 — 본 스위트의 검증 대상과 무관해 고정한다.
+private func makeSubmission(
+    studyGroupMemberId: String,
+    studyGroupId: String = "G-1",
+    weeks: [WeeklySubmission] = [makeWeek(weekNo: "1")],
+    partLabel: String = "iOS"
+) -> StudyMemberSubmission {
+    StudyMemberSubmission(
+        studyGroupMemberId: studyGroupMemberId,
+        memberId: "M-\(studyGroupMemberId)",
+        memberName: "챌린저\(studyGroupMemberId)",
+        studyGroupId: studyGroupId,
+        studyGroupName: "iOS 스터디",
+        part: .front(type: .ios),
+        partLabel: partLabel,
+        weeks: weeks
+    )
+}
+
+private func makeSubmissionPage(
+    content: [StudyMemberSubmission],
+    hasNext: Bool = false,
+    nextCursor: String? = nil
+) -> StudyMemberSubmissionPage {
+    StudyMemberSubmissionPage(
+        content: content,
+        hasNext: hasNext,
+        nextCursor: nextCursor
+    )
+}
+
+// MARK: - 제출 현황 조회
+
+@MainActor
+@Suite("OperatorStudyManagementViewModel — 제출 현황 조회 (도메인 규칙)")
+struct OperatorStudyManagementSubmissionTests {
+
+    @Test("첫 페이지 조회 — 목록과 커서 상태를 채운다")
+    func fetchLoadsFirstPage() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [makeSubmission(studyGroupMemberId: "1")],
+                hasNext: true,
+                nextCursor: "1"
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+
+        await viewModel.fetchSubmissions()
+
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1"])
+        if case .loaded = viewModel.submissionsState {} else {
+            Issue.record("상태가 .loaded 여야 함 — 실제: \(viewModel.submissionsState)")
+        }
+        #expect(useCase.submissionCalls.first?.cursor == nil)
+    }
+
+    @Test("조회 실패 — 상태가 .failed 로 전이한다")
+    func fetchFailurePropagatesToState() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionError = DummyError()
+        let viewModel = makeViewModel(useCase: useCase)
+
+        await viewModel.fetchSubmissions()
+
+        if case .failed = viewModel.submissionsState {} else {
+            Issue.record("상태가 .failed 여야 함 — 실제: \(viewModel.submissionsState)")
+        }
+    }
+
+    @Test("취소는 실패가 아니므로 이전 상태로 롤백한다")
+    func cancellationRollsBackToPreviousState() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "1")])
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        // 두 번째 조회가 취소되면 첫 조회 결과가 그대로 남아야 한다.
+        useCase.submissionError = CancellationError()
+        await viewModel.selectSubmissionGroup("G-9")
+
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1"])
+        if case .loaded = viewModel.submissionsState {} else {
+            Issue.record("취소 후 이전 .loaded 가 유지돼야 함")
+        }
+    }
+
+    // MARK: - 페이지네이션
+
+    @Test("마지막 카드 도달 시 다음 페이지를 이어 붙인다")
+    func loadMoreAppendsNextPage() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [makeSubmission(studyGroupMemberId: "1")],
+                hasNext: true,
+                nextCursor: "1"
+            ),
+            makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "2")])
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
+
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1", "2"])
+        #expect(useCase.submissionCalls.last?.cursor == "1")
+    }
+
+    @Test("마지막 카드가 아니면 다음 페이지를 요청하지 않는다")
+    func loadMoreSkipsWhenNotLastCard() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [
+                    makeSubmission(studyGroupMemberId: "1"),
+                    makeSubmission(studyGroupMemberId: "2")
+                ],
+                hasNext: true,
+                nextCursor: "2"
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+        let callsAfterFirstPage = useCase.submissionCalls.count
+
+        await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
+
+        #expect(useCase.submissionCalls.count == callsAfterFirstPage)
+    }
+
+    @Test("중복 스터디원은 다음 페이지에서 걸러진다")
+    func loadMoreDeduplicatesRows() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [makeSubmission(studyGroupMemberId: "1")],
+                hasNext: true,
+                nextCursor: "1"
+            ),
+            makeSubmissionPage(
+                content: [
+                    makeSubmission(studyGroupMemberId: "1"),
+                    makeSubmission(studyGroupMemberId: "2")
+                ]
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
+
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1", "2"])
+    }
+
+    // MARK: - 필터
+
+    @Test("그룹 필터를 바꾸면 커서 없이 첫 페이지부터 다시 조회한다")
+    func groupFilterResetsPagination() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [makeSubmission(studyGroupMemberId: "1")],
+                hasNext: true,
+                nextCursor: "1"
+            ),
+            makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "9")])
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        await viewModel.selectSubmissionGroup("G-7")
+
+        let lastCall = useCase.submissionCalls.last
+        #expect(lastCall?.studyGroupId == "G-7")
+        #expect(lastCall?.cursor == nil)
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["9"])
+    }
+
+    @Test("같은 그룹을 다시 선택하면 재조회하지 않는다")
+    func selectingSameGroupSkipsRefetch() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+        let callsAfterFirstPage = useCase.submissionCalls.count
+
+        await viewModel.selectSubmissionGroup(nil)
+
+        #expect(useCase.submissionCalls.count == callsAfterFirstPage)
+    }
+
+    @Test("주차 필터는 토글되고 선택 목록이 요청에 실린다")
+    func weekFilterTogglesAndForwards() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        await viewModel.toggleSubmissionWeek("2")
+        #expect(useCase.submissionCalls.last?.weekNos == ["2"])
+
+        await viewModel.toggleSubmissionWeek("2")
+        #expect(viewModel.selectedSubmissionWeekNos.isEmpty)
+        #expect(useCase.submissionCalls.last?.weekNos == [])
+    }
+
+    @Test("주차 후보는 주차 필터가 걸리지 않은 응답에서만 갱신된다")
+    func weekOptionsIgnoreFilteredResponse() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [
+                    makeSubmission(
+                        studyGroupMemberId: "1",
+                        weeks: [makeWeek(weekNo: "1"), makeWeek(weekNo: "2")]
+                    )
+                ]
+            ),
+            // 주차 필터가 걸린 응답 — 후보를 좁혀 해제 불가가 되면 안 된다.
+            makeSubmissionPage(
+                content: [
+                    makeSubmission(
+                        studyGroupMemberId: "1",
+                        weeks: [makeWeek(weekNo: "2")]
+                    )
+                ]
+            )
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        await viewModel.toggleSubmissionWeek("2")
+
+        #expect(viewModel.availableSubmissionWeekNos == ["1", "2"])
+    }
+
+    // MARK: - 요청 토큰 (latest-wins)
+
+    @Test("필터 변경 전 요청의 응답은 최신 목록을 덮어쓰지 않는다")
+    func staleResponseDoesNotOverwriteLatest() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        // 응답을 호출 순서가 아니라 그룹 필터로 고정한다 — 게이트 재개 순서와 무관하게 결정론적.
+        useCase.submissionPagesByGroupId = [
+            "": makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "old")]),
+            "G-7": makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "new")])
+        ]
+        useCase.gateSubmissions = true
+        let viewModel = makeViewModel(useCase: useCase)
+
+        // 첫 요청을 붙잡아 둔 상태에서 필터를 바꿔 두 번째 요청을 시작한다.
+        let first = Task { await viewModel.fetchSubmissions() }
+        await drainUntil { useCase.submissionCalls.count == 1 }
+        let second = Task { await viewModel.selectSubmissionGroup("G-7") }
+        await drainUntil { useCase.submissionCalls.count == 2 }
+
+        useCase.releaseSubmissions()
+        await first.value
+        await second.value
+
+        // 두 응답이 모두 도착해도 최신 필터(G-7)의 결과만 남아야 한다.
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["new"])
+    }
+
+    // MARK: - 그룹 필터 후보
+
+    @Test("그룹 이름 목록은 한 번만 조회한다")
+    func groupNamesAreFetchedOnce() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.groupNames = [StudyGroupName(groupId: "G-1", name: "iOS A팀")]
+        let viewModel = makeViewModel(useCase: useCase)
+
+        await viewModel.fetchSubmissions()
+        await viewModel.fetchSubmissions()
+
+        #expect(useCase.groupNamesCallCount == 1)
+        #expect(viewModel.studyGroupNames.map(\.groupId) == ["G-1"])
+    }
+
+    @Test("그룹 이름 조회 실패는 제출 현황 조회를 막지 않는다")
+    func groupNamesFailureDoesNotBlockSubmissions() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.groupNamesError = DummyError()
+        useCase.submissionPages = [
+            makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "1")])
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+
+        await viewModel.fetchSubmissions()
+
+        #expect(viewModel.studyGroupNames.isEmpty)
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1"])
     }
 }
 

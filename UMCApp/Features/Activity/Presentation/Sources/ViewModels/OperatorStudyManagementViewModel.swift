@@ -23,6 +23,8 @@ final class OperatorStudyManagementViewModel {
 
     private enum Constants {
         static let groupManagementPageSize = 20
+        /// 제출 현황 페이지 크기 (스터디원 기준, 서버 최대 100)
+        static let submissionPageSize = 20
         /// 낙관적 삽입으로 만든 로컬 placeholder 그룹의 serverID 접두사.
         /// 서버 호출 대상이 아님을 구분하는 표식 — 백그라운드 새로고침으로 곧 교체됩니다.
         static let localGroupIDPrefix = "new_"
@@ -97,6 +99,45 @@ final class OperatorStudyManagementViewModel {
 
     /// 스터디 그룹 상세 목록 다음 페이지 존재 여부
     private var studyGroupDetailsHasNext = false
+
+    // MARK: - Property (제출 현황)
+
+    /// 제출 현황 로딩 상태
+    private(set) var submissionsState: Loadable<[StudyMemberSubmission]> = .idle
+
+    /// 제출 현황 목록 (행 단위 = 스터디원)
+    private(set) var submissions: [StudyMemberSubmission] = []
+
+    /// 제출 현황 추가 페이지 로딩 여부
+    private(set) var isLoadingMoreSubmissions = false
+
+    /// 그룹 필터 후보 (관리 가능한 스터디 그룹 이름 목록)
+    private(set) var studyGroupNames: [StudyGroupName] = []
+
+    /// 선택된 그룹 필터 (`nil` 이면 관리 가능한 전체 그룹)
+    private(set) var selectedSubmissionGroupId: String?
+
+    /// 선택된 주차 필터 (비어 있으면 전체 주차)
+    private(set) var selectedSubmissionWeekNos: [String] = []
+
+    /// 주차 필터 후보
+    ///
+    /// 서버가 주차 목록 전용 엔드포인트를 주지 않아, **주차 필터가 걸리지 않은** 조회 결과에서
+    /// 파생합니다. 주차 필터가 걸린 응답으로 갱신하면 후보가 선택지로 좁아져 해제할 수 없게 됩니다.
+    private(set) var availableSubmissionWeekNos: [String] = []
+
+    /// 제출 현황 다음 페이지 커서 (직전 페이지 마지막 `studyGroupMemberId`)
+    private var submissionNextCursor: String?
+
+    /// 제출 현황 다음 페이지 존재 여부
+    private var submissionHasNext = false
+
+    /// 제출 현황 요청 토큰 (latest-wins)
+    ///
+    /// 그룹/주차 필터를 빠르게 바꾸면 이전 필터의 응답이 뒤늦게 도착할 수 있습니다. 요청 시점의
+    /// 토큰을 캡처해 두고 `await` 이후 현재 토큰과 다르면 결과를 버려, 오래된 응답이 최신 목록을
+    /// 덮어쓰지 못하게 합니다.
+    private var submissionRequestID = 0
 
     // MARK: - Initializer
 
@@ -217,6 +258,84 @@ final class OperatorStudyManagementViewModel {
             errorHandler.handle(error, context: ErrorContext(
                 feature: "Activity",
                 action: "fetchMoreStudyGroupManagement"
+            ))
+        }
+    }
+
+    // MARK: - Function (제출 현황)
+
+    /// 제출 현황 화면 진입 시 첫 페이지와 그룹 필터 후보를 조회합니다.
+    ///
+    /// 이미 조회 중이면 중복 호출을 무시합니다 (`.task` 재실행 대비 재진입 가드).
+    func fetchSubmissions() async {
+        if submissionsState.isLoading { return }
+        await loadStudyGroupNamesIfNeeded()
+        await reloadSubmissions()
+    }
+
+    /// 그룹 필터를 바꾸고 첫 페이지부터 다시 조회합니다.
+    ///
+    /// - Parameter groupId: 조회할 그룹 (`nil` 이면 관리 가능한 전체 그룹)
+    func selectSubmissionGroup(_ groupId: String?) async {
+        guard selectedSubmissionGroupId != groupId else { return }
+        selectedSubmissionGroupId = groupId
+        await reloadSubmissions()
+    }
+
+    /// 주차 필터를 토글하고 첫 페이지부터 다시 조회합니다.
+    ///
+    /// - Parameter weekNo: 토글할 주차 번호 (서버 응답 `String`)
+    func toggleSubmissionWeek(_ weekNo: String) async {
+        if let index = selectedSubmissionWeekNos.firstIndex(of: weekNo) {
+            selectedSubmissionWeekNos.remove(at: index)
+        } else {
+            selectedSubmissionWeekNos.append(weekNo)
+        }
+        await reloadSubmissions()
+    }
+
+    /// 제출 현황 목록 마지막 카드 도달 시 다음 페이지를 로드합니다.
+    ///
+    /// - Parameter currentMemberID: 현재 표시된 카드의 `studyGroupMemberId`
+    func loadMoreSubmissionsIfNeeded(currentMemberID: String) async {
+        guard case .loaded = submissionsState else { return }
+        guard submissions.last?.id == currentMemberID else { return }
+        guard submissionHasNext else { return }
+        guard !isLoadingMoreSubmissions else { return }
+
+        let requestID = submissionRequestID
+        isLoadingMoreSubmissions = true
+        defer { isLoadingMoreSubmissions = false }
+
+        do {
+            let nextPage = try await useCase.fetchStudyMemberSubmissions(
+                studyGroupId: selectedSubmissionGroupId,
+                weekNos: selectedSubmissionWeekNos,
+                cursor: submissionNextCursor,
+                size: Constants.submissionPageSize
+            )
+            // 필터가 바뀐 뒤 도착한 이전 필터의 페이지는 목록에 붙이지 않는다.
+            guard requestID == submissionRequestID else { return }
+
+            let existingIDs = Set(submissions.map(\.studyGroupMemberId))
+            let newRows = nextPage.content.filter {
+                !existingIDs.contains($0.studyGroupMemberId)
+            }
+            if !newRows.isEmpty {
+                submissions.append(contentsOf: newRows)
+                submissionsState = .loaded(submissions)
+            }
+
+            submissionNextCursor = nextPage.nextCursor
+            submissionHasNext = nextPage.hasNext
+        } catch is CancellationError {
+            // 뷰 라이프사이클 취소 — 실패가 아니므로 목록을 그대로 둔다.
+        } catch let error as DomainError {
+            presentAlert(title: "불러오지 못했어요", message: error.userMessage)
+        } catch {
+            errorHandler.handle(error, context: ErrorContext(
+                feature: "Activity",
+                action: "fetchMoreStudyMemberSubmissions"
             ))
         }
     }
@@ -918,6 +1037,86 @@ final class OperatorStudyManagementViewModel {
     /// 서버에 실재하는 그룹인지 — 낙관적 삽입 placeholder 는 서버 호출 대상이 아님.
     private func isPersistedServerGroup(_ serverID: String) -> Bool {
         !serverID.isEmpty && !serverID.hasPrefix(Constants.localGroupIDPrefix)
+    }
+
+    // MARK: - Function (제출 현황 · 내부)
+
+    /// 현재 필터로 첫 페이지부터 다시 조회한다. 호출마다 새 요청 토큰을 발급한다.
+    ///
+    /// `.task` 취소로 던져지는 에러는 실패가 아니므로 이전 상태로 되돌려, 화면 이탈·필터 연타
+    /// 직후에 허위 에러 카드가 뜨지 않게 한다 (형제 ViewModel 의 취소-우선 롤백 관례).
+    private func reloadSubmissions() async {
+        submissionRequestID += 1
+        let requestID = submissionRequestID
+        let previousState = submissionsState
+
+        submissionsState = .loading
+        isLoadingMoreSubmissions = false
+        submissionNextCursor = nil
+        submissionHasNext = false
+
+        do {
+            let page = try await useCase.fetchStudyMemberSubmissions(
+                studyGroupId: selectedSubmissionGroupId,
+                weekNos: selectedSubmissionWeekNos,
+                cursor: nil,
+                size: Constants.submissionPageSize
+            )
+            guard requestID == submissionRequestID else { return }
+
+            submissions = page.content
+            submissionNextCursor = page.nextCursor
+            submissionHasNext = page.hasNext
+            submissionsState = .loaded(submissions)
+            updateAvailableWeekNos(from: page.content)
+        } catch is CancellationError {
+            guard requestID == submissionRequestID else { return }
+            submissionsState = previousState
+        } catch let error as NSError
+            where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+            guard requestID == submissionRequestID else { return }
+            submissionsState = previousState
+        } catch let error as AppError {
+            guard requestID == submissionRequestID else { return }
+            submissionsState = .failed(error)
+        } catch let error as DomainError {
+            guard requestID == submissionRequestID else { return }
+            submissionsState = .failed(.domain(error))
+        } catch let error as NetworkError {
+            guard requestID == submissionRequestID else { return }
+            submissionsState = .failed(.network(error))
+        } catch let error as RepositoryError {
+            guard requestID == submissionRequestID else { return }
+            submissionsState = .failed(.repository(error))
+        } catch {
+            guard requestID == submissionRequestID else { return }
+            submissionsState = .failed(.unknown(
+                message: "제출 현황을 불러오지 못했습니다."
+            ))
+        }
+    }
+
+    /// 그룹 필터 후보를 한 번만 조회한다.
+    ///
+    /// 필터 보조 정보라 실패해도 화면을 막지 않는다 — 후보가 비면 "전체" 만 노출된다.
+    private func loadStudyGroupNamesIfNeeded() async {
+        guard studyGroupNames.isEmpty else { return }
+        studyGroupNames = (try? await useCase.fetchStudyGroupNames()) ?? []
+    }
+
+    /// 주차 필터 후보를 갱신한다.
+    ///
+    /// 주차 필터가 걸린 응답은 선택한 주차만 담고 있어 후보를 좁혀 버리므로 무시한다.
+    private func updateAvailableWeekNos(from rows: [StudyMemberSubmission]) {
+        guard selectedSubmissionWeekNos.isEmpty else { return }
+
+        let weekNos = Set(rows.flatMap { $0.weeks.map(\.weekNo) })
+        availableSubmissionWeekNos = weekNos.sorted { lhs, rhs in
+            let lhsNo = Int(lhs) ?? Int.max
+            let rhsNo = Int(rhs) ?? Int.max
+            if lhsNo == rhsNo { return lhs < rhs }
+            return lhsNo < rhsNo
+        }
     }
 
     private func presentAlert(title: String, message: String) {
