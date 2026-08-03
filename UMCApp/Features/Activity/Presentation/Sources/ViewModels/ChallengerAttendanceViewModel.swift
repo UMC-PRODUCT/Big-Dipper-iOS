@@ -43,6 +43,11 @@ final class ChallengerAttendanceViewModel {
     /// 우선하도록 보관합니다. Schedule 모듈 결선 전까지는 비어 있습니다.
     private var schedulePolicies: [SessionID: ScheduleAttendancePolicy] = [:]
 
+    /// 세션별 서버 일정 ID 캐시 (available schedules 조회 결과에서 추출)
+    ///
+    /// 출석·사유 제출 API가 요구하는 값입니다. Schedule 모듈 결선 전까지는 비어 있습니다.
+    private var scheduleIds: [SessionID: String] = [:]
+
     /// 폴링 설정
     private enum PollingConfig {
         static let intervalSeconds: Int = 30
@@ -122,9 +127,20 @@ final class ChallengerAttendanceViewModel {
     }
 
     /// SessionID → scheduleId 매핑 (available schedules 기반)
+    ///
+    /// 값이 없으면 출석·사유 제출을 서버로 보낼 수 없으므로, 화면은 이 값이 `nil` 인 동안
+    /// 액션 진입점을 비활성화해야 합니다.
     func scheduleId(for sessionId: SessionID) -> String? {
-        // TODO: Schedule 모듈 이식 후 available schedules 페이로드에서 조회 - [26.06.12] 이재원
-        nil
+        scheduleIds[sessionId]
+    }
+
+    /// available schedules 조회 결과의 세션별 서버 일정 ID를 반영합니다.
+    ///
+    /// `updateSchedulePolicies(_:)` 와 같은 시점에 채워지는 짝입니다 — 정책만 있고 일정 ID가
+    /// 없으면 시간대 판정은 되는데 제출은 못 하는 반쪽 상태가 됩니다.
+    // TODO: Schedule 모듈 이식 후 refreshAvailableSchedules() 내부에서 호출하도록 결선 - [26.06.12] 이재원
+    func updateScheduleIds(_ ids: [SessionID: String]) {
+        scheduleIds = ids
     }
 
     /// 폴링으로 받은 서버 상태를 Session 객체에 동기화
@@ -363,6 +379,14 @@ final class ChallengerAttendanceViewModel {
     // TODO: Schedule 모듈 이식 후 refreshAvailableSchedules() 내부에서 호출하도록 결선 - [26.06.12] 이재원
     func updateSchedulePolicies(_ policies: [SessionID: ScheduleAttendancePolicy]) {
         schedulePolicies = policies
+    }
+
+    /// 세션의 출석 정책 (`nil` = 아직 조회 전)
+    ///
+    /// 시간대 판정과 같은 캐시를 읽으므로, 화면이 보여주는 정책 시각과 실제 판정 기준이
+    /// 어긋나지 않습니다. 정책 팝오버·출석 이력 카드가 표시용으로 사용합니다.
+    func attendancePolicy(for sessionId: SessionID) -> ScheduleAttendancePolicy? {
+        schedulePolicies[sessionId]
     }
 
     // MARK: - Helper Methods
