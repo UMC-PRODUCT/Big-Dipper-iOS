@@ -6,6 +6,7 @@
 //
 
 #if DEBUG
+import ActivityDomain
 import AuthDomain
 import CoreDI
 import CoreDomain
@@ -37,9 +38,12 @@ extension DIContainer {
         register(NoticeRepositoryProtocol.self) {
             StubNoticeRepository()
         }
+        register(StudyRepositoryProtocol.self) {
+            StubStudyRepository()
+        }
 
         Logger(subsystem: "UMCApp", category: "StubSession")
-            .notice("Stub 세션 모드 활성화 — 인증·홈·공지 데이터가 픽스처로 대체됩니다.")
+            .notice("Stub 세션 모드 활성화 — 인증·홈·공지·스터디 데이터가 픽스처로 대체됩니다.")
     }
 }
 #endif

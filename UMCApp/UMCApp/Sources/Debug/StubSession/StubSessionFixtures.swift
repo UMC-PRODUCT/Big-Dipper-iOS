@@ -6,6 +6,7 @@
 //
 
 #if DEBUG
+import ActivityDomain
 import CoreDomain
 import Foundation
 import HomeDomain
@@ -76,6 +77,90 @@ enum StubSessionFixtures {
             ]),
         ]
     )
+
+    // MARK: - Study
+
+    /// 챌린저 스터디 탭의 커리큘럼/미션 픽스처.
+    ///
+    /// stub 프로필의 기수·파트가 실제 서버 데이터와 일치하지 않아도 활동 탭을 확인할 수
+    /// 있도록 결과를 고정한다.
+    static let curriculumOverview = CurriculumOverview(
+        progress: CurriculumProgressModel(
+            partType: .front(type: .ios),
+            partName: "iOS PART CURRICULUM",
+            curriculumTitle: "iOS 챌린저 커리큘럼",
+            completedCount: 3,
+            totalCount: 8
+        ),
+        missions: [
+            MissionCardModel(
+                week: 1,
+                platform: "iOS",
+                title: "SwiftUI 기본 개념",
+                missionTitle:
+                    "SwiftUI 기본 개념을 학습하고 정리한 글 링크를 " +
+                    "제출하세요",
+                status: .pass
+            ),
+            MissionCardModel(
+                week: 2,
+                platform: "iOS",
+                title: "상태 관리와 데이터 흐름",
+                missionTitle: "@State와 @Binding을 활용한 화면을 구현하세요",
+                status: .pass
+            ),
+            MissionCardModel(
+                week: 3,
+                platform: "iOS",
+                title: "Swift Concurrency",
+                missionTitle: "async/await를 적용한 비동기 작업을 제출하세요",
+                status: .pass
+            ),
+            MissionCardModel(
+                week: 4,
+                platform: "iOS",
+                title: "네트워크 레이어 설계",
+                missionTitle: "Moya를 활용한 API 호출 예제를 제출하세요",
+                status: .inProgress
+            ),
+            MissionCardModel(
+                week: 5,
+                platform: "iOS",
+                title: "재사용 가능한 컴포넌트",
+                missionTitle: "공통 UI 컴포넌트를 설계하고 적용하세요",
+                status: .notStarted
+            )
+        ]
+    )
+
+    /// 스터디 일정 등록 화면에서 고르는 주차 옵션 픽스처.
+    static let weeklyCurriculumOptions: [WeeklyCurriculumOption] = [
+        WeeklyCurriculumOption(
+            weeklyCurriculumId: "1001",
+            weekNo: "1",
+            title: "SwiftUI 기본 개념"
+        ),
+        WeeklyCurriculumOption(
+            weeklyCurriculumId: "1002",
+            weekNo: "2",
+            title: "상태 관리와 데이터 흐름"
+        ),
+        WeeklyCurriculumOption(
+            weeklyCurriculumId: "1003",
+            weekNo: "3",
+            title: "Swift Concurrency"
+        ),
+        WeeklyCurriculumOption(
+            weeklyCurriculumId: "1004",
+            weekNo: "4",
+            title: "네트워크 레이어 설계"
+        ),
+        WeeklyCurriculumOption(
+            weeklyCurriculumId: "1005",
+            weekNo: "5",
+            title: "재사용 가능한 컴포넌트"
+        )
+    ]
 
     // MARK: - Notice
 

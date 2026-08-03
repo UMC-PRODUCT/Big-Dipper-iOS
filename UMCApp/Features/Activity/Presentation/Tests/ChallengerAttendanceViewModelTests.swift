@@ -12,6 +12,10 @@ import HomeDomain
 import UMCFoundation
 @testable import ActivityPresentation
 
+// Mock 과 이를 사용하는 헬퍼·스위트 전체를 하나의 가드 안에 둔다.
+// (`makeViewModel`/`seedSchedules` 는 Mock 을 파라미터 타입으로 직접 참조한다)
+#if DEBUG
+
 // MARK: - Helpers
 
 /// 결정론적 기준 시각 (epoch 100_000) — wall-clock 비의존
@@ -121,8 +125,6 @@ private func seedSchedules(
 private struct DummyError: Error {}
 
 // MARK: - Mocks
-
-#if DEBUG
 
 private final class MockChallengerAttendanceUseCase: @unchecked Sendable,
     ChallengerAttendanceUseCaseProtocol {
@@ -247,8 +249,6 @@ private final class MockChallengerAttendanceUseCase: @unchecked Sendable,
         stopGeofenceMonitoringCallCount += 1
     }
 }
-
-#endif
 
 // MARK: - GPS 출석 요청
 
@@ -1088,3 +1088,5 @@ struct ChallengerAttendanceViewModelSyncTests {
         #expect(session.attendanceStatus == .beforeAttendance)
     }
 }
+
+#endif
