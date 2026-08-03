@@ -108,6 +108,9 @@ private final class SlowMockFetchCurriculumOverviewUseCase: @unchecked Sendable,
 private enum ErrorMappingCase: CaseIterable {
     case appErrorPassthrough
     case domain
+    /// 커리큘럼 미등록 — 화면이 전용 안내를 띄우려면 `.unknown` 으로 뭉개지지 않고
+    /// 도메인 에러 그대로 도달해야 한다.
+    case curriculumNotRegistered
     case network
     case repository
     case unknownFallback
@@ -118,6 +121,8 @@ private enum ErrorMappingCase: CaseIterable {
             return AppError.repository(.decodingError(detail: "이미 래핑됨"))
         case .domain:
             return DomainError.curriculumUnavailableForGeneration
+        case .curriculumNotRegistered:
+            return DomainError.curriculumNotRegistered
         case .network:
             return NetworkError.unauthorized
         case .repository:
@@ -135,6 +140,8 @@ private enum ErrorMappingCase: CaseIterable {
             return .repository(.decodingError(detail: "이미 래핑됨"))
         case .domain:
             return .domain(.curriculumUnavailableForGeneration)
+        case .curriculumNotRegistered:
+            return .domain(.curriculumNotRegistered)
         case .network:
             return .network(.unauthorized)
         case .repository:

@@ -100,6 +100,9 @@ extension DIContainer {
         register(FetchStudyMembersUseCaseProtocol.self) {
             FetchStudyMembersUseCase(repository: self.resolve(StudyRepositoryProtocol.self))
         }
+        register(SearchChallengersUseCaseProtocol.self) {
+            SearchChallengersUseCase(repository: self.resolve(MemberRepositoryProtocol.self))
+        }
         register(RegisterStudyScheduleUseCaseProtocol.self) {
             RegisterStudyScheduleUseCase(
                 scheduleRepository: self.resolve(ScheduleRepositoryProtocol.self),

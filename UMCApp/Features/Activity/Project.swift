@@ -19,10 +19,19 @@ let project = featureProject(
             path: .relativeToRoot("Features/Home"),
             condition: .when([.ios])
         ),
+        // 챌린저 검색 결과(ChallengerSearchPage)가 Core canonical ChallengerInfo 를 담는다.
+        // CoreDomain 은 iOS 전용이므로 HomeDomain 과 같은 이유로 조건부 의존이다.
+        .project(
+            target: "CoreDomain",
+            path: .relativeToRoot("Core/Domain"),
+            condition: .when([.ios])
+        ),
     ],
     dataExtraDependencies: [
         // 출석 응답 DTO 가 HomeDomain 의 일정 장소/출석 정책 모델로 매핑한다.
         .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
+        // 챌린저 검색 DTO 가 ChallengerInfo 로 매핑한다.
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ],
     presentationExtraDependencies: [
         // 출석 ViewModel 이 ScheduleDetailData·ScheduleAttendancePolicy 를 직접 다룬다.
@@ -47,6 +56,12 @@ let project = featureProject(
             path: .relativeToRoot("Features/Home"),
             condition: .when([.ios])
         ),
+        // UseCase 테스트가 ChallengerSearchPage 픽스처의 ChallengerInfo 를 직접 만든다.
+        .project(
+            target: "CoreDomain",
+            path: .relativeToRoot("Core/Domain"),
+            condition: .when([.ios])
+        ),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ],
     includesDataTests: true,
@@ -54,6 +69,8 @@ let project = featureProject(
         .external(name: "Moya"),
         // Repository 테스트가 매핑 결과의 ScheduleLocation/ScheduleAttendancePolicy 를 검증.
         .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
+        // Repository 테스트가 챌린저 검색 매핑 결과(ChallengerInfo)를 검증.
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         // Repository 테스트가 도메인 반환 타입(ScheduleAttendanceInfo 등)과
         // 에러 enum(DomainError/RepositoryError/NetworkError)을 직접 참조하므로 명시 주입.
         .target(name: "ActivityDomain"),

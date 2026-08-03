@@ -24,12 +24,8 @@ struct OperatorStudyManagementView: View {
 
     private let userSession: UserSessionManager
 
-    /// 스터디 그룹 생성 미결선 안내 표시 여부
-    ///
-    /// 생성 폼(`OperatorStudyGroupCreateView`)은 이식 완료됐으나, 멘토·스터디원 선택이
-    /// 미이식 상태인 챌린저 검색에 의존해 저장을 완료할 수 없다. 검색 서브시스템 이식 전까지
-    /// 진입점(+ 버튼)을 게이팅하고 안내만 표시한다. 이식 후 생성 폼 네비게이션을 복원한다.
-    @State private var showCreateUnavailable = false
+    /// 스터디 그룹 생성 화면 push 여부
+    @State private var showsGroupCreate = false
 
     /// 일정 등록 화면으로 이동을 상위(Activity 탭 루트)에 위임하는 콜백.
     ///
@@ -112,9 +108,14 @@ struct OperatorStudyManagementView: View {
             .toolbar {
                 if canCreateStudyGroup && selectedSection == .groups {
                     ToolBarCollection.AddBtn(action: {
-                        showCreateUnavailable = true
+                        showsGroupCreate = true
                     })
                 }
+            }
+            // 생성 폼은 같은 ViewModel 을 그대로 쓴다. 생성 성공 시 낙관적 삽입과 백그라운드
+            // 재조회가 이 화면의 목록 상태에 바로 반영되게 하려면 인스턴스가 하나여야 한다.
+            .navigationDestination(isPresented: $showsGroupCreate) {
+                OperatorStudyGroupCreateView(viewModel: viewModel)
             }
             .sheet(
                 item: $viewModel.addMemberGroup,
@@ -144,11 +145,6 @@ struct OperatorStudyManagementView: View {
                 )
             }
             .alertPrompt(item: $viewModel.alertPrompt)
-            .alert("준비 중", isPresented: $showCreateUnavailable) {
-                Button("확인", role: .cancel) {}
-            } message: {
-                Text("스터디 그룹 생성은 챌린저 검색 이식 후 연결됩니다.")
-            }
             .alert("준비 중", isPresented: $showWorkbookDetailUnavailable) {
                 Button("확인", role: .cancel) {}
             } message: {

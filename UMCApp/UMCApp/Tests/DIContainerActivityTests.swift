@@ -110,6 +110,9 @@ private let useCaseResolutions: [ActivityResolution] = [
     ActivityResolution(name: "FetchStudyMembersUseCaseProtocol") {
         $0.resolveIfRegistered(FetchStudyMembersUseCaseProtocol.self)
     },
+    ActivityResolution(name: "SearchChallengersUseCaseProtocol") {
+        $0.resolveIfRegistered(SearchChallengersUseCaseProtocol.self)
+    },
     ActivityResolution(name: "FetchUserIdUseCaseProtocol") {
         $0.resolveIfRegistered(FetchUserIdUseCaseProtocol.self)
     },

@@ -26,6 +26,23 @@ public protocol MemberRepositoryProtocol {
     /// - Parameter page: 0-based 페이지 인덱스
     func fetchMembersPage(page: Int) async throws -> MemberPage
 
+    // MARK: - 챌린저 검색
+
+    /// 이름/닉네임 키워드로 챌린저를 검색합니다 (cursor 기반).
+    ///
+    /// 멤버 목록 조회(``fetchMembersPage(page:)``)와 달리 학교 범위로 좁히지 않습니다 —
+    /// 스터디 그룹에 초대할 인원을 찾는 용도라 타 학교 챌린저도 결과에 나와야 합니다.
+    ///
+    /// - Parameters:
+    ///   - keyword: 이름 또는 닉네임 통합 검색어. `nil` 이면 전체 검색.
+    ///   - cursor: 이전 페이지의 마지막 챌린저 ID (첫 페이지는 `nil`)
+    ///   - size: 한 페이지에 조회할 항목 수
+    func searchChallengers(
+        keyword: String?,
+        cursor: Int?,
+        size: Int
+    ) async throws -> ChallengerSearchPage
+
     // MARK: - 상벌점 부여 / 삭제
 
     /// 챌린저에게 포인트를 부여합니다.
