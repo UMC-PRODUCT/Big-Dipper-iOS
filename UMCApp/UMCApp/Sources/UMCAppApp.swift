@@ -51,6 +51,13 @@ struct UMCAppApp: App {
         container.registerActivityDependencies()
         container.registerMyPageDependencies()
         container.registerMaintenanceDependencies()
+        #if DEBUG
+        // 카카오 로그인 서버 미등록 기간 한정 stub 세션 (StubSessionMode.swift 단일 토글).
+        // 실제 등록 뒤 · 최초 resolve 전에 호출해야 오버라이드가 안전하다 (last-wins).
+        if StubSessionMode.isEnabled {
+            container.registerStubSessionOverrides()
+        }
+        #endif
         _container = State(initialValue: container)
         // RemoteConfig 접근은 lazy이므로, FirebaseApp.configure() 이전에 이 ViewModel을
         // 만들어도 실제 RemoteConfig 인스턴스는 생성되지 않는다.
