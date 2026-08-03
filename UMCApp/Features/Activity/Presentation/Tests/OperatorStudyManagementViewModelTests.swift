@@ -441,6 +441,86 @@ struct OperatorStudyManagementViewModelCreateTests {
         // 에러는 errorHandler 경로로 흘러간다.
         #expect(viewModel.alertPrompt == nil)
     }
+
+    // MARK: - RepositoryError 경로 (NetworkError 오버로드와 동일한 범위 게이트)
+
+    @Test(
+        "생성 RepositoryError — 권한 거부 코드는 서버 메시지를 로컬 Alert 로 보여준다",
+        arguments: ["AUTHORIZATION-0001", "AUTHORIZATION-0002", "ORGANIZATION-0031"]
+    )
+    func createPresentsAlertForRepositoryPermissionCode(code: String) async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.createError = RepositoryError.serverError(
+            code: code,
+            message: "스터디 그룹을 만들 권한이 없어요."
+        )
+        let viewModel = makeViewModel(useCase: useCase, gisuId: "11")
+
+        let created = await viewModel.createGroup(
+            name: "iOS 스터디",
+            part: .front(type: .ios),
+            mentors: [makeChallenger(memberId: "9", challengerId: "909")],
+            members: []
+        )
+
+        #expect(created == false)
+        #expect(viewModel.alertPrompt?.title == "그룹 생성 실패")
+        #expect(viewModel.alertPrompt?.message == "스터디 그룹을 만들 권한이 없어요.")
+    }
+
+    /// 권한 거부가 아닌 실패는 message 가 있어도 로컬 Alert 로 소화하지 않는다.
+    ///
+    /// `AUTHORIZATION-0003`(400)·`-0004`(500)·`-0010`(404) 는 권한 코드와 **접두사가 같지만**
+    /// 권한 거부가 아니다 — 접두사 매칭으로 게이트하면 이 케이스들이 잘못 소화된다.
+    @Test(
+        "생성 RepositoryError — 권한 거부가 아닌 코드는 소화하지 않고 errorHandler 로 전파",
+        arguments: [
+            "JWT-0002",             // 세션 만료 (401)
+            "AUTHORIZATION-0003",   // 같은 접두사지만 400 (권한 값 오류)
+            "AUTHORIZATION-0004",   // 같은 접두사지만 500 (정책 평가 실패)
+            "AUTHORIZATION-0010",   // 같은 접두사지만 404 (역할 없음)
+            "COMMON-500",           // 서버 오류
+            "STUDY-9999"            // 미정의 코드
+        ]
+    )
+    func createDoesNotSwallowRepositoryNonPermissionCode(code: String) async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.createError = RepositoryError.serverError(
+            code: code,
+            message: "서버가 내려준 실패 메시지"
+        )
+        let viewModel = makeViewModel(useCase: useCase, gisuId: "11")
+
+        let created = await viewModel.createGroup(
+            name: "iOS 스터디",
+            part: .front(type: .ios),
+            mentors: [makeChallenger(memberId: "9", challengerId: "909")],
+            members: []
+        )
+
+        #expect(created == false)
+        #expect(viewModel.alertPrompt == nil)
+    }
+
+    @Test("생성 RepositoryError — 권한 코드라도 message 가 비면 소화하지 않고 전파")
+    func createDoesNotSwallowRepositoryPermissionCodeWithoutMessage() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        useCase.createError = RepositoryError.serverError(
+            code: "AUTHORIZATION-0002",
+            message: "   "
+        )
+        let viewModel = makeViewModel(useCase: useCase, gisuId: "11")
+
+        let created = await viewModel.createGroup(
+            name: "iOS 스터디",
+            part: .front(type: .ios),
+            mentors: [makeChallenger(memberId: "9", challengerId: "909")],
+            members: []
+        )
+
+        #expect(created == false)
+        #expect(viewModel.alertPrompt == nil)
+    }
 }
 
 // MARK: - 그룹 수정 / 삭제

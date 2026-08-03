@@ -26,6 +26,23 @@ final class OperatorStudyManagementViewModel {
         /// 낙관적 삽입으로 만든 로컬 placeholder 그룹의 serverID 접두사.
         /// 서버 호출 대상이 아님을 구분하는 표식 — 백그라운드 새로고침으로 곧 교체됩니다.
         static let localGroupIDPrefix = "new_"
+
+        /// 그룹 생성 실패를 로컬 Alert 로 소화해도 되는 "권한 없음" 업무 코드.
+        ///
+        /// `NetworkError` 경로의 `statusCode == 403` 게이트와 같은 역할이다.
+        /// `RepositoryError.serverError` 의 첫 값은 HTTP 상태가 아니라 업무 코드이므로,
+        /// 서버가 403(FORBIDDEN)으로 정의한 코드만 여기 담는다.
+        ///
+        /// - Note: 접두사(`AUTHORIZATION-`) 매칭을 쓰지 않는다. 같은 접두사에 권한과 무관한
+        ///   코드가 섞여 있고(`-0003` 400, `-0004` 500, `-0010` 404, `-0011` 501), 반대로
+        ///   스터디 그룹 전용 권한 거부는 다른 접두사(`ORGANIZATION-0031`)를 쓰기 때문이다.
+        ///   판별이 애매한 코드는 넣지 않는다 — 누락은 전역 Alert 로 끝나지만, 과다 포함은
+        ///   errorHandler(세션 만료·로깅)를 우회시킨다.
+        static let permissionDeniedServerCodes: Set<String> = [
+            "AUTHORIZATION-0001",  // PERMISSION_DENIED
+            "AUTHORIZATION-0002",  // RESOURCE_ACCESS_DENIED (@CheckAccess 거부)
+            "ORGANIZATION-0031"    // STUDY_GROUP_ACCESS_DENIED (학교 운영진 아님)
+        ]
     }
 
     private let errorHandler: ErrorHandler
@@ -759,13 +776,23 @@ final class OperatorStudyManagementViewModel {
     }
 
     private func presentStudyGroupCreateAlert(from error: RepositoryError) -> Bool {
-        guard case .serverError(_, let message) = error,
-              let message,
-              !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard case .serverError(let code, let message) = error else {
             return false
         }
 
-        presentAlert(title: "그룹 생성 실패", message: message)
+        // 로컬 Alert 로 소화하는 대상은 권한 거부 코드뿐이다(형제 `NetworkError` 오버로드의
+        // `statusCode == 403` 게이트와 동일 범위). 그 외 실패(세션 만료·5xx·미정의 코드)는
+        // message 가 있더라도 여기서 처리하지 않고 false 를 반환해, 호출부가
+        // errorHandler(로깅/세션 처리)로 흘려보내도록 한다.
+        let errorCode = code?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard Constants.permissionDeniedServerCodes.contains(errorCode) else {
+            return false
+        }
+
+        let trimmed = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return false }
+
+        presentAlert(title: "그룹 생성 실패", message: trimmed)
         return true
     }
 
