@@ -77,10 +77,14 @@ struct RootTabView: View {
         }
     }
 
-    /// Home 탭만 실제 화면에 연결하고, 나머지는 각 Feature의 placeholder를 표시한다.
+    /// 탭별 루트 화면. 실연결된 탭은 Feature 화면을, 아직인 탭은 placeholder를 표시한다.
     ///
-    /// - Note: Notice/MyPage는 이미 이식된 모듈이 있지만, 탭 실연결은 후속 이슈에서
-    ///   진행한다(#910 범위 밖).
+    /// Home과 Activity가 실연결 상태다. Activity는 자기 목적지(`ActivityDestination`) 등록까지
+    /// `ActivityFeatureView`가 맡으므로, App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다.
+    /// 반면 Home은 목적지가 App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
+    ///
+    /// - Note: Notice/Community/MyPage도 이식된 모듈이 있지만, 탭 실연결은 각 후속 이슈에서
+    ///   진행한다.
     @ViewBuilder
     private func tabContent(_ tab: NavigationTab) -> some View {
         switch tab {
