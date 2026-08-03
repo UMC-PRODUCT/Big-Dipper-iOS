@@ -263,9 +263,9 @@ private enum Fixture {
 
     /// 비-2xx 실패 응답 본문 — 서버 `ApiErrorResponseFactory` 의 실제 모양.
     ///
-    /// 서버는 `result` 에 객체가 아니라 **예외 메시지 문자열**을 담는다. 이 모양을 그대로
-    /// 재현해 두어야, 본문을 `APIResponse<EmptyResult>` 로 디코딩하는 파싱이 그 문자열에서
-    /// 실패해 코드를 놓치는 회귀를 잡을 수 있다.
+    /// 서버는 `result` 에 객체가 아니라 **예외 메시지 문자열**을 담는다(`BusinessException`
+    /// 의 메시지). 이 모양을 그대로 재현해야 파싱이 실제 응답에서 `code` 를 읽어내는지
+    /// 검증된다 — `result` 를 비운 본문으로만 테스트하면 그 차이를 못 잡는다.
     static func errorBody(code: String?, message: String) -> Data {
         var fields: [String] = ["\"success\": false"]
         if let code { fields.append("\"code\": \"\(code)\"") }

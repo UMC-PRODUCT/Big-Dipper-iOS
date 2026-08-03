@@ -338,9 +338,9 @@ private extension StudyRepository {
     /// 비-`requestFailed` 실패는 `nil` 을 반환해 원본 에러가 그대로 전파되게 한다. 범위를
     /// 코드로 좁히지 않으면 401·5xx 까지 미등록 안내로 뭉개진다.
     ///
-    /// - Note: 본문 파싱에 `JSONSerialization` 을 쓰는 이유는 서버가 실패 응답의 `result` 에
-    ///   객체가 아니라 **문자열**(예외 메시지)을 담기 때문이다. `APIResponse<EmptyResult>` 로
-    ///   디코딩하면 그 문자열에서 실패해 `code` 를 읽지 못한다.
+    /// - Note: 본문 파싱은 같은 모듈의 ``AttendanceRepository`` 가 실패 본문을 읽는 방식과
+    ///   맞춰 `JSONSerialization` 을 쓴다. 서버는 실패 응답의 `result` 에 객체가 아니라
+    ///   예외 메시지 문자열을 담는데, 이 방식은 `result` 모양과 무관하게 `code` 만 읽는다.
     static func mapCurriculumNotRegistered(_ error: NetworkError) -> DomainError? {
         guard
             case .requestFailed(_, let data) = error,
