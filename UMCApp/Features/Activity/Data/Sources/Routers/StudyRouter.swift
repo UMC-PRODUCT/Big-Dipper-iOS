@@ -43,6 +43,8 @@ enum StudyRouter: Sendable {
 
     /// 학교 단위 챌린저 오프셋 검색 — `GET /api/v1/challenger/search/offset`
     case searchChallengersOffset(query: ChallengerSearchQuery)
+    /// 키워드 챌린저 커서 검색 — `GET /api/v1/challenger/search/cursor`
+    case searchChallengersCursor(query: ChallengerSearchCursorQuery)
     /// 챌린저 포인트 부여 — `POST /api/v1/challenger/{challengerId}/points`
     case createChallengerPoint(challengerId: String, body: ChallengerPointCreateRequestDTO)
     /// 챌린저 포인트 삭제 — `DELETE /api/v1/challenger/points/{challengerPointId}`
@@ -90,6 +92,8 @@ extension StudyRouter: BaseTargetType {
             return "/api/v2/curriculums/workbook-submissions"
         case .searchChallengersOffset:
             return "/api/v1/challenger/search/offset"
+        case .searchChallengersCursor:
+            return "/api/v1/challenger/search/cursor"
         case .createChallengerPoint(let challengerId, _):
             return "/api/v1/challenger/\(challengerId)/points"
         case .deleteChallengerPoint(let challengerPointId):
@@ -124,6 +128,7 @@ extension StudyRouter: BaseTargetType {
              .getStudyGroupNames,
              .getStudyMemberSubmissions,
              .searchChallengersOffset,
+             .searchChallengersCursor,
              .getChallengerProfile:
             return .get
         case .createStudyGroup,
@@ -157,6 +162,11 @@ extension StudyRouter: BaseTargetType {
                 encoding: URLEncoding.queryString
             )
         case .searchChallengersOffset(let query):
+            return .requestParameters(
+                parameters: query.toParameters,
+                encoding: URLEncoding.queryString
+            )
+        case .searchChallengersCursor(let query):
             return .requestParameters(
                 parameters: query.toParameters,
                 encoding: URLEncoding.queryString

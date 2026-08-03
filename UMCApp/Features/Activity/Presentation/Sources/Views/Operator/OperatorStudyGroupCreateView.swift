@@ -16,11 +16,8 @@ import UMCFoundation
 /// 운영진이 새로운 스터디 그룹을 생성하는 폼 화면입니다.
 /// `navigationDestination`으로 푸시되므로 자체 `NavigationStack` 없음.
 ///
-/// - Note: 이식은 완료됐으나 멘토·스터디원 선택이 미이식 상태인 챌린저 검색에 의존해
-///   저장을 완료할 수 없다. 그래서 현재 `OperatorStudyManagementView`의 + 버튼은 이 화면으로
-///   진입하지 않고 "준비 중" 안내만 표시한다(진입점 게이팅). 검색 서브시스템 이식 후
-///   `navigationDestination` 재연결로 활성화한다.
-///   // TODO: 챌린저 검색 이식 후 생성 진입점 재연결 - [26.07.20] 이재원
+/// 멘토·스터디원은 `SelectedChallengerView` 시트에서 고르며, 그 안의 검색 화면
+/// (`SearchChallengerView`)이 실제 인원 검색을 담당합니다.
 struct OperatorStudyGroupCreateView: View {
 
     // MARK: - Property

@@ -72,7 +72,6 @@ private struct DebugActivityHarnessView: View {
     @State private var userSession: UserSessionManager
     @State private var errorHandler = ErrorHandler()
     @State private var selectedSection: DebugActivitySection?
-    @State private var showsStudyGroupCreate = false
 
     // MARK: - Init
 
@@ -121,13 +120,7 @@ private struct DebugActivityHarnessView: View {
                     itemIcon: { $0.icon }
                 )
                 modeToggleItem
-                studyGroupCreateItem
                 studyScheduleRegistrationItem
-            }
-            .navigationDestination(isPresented: $showsStudyGroupCreate) {
-                OperatorStudyGroupCreateView(
-                    viewModel: previewOperatorStudyManagementViewModel()
-                )
             }
             // 레거시 `ActivityView`와 동일하게, 모드가 바뀌면 보고 있던 섹션을
             // 대응 섹션으로 옮겨 같은 성격의 화면을 유지한다.
@@ -209,21 +202,6 @@ private struct DebugActivityHarnessView: View {
         }
     }
 
-    /// 스터디 그룹 생성 폼 진입 버튼
-    ///
-    /// 운영 화면에서는 멘토·스터디원 선택 이식 전까지 진입점이 게이팅("준비 중")돼 있어,
-    /// 하네스에서만 직접 열 수 있게 둔다.
-    @ToolbarContentBuilder
-    private var studyGroupCreateItem: some ToolbarContent {
-        if currentSection == .studyManage {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("생성 폼") {
-                    showsStudyGroupCreate = true
-                }
-            }
-        }
-    }
-
     /// 일정 등록 화면 진입 버튼
     ///
     /// 카드의 일정 버튼은 "담당 멘토 본인" 권한 검사를 거치는데, 하네스 세션의 챌린저 ID는
@@ -246,7 +224,6 @@ private struct DebugActivityHarnessView: View {
             }
         }
     }
-
 }
 
 // MARK: - Section Catalog

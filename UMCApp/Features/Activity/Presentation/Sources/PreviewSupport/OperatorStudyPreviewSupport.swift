@@ -97,6 +97,28 @@ enum PreviewSampleError: Error {
     case failed
 }
 
+/// 프리뷰 전용 챌린저 검색 스텁 — 키워드와 무관하게 샘플 목록을 한 페이지로 돌려줍니다.
+final class PreviewSearchChallengersUseCase: SearchChallengersUseCaseProtocol {
+
+    private let challengers: [ChallengerInfo]
+
+    init(challengers: [ChallengerInfo] = OperatorStudyPreviewData.challengers) {
+        self.challengers = challengers
+    }
+
+    func execute(
+        keyword: String?,
+        cursor: Int?,
+        size: Int
+    ) async throws -> ChallengerSearchPage {
+        ChallengerSearchPage(
+            challengers: challengers,
+            hasNext: false,
+            nextCursor: nil
+        )
+    }
+}
+
 // MARK: - Preview Data
 
 /// 프리뷰 공용 샘플 데이터.
