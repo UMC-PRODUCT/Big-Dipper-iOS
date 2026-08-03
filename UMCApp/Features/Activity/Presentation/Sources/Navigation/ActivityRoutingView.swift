@@ -34,27 +34,63 @@ struct ActivityRoutingView: View {
 
     var body: some View {
         switch destination {
-        case .studyScheduleRegistration(let studyName, _):
-            // 화면(`StudyScheduleRegistrationView`)은 ViewModel 만 이식된 상태다.
-            // 경로는 먼저 열어 두고, 화면 이식 시 이 분기만 실제 뷰로 교체한다.
-            // TODO: #1014 StudyScheduleRegistrationView 이식 후 화면 연결 - [26.07.30] 이재원
-            unsupportedScreen(
-                title: "일정 등록 준비 중",
-                message: "\(studyName)의 일정 등록 화면은 곧 연결됩니다."
+        case .studyScheduleRegistration(let studyName, let studyGroupId):
+            StudyScheduleRegistrationRoute(
+                studyName: studyName,
+                studyGroupId: studyGroupId
             )
 
         case .attendanceDetail(let scheduleId):
             OperatorAttendanceDetailRoute(scheduleId: scheduleId)
         }
     }
+}
 
-    // MARK: - Function
+// MARK: - Study Schedule Registration
 
-    private func unsupportedScreen(title: String, message: String) -> some View {
-        ContentUnavailableView {
-            Label(title, systemImage: "hammer")
-        } description: {
-            Text(message)
+/// 스터디 일정 등록 화면의 조립 지점.
+///
+/// 목적지는 스터디 이름과 그룹 식별자만 들고 오므로, 화면이 필요로 하는 ViewModel 은 여기서
+/// DI 로 만든다. 탭 재진입마다 새로 만들지 않도록 첫 등장 때 한 번만 생성한다.
+private struct StudyScheduleRegistrationRoute: View {
+
+    // MARK: - Property
+
+    @Environment(\.di) private var di
+    @Environment(ErrorHandler.self) private var errorHandler
+
+    @State private var viewModel: StudyScheduleRegistrationViewModel?
+
+    private let studyName: String
+    private let studyGroupId: String
+
+    // MARK: - Init
+
+    init(studyName: String, studyGroupId: String) {
+        self.studyName = studyName
+        self.studyGroupId = studyGroupId
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        Group {
+            if let viewModel {
+                StudyScheduleRegistrationView(viewModel: viewModel)
+            } else {
+                ProgressView()
+            }
+        }
+        .task {
+            guard viewModel == nil else { return }
+            viewModel = StudyScheduleRegistrationViewModel(
+                studyName: studyName,
+                studyGroupId: studyGroupId,
+                studyMembersUseCase: di.resolve(FetchStudyMembersUseCaseProtocol.self),
+                studyRepository: di.resolve(StudyRepositoryProtocol.self),
+                registerScheduleUseCase: di.resolve(RegisterStudyScheduleUseCaseProtocol.self),
+                errorHandler: errorHandler
+            )
         }
     }
 }

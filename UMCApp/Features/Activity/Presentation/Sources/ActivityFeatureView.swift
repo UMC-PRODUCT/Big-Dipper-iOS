@@ -122,6 +122,7 @@ private struct DebugActivityHarnessView: View {
                 )
                 modeToggleItem
                 studyGroupCreateItem
+                studyScheduleRegistrationItem
             }
             .navigationDestination(isPresented: $showsStudyGroupCreate) {
                 OperatorStudyGroupCreateView(
@@ -218,6 +219,29 @@ private struct DebugActivityHarnessView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("생성 폼") {
                     showsStudyGroupCreate = true
+                }
+            }
+        }
+    }
+
+    /// 일정 등록 화면 진입 버튼
+    ///
+    /// 카드의 일정 버튼은 "담당 멘토 본인" 권한 검사를 거치는데, 하네스 세션의 챌린저 ID는
+    /// 샘플 그룹의 멘토와 달라 그 경로로는 열리지 않는다. 라우팅·DI 조립까지 실제 경로
+    /// 그대로 확인할 수 있도록 카드가 보내는 것과 같은 목적지를 하네스에서 직접 push 한다.
+    @ToolbarContentBuilder
+    private var studyScheduleRegistrationItem: some ToolbarContent {
+        if currentSection == .studyManage,
+            let group = OperatorStudyPreviewData.groups.first {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("일정 등록") {
+                    pathStore.push(
+                        ActivityDestination.studyScheduleRegistration(
+                            studyName: group.name,
+                            studyGroupId: group.serverID
+                        ),
+                        on: .activity
+                    )
                 }
             }
         }
