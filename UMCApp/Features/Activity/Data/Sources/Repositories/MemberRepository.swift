@@ -7,6 +7,7 @@
 
 import Foundation
 import ActivityDomain
+import CoreDomain
 import CoreNetwork
 import UMCFoundation
 import Moya
@@ -102,6 +103,35 @@ public final class MemberRepository: MemberRepositoryProtocol, @unchecked Sendab
             members: members,
             hasNext: pageResult.hasNext,
             currentPage: pageResult.page
+        )
+    }
+
+    // MARK: - 챌린저 검색
+
+    public func searchChallengers(
+        keyword: String?,
+        cursor: Int?,
+        size: Int
+    ) async throws -> ChallengerSearchPage {
+        let response = try await networkRequesting.request(
+            StudyRouter.searchChallengersCursor(
+                query: ChallengerSearchCursorQuery(
+                    cursor: cursor,
+                    size: size,
+                    keyword: keyword
+                )
+            )
+        )
+        let result = try decoder.decode(
+            APIResponse<ChallengerSearchCursorResultDTO>.self,
+            from: response.data
+        ).unwrap()
+        let page = result.cursor
+
+        return ChallengerSearchPage(
+            challengers: page.content.compactMap(makeChallengerInfo),
+            hasNext: page.hasNext,
+            nextCursor: page.nextCursor
         )
     }
 
@@ -289,6 +319,46 @@ private extension MemberRepository {
                 fallbackPenalty: max(0, item.pointSum)
             )
         }
+    }
+
+    /// 검색 항목을 Core canonical ``CoreDomain/ChallengerInfo`` 로 매핑합니다.
+    ///
+    /// `memberId` 가 비면 선택 키(`selectionKey`)를 만들 수 없고 그룹 추가 API 도 호출할 수
+    /// 없으므로 그 항목은 제외합니다(`compactMap`).
+    ///
+    /// - Note: `gen` 은 `"9기"` 같은 표시 문구가 아니라 **기수 번호 문자열**(`"9"`)입니다.
+    ///   `StudyRepository.resolveChallengerId(memberId:preferredGeneration:)` 가 이 값을
+    ///   `Int` 로 바꿔 챌린저 레코드의 `gisu` 와 비교하기 때문입니다. 기수를 알 수 없으면
+    ///   빈 문자열을 둬 호출부가 "기수 미지정"으로 다루게 합니다.
+    func makeChallengerInfo(
+        from item: ChallengerSearchOffsetItemDTO
+    ) -> ChallengerInfo? {
+        guard !item.memberId.isEmpty else { return nil }
+
+        return ChallengerInfo(
+            memberId: item.memberId,
+            challengerId: item.challengerId.nonEmpty,
+            gen: gisuNumberText(generation: item.generation, gisu: item.gisu),
+            name: item.name,
+            nickname: item.nickname,
+            schoolName: item.schoolName,
+            profileImage: item.profileImageURL,
+            part: UMCPartType(apiValue: item.part) ?? .pm
+        )
+    }
+
+    /// 기수 번호를 문자열로 반환합니다 (알 수 없으면 빈 문자열).
+    ///
+    /// 서버는 같은 값을 `generation`·`gisu` 두 키로 내려주며(`gisu` 는 FE 이관용 별칭),
+    /// 한쪽만 채워 오는 경우에 대비해 순서대로 확인합니다.
+    func gisuNumberText(generation: Int?, gisu: Int?) -> String {
+        if let generation, generation > 0 {
+            return "\(generation)"
+        }
+        if let gisu, gisu > 0 {
+            return "\(gisu)"
+        }
+        return ""
     }
 
     /// 각 디스크립터의 멤버 프로필을 조회해 상벌점·역할을 보강하고 정렬합니다.
