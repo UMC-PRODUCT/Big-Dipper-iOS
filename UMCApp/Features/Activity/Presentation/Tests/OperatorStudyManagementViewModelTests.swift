@@ -81,12 +81,14 @@ private func makePage(
 private func makeViewModel(
     useCase: MockOperatorStudyManagementUseCase,
     errorHandler: ErrorHandler = ErrorHandler(),
-    gisuId: String? = "11"
+    gisuId: String? = "11",
+    challengerId: String? = "C-1"
 ) -> OperatorStudyManagementViewModel {
     OperatorStudyManagementViewModel(
         errorHandler: errorHandler,
         useCase: useCase,
-        gisuIdProvider: { gisuId }
+        gisuIdProvider: { gisuId },
+        challengerIdProvider: { challengerId }
     )
 }
 
@@ -670,6 +672,88 @@ struct OperatorStudyManagementViewModelSheetTests {
 
         #expect(viewModel.selectedChallengers.map(\.memberId) == ["1", "2"])
         #expect(viewModel.addMemberGroup?.id == group.id)
+    }
+}
+
+// MARK: - 일정 등록 권한
+
+/// 일정 등록 권한 판정의 입력 조합.
+private struct ScheduleAuthorizationCase: Sendable, CustomTestStringConvertible {
+
+    /// 로컬에 저장된 본인 챌린저 ID. `nil`·빈 문자열은 "신원 미상".
+    let storedChallengerId: String?
+
+    /// 그룹 멘토들의 챌린저 ID. 원소 `nil` 은 서버가 값을 주지 않은 멘토.
+    let mentorChallengerIds: [String?]
+
+    let canRegister: Bool
+
+    var testDescription: String {
+        let mentors = mentorChallengerIds.map { $0 ?? "nil" }.joined(separator: ",")
+        return "본인=\(storedChallengerId ?? "nil") 멘토=[\(mentors)] → \(canRegister)"
+    }
+}
+
+private let scheduleAuthorizationCases: [ScheduleAuthorizationCase] = [
+    .init(storedChallengerId: "C-1", mentorChallengerIds: ["C-1"], canRegister: true),
+    .init(storedChallengerId: "C-9", mentorChallengerIds: ["C-1"], canRegister: false),
+    .init(storedChallengerId: "C-1", mentorChallengerIds: [], canRegister: false),
+    .init(storedChallengerId: "C-1", mentorChallengerIds: [nil], canRegister: false),
+    .init(storedChallengerId: nil, mentorChallengerIds: ["C-1"], canRegister: false),
+    .init(storedChallengerId: "", mentorChallengerIds: ["C-1"], canRegister: false),
+]
+
+@MainActor
+@Suite("OperatorStudyManagementViewModel — 일정 등록 권한 (도메인 규칙)")
+struct OperatorStudyManagementScheduleAuthorizationTests {
+
+    /// 담당 멘토 본인만 통과한다. 신원을 확인하지 못한 상태(저장 ID 부재, 멘토 ID 미상)를
+    /// 통과시키면 남의 스터디 일정을 등록할 수 있게 되므로 모두 거부한다.
+    @Test("멘토 명단과 본인 ID 대조로 등록 권한이 갈린다", arguments: scheduleAuthorizationCases)
+    fileprivate func scheduleAuthorizationFollowsMentorRoster(
+        testCase: ScheduleAuthorizationCase
+    ) {
+        let useCase = MockOperatorStudyManagementUseCase()
+        let viewModel = makeViewModel(
+            useCase: useCase,
+            challengerId: testCase.storedChallengerId
+        )
+        let group = makeGroup(
+            mentors: testCase.mentorChallengerIds.enumerated().map { index, challengerId in
+                makeMember(
+                    serverID: "\(index)",
+                    challengerID: challengerId,
+                    role: .leader
+                )
+            }
+        )
+
+        #expect(viewModel.canRegisterSchedule(for: group) == testCase.canRegister)
+    }
+
+    /// 낙관적 삽입 placeholder 는 아직 서버 식별자가 없어, 그대로 넘기면 일정 등록 화면이
+    /// 존재하지 않는 그룹 ID(`new_…`)를 받는다. 레거시는 `Int` 변환 실패로 막던 자리다.
+    @Test("서버 저장 전 placeholder 그룹은 멘토라도 등록할 수 없다")
+    func localPlaceholderGroupCannotRegisterSchedule() {
+        let useCase = MockOperatorStudyManagementUseCase()
+        let viewModel = makeViewModel(useCase: useCase, challengerId: "C-1")
+        let group = makeGroup(
+            serverID: "new_ABC",
+            mentors: [makeMember(serverID: "1", challengerID: "C-1", role: .leader)]
+        )
+
+        #expect(viewModel.canRegisterSchedule(for: group) == false)
+    }
+
+    @Test("권한이 없으면 안내 다이얼로그를 띄운다")
+    func deniedPromptIsPresented() {
+        let useCase = MockOperatorStudyManagementUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
+
+        viewModel.presentScheduleRegistrationDenied()
+
+        #expect(viewModel.alertPrompt?.title == "권한 없음")
+        #expect(viewModel.alertPrompt?.message == "담당 파트장(멘토)만 일정을 등록할 수 있습니다.")
     }
 }
 
