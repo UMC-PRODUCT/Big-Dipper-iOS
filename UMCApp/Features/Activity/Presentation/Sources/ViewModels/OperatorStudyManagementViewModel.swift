@@ -1110,6 +1110,10 @@ final class OperatorStudyManagementViewModel {
             submissions.isEmpty ? .idle : .loaded(submissions)
         let previousGroupId = selectedSubmissionGroupId
         let previousWeekNos = selectedSubmissionWeekNos
+        // 커서도 함께 되돌린다. 아래에서 초기화만 하고 복원하지 않으면, 취소된 필터 변경 뒤
+        // 남는 목록은 `hasNext == false` 라 스크롤해도 다음 페이지를 못 부른다.
+        let previousCursor = submissionNextCursor
+        let previousHasNext = submissionHasNext
 
         // 필터 적용과 그 롤백을 한 곳에 둔다. 필터만 바뀌고 조회가 취소되면 칩은 새 필터를,
         // 목록은 옛 필터의 결과를 가리켜 둘이 어긋난 채로 굳는다.
@@ -1142,15 +1146,23 @@ final class OperatorStudyManagementViewModel {
             updateAvailableWeekNos(from: page.content)
         } catch is CancellationError {
             guard requestID == submissionRequestID else { return }
-            submissionsState = previousState
-            selectedSubmissionGroupId = previousGroupId
-            selectedSubmissionWeekNos = previousWeekNos
+            rollbackSubmissions(
+                state: previousState,
+                groupId: previousGroupId,
+                weekNos: previousWeekNos,
+                cursor: previousCursor,
+                hasNext: previousHasNext
+            )
         } catch let error as NSError
             where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
             guard requestID == submissionRequestID else { return }
-            submissionsState = previousState
-            selectedSubmissionGroupId = previousGroupId
-            selectedSubmissionWeekNos = previousWeekNos
+            rollbackSubmissions(
+                state: previousState,
+                groupId: previousGroupId,
+                weekNos: previousWeekNos,
+                cursor: previousCursor,
+                hasNext: previousHasNext
+            )
         } catch let error as AppError {
             guard requestID == submissionRequestID else { return }
             submissionsState = .failed(error)
@@ -1169,6 +1181,24 @@ final class OperatorStudyManagementViewModel {
                 message: "제출 현황을 불러오지 못했습니다."
             ))
         }
+    }
+
+    /// 취소된 조회 이전으로 목록·필터·페이지 커서를 한꺼번에 되돌린다.
+    ///
+    /// 셋 중 하나라도 빠뜨리면 화면이 서로 다른 조회를 가리키게 된다 — 목록만 되돌리면 칩과
+    /// 어긋나고, 커서를 빠뜨리면 남은 목록이 다음 페이지를 못 부른다.
+    private func rollbackSubmissions(
+        state: Loadable<[StudyMemberSubmission]>,
+        groupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        hasNext: Bool
+    ) {
+        submissionsState = state
+        selectedSubmissionGroupId = groupId
+        selectedSubmissionWeekNos = weekNos
+        submissionNextCursor = cursor
+        submissionHasNext = hasNext
     }
 
     /// 그룹 필터 후보를 한 번만 조회한다.

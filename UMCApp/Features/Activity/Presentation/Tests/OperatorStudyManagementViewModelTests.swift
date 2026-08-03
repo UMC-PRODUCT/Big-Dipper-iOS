@@ -220,6 +220,12 @@ private final class MockOperatorStudyManagementUseCase: @unchecked Sendable,
             : StudyMemberSubmissionPage(content: [], hasNext: false, nextCursor: nil)
     }
 
+    /// 게이트에 걸려 실제로 대기 중인 호출 수.
+    ///
+    /// `submissionCalls` 는 suspend **전에** 기록되므로, 호출 수만 보고 재개하면 아직 대기열에
+    /// 등록되지 않은 호출이 영영 깨어나지 못한다. 게이트 테스트는 이 값으로 기다린다.
+    var pendingSubmissionCount: Int { submissionContinuations.count }
+
     /// 붙잡아 둔 제출 현황 호출을 **최신 요청부터** 재개한다.
     ///
     /// 역순으로 재개해야 오래된 요청의 응답이 **마지막에** 도착한다. 토큰 가드가 없으면 그
@@ -1272,6 +1278,32 @@ struct OperatorStudyManagementSubmissionTests {
         #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["9"])
     }
 
+    @Test("필터 변경이 취소돼도 남은 목록의 페이지네이션은 살아 있다")
+    func cancelledFilterChangeKeepsPagination() async {
+        let useCase = MockOperatorStudyManagementUseCase()
+        // 취소된 호출은 페이지를 소비하지 않으므로, 두 번째 페이지는 추가 로드가 가져간다.
+        useCase.submissionPages = [
+            makeSubmissionPage(
+                content: [makeSubmission(studyGroupMemberId: "1")],
+                hasNext: true,
+                nextCursor: "1"
+            ),
+            makeSubmissionPage(content: [makeSubmission(studyGroupMemberId: "2")])
+        ]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.fetchSubmissions()
+
+        // 필터 변경이 취소되면 목록은 그대로 남는데, 커서까지 초기화된 채 두면
+        // 스크롤해도 다음 페이지를 못 부른다.
+        useCase.submissionError = CancellationError()
+        await viewModel.selectSubmissionGroup("G-7")
+
+        useCase.submissionError = nil
+        await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
+
+        #expect(viewModel.submissions.map(\.studyGroupMemberId) == ["1", "2"])
+    }
+
     @Test("목록과 필터가 어긋난 채 재진입하면 건너뛰지 않고 다시 조회한다")
     func reentryRefetchesWhenFilterDoesNotMatchList() async {
         let useCase = MockOperatorStudyManagementUseCase()
@@ -1287,9 +1319,9 @@ struct OperatorStudyManagementSubmissionTests {
         // 어긋나는 중간 필터(G-B)를 복원한다 — 칩과 목록이 다른 조건을 가리키는 상태.
         useCase.gateSubmissions = true
         let toB = Task { await viewModel.selectSubmissionGroup("G-B") }
-        await drainUntil { useCase.submissionCalls.count == 2 }
+        await drainUntil { useCase.pendingSubmissionCount == 1 }
         let toC = Task { await viewModel.selectSubmissionGroup("G-C") }
-        await drainUntil { useCase.submissionCalls.count == 3 }
+        await drainUntil { useCase.pendingSubmissionCount == 2 }
 
         useCase.submissionError = CancellationError()
         useCase.releaseSubmissions()
@@ -1322,9 +1354,9 @@ struct OperatorStudyManagementSubmissionTests {
 
         // 첫 요청을 붙잡아 둔 상태에서 필터를 바꿔 두 번째 요청을 시작한다.
         let first = Task { await viewModel.fetchSubmissions() }
-        await drainUntil { useCase.submissionCalls.count == 1 }
+        await drainUntil { useCase.pendingSubmissionCount == 1 }
         let second = Task { await viewModel.selectSubmissionGroup("G-7") }
-        await drainUntil { useCase.submissionCalls.count == 2 }
+        await drainUntil { useCase.pendingSubmissionCount == 2 }
 
         useCase.releaseSubmissions()
         await first.value
@@ -1346,7 +1378,7 @@ struct OperatorStudyManagementSubmissionTests {
 
         // 진행 중인 첫 조회가 아직 응답 전인 동안 두 번째 진입이 들어온다.
         let first = Task { await viewModel.fetchSubmissions() }
-        await drainUntil { useCase.submissionCalls.count == 1 }
+        await drainUntil { useCase.pendingSubmissionCount == 1 }
         let blocked = Task { await viewModel.fetchSubmissions() }
 
         // 첫 조회가 취소로 끝나 이전 상태(.idle)로 되돌아간다.
@@ -1408,7 +1440,7 @@ struct OperatorStudyManagementSubmissionTests {
         let loadMore = Task {
             await viewModel.loadMoreSubmissionsIfNeeded(currentMemberID: "1")
         }
-        await drainUntil { useCase.submissionCalls.count == 2 }
+        await drainUntil { useCase.pendingSubmissionCount == 1 }
 
         // 이후 호출은 붙잡지 않는다 — 필터 재조회는 정상 완료돼야 토큰이 올라간다.
         useCase.gateSubmissions = false
