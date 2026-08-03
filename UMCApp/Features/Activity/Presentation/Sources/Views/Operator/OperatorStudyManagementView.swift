@@ -409,7 +409,8 @@ struct OperatorStudyManagementView: View {
                 LazyVStack(spacing: DefaultSpacing.spacing16) {
                     ForEach(rows) { submission in
                         StudyManagementCard(submission: submission) { _ in
-                            // 워크북 상세 화면 미이식 → 진입은 보류하고 안내만 표시한다.
+                            // TODO: 워크북 상세(WORKBOOK-102) 진입 결선 - [26.08.03] 이재원
+                            //  — 상세 화면이 미이식이라 진입은 보류하고 안내만 표시한다.
                             showWorkbookDetailUnavailable = true
                         }
                         .task {
