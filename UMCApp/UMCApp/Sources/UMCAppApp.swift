@@ -48,6 +48,7 @@ struct UMCAppApp: App {
         container.registerMemberProfileDependencies()
         container.registerAuthDependencies()
         container.registerHomeDependencies()
+        container.registerActivityDependencies()
         container.registerMyPageDependencies()
         container.registerMaintenanceDependencies()
         _container = State(initialValue: container)
