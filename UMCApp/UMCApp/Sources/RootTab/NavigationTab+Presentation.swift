@@ -1,5 +1,5 @@
 //
-//  TabCase.swift
+//  NavigationTab+Presentation.swift
 //  UMCApp
 //
 //  Created by euijjang97 on 7/8/26.
@@ -7,18 +7,13 @@
 
 import SwiftUI
 
-/// 루트 탭 셸이 표시하는 5개 탭.
-///
-/// 이번 이슈(#910)의 최소 수직 슬라이스에서는 `.home`만 실제 화면에 연결되고
-/// 나머지 탭은 placeholder(`{Feature}FeatureView`)를 표시한다.
-enum TabCase: CaseIterable, Identifiable, Hashable {
-    case home
-    case notice
-    case activity
-    case community
-    case mypage
+import CoreRouting
 
-    var id: Self { self }
+/// 루트 탭 셸이 각 탭을 어떻게 보여줄지에 대한 App 쪽 표현.
+///
+/// 탭의 라우팅 정체성은 `CoreRouting.NavigationTab` 이 갖고, 제목·아이콘·역할처럼 앱 셸에서만
+/// 쓰는 표현은 여기서 붙인다. 그래야 Feature 모듈이 경로를 다루려고 탭 표현까지 의존하지 않는다.
+extension NavigationTab {
 
     var title: String {
         switch self {
