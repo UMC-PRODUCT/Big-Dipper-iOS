@@ -101,20 +101,41 @@ public enum AppStorageKey {
     }
 }
 
-// MARK: - Member ID 어댑터
+// MARK: - 식별자 어댑터
 
 extension AppStorageKey {
 
-    /// 멤버 ID를 `String`으로 조회합니다.
+    /// 저장된 식별자를 `String`으로 해석합니다.
     ///
-    /// 신규 저장값(`String`)을 우선 사용하고, 레거시 `Int` 저장값을 발견하면
+    /// 신규 저장값(`String`)을 우선 사용하고, 레거시 `Int` 저장값(>0)을 발견하면
     /// 문자열로 변환해 반환합니다. 둘 다 없으면 `nil`을 반환합니다.
-    public static func memberIdString(in defaults: UserDefaults = .standard) -> String? {
-        if let value = defaults.string(forKey: memberId), !value.isEmpty {
+    ///
+    /// 서버 식별자는 전 레이어 `String`으로 통일되어 있으므로, 저장 형식 해석은 이 한 곳에만
+    /// 두고 각 소비처는 아래 이름 붙은 헬퍼를 통해 접근합니다.
+    private static func identifierString(
+        forKey key: String,
+        in defaults: UserDefaults
+    ) -> String? {
+        if let value = defaults.string(forKey: key), !value.isEmpty {
             return value
         }
-        let legacyInt = defaults.integer(forKey: memberId)
+        let legacyInt = defaults.integer(forKey: key)
         return legacyInt > 0 ? String(legacyInt) : nil
+    }
+
+    /// 멤버 ID를 `String`으로 조회합니다. 미설정 시 `nil`.
+    public static func memberIdString(in defaults: UserDefaults = .standard) -> String? {
+        identifierString(forKey: memberId, in: defaults)
+    }
+
+    /// 학교 ID를 `String`으로 조회합니다. 미설정 시 `nil`.
+    public static func schoolIdString(in defaults: UserDefaults = .standard) -> String? {
+        identifierString(forKey: schoolId, in: defaults)
+    }
+
+    /// 기수 ID를 `String`으로 조회합니다. 미설정 시 `nil`.
+    public static func gisuIdString(in defaults: UserDefaults = .standard) -> String? {
+        identifierString(forKey: gisuId, in: defaults)
     }
 
     /// 멤버 ID를 레거시 `Int` 형태로 조회합니다.

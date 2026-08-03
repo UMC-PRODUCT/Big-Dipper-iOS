@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 
 /// 멤버 관리 조회에 필요한 현재 사용자 컨텍스트 제공자.
 ///
@@ -32,9 +33,9 @@ protocol MemberContextProviding {
 
 /// `UserDefaults` 기반 기본 컨텍스트 제공자.
 ///
-/// 레거시 `AppStorageKey` 와 동일한 키(`schoolId`, `memberId`, `gisuId`)를 읽어, 향후
-/// 세션 저장소가 도입되어도 같은 키를 공유하면 호환됩니다. 식별자는 `String` 우선으로 읽고,
-/// 레거시 `Int` 저장값(>0)이면 문자열로 변환합니다.
+/// 키 상수와 저장 형식 해석(신규 `String` 우선, 레거시 `Int` 폴백)은 모두
+/// ``UMCFoundation/AppStorageKey`` 의 canonical 헬퍼에 위임합니다. 이 타입은 세 식별자를
+/// 컨텍스트 프로토콜 모양으로 묶어 Repository 에 넘기는 역할만 합니다.
 struct UserDefaultsMemberContextProvider: MemberContextProviding {
 
     // MARK: - Property
@@ -50,33 +51,14 @@ struct UserDefaultsMemberContextProvider: MemberContextProviding {
     // MARK: - MemberContextProviding
 
     var schoolId: String? {
-        resolvedIdentifier(forKey: Key.schoolId)
+        AppStorageKey.schoolIdString(in: defaults)
     }
 
     var currentMemberId: String? {
-        resolvedIdentifier(forKey: Key.memberId)
+        AppStorageKey.memberIdString(in: defaults)
     }
 
     var gisuId: String? {
-        resolvedIdentifier(forKey: Key.gisuId)
-    }
-
-    // MARK: - Function
-
-    /// `String` 우선, 레거시 `Int` 저장값(>0) 폴백으로 식별자를 읽습니다.
-    private func resolvedIdentifier(forKey key: String) -> String? {
-        if let value = defaults.string(forKey: key), !value.isEmpty {
-            return value
-        }
-        let legacyInt = defaults.integer(forKey: key)
-        return legacyInt > 0 ? String(legacyInt) : nil
-    }
-
-    // MARK: - Storage Key
-
-    private enum Key {
-        static let schoolId = "schoolId"
-        static let memberId = "memberId"
-        static let gisuId = "gisuId"
+        AppStorageKey.gisuIdString(in: defaults)
     }
 }
