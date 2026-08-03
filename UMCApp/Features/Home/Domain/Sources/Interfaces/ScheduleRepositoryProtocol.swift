@@ -7,10 +7,14 @@
 
 import Foundation
 
-/// 홈 일정 캘린더 데이터 접근 계층 인터페이스.
+/// 일정 데이터 접근 계층 인터페이스.
 ///
-/// 조회 전용이다. 출석 관련 액션은 `ActivityDomain`의 `ChallengerAttendanceRepositoryProtocol`
-/// 이 담당하고, 일정 생성/수정/삭제는 Schedule 모듈 분리 이슈(#981)에서 다룬다.
+/// 일정 도메인(`/api/v2/schedules`)의 단일 진입점이다. 홈 캘린더 조회뿐 아니라 출석 화면의
+/// 일정 목록 조회와 스터디 일정 등록도 이 프로토콜을 통해 이뤄지므로, 같은 엔드포인트를
+/// feature 별로 다시 정의하지 않는다.
+///
+/// 출석 액션(요청·사유 제출·승인)은 `ActivityDomain` 의
+/// `ChallengerAttendanceRepositoryProtocol` / `OperatorAttendanceRepositoryProtocol` 담당이다.
 public protocol ScheduleRepositoryProtocol {
 
     /// 기간 내 내 일정을 조회해 KST 자정 기준 날짜별로 그룹핑한다.
@@ -24,4 +28,16 @@ public protocol ScheduleRepositoryProtocol {
         to: Date,
         isAttendanceRequired: Bool
     ) async throws -> [Date: [ScheduleDetailData]]
+
+    /// 일정을 생성하고 생성된 일정 식별자를 돌려준다.
+    ///
+    /// - Returns: 생성된 일정 식별자 (서버 정수를 절대 규칙 #2 에 따라 `String` 으로 보존)
+    func createSchedule(_ request: ScheduleCreationRequest) async throws -> String
+
+    /// 일정을 삭제한다.
+    ///
+    /// 스터디 일정 등록 2단계(그룹 연결)가 실패했을 때 1단계 일정을 되돌리는 용도로 쓴다.
+    ///
+    /// - Note: 서버는 출석 기록이 있는 일정의 일반 삭제를 거부한다.
+    func deleteSchedule(scheduleId: String) async throws
 }

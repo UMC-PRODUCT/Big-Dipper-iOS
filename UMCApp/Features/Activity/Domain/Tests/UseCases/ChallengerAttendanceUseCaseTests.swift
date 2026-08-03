@@ -175,6 +175,16 @@ private final class MockScheduleRepository: @unchecked Sendable, ScheduleReposit
         let calendar = Calendar.kstGregorian
         return Dictionary(grouping: schedules) { calendar.startOfDay(for: $0.startsAt) }
     }
+
+    // MARK: 계약 밖 메서드 (호출 시 실패 — 출석 UseCase 는 조회만 사용)
+
+    func createSchedule(_ request: ScheduleCreationRequest) async throws -> String {
+        fatalError("createSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
+    }
+
+    func deleteSchedule(scheduleId: String) async throws {
+        fatalError("deleteSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
+    }
 }
 
 private final class MockLocationProvider: @unchecked Sendable, LocationProviding {
