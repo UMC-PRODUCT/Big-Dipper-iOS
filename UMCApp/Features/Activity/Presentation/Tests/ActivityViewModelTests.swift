@@ -491,6 +491,41 @@ struct ActivityViewModelUserIdTests {
 
         #expect(userIdUseCase.callCount == 1)
     }
+
+    @Test("식별자가 세션보다 늦게 도착하면 세션을 다시 만들어 주체를 바로잡는다")
+    func lateUserIdRebuildsSessionsWithCorrectSubject() async throws {
+        let attendance = MockRootAttendanceUseCase()
+        attendance.availableSchedulesResult = .success([
+            makeSchedule(attendanceStatus: .present),
+        ])
+        let userIdUseCase = MockFetchUserIdUseCase()
+        userIdUseCase.result = .failure(AuthError.notLoggedIn)
+        let viewModel = makeViewModel(attendance: attendance, userId: userIdUseCase)
+
+        // 식별자 조회가 실패한 채로 세션이 먼저 만들어진 상태
+        await viewModel.load()
+        #expect(viewModel.userId == nil)
+
+        userIdUseCase.result = .success(UserID(value: "U-42"))
+        await viewModel.fetchUserId()
+
+        let session = try #require(try loadedSessions(viewModel).first)
+        #expect(session.attendance?.userId == UserID(value: "U-42"))
+    }
+
+    @Test("식별자가 그대로면 세션을 다시 만들지 않는다")
+    func unchangedUserIdDoesNotRebuildSessions() async {
+        let attendance = MockRootAttendanceUseCase()
+        attendance.availableSchedulesResult = .success([makeSchedule()])
+        let viewModel = makeViewModel(attendance: attendance)
+
+        await viewModel.load()
+        let callsAfterLoad = attendance.fetchAvailableSchedulesCallCount
+
+        await viewModel.fetchUserId()
+
+        #expect(attendance.fetchAvailableSchedulesCallCount == callsAfterLoad)
+    }
 }
 
 #endif
