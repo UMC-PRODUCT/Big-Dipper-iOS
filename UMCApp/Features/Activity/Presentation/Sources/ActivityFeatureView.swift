@@ -52,16 +52,13 @@ private struct DebugActivityHarnessView: View {
 
     // MARK: - Init
 
-    /// 운영진 모드로 시작한다.
+    /// 레거시와 동일하게 챌린저 모드로 시작한다.
     ///
-    /// 레거시 기본 모드는 챌린저지만, 그 기본 섹션인 출석 체크 화면
-    /// (`ChallengerAttendanceSessionView`)이 아직 이식되지 않아 진입 화면이 안내 문구가 된다.
-    /// 하네스의 목적은 이식된 화면 확인이므로, 실제로 볼 수 있는 출석 화면이 바로 뜨도록
-    /// 운영진 모드를 초기값으로 둔다. 툴바 버튼으로 챌린저 모드로 전환할 수 있다.
+    /// `ChallengerAttendanceSessionView` 이식 전에는 진입 화면이 안내 문구가 돼서 운영진
+    /// 모드를 초기값으로 뒀지만, 이식이 끝나 기본 섹션(출석 체크)이 실제 화면을 보여준다.
+    /// 운영진 화면은 툴바 버튼으로 전환해 확인한다.
     init() {
-        let session = previewCreateCapableSession()
-        session.toggleAdminMode()
-        _userSession = State(wrappedValue: session)
+        _userSession = State(wrappedValue: previewCreateCapableSession())
     }
 
     // MARK: - Computed Property
@@ -122,10 +119,8 @@ private struct DebugActivityHarnessView: View {
     private var sectionContent: some View {
         switch currentSection {
         case .attendanceCheck:
-            // `ChallengerAttendanceSessionView`는 아직 이식되지 않았다.
-            notPortedGuide(
-                title: "출석 체크",
-                description: "챌린저 출석 화면은 아직 이식되지 않았습니다.\n운영진 모드로 전환하면 출석 관리 화면을 확인할 수 있습니다."
+            AttendancePreviewData.sessionScreen(
+                sessions: AttendancePreviewData.mixedSessions
             )
 
         case .studyActivity:
@@ -194,13 +189,6 @@ private struct DebugActivityHarnessView: View {
         }
     }
 
-    private func notPortedGuide(title: String, description: String) -> some View {
-        ContentUnavailableView {
-            Label(title, systemImage: "hammer")
-        } description: {
-            Text(description)
-        }
-    }
 }
 
 // MARK: - Section Catalog
