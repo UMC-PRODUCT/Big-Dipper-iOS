@@ -44,7 +44,7 @@ enum StubSessionFixtures {
                 challengerId: "100",
                 gisu: "12",
                 gisuId: "10",
-                roleType: .challenger,
+                roleType: .schoolPresident,
                 organizationType: .school,
                 organizationId: "3",
                 responsiblePart: "IOS"
@@ -160,6 +160,164 @@ enum StubSessionFixtures {
             weekNo: "5",
             title: "재사용 가능한 컴포넌트"
         )
+    ]
+
+    /// 운영진 스터디 그룹 관리 화면 픽스처. 멘토 1명 + 스터디원을 둔 그룹 2개.
+    static let studyGroups: [StudyGroupInfo] = [
+        StudyGroupInfo(
+            serverID: "601",
+            name: "iOS 심화 스터디",
+            part: .front(type: .ios),
+            createdDate: Date(timeIntervalSinceNow: -86_400 * 14),
+            mentors: [
+                StudyGroupMember(
+                    serverID: "201",
+                    challengerID: "301",
+                    memberID: "201",
+                    name: "이파트",
+                    nickname: "스위프트",
+                    university: "한성대학교",
+                    role: .leader,
+                    bestWorkbookPoint: 3
+                )
+            ],
+            members: [
+                StudyGroupMember(
+                    serverID: "211",
+                    challengerID: "311",
+                    memberID: "211",
+                    name: "김스위",
+                    nickname: "옵셔널",
+                    university: "한성대학교",
+                    role: .member,
+                    bestWorkbookPoint: 2
+                ),
+                StudyGroupMember(
+                    serverID: "212",
+                    challengerID: "312",
+                    memberID: "212",
+                    name: "윤클로",
+                    nickname: "클로저",
+                    university: "한성대학교",
+                    role: .member,
+                    bestWorkbookPoint: 1
+                ),
+            ]
+        ),
+        StudyGroupInfo(
+            serverID: "602",
+            name: "Android 기초 스터디",
+            part: .front(type: .android),
+            createdDate: Date(timeIntervalSinceNow: -86_400 * 7),
+            mentors: [
+                StudyGroupMember(
+                    serverID: "202",
+                    challengerID: "302",
+                    memberID: "202",
+                    name: "박안드",
+                    nickname: "코틀린",
+                    university: "한성대학교",
+                    role: .leader,
+                    bestWorkbookPoint: 2
+                )
+            ],
+            members: [
+                StudyGroupMember(
+                    serverID: "221",
+                    challengerID: "321",
+                    memberID: "221",
+                    name: "오코루",
+                    nickname: "코루틴",
+                    university: "한성대학교",
+                    role: .member,
+                    bestWorkbookPoint: 0
+                )
+            ]
+        ),
+    ]
+
+    /// 스터디원 제출 현황 픽스처. `weeklyCurriculumOptions` 와 같은 주차 식별자를 공유한다.
+    static let studyMemberSubmissions: [StudyMemberSubmission] = [
+        StudyMemberSubmission(
+            studyGroupMemberId: "211",
+            memberId: "211",
+            memberName: "김스위",
+            nickname: "옵셔널",
+            schoolName: "한성대학교",
+            studyGroupId: "601",
+            studyGroupName: "iOS 심화 스터디",
+            part: .front(type: .ios),
+            partLabel: "iOS",
+            weeks: [
+                WeeklySubmission(
+                    weekNo: "1",
+                    weeklyCurriculumId: "1001",
+                    challengerWorkbookId: "5001",
+                    status: .pass,
+                    isBest: true
+                ),
+                WeeklySubmission(
+                    weekNo: "2",
+                    weeklyCurriculumId: "1002",
+                    challengerWorkbookId: "5002",
+                    status: .pass
+                ),
+                WeeklySubmission(
+                    weekNo: "3",
+                    weeklyCurriculumId: "1003",
+                    status: .notSubmitted
+                ),
+            ]
+        ),
+        StudyMemberSubmission(
+            studyGroupMemberId: "212",
+            memberId: "212",
+            memberName: "윤클로",
+            nickname: "클로저",
+            schoolName: "한성대학교",
+            studyGroupId: "601",
+            studyGroupName: "iOS 심화 스터디",
+            part: .front(type: .ios),
+            partLabel: "iOS",
+            weeks: [
+                WeeklySubmission(
+                    weekNo: "1",
+                    weeklyCurriculumId: "1001",
+                    challengerWorkbookId: "5003",
+                    status: .pass
+                ),
+                WeeklySubmission(
+                    weekNo: "2",
+                    weeklyCurriculumId: "1002",
+                    challengerWorkbookId: "5004",
+                    status: .inProgress
+                ),
+            ]
+        ),
+        StudyMemberSubmission(
+            studyGroupMemberId: "221",
+            memberId: "221",
+            memberName: "오코루",
+            nickname: "코루틴",
+            schoolName: "한성대학교",
+            studyGroupId: "602",
+            studyGroupName: "Android 기초 스터디",
+            part: .front(type: .android),
+            partLabel: "Android",
+            weeks: [
+                WeeklySubmission(
+                    weekNo: "1",
+                    weeklyCurriculumId: "1001",
+                    challengerWorkbookId: "5005",
+                    status: .fail
+                ),
+                WeeklySubmission(
+                    weekNo: "2",
+                    weeklyCurriculumId: "1002",
+                    status: .notSubmitted
+                ),
+            ]
+        ),
     ]
 
     // MARK: - Notice
@@ -391,6 +549,348 @@ enum StubSessionFixtures {
         }
 
         return result
+    }
+
+    // MARK: - Member
+
+    /// 멤버 관리 화면 픽스처 — 파트별 그룹핑 확인용으로 6개 파트를 모두 포함한다.
+    static let members: [MemberManagementItem] = [
+        MemberManagementItem(
+            memberID: "201",
+            challengerID: "301",
+            profile: nil,
+            name: "이파트",
+            nickname: "스위프트",
+            generation: "12기",
+            school: "한성대학교",
+            position: "iOS 파트장",
+            part: .front(type: .ios),
+            penalty: 0,
+            rewardPoints: 6,
+            badge: true,
+            managementTeam: .schoolPartLeader,
+            attendanceRecords: [
+                MemberAttendanceRecord(
+                    sessionTitle: "iOS 파트 정기 스터디",
+                    week: 3,
+                    status: .present
+                ),
+                MemberAttendanceRecord(
+                    sessionTitle: "중앙 연합 세미나",
+                    week: 0,
+                    status: .late
+                ),
+            ],
+            penaltyHistory: [
+                OperatorMemberPenaltyHistory(
+                    challengerPointId: "401",
+                    date: Date(timeIntervalSinceNow: -86_400 * 5),
+                    reason: "우수 워크북",
+                    penaltyScore: 2,
+                    pointType: .bestWorkbook
+                )
+            ],
+            generationPoints: [GenerationPointSummary(gisu: 12, reward: 6, penalty: 0)]
+        ),
+        MemberManagementItem(
+            memberID: "202",
+            challengerID: "302",
+            profile: nil,
+            name: "박안드",
+            nickname: "코틀린",
+            generation: "12기",
+            school: "한성대학교",
+            position: "Android 파트원",
+            part: .front(type: .android),
+            penalty: 2,
+            rewardPoints: 1,
+            badge: false,
+            managementTeam: .challenger,
+            attendanceRecords: [],
+            penaltyHistory: [
+                OperatorMemberPenaltyHistory(
+                    challengerPointId: "402",
+                    date: Date(timeIntervalSinceNow: -86_400 * 8),
+                    reason: "스터디 지각",
+                    penaltyScore: 2,
+                    pointType: .studyLate
+                )
+            ],
+            generationPoints: [GenerationPointSummary(gisu: 12, reward: 1, penalty: 2)]
+        ),
+        MemberManagementItem(
+            memberID: "203",
+            challengerID: "303",
+            profile: nil,
+            name: "최웹",
+            nickname: "리액트",
+            generation: "11기",
+            school: "한성대학교",
+            position: "Web 파트원",
+            part: .front(type: .web),
+            penalty: 0,
+            rewardPoints: 2,
+            badge: false,
+            managementTeam: .challenger,
+            attendanceRecords: [],
+            penaltyHistory: []
+        ),
+        MemberManagementItem(
+            memberID: "204",
+            challengerID: "304",
+            profile: nil,
+            name: "정서버",
+            nickname: "스프링",
+            generation: "12기",
+            school: "한성대학교",
+            position: "Server 파트원",
+            part: .server(type: .spring),
+            penalty: 4,
+            rewardPoints: 0,
+            badge: false,
+            managementTeam: .challenger,
+            attendanceRecords: [],
+            penaltyHistory: [
+                OperatorMemberPenaltyHistory(
+                    challengerPointId: "403",
+                    date: Date(timeIntervalSinceNow: -86_400 * 3),
+                    reason: "워크북 미제출",
+                    penaltyScore: 4,
+                    pointType: .noWorkbookMission
+                )
+            ]
+        ),
+        MemberManagementItem(
+            memberID: "205",
+            challengerID: "305",
+            profile: nil,
+            name: "한디자인",
+            nickname: "피그마",
+            generation: "12기",
+            school: "한성대학교",
+            position: "Designer",
+            part: .design,
+            penalty: 0,
+            rewardPoints: 3,
+            badge: false,
+            managementTeam: .challenger,
+            attendanceRecords: [],
+            penaltyHistory: []
+        ),
+        MemberManagementItem(
+            memberID: "206",
+            challengerID: "306",
+            profile: nil,
+            name: "조기획",
+            nickname: "노션",
+            generation: "11기",
+            school: "한성대학교",
+            position: "PM",
+            part: .pm,
+            penalty: 0,
+            rewardPoints: 0,
+            badge: false,
+            managementTeam: .schoolVicePresident,
+            attendanceRecords: [],
+            penaltyHistory: []
+        ),
+    ]
+
+    // MARK: - Attendance (Operator)
+
+    /// 운영진 출석 관리 화면 픽스처. 오늘 기준 상대 일자라 언제 열어도 최근 데이터로 보인다.
+    static func attendanceSchedules() -> [ScheduleAttendanceInfo] {
+        let calendar = Calendar.kstGregorian
+        let now = Date.now
+
+        func at(_ dayOffset: Int, hour: Int, minute: Int = 0) -> Date {
+            let day = calendar.date(byAdding: .day, value: dayOffset, to: now) ?? now
+            return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day) ?? day
+        }
+
+        let ongoing = ScheduleAttendanceInfo(
+            scheduleId: "7001",
+            name: "iOS 파트 정기 스터디",
+            description: "stub 세션 출석 픽스처입니다.",
+            startsAt: at(0, hour: 19),
+            endsAt: at(0, hour: 21),
+            location: ScheduleLocation(
+                latitude: 37.5665,
+                longitude: 126.9780,
+                locationName: "한성대학교 상상관"
+            ),
+            isOnline: false,
+            authorMemberId: "201",
+            attendancePolicy: ScheduleAttendancePolicy(
+                checkInStartAt: at(0, hour: 18, minute: 30),
+                onTimeEndAt: at(0, hour: 19, minute: 10),
+                lateEndAt: at(0, hour: 19, minute: 30)
+            ),
+            tags: ["스터디"],
+            participants: [
+                ParticipantAttendance(
+                    memberId: "201",
+                    name: "이파트",
+                    nickname: "스위프트",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .present,
+                    isLocationVerified: true,
+                    excuseReason: nil
+                ),
+                ParticipantAttendance(
+                    memberId: "211",
+                    name: "김스위",
+                    nickname: "옵셔널",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .presentPending,
+                    isLocationVerified: true,
+                    excuseReason: nil
+                ),
+                ParticipantAttendance(
+                    memberId: "212",
+                    name: "윤클로",
+                    nickname: "클로저",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .latePending,
+                    isLocationVerified: true,
+                    excuseReason: nil
+                ),
+                ParticipantAttendance(
+                    memberId: "202",
+                    name: "박안드",
+                    nickname: "코틀린",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .excusedPending,
+                    isLocationVerified: false,
+                    excuseReason: "팀 프로젝트 마감과 겹쳐 이번 세션은 온라인으로 대체 참여합니다."
+                ),
+                ParticipantAttendance(
+                    memberId: "203",
+                    name: "최웹",
+                    nickname: "리액트",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .absent,
+                    isLocationVerified: false,
+                    excuseReason: nil
+                ),
+            ]
+        )
+
+        let past = ScheduleAttendanceInfo(
+            scheduleId: "7002",
+            name: "중앙 연합 세미나",
+            description: "stub 세션 출석 픽스처입니다.",
+            startsAt: at(-3, hour: 14),
+            endsAt: at(-3, hour: 17),
+            location: nil,
+            isOnline: true,
+            authorMemberId: "201",
+            attendancePolicy: nil,
+            tags: ["세미나"],
+            participants: [
+                ParticipantAttendance(
+                    memberId: "201",
+                    name: "이파트",
+                    nickname: "스위프트",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .present,
+                    isLocationVerified: true,
+                    excuseReason: nil
+                ),
+                ParticipantAttendance(
+                    memberId: "204",
+                    name: "정서버",
+                    nickname: "스프링",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .late,
+                    isLocationVerified: true,
+                    excuseReason: nil
+                ),
+                ParticipantAttendance(
+                    memberId: "205",
+                    name: "한디자인",
+                    nickname: "피그마",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .excused,
+                    isLocationVerified: false,
+                    excuseReason: "학과 시험 일정과 겹쳐 불참합니다."
+                ),
+                ParticipantAttendance(
+                    memberId: "206",
+                    name: "조기획",
+                    nickname: "노션",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .absent,
+                    isLocationVerified: false,
+                    excuseReason: nil
+                ),
+            ]
+        )
+
+        let upcoming = ScheduleAttendanceInfo(
+            scheduleId: "7003",
+            name: "지부 네트워킹 데이",
+            description: "stub 세션 출석 픽스처입니다.",
+            startsAt: at(10, hour: 18),
+            endsAt: at(10, hour: 20),
+            location: ScheduleLocation(
+                latitude: 37.5665,
+                longitude: 126.9780,
+                locationName: "GACI 지부 세미나실"
+            ),
+            isOnline: false,
+            authorMemberId: "201",
+            attendancePolicy: ScheduleAttendancePolicy(
+                checkInStartAt: at(10, hour: 17, minute: 30),
+                onTimeEndAt: at(10, hour: 18, minute: 10),
+                lateEndAt: at(10, hour: 18, minute: 30)
+            ),
+            tags: ["네트워킹"],
+            participants: [
+                ParticipantAttendance(
+                    memberId: "202",
+                    name: "박안드",
+                    nickname: "코틀린",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .pending,
+                    isLocationVerified: false,
+                    excuseReason: nil
+                ),
+                ParticipantAttendance(
+                    memberId: "203",
+                    name: "최웹",
+                    nickname: "리액트",
+                    profileImageURL: "",
+                    schoolId: "3",
+                    schoolName: "한성대학교",
+                    attendanceStatus: .pending,
+                    isLocationVerified: false,
+                    excuseReason: nil
+                ),
+            ]
+        )
+
+        return [ongoing, past, upcoming]
     }
 
     // MARK: - Private Function
