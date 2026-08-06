@@ -29,6 +29,7 @@ struct ActivityView: View {
 
     /// 탭 스택의 공유 경로. 자식 화면이 요청한 push 를 이 저장소로 넘긴다.
     @Environment(PathStore.self) private var pathStore
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel: ActivityViewModel
     @State private var selectedSection: ActivitySection?
@@ -186,8 +187,16 @@ struct ActivityView: View {
                     container: container,
                     errorHandler: errorHandler,
                     sessions: sessions,
+                    schedules: viewModel.schedules,
                     userId: userId
                 )
+                .task {
+                    await viewModel.startPollingIfNeeded()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active else { return }
+                    Task { await viewModel.refreshSessions() }
+                }
             } else {
                 missingUserIdView
             }

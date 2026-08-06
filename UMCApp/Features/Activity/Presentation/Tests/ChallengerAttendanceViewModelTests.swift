@@ -13,7 +13,7 @@ import UMCFoundation
 @testable import ActivityPresentation
 
 // Mock 과 이를 사용하는 헬퍼·스위트 전체를 하나의 가드 안에 둔다.
-// (`makeViewModel`/`seedSchedules` 는 Mock 을 파라미터 타입으로 직접 참조한다)
+// (`makeViewModel` 은 Mock 을 파라미터 타입으로 직접 참조한다)
 #if DEBUG
 
 // MARK: - Helpers
@@ -108,20 +108,6 @@ private func makeViewModel(
     )
 }
 
-/// 서버 정책이 실린 일정 목록을 실제 조회 경로로 적재한다.
-///
-/// 정책은 별도 캐시가 아니라 `availableSchedules` 페이로드에서 읽으므로, 시간대·안내 문구
-/// 테스트도 조회를 한 번 태워 상태를 만든다.
-@MainActor
-private func seedSchedules(
-    _ viewModel: ChallengerAttendanceViewModel,
-    useCase: MockChallengerAttendanceUseCase,
-    schedules: [ScheduleDetailData]
-) async {
-    useCase.availableSchedulesResult = .success(schedules)
-    await viewModel.fetchAvailableSchedules()
-}
-
 private struct DummyError: Error {}
 
 // MARK: - Mocks
@@ -144,17 +130,6 @@ private final class MockChallengerAttendanceUseCase: @unchecked Sendable,
 
     /// `isWithinAttendanceTime` 폴백 판정이 반환할 시간대
     var timeWindowToReturn: AttendanceTimeWindow = .onTime
-
-    var availableSchedulesResult: Result<[ScheduleDetailData], Error> = .success([])
-    var myHistoryResult: Result<[ScheduleDetailData], Error> = .success([])
-
-    /// `true` 면 일정 조회가 ``openAvailableSchedulesGate()`` 전까지 반환하지 않는다.
-    ///
-    /// 재진입 가드처럼 "요청이 진행 중인 순간" 을 관찰해야 하는 테스트에서 쓴다.
-    /// 대기를 `CheckedContinuation` 등록이 아니라 플래그 폴링으로 구현한 이유: 조회는
-    /// MainActor 밖(비격리 mock)에서 재개되므로, 등록 시점과 해제 시점이 다른 실행자에
-    /// 걸치면 아직 등록되지 않은 continuation 을 깨우려다 영영 멈춘다.
-    var gateAvailableSchedules: Bool = false
 
     // MARK: 호출 기록
 
@@ -180,6 +155,8 @@ private final class MockChallengerAttendanceUseCase: @unchecked Sendable,
 
     private(set) var isWithinAttendanceTimeCallCount: Int = 0
     private(set) var stopGeofenceMonitoringCallCount: Int = 0
+
+    /// 일정 조회 호출 기록 — SUT 가 조회 경로를 되살리지 않았는지 확인하는 용도.
     private(set) var fetchAvailableSchedulesCallCount: Int = 0
     private(set) var fetchMyHistoryCallCount: Int = 0
 
@@ -187,20 +164,12 @@ private final class MockChallengerAttendanceUseCase: @unchecked Sendable,
 
     func fetchAvailableSchedules(now: Date) async throws -> [ScheduleDetailData] {
         fetchAvailableSchedulesCallCount += 1
-        while gateAvailableSchedules {
-            await Task.yield()
-        }
-        return try availableSchedulesResult.get()
-    }
-
-    /// 게이트에 걸려 있던 일정 조회를 재개시킨다.
-    func openAvailableSchedulesGate() {
-        gateAvailableSchedules = false
+        return []
     }
 
     func fetchMyHistory(now: Date) async throws -> [ScheduleDetailData] {
         fetchMyHistoryCallCount += 1
-        return try myHistoryResult.get()
+        return []
     }
 
     func requestGPSAttendance(
@@ -516,11 +485,7 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
         useCase.timeWindowToReturn = .expired  // 폴백이 쓰였다면 expired 가 나와야 함
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [makeScheduleDetail(policy: makePolicy())]
-        )
+        viewModel.apply(schedules: [makeScheduleDetail(policy: makePolicy())])
 
         let window = viewModel.timeWindow(for: session, now: fixedNow)
 
@@ -547,11 +512,7 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
         // 정책: checkIn = fixedNow-600, onTimeEnd = fixedNow+600, lateEnd = fixedNow+1200
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [makeScheduleDetail(policy: makePolicy())]
-        )
+        viewModel.apply(schedules: [makeScheduleDetail(policy: makePolicy())])
 
         let window = viewModel.timeWindow(
             for: session,
@@ -569,11 +530,7 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
         let policy = makePolicy()
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [makeScheduleDetail(policy: policy)]
-        )
+        viewModel.apply(schedules: [makeScheduleDetail(policy: policy)])
 
         #expect(viewModel.attendancePolicy(for: session.info.sessionId) == policy)
     }
@@ -588,16 +545,12 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
 
     // MARK: - 서버 일정 ID 조회 (제출 경로)
 
-    @Test("조회된 일정의 서버 ID가 반환된다")
-    func scheduleIdReadsLoadedPayload() async {
+    @Test("전달된 일정의 서버 ID가 반환된다")
+    func scheduleIdReadsAppliedPayload() {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [makeScheduleDetail(scheduleId: "S-1")]
-        )
+        viewModel.apply(schedules: [makeScheduleDetail(scheduleId: "S-1")])
 
         #expect(viewModel.scheduleId(for: session.info.sessionId) == "S-1")
     }
@@ -605,8 +558,8 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
     /// 회귀 박제 — 일정 ID가 없으면 출석·사유 제출이 서버에 도달할 수 없다.
     /// 화면은 이 nil 을 근거로 액션 버튼을 비활성화해, 사용자가 작성한 사유가
     /// 조용히 버려지지 않게 한다.
-    @Test("일정 ID 미조회 세션은 nil 을 반환한다")
-    func scheduleIdReturnsNilWhenNotFetched() {
+    @Test("일정 페이로드에 없는 세션은 nil 을 반환한다")
+    func scheduleIdReturnsNilWhenNotApplied() {
         let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
         let session = makeSession()
 
@@ -664,17 +617,13 @@ struct ChallengerAttendanceViewModelGuidanceTests {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [
-                makeScheduleDetail(
-                    policy: makePolicy(
-                        onTimeEndAt: fixedNow.addingTimeInterval(420)  // 7분 뒤 마감
-                    )
+        viewModel.apply(schedules: [
+            makeScheduleDetail(
+                policy: makePolicy(
+                    onTimeEndAt: fixedNow.addingTimeInterval(420)  // 7분 뒤 마감
                 )
-            ]
-        )
+            )
+        ])
 
         let text = try #require(viewModel.attendanceGuidanceText(for: session, at: fixedNow))
 
@@ -687,18 +636,14 @@ struct ChallengerAttendanceViewModelGuidanceTests {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [
-                makeScheduleDetail(
-                    policy: makePolicy(
-                        onTimeEndAt: fixedNow.addingTimeInterval(-60),  // 정시 마감 지남
-                        lateEndAt: fixedNow.addingTimeInterval(720)     // 지각 마감 12분 뒤
-                    )
+        viewModel.apply(schedules: [
+            makeScheduleDetail(
+                policy: makePolicy(
+                    onTimeEndAt: fixedNow.addingTimeInterval(-60),  // 정시 마감 지남
+                    lateEndAt: fixedNow.addingTimeInterval(720)     // 지각 마감 12분 뒤
                 )
-            ]
-        )
+            )
+        ])
 
         let text = try #require(viewModel.attendanceGuidanceText(for: session, at: fixedNow))
 
@@ -711,17 +656,13 @@ struct ChallengerAttendanceViewModelGuidanceTests {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [
-                makeScheduleDetail(
-                    policy: makePolicy(
-                        checkInStartAt: fixedNow.addingTimeInterval(600)  // 10분 뒤 시작
-                    )
+        viewModel.apply(schedules: [
+            makeScheduleDetail(
+                policy: makePolicy(
+                    checkInStartAt: fixedNow.addingTimeInterval(600)  // 10분 뒤 시작
                 )
-            ]
-        )
+            )
+        ])
 
         let text = try #require(viewModel.attendanceGuidanceText(for: session, at: fixedNow))
 
@@ -742,17 +683,13 @@ struct ChallengerAttendanceViewModelGuidanceTests {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [
-                makeScheduleDetail(
-                    policy: makePolicy(
-                        onTimeEndAt: fixedNow.addingTimeInterval(secondsLeft)
-                    )
+        viewModel.apply(schedules: [
+            makeScheduleDetail(
+                policy: makePolicy(
+                    onTimeEndAt: fixedNow.addingTimeInterval(secondsLeft)
                 )
-            ]
-        )
+            )
+        ])
 
         let text = try #require(viewModel.attendanceGuidanceText(for: session, at: fixedNow))
 
@@ -865,227 +802,52 @@ struct ChallengerAttendanceViewModelDelegationTests {
     }
 }
 
-// MARK: - 일정 목록/이력 로딩
+// MARK: - 일정 페이로드 반영
 
 @MainActor
-@Suite("ChallengerAttendanceViewModel — 일정 목록/이력 로딩 (도메인 규칙)")
-struct ChallengerAttendanceViewModelLoadingTests {
+@Suite("ChallengerAttendanceViewModel — 일정 페이로드 반영 (도메인 규칙)")
+struct ChallengerAttendanceViewModelScheduleTests {
 
-    @Test("첫 마운트 — 빈 배열 시드 후 배경 갱신으로 페이로드를 채운다")
-    func loadOnAppearSeedsThenRefreshes() async throws {
-        let useCase = MockChallengerAttendanceUseCase()
-        useCase.availableSchedulesResult = .success([makeScheduleDetail()])
-        useCase.myHistoryResult = .success([makeScheduleDetail(scheduleId: "H-1")])
-        let viewModel = makeViewModel(useCase: useCase)
-
-        await viewModel.loadOnAppear()
-
-        #expect(viewModel.availableSchedules.value?.map(\.scheduleId) == ["S-1"])
-        #expect(viewModel.myHistory.value?.map(\.scheduleId) == ["H-1"])
-    }
-
-    @Test("첫 마운트 — 이력은 로딩 UI 를 태우는 fetch 경로로 조회한다")
-    func loadOnAppearUsesFetchForFirstHistoryLoad() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        let viewModel = makeViewModel(useCase: useCase)
-
-        await viewModel.loadOnAppear()
-
-        #expect(useCase.fetchMyHistoryCallCount == 1)
-        #expect(viewModel.myHistory.value != nil)
-    }
-
-    @Test("재등장 — 두 목록 모두 배경 갱신만 하고 로딩 상태로 되돌리지 않는다")
-    func loadOnAppearRefreshesOnReappear() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        let viewModel = makeViewModel(useCase: useCase)
-        await viewModel.loadOnAppear()
-
-        useCase.availableSchedulesResult = .success([makeScheduleDetail(scheduleId: "S-2")])
-        useCase.myHistoryResult = .success([makeScheduleDetail(scheduleId: "H-2")])
-        await viewModel.loadOnAppear()
-
-        #expect(viewModel.availableSchedules.value?.map(\.scheduleId) == ["S-2"])
-        #expect(viewModel.myHistory.value?.map(\.scheduleId) == ["H-2"])
-        #expect(useCase.fetchAvailableSchedulesCallCount == 2)
-        #expect(useCase.fetchMyHistoryCallCount == 2)
-    }
-
-    @Test("fetch 실패 → .failed 로 재시도 UI 를 노출한다")
-    func fetchAvailableSchedulesFailsToFailedState() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        useCase.availableSchedulesResult = .failure(DummyError())
-        let viewModel = makeViewModel(useCase: useCase)
-
-        await viewModel.fetchAvailableSchedules()
-
-        #expect(viewModel.availableSchedules.error != nil)
-    }
-
-    @Test("이력 fetch 실패 → .failed 로 재시도 UI 를 노출한다")
-    func fetchMyHistoryFailsToFailedState() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        useCase.myHistoryResult = .failure(DummyError())
-        let viewModel = makeViewModel(useCase: useCase)
-
-        await viewModel.fetchMyHistory()
-
-        #expect(viewModel.myHistory.error != nil)
-    }
-
-    @Test("배경 갱신 실패 → 기존 목록을 유지하고 .failed 로 전이하지 않는다")
-    func refreshFailureKeepsPreviousSchedules() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        useCase.availableSchedulesResult = .success([makeScheduleDetail()])
-        let viewModel = makeViewModel(useCase: useCase)
-        await viewModel.fetchAvailableSchedules()
-
-        useCase.availableSchedulesResult = .failure(DummyError())
-        await viewModel.refreshAvailableSchedules()
-
-        #expect(viewModel.availableSchedules.value?.map(\.scheduleId) == ["S-1"])
-        #expect(viewModel.availableSchedules.error == nil)
-    }
-}
-
-// MARK: - 조회 취소 처리
-
-@MainActor
-@Suite("ChallengerAttendanceViewModel — 조회 취소 처리 (도메인 규칙)")
-struct ChallengerAttendanceViewModelCancellationTests {
-
-    @Test("첫 조회 취소 → .idle 로 남아 다음 등장 때 다시 조회한다")
-    func cancelledFirstFetchStaysIdle() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        useCase.availableSchedulesResult = .failure(CancellationError())
-        let viewModel = makeViewModel(useCase: useCase)
-
-        await viewModel.fetchAvailableSchedules()
-
-        #expect(viewModel.availableSchedules.isIdle)
-        #expect(viewModel.availableSchedules.error == nil)
-    }
-
-    @Test("적재 후 조회 취소 → 이전 목록으로 되돌리고 에러 카드를 띄우지 않는다")
-    func cancelledRefetchRestoresPreviousSchedules() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        useCase.availableSchedulesResult = .success([makeScheduleDetail()])
-        let viewModel = makeViewModel(useCase: useCase)
-        await viewModel.fetchAvailableSchedules()
-
-        useCase.availableSchedulesResult = .failure(CancellationError())
-        await viewModel.fetchAvailableSchedules()
-
-        #expect(viewModel.availableSchedules.value?.map(\.scheduleId) == ["S-1"])
-        #expect(viewModel.availableSchedules.error == nil)
-    }
-
-    @Test("이력 조회 취소 → .failed 로 전이하지 않는다")
-    func cancelledHistoryFetchDoesNotFail() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        useCase.myHistoryResult = .failure(CancellationError())
-        let viewModel = makeViewModel(useCase: useCase)
-
-        await viewModel.fetchMyHistory()
-
-        #expect(viewModel.myHistory.error == nil)
-        #expect(viewModel.myHistory.isIdle)
-    }
-
-    @Test("조회 진행 중 재호출 → 중복 요청을 보내지 않는다")
-    func concurrentFetchIsGuarded() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        useCase.gateAvailableSchedules = true
-        let viewModel = makeViewModel(useCase: useCase)
-
-        let first = Task { await viewModel.fetchAvailableSchedules() }
-        await drainUntil { useCase.fetchAvailableSchedulesCallCount == 1 }
-
-        // 진행 중인 요청이 아직 안 끝난 시점의 재호출은 무시돼야 한다.
-        await viewModel.fetchAvailableSchedules()
-        #expect(useCase.fetchAvailableSchedulesCallCount == 1)
-
-        useCase.openAvailableSchedulesGate()
-        await first.value
-        #expect(viewModel.availableSchedules.value != nil)
-    }
-}
-
-// MARK: - 일정 매핑 / 폴링 동기화
-
-@MainActor
-@Suite("ChallengerAttendanceViewModel — 일정 매핑·폴링 동기화 (도메인 규칙)")
-struct ChallengerAttendanceViewModelSyncTests {
-
-    @Test("조회 전 → 일정 매핑이 nil")
-    func scheduleLookupNilBeforeLoad() {
-        let useCase = MockChallengerAttendanceUseCase()
-        let viewModel = makeViewModel(useCase: useCase)
+    /// 회귀 박제 — 이 ViewModel 은 일정을 직접 조회하지 않는다. 조회를 되살리면 상위
+    /// (`ActivityViewModel`)와 같은 엔드포인트를 두 번 때리게 된다.
+    @Test("전달 전 → 일정 매핑이 nil")
+    func scheduleLookupNilBeforeApply() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
 
         #expect(viewModel.schedule(for: SessionID(value: "S-1")) == nil)
         #expect(viewModel.scheduleId(for: SessionID(value: "S-1")) == nil)
     }
 
-    @Test("조회 후 → SessionID 와 같은 scheduleId 를 돌려준다")
-    func scheduleLookupResolvesLoadedPayload() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        let viewModel = makeViewModel(useCase: useCase)
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [makeScheduleDetail(scheduleId: "S-1")]
-        )
+    @Test("전달 후 → SessionID 와 같은 scheduleId 를 돌려준다")
+    func scheduleLookupResolvesAppliedPayload() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+
+        viewModel.apply(schedules: [makeScheduleDetail(scheduleId: "S-1")])
 
         #expect(viewModel.scheduleId(for: SessionID(value: "S-1")) == "S-1")
         #expect(viewModel.scheduleId(for: SessionID(value: "S-9")) == nil)
     }
 
-    @Test("폴링 동기화 — 서버 출석 상태를 Session 에 전파한다")
-    func syncPropagatesServerStatusToSession() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        let viewModel = makeViewModel(useCase: useCase)
-        let session = makeSession()
-        viewModel.configurePollingSessions([session], userId: UserID(value: "U-1"))
+    @Test("페이로드를 다시 전달하면 최신 목록으로 교체한다")
+    func applyReplacesPayload() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
 
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [makeScheduleDetail(attendanceStatus: .present)]
-        )
+        viewModel.apply(schedules: [makeScheduleDetail(scheduleId: "S-1")])
+        viewModel.apply(schedules: [makeScheduleDetail(scheduleId: "S-2")])
 
-        #expect(session.attendanceStatus == .present)
+        #expect(viewModel.schedules.map(\.scheduleId) == ["S-2"])
+        #expect(viewModel.scheduleId(for: SessionID(value: "S-1")) == nil)
     }
 
-    @Test("폴링 동기화 — 서버가 상태를 안 주면 로컬 상태를 덮어쓰지 않는다")
-    func syncKeepsSessionWhenServerStatusMissing() async {
+    @Test("페이로드를 반영해도 일정 조회 요청은 보내지 않는다")
+    func applyDoesNotQueryUseCase() {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
-        let session = makeSession(initialAttendance: makeAttendance(status: .late))
-        viewModel.configurePollingSessions([session], userId: UserID(value: "U-1"))
 
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [makeScheduleDetail(attendanceStatus: nil)]
-        )
+        viewModel.apply(schedules: [makeScheduleDetail()])
 
-        #expect(session.attendanceStatus == .late)
-    }
-
-    @Test("폴링 동기화 — 목록에 없는 세션은 건드리지 않는다")
-    func syncIgnoresUnmatchedSession() async {
-        let useCase = MockChallengerAttendanceUseCase()
-        let viewModel = makeViewModel(useCase: useCase)
-        let session = makeSession(sessionId: "S-1")
-        viewModel.configurePollingSessions([session], userId: UserID(value: "U-1"))
-
-        await seedSchedules(
-            viewModel,
-            useCase: useCase,
-            schedules: [makeScheduleDetail(scheduleId: "S-9", attendanceStatus: .absent)]
-        )
-
-        #expect(session.attendanceStatus == .beforeAttendance)
+        #expect(useCase.fetchAvailableSchedulesCallCount == 0)
+        #expect(useCase.fetchMyHistoryCallCount == 0)
     }
 }
 

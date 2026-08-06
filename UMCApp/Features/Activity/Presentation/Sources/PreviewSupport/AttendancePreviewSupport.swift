@@ -37,10 +37,6 @@ final class PreviewChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
         self.schedules = schedules
     }
 
-    /// 프리뷰가 미리 세팅한 것과 같은 목록을 돌려준다.
-    ///
-    /// 화면의 `.task` 가 `loadOnAppear()` 로 배경 갱신을 돌리므로, 여기서 빈 배열을 주면
-    /// 세팅해 둔 일정이 지워져 프리뷰가 비어 버린다.
     func fetchAvailableSchedules(now: Date) async throws -> [ScheduleDetailData] { schedules }
 
     func fetchMyHistory(now: Date) async throws -> [ScheduleDetailData] { [] }
@@ -250,17 +246,25 @@ enum AttendancePreviewData {
         timeWindow: AttendanceTimeWindow = .onTime,
         sessions: [Session] = []
     ) -> ChallengerAttendanceViewModel {
-        let schedules = sessions.map { schedule(for: $0, timeWindow: timeWindow) }
+        let payload = schedules(for: sessions, timeWindow: timeWindow)
         let viewModel = ChallengerAttendanceViewModel(
             errorHandler: ErrorHandler(),
             challengerAttendanceUseCase: PreviewChallengerAttendanceUseCase(
                 timeWindow: timeWindow,
-                schedules: schedules
+                schedules: payload
             )
         )
-        // 첫 렌더부터 일정이 보이도록 즉시 세팅한다 (`.task` 갱신도 같은 목록을 돌려준다).
-        viewModel.seedSchedulesForPreview(schedules)
+        viewModel.apply(schedules: payload)
         return viewModel
+    }
+
+    /// 세션 목록에 대응하는 프리뷰 일정 페이로드
+    @MainActor
+    static func schedules(
+        for sessions: [Session],
+        timeWindow: AttendanceTimeWindow = .onTime
+    ) -> [ScheduleDetailData] {
+        sessions.map { schedule(for: $0, timeWindow: timeWindow) }
     }
 
     /// 세션 하나에 대응하는 프리뷰 일정 페이로드
@@ -335,6 +339,7 @@ enum AttendancePreviewData {
             container: container,
             errorHandler: ErrorHandler(),
             sessions: sessions,
+            schedules: schedules(for: sessions),
             userId: userId,
             viewModel: viewModel(sessions: sessions)
         )

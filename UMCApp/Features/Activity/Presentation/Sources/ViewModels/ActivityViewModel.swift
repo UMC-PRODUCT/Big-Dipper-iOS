@@ -16,6 +16,9 @@ import UMCFoundation
 /// 아니라 출석 가능 일정(`ChallengerAttendanceUseCaseProtocol.fetchAvailableSchedules()`)
 /// 에서 파생한다 — 레거시의 `FetchSessionsUseCase` 는 #994 가 일정 조회로 흡수했다.
 ///
+/// 같은 조회에서 나온 일정 원본(`schedules`)도 함께 소유해 자식 화면에 내려준다. 자식이
+/// 따로 조회하면 화면 진입 1회에 같은 엔드포인트로 요청이 두 번 나가기 때문이다.
+///
 /// DIP 를 지켜 UseCase Protocol 에만 의존하므로, 테스트는 Mock 만으로 완결된다.
 @MainActor
 @Observable
@@ -32,6 +35,22 @@ final class ActivityViewModel {
     private(set) var sessionsState: Loadable<[Session]> = .idle
     private(set) var userId: UserID?
 
+    /// 세션의 출석 정책·서버 상태 원본 (세션 목록과 같은 조회에서 나온다)
+    private(set) var schedules: [ScheduleDetailData] = []
+
+    /// 출석 상태 변경 알림 관찰 토큰
+    ///
+    /// UI 관찰 대상이 아닌 내부 구현 세부사항이라 `@ObservationIgnored` 로 추적에서 제외한다.
+    /// deinit(nonisolated)에서 해제해야 하므로 `nonisolated(unsafe)` — init 1회 설정 + deinit
+    /// 해제만이라 동시 접근이 없다.
+    @ObservationIgnored
+    private nonisolated(unsafe) var statusObserver: (any NSObjectProtocol)?
+
+    /// 폴링 간격
+    private enum PollingConfig {
+        static let intervalSeconds: Int = 30
+    }
+
     // MARK: - Init
 
     init(
@@ -42,6 +61,28 @@ final class ActivityViewModel {
         self.challengerAttendanceUseCase = challengerAttendanceUseCase
         self.fetchUserIdUseCase = fetchUserIdUseCase
         self.classifyScheduleUseCase = classifyScheduleUseCase
+        observeAttendanceStatusChange()
+    }
+
+    deinit {
+        if let observer = statusObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    // MARK: - Notification
+
+    /// 운영진이 출석을 승인/반려하면 세션 상태를 서버 기준으로 다시 맞춘다.
+    private func observeAttendanceStatusChange() {
+        statusObserver = NotificationCenter.default.addObserver(
+            forName: .attendanceStatusChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.refreshSessions()
+            }
+        }
     }
 
     // MARK: - Action
@@ -71,8 +112,9 @@ final class ActivityViewModel {
         let previous = sessionsState
         sessionsState = .loading
         do {
-            let schedules = try await challengerAttendanceUseCase.fetchAvailableSchedules()
-            sessionsState = .loaded(await makeSessions(from: schedules))
+            let fresh = try await challengerAttendanceUseCase.fetchAvailableSchedules()
+            schedules = fresh
+            sessionsState = .loaded(await makeSessions(from: fresh))
         } catch {
             sessionsState = state(after: error, previous: previous)
         }
@@ -83,7 +125,7 @@ final class ActivityViewModel {
     /// 일정 멤버십(scheduleId 집합)이 그대로면 `sessionsState` 를 건드리지 않는다. `Session`
     /// 은 참조 타입이라 배열을 교체하면 제출 여부(`hasSubmitted`) 같은 로컬 상태가 새 인스턴스로
     /// 리셋되기 때문이다. 집합이 달라진 경우(일정 추가·삭제)에만 교체해 자식 `onChange` 를
-    /// 트리거한다. 개별 세션의 출석 상태 동기화는 자식 화면의 폴링이 담당한다.
+    /// 트리거하고, 그대로면 기존 인스턴스에 서버 출석 상태만 전파한다.
     func refreshSessions() async {
         guard !sessionsState.isLoading else { return }
         guard case .loaded(let current) = sessionsState else {
@@ -93,13 +135,42 @@ final class ActivityViewModel {
         }
 
         do {
-            let schedules = try await challengerAttendanceUseCase.fetchAvailableSchedules()
+            let fresh = try await challengerAttendanceUseCase.fetchAvailableSchedules()
+            schedules = fresh
             let currentIds = Set(current.map(\.id.value))
-            let freshIds = Set(schedules.map(\.scheduleId))
-            guard currentIds != freshIds else { return }
-            sessionsState = .loaded(await makeSessions(from: schedules))
+            let freshIds = Set(fresh.map(\.scheduleId))
+            guard currentIds != freshIds else {
+                syncSessionStates(current, with: fresh)
+                return
+            }
+            sessionsState = .loaded(await makeSessions(from: fresh))
         } catch {
             // 배경 갱신 실패는 화면을 막지 않는다 (취소 포함). 기존 목록을 유지한다.
+        }
+    }
+
+    // MARK: - Polling
+
+    /// 진행 중인 세션이 있는 동안 주기적으로 서버 상태를 갱신한다.
+    ///
+    /// `.task` 모디파이어에서 호출하면 뷰가 사라질 때 자동 취소된다. 루프 시작 전 1회 갱신은
+    /// 하지 않는다 — 진입 시 `load()` 가 방금 같은 엔드포인트를 조회했으므로 중복 요청이 된다.
+    func startPollingIfNeeded() async {
+        await PollingLoop.run(
+            intervalSeconds: PollingConfig.intervalSeconds,
+            while: { hasActiveSession },
+            refresh: { await refreshSessions() }
+        )
+    }
+
+    /// 진행 중인 세션이 하나라도 있는지 확인
+    private var hasActiveSession: Bool {
+        guard case .loaded(let sessions) = sessionsState else { return false }
+        return sessions.contains { session in
+            OperatorSessionStatus.from(
+                startTime: session.info.startTime,
+                endTime: session.info.endTime
+            ) == .inProgress
         }
     }
 
@@ -117,6 +188,31 @@ final class ActivityViewModel {
     }
 
     // MARK: - Function
+
+    /// 조회된 서버 출석 상태를 기존 `Session` 인스턴스에 전파한다.
+    ///
+    /// `ScheduleDetailData.scheduleId` 와 `Session.id` 를 맞춰 상태를 옮긴다.
+    ///
+    /// 서버가 `attendanceStatus` 를 안 내려준 일정(`nil`)은 건너뛴다. `nil` 은 "출석 전" 이라는
+    /// 판정이 아니라 정보 없음이므로, 이를 `.beforeAttendance` 로 치환하면 방금 제출해
+    /// 지각/승인 대기로 올라간 로컬 상태를 되돌려 버린다.
+    private func syncSessionStates(
+        _ sessions: [Session],
+        with schedules: [ScheduleDetailData]
+    ) {
+        guard let userId else { return }
+
+        let statusByScheduleId: [String: AttendanceStatus] = schedules.reduce(into: [:]) {
+            partialResult, schedule in
+            guard let status = schedule.attendanceStatus else { return }
+            partialResult[schedule.scheduleId] = AttendanceStatus(scheduleStatus: status)
+        }
+
+        for session in sessions {
+            guard let serverStatus = statusByScheduleId[session.id.value] else { continue }
+            session.updateStatusFromPolling(serverStatus, userId: userId)
+        }
+    }
 
     /// 일정 목록을 세션 목록으로 변환한다 (시작 시각 오름차순).
     ///

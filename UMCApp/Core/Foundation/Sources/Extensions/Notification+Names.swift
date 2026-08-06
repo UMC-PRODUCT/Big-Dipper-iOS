@@ -31,7 +31,7 @@ public extension Notification.Name {
     /// 출석 승인/반려 상태 변경 알림.
     ///
     /// 운영진이 출석을 승인/반려하면 발송됩니다.
-    /// 챌린저 ViewModel이 수신하여 `myHistory`를 갱신합니다.
+    /// Activity 탭 ViewModel이 수신하여 세션 목록을 서버 상태로 다시 맞춥니다.
     static let attendanceStatusChanged = Notification.Name("attendanceStatusChanged")
 
     /// 기수 매핑 정보가 갱신되었을 때 발송되는 알림.
