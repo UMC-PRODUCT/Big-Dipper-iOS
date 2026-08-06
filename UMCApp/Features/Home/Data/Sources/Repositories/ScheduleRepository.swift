@@ -65,6 +65,26 @@ public final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Se
         return Dictionary(grouping: schedules) { calendar.startOfDay(for: $0.startsAt) }
     }
 
+    /// 단일 일정 상세를 조회한다. 목록과 응답 스키마가 같아 같은 DTO/도메인 모델을 쓴다.
+    public func fetchScheduleDetail(scheduleId: String) async throws -> ScheduleDetailData {
+        let response = try await networkRequesting.request(
+            ScheduleV2Router.getScheduleDetail(scheduleId: scheduleId)
+        )
+
+        do {
+            let apiResponse = try JSONDecoder().decode(
+                APIResponse<ScheduleDetailDTO>.self,
+                from: response.data
+            )
+            return try apiResponse.unwrap().toDomain()
+        } catch let decodingError as DecodingError {
+            #if DEBUG
+            print("[ScheduleRepository] fetchScheduleDetail decodingError=\(decodingError)")
+            #endif
+            throw RepositoryError.decodingError(detail: "\(decodingError)")
+        }
+    }
+
     /// 일정을 생성하고 서버가 돌려준 식별자를 반환한다.
     ///
     /// 서버는 생성 결과로 일정 ID 스칼라 하나만 내려준다. 절대 규칙 #2 에 따라 정수를

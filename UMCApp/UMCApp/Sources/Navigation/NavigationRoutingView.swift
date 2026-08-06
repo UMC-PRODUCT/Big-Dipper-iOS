@@ -5,7 +5,9 @@
 //  Created by euijjang97 on 7/8/26.
 //
 
+import ActivityPresentation
 import CoreDI
+import CoreRouting
 import HomePresentation
 import NoticePresentation
 import SwiftUI
@@ -21,6 +23,8 @@ struct NavigationRoutingView: View {
 
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
+    // `NoticePresentation` 이 같은 이름의 로컬 스텁을 아직 들고 있어 모듈을 명시한다.
+    @Environment(CoreRouting.PathStore.self) private var pathStore
     private let destination: NavigationDestination
 
     // MARK: - Init
@@ -49,9 +53,19 @@ private extension NavigationRoutingView {
         switch route {
         case .alarmHistory:
             NoticeAlarmView()
-        case .scheduleDetail:
-            // ScheduleDetailView는 Schedule 모듈 분리 이슈(#981)에서 이식된다.
-            Text("아직 지원하지 않는 화면입니다")
+        case .scheduleDetail(let scheduleId):
+            ScheduleDetailView(
+                container: di,
+                scheduleId: scheduleId,
+                onAttendanceStatusTapped: {
+                    // 출석 현황은 Activity 탭이 소유한 목적지라, 탭을 옮긴 뒤 그 탭 스택에 쌓는다.
+                    pathStore.selectedTab = .activity
+                    pathStore.push(
+                        ActivityDestination.attendanceDetail(scheduleId: scheduleId),
+                        on: .activity
+                    )
+                }
+            )
         }
     }
 }

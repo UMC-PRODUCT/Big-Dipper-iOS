@@ -29,6 +29,9 @@ public protocol ScheduleRepositoryProtocol {
         isAttendanceRequired: Bool
     ) async throws -> [Date: [ScheduleDetailData]]
 
+    /// 단일 일정 상세 조회. 목록과 동일 스키마이므로 같은 도메인 모델을 돌려준다.
+    func fetchScheduleDetail(scheduleId: String) async throws -> ScheduleDetailData
+
     /// 일정을 생성하고 생성된 일정 식별자를 돌려준다.
     ///
     /// - Returns: 생성된 일정 식별자 (서버 정수를 절대 규칙 #2 에 따라 `String` 으로 보존)

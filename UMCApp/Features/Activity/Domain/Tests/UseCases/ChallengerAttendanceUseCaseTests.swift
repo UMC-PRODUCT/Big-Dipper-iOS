@@ -178,6 +178,10 @@ private final class MockScheduleRepository: @unchecked Sendable, ScheduleReposit
 
     // MARK: 계약 밖 메서드 (호출 시 실패 — 출석 UseCase 는 조회만 사용)
 
+    func fetchScheduleDetail(scheduleId: String) async throws -> ScheduleDetailData {
+        fatalError("fetchScheduleDetail 은 ChallengerAttendanceUseCase 계약 밖입니다.")
+    }
+
     func createSchedule(_ request: ScheduleCreationRequest) async throws -> String {
         fatalError("createSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
     }
