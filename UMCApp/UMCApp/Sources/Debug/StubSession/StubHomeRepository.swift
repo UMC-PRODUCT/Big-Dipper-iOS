@@ -16,5 +16,8 @@ struct StubHomeRepository: HomeRepositoryProtocol {
     func fetchMyProfile(forceRefresh: Bool) async throws -> HomeProfileResult {
         StubSessionFixtures.homeProfileResult
     }
+
+    /// stub 세션에는 등록할 서버가 없으므로 no-op.
+    func registerFCMToken(fcmToken: String) async throws {}
 }
 #endif

@@ -57,6 +57,17 @@ public final class HomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
         )
     }
 
+    public func registerFCMToken(fcmToken: String) async throws {
+        let response = try await networkRequesting.request(
+            HomeRouter.putFCMToken(fcmToken: fcmToken)
+        )
+        let apiResponse = try JSONDecoder().decode(
+            APIResponse<EmptyResult>.self,
+            from: response.data
+        )
+        try apiResponse.validateSuccess()
+    }
+
     // MARK: - Private Function
 
     /// 소속 기수 목록과, 가장 이른 기수 시작일 기준 누적 활동일을 시즌 카드 값으로 구성한다.
