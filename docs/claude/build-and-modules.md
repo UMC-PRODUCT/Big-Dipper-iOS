@@ -113,6 +113,11 @@ External Packages     (Moya 15.0.3 / Kingfisher 8.6.1)
 
 > **경계 정책 — BusinessCard**: `Model3D`/`RealityView` 등 RealityKit 렌더링은 `BusinessCardPresentation` 내부에만 캡슐화한다. MyPage·Home·Community·Activity·Auth 등 명함을 노출하는 Feature는 `BusinessCardPresentation`만 링크하며, RealityKit을 직접 링크하지 않는다.
 
+> **경계 정책 — 일정(Schedule) (#981 확정)**: 전용 Schedule Feature 모듈은 **신설하지 않는다.**
+> 일정 도메인의 단일 소유자는 `HomeDomain`(모델·Repository/UseCase Protocol) + `HomeData`(`ScheduleV2Router`·`ScheduleRepository`·일정 DTO) + `HomePresentation`(일정 화면)이다.
+> Activity 등 다른 Feature 는 `ScheduleDetailData`·`ScheduleLocation`·`ScheduleAttendancePolicy`·`ScheduleRepositoryProtocol` 을 **HomeDomain 에서 재사용**하며 자체 일정 모델을 다시 만들지 않는다.
+> 단, 엔드포인트별 wire DTO 는 각 Feature Data 에 두는 것이 원칙이다 — 출석 응답의 `ScheduleLocationDTO`/`ScheduleAttendancePolicyDTO`(ActivityData)와 V2 일정 응답의 동명 DTO(HomeData)는 서로 다른 엔드포인트 계약이므로 의도적으로 분리돼 있고, 둘 다 같은 HomeDomain 모델로 매핑한다. (ActivityData → HomeData 링크는 HomeData 의 CoreML 리소스 번들까지 끌고 오므로 통합하지 않는다.)
+
 ### Feature 모듈 구조
 
 각 Feature는 Clean Architecture에 따라 **3개 타겟**으로 분리됩니다.

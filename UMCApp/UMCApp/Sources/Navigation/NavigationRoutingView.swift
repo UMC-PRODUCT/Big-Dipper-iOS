@@ -50,7 +50,9 @@ private extension NavigationRoutingView {
         case .alarmHistory:
             NoticeAlarmView()
         case .scheduleDetail:
-            // ScheduleDetailView는 Schedule 모듈 분리 이슈(#981)에서 이식된다.
+            // ScheduleDetailView는 HomePresentation 이식 대상이다 (#981 에서 소유 모듈 확정).
+            // 상세 화면이 리소스 권한(수정/삭제/강제삭제)에 의존하는데 AuthorizationUseCase 가
+            // 아직 UMCApp 에 이식되지 않아 별도 이슈로 남는다.
             Text("아직 지원하지 않는 화면입니다")
         }
     }
