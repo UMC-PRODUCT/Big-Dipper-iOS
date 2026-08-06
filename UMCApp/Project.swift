@@ -65,6 +65,7 @@ let project = Project(
                 .project(target: "ActivityDomain", path: .relativeToRoot("Features/Activity")),
                 .project(target: "ActivityPresentation", path: .relativeToRoot("Features/Activity")),
                 .project(target: "ActivityData", path: .relativeToRoot("Features/Activity")),
+                .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
                 .project(target: "HomePresentation", path: .relativeToRoot("Features/Home")),
                 .project(target: "HomeData", path: .relativeToRoot("Features/Home")),
                 .project(target: "CommunityPresentation", path: .relativeToRoot("Features/Community")),
