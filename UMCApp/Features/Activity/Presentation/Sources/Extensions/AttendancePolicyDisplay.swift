@@ -38,9 +38,9 @@ enum AttendancePolicyRole {
 
     var tintColor: Color {
         switch self {
-        case .checkIn: .green
-        case .onTime: .orange
-        case .late: .red
+        case .checkIn: .green500
+        case .onTime: .orange500
+        case .late: .red500
         }
     }
 }

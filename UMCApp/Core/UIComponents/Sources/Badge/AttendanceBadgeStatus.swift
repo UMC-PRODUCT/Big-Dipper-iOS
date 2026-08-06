@@ -91,4 +91,15 @@ public enum AttendanceBadgeStatus: String, CaseIterable, Equatable, Hashable, Se
             return .grey600
         }
     }
+
+    /// 배지/카드 배경에 채울 색상 (``tintColor`` 를 옅게 깐 값)
+    public var backgroundColor: Color {
+        tintColor.opacity(Constants.backgroundOpacity)
+    }
+
+    // MARK: - Constants
+
+    private enum Constants {
+        static let backgroundOpacity: Double = 0.18
+    }
 }

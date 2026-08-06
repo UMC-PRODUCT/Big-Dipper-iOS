@@ -98,7 +98,7 @@ private struct MyAttendanceItemPresenter: View, Equatable {
             }
         }
         .padding(DefaultConstant.defaultListPadding)
-        .background(.white)
+        .background(Color.grey000)
         .contentShape(Rectangle())
         .onTapGesture {
             guard hasExpandableContent else { return }

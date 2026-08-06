@@ -70,7 +70,7 @@ struct ChallengerSessionCard: View, Equatable {
                 corners: .concentric(minimum: DefaultConstant.concentricRadius),
                 isUniform: true
             )
-            .fill(.white)
+            .fill(Color.grey000)
             .glass()
         }
         .contentShape(Rectangle())

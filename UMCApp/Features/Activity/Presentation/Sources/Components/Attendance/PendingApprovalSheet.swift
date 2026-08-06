@@ -171,7 +171,7 @@ struct PendingApprovalSheet: View {
         } label: {
             Label("승인", systemImage: "checkmark")
         }
-        .tint(.green)
+        .tint(Color.green500)
         .disabled(isProcessing)
 
         Button {
@@ -179,7 +179,7 @@ struct PendingApprovalSheet: View {
         } label: {
             Label("거절", systemImage: "xmark")
         }
-        .tint(.red)
+        .tint(Color.red500)
         .disabled(isProcessing)
 
         if let reason = participant.excuseReason, !reason.isEmpty {
@@ -188,7 +188,7 @@ struct PendingApprovalSheet: View {
             } label: {
                 Label("사유", systemImage: "text.bubble")
             }
-            .tint(.orange)
+            .tint(Color.orange500)
         }
     }
 
