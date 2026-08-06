@@ -9,6 +9,7 @@ import CoreDesignSystem
 import CoreDI
 import FirebaseCore
 import GoogleSignIn
+import HomeDomain
 import KakaoSDKAuth
 import KakaoSDKCommon
 import MaintenancePresentation
@@ -173,6 +174,7 @@ extension UMCAppApp {
         let schema = Schema([
             NoticeReadRecord.self,
             AITokenDailyUsageRecord.self,
+            NoticeHistoryData.self,
         ])
 
         do {

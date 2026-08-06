@@ -41,9 +41,18 @@ extension DIContainer {
         register(StudyRepositoryProtocol.self) {
             StubStudyRepository()
         }
+        register(MemberRepositoryProtocol.self) {
+            StubMemberRepository()
+        }
+        register(ChallengerAttendanceRepositoryProtocol.self) {
+            StubAttendanceRepository()
+        }
+        register(OperatorAttendanceRepositoryProtocol.self) {
+            StubAttendanceRepository()
+        }
 
         Logger(subsystem: "UMCApp", category: "StubSession")
-            .notice("Stub 세션 모드 활성화 — 인증·홈·공지·스터디 데이터가 픽스처로 대체됩니다.")
+            .notice("Stub 세션 모드 활성화 — 인증·홈·공지·스터디·멤버·출석 데이터가 픽스처로 대체됩니다.")
     }
 }
 #endif

@@ -5,7 +5,9 @@
 //  Created by euijjang97 on 7/8/26.
 //
 
+import ActivityPresentation
 import CoreDI
+import CoreRouting
 import HomePresentation
 import NoticePresentation
 import SwiftUI
@@ -21,6 +23,8 @@ struct NavigationRoutingView: View {
 
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
+    // `NoticePresentation` 이 같은 이름의 로컬 스텁을 아직 들고 있어 모듈을 명시한다.
+    @Environment(CoreRouting.PathStore.self) private var pathStore
     private let destination: NavigationDestination
 
     // MARK: - Init
@@ -49,11 +53,19 @@ private extension NavigationRoutingView {
         switch route {
         case .alarmHistory:
             NoticeAlarmView()
-        case .scheduleDetail:
-            // ScheduleDetailView는 HomePresentation 이식 대상이다 (#981 에서 소유 모듈 확정).
-            // 상세 화면이 리소스 권한(수정/삭제/강제삭제)에 의존하는데 AuthorizationUseCase 가
-            // 아직 UMCApp 에 이식되지 않아 별도 이슈로 남는다.
-            Text("아직 지원하지 않는 화면입니다")
+        case .scheduleDetail(let scheduleId):
+            ScheduleDetailView(
+                container: di,
+                scheduleId: scheduleId,
+                onAttendanceStatusTapped: {
+                    // 출석 현황은 Activity 탭이 소유한 목적지라, 탭을 옮긴 뒤 그 탭 스택에 쌓는다.
+                    pathStore.selectedTab = .activity
+                    pathStore.push(
+                        ActivityDestination.attendanceDetail(scheduleId: scheduleId),
+                        on: .activity
+                    )
+                }
+            )
         }
     }
 }

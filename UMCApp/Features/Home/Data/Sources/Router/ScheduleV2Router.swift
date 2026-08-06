@@ -25,6 +25,8 @@ enum ScheduleV2Router: BaseTargetType {
 
     /// 내 일정 목록 조회 (기간 + 출석 필수 필터)
     case getMySchedules(query: MySchedulesQuery)
+    /// 단일 일정 상세 조회 (`deleteSchedule` 과 경로가 같고 method 로만 갈린다)
+    case getScheduleDetail(scheduleId: String)
     /// 일정 생성
     case postSchedule(body: ScheduleCreateRequestDTO)
     /// 일정 삭제 (스터디 일정 등록 2단계 실패 시 1단계 롤백 등)
@@ -38,7 +40,7 @@ enum ScheduleV2Router: BaseTargetType {
             return "/api/v2/schedules/me"
         case .postSchedule:
             return "/api/v2/schedules"
-        case .deleteSchedule(let scheduleId):
+        case .getScheduleDetail(let scheduleId), .deleteSchedule(let scheduleId):
             return "/api/v2/schedules/\(scheduleId)"
         }
     }
@@ -47,7 +49,7 @@ enum ScheduleV2Router: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .getMySchedules:
+        case .getMySchedules, .getScheduleDetail:
             return .get
         case .postSchedule:
             return .post
@@ -67,7 +69,7 @@ enum ScheduleV2Router: BaseTargetType {
             )
         case .postSchedule(let body):
             return .requestJSONEncodable(body)
-        case .deleteSchedule:
+        case .getScheduleDetail, .deleteSchedule:
             return .requestPlain
         }
     }

@@ -9,10 +9,11 @@
 import ActivityDomain
 import UMCFoundation
 
-/// stub 세션에서 챌린저 스터디 화면을 서버 없이 표시하는 Repository.
+/// stub 세션에서 스터디 화면(챌린저·운영진)을 서버 없이 표시하는 Repository.
 ///
-/// 커리큘럼 조회와 주차 선택지는 픽스처를 반환한다.
-/// 운영진 스터디 그룹 관리·변경 기능은 실제 요청으로 넘어가지 않도록 미지원 에러를 던진다.
+/// 커리큘럼·스터디 그룹·제출 현황 조회는 픽스처를 반환한다.
+/// 그룹 CRUD·멤버/멘토 변경 등 서버에 반영돼야 하는 쓰기 액션은 실제 요청으로 넘어가지
+/// 않도록 미지원 에러를 던진다.
 struct StubStudyRepository: StudyRepositoryProtocol {
 
     // MARK: - 커리큘럼 / 미션
@@ -28,18 +29,28 @@ struct StubStudyRepository: StudyRepositoryProtocol {
     // MARK: - 운영진 스터디 그룹 조회
 
     func fetchStudyGroupDetails() async throws -> [StudyGroupInfo] {
-        throw StubSessionError.unsupported(action: "스터디 그룹 목록 조회")
+        StubSessionFixtures.studyGroups
     }
 
     func fetchStudyGroupDetailsPage(
         cursor: String?,
         size: Int
     ) async throws -> StudyGroupDetailsPage {
-        throw StubSessionError.unsupported(action: "스터디 그룹 목록 조회")
+        StudyGroupDetailsPage(
+            content: StubSessionFixtures.studyGroups,
+            hasNext: false,
+            nextCursor: nil
+        )
     }
 
     func fetchStudyGroupDetail(groupId: String) async throws -> StudyGroupInfo {
-        throw StubSessionError.unsupported(action: "스터디 그룹 상세 조회")
+        guard
+            let group = StubSessionFixtures.studyGroups
+                .first(where: { $0.serverID == groupId })
+        else {
+            throw StubSessionError.unsupported(action: "스터디 그룹 상세 조회")
+        }
+        return group
     }
 
     func resolveChallengerId(
@@ -50,7 +61,9 @@ struct StubStudyRepository: StudyRepositoryProtocol {
     }
 
     func fetchStudyGroupNames() async throws -> [StudyGroupName] {
-        throw StubSessionError.unsupported(action: "스터디 그룹 이름 조회")
+        StubSessionFixtures.studyGroups.map {
+            StudyGroupName(groupId: $0.serverID, name: $0.name)
+        }
     }
 
     // MARK: - 스터디원 제출 현황
@@ -61,7 +74,31 @@ struct StubStudyRepository: StudyRepositoryProtocol {
         cursor: String?,
         size: Int
     ) async throws -> StudyMemberSubmissionPage {
-        throw StubSessionError.unsupported(action: "스터디원 제출 현황 조회")
+        var rows = StubSessionFixtures.studyMemberSubmissions
+        if let studyGroupId {
+            rows = rows.filter { $0.studyGroupId == studyGroupId }
+        }
+        if !weekNos.isEmpty {
+            let weekSet = Set(weekNos)
+            rows = rows.compactMap { row in
+                let matched = row.weeks.filter { weekSet.contains($0.weekNo) }
+                guard !matched.isEmpty else { return nil }
+                return StudyMemberSubmission(
+                    studyGroupMemberId: row.studyGroupMemberId,
+                    memberId: row.memberId,
+                    memberName: row.memberName,
+                    nickname: row.nickname,
+                    schoolName: row.schoolName,
+                    profileImageURL: row.profileImageURL,
+                    studyGroupId: row.studyGroupId,
+                    studyGroupName: row.studyGroupName,
+                    part: row.part,
+                    partLabel: row.partLabel,
+                    weeks: matched
+                )
+            }
+        }
+        return StudyMemberSubmissionPage(content: rows, hasNext: false, nextCursor: nil)
     }
 
     // MARK: - 운영진 스터디 그룹 CRUD

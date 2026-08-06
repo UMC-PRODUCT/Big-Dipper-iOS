@@ -30,8 +30,6 @@ struct RootTabView: View {
 
     // MARK: - Property
 
-    @State private var selectedTab: NavigationTab = .home
-
     // `NoticePresentation` 이 같은 이름의 로컬 스텁(`NoticeNavigation.swift`)을 아직 들고 있어
     // 모듈을 명시한다. Notice 탭이 공유 경로로 옮겨오면 그 스텁과 함께 접두사도 사라진다.
     @State private var pathStore = CoreRouting.PathStore()
@@ -39,7 +37,7 @@ struct RootTabView: View {
     // MARK: - Body
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $pathStore.selectedTab) {
             ForEach(NavigationTab.allCases) { tab in
                 Tab(value: tab, role: tab.role) {
                     tabRootView(tab)
