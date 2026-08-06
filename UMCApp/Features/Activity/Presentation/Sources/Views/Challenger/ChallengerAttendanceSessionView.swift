@@ -9,6 +9,7 @@ import ActivityDomain
 import CoreDesignSystem
 import CoreDI
 import CoreUIComponents
+import HomeDomain
 import SwiftUI
 import UMCFoundation
 
@@ -44,10 +45,10 @@ struct ChallengerAttendanceSessionView: View {
     @State private var attendanceViewModel: ChallengerAttendanceViewModel
     @State private var mapViewModelCache = MapViewModelCache()
     @State private var expandedSessionId: Session.ID?
-    @Environment(\.scenePhase) private var scenePhase
 
     private let errorHandler: ErrorHandler
     private let sessions: [Session]
+    private let schedules: [ScheduleDetailData]
     private let userId: UserID
 
     // MARK: - Init
@@ -56,17 +57,20 @@ struct ChallengerAttendanceSessionView: View {
     ///   - container: 출석 UseCase 를 resolve 할 DI 컨테이너
     ///   - errorHandler: 흐름 중단형 전역 에러 처리기
     ///   - sessions: 상위(일정 화면)가 소유한 세션 목록
+    ///   - schedules: 세션과 같은 조회에서 나온 일정 원본 (출석 정책·일정 ID 조회용)
     ///   - userId: 출석 주체
     ///   - viewModel: 프리뷰/테스트용 주입 지점 (기본값: container 로 생성)
     init(
         container: DIContainer,
         errorHandler: ErrorHandler,
         sessions: [Session],
+        schedules: [ScheduleDetailData],
         userId: UserID,
         viewModel: ChallengerAttendanceViewModel? = nil
     ) {
         self.errorHandler = errorHandler
         self.sessions = sessions
+        self.schedules = schedules
         self.userId = userId
         _attendanceViewModel = State(
             initialValue: viewModel ?? ChallengerAttendanceViewModel(
@@ -129,24 +133,8 @@ struct ChallengerAttendanceSessionView: View {
             DefaultConstant.defaultContentBottomMargins,
             for: .scrollContent
         )
-        .task {
-            // configurePollingSessions 는 반드시 loadOnAppear 보다 먼저 호출.
-            // 세션 상태 동기화가 pollingSessions 에 의존한다.
-            attendanceViewModel.configurePollingSessions(sessions, userId: userId)
-            await attendanceViewModel.loadOnAppear()
-        }
-        .task {
-            await attendanceViewModel.startPollingIfNeeded(sessions: sessions)
-        }
-        .onChange(of: sessions.map(\.id)) { _, _ in
-            // 상위가 세션 배열을 교체한 경우(일정 추가/삭제) 폴링 대상과 일정 정보를
-            // 최신 세션에 맞춰 재구성한다.
-            attendanceViewModel.configurePollingSessions(sessions, userId: userId)
-            Task { await attendanceViewModel.refreshAvailableSchedules() }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            Task { await attendanceViewModel.refreshAfterForeground() }
+        .onChange(of: schedules, initial: true) { _, latest in
+            attendanceViewModel.apply(schedules: latest)
         }
         .onDisappear {
             Task { await attendanceViewModel.geofenceCleanup() }
@@ -160,9 +148,7 @@ struct ChallengerAttendanceSessionView: View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
             sectionHeader("출석 가능한 세션")
 
-            // TODO: Schedule 모듈 이식 후 일정 조회 로딩/실패 상태 분기 복원 - [26.08.02] 이재원
-            // — 세션 목록은 아직 상위 화면이 소유하고, ViewModel 의 availableSchedules
-            //   Loadable 은 Schedule 모듈과 함께 동결되어 있다. 재조회 UI 는 그때 붙인다.
+            // 조회 로딩·실패 UI 는 목록을 소유한 상위(`ActivityView`)가 그린다.
             if availableSessions.isEmpty {
                 emptySessionView
             } else {
@@ -201,10 +187,8 @@ struct ChallengerAttendanceSessionView: View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
             sectionHeader("나의 출석 현황")
 
-            // TODO: Schedule 모듈 이식 후 출석 이력 전용 조회로 교체 - [26.08.02] 이재원
-            // — 현재 이력은 상위가 넘긴 `sessions` 창에서 파생하므로, 그 창 밖의 과거
-            //   기록은 보이지 않는다(빈 상태 가이드가 뜰 수 있음). 레거시의 myHistory
-            //   API 는 ViewModel 의 Loadable 과 함께 동결되어 있다.
+            // 이력은 상위가 넘긴 `sessions` 창에서 파생하므로 그 창(출석 가능 일정 조회
+            // 구간) 밖의 과거 기록은 보이지 않는다 — 빈 상태 가이드가 뜰 수 있다.
             let items = attendanceHistoryItems
             if items.isEmpty {
                 emptyHistoryView
@@ -241,7 +225,7 @@ struct ChallengerAttendanceSessionView: View {
             // 빈 상태는 전환이 아니라 처음부터 표시되는 화면이므로
             // 전환 효과(symbolDrawOn)는 심볼이 그려지지 않아 정적 렌더로 표시합니다.
             Image(systemName: systemImage)
-                .font(.system(size: DefaultConstant.iconSize))
+                .font(.app(.largeTitle))
                 .foregroundStyle(tint)
 
             VStack(spacing: DefaultSpacing.spacing4) {
@@ -262,7 +246,7 @@ struct ChallengerAttendanceSessionView: View {
                 isUniform: true
             )
             .fill(Color.grey000)
-            .glass()
+            .cardShadow()
         }
     }
 

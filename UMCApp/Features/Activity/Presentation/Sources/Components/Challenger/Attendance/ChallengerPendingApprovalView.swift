@@ -16,7 +16,6 @@ struct ChallengerPendingApprovalView: View {
     // MARK: - Constants
 
     fileprivate enum Constants {
-        static let iconSize: CGFloat = 32
         static let horizontalPadding: CGFloat = 24
         static let verticalPadding: CGFloat = 28
         static let backgroundOpacity: CGFloat = 0.1
@@ -24,6 +23,8 @@ struct ChallengerPendingApprovalView: View {
     }
 
     // MARK: - Property
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var isRotating = false
 
@@ -51,17 +52,27 @@ struct ChallengerPendingApprovalView: View {
 
     private var iconView: some View {
         Image(systemName: "arrow.trianglehead.2.counterclockwise")
-            .font(.system(size: Constants.iconSize))
+            .font(.app(.largeTitle))
             .foregroundStyle(Color.yellow500)
             .rotationEffect(.degrees(isRotating ? 360 : 0))
-            .task {
-                withAnimation(
-                    .linear(duration: Constants.rotationDuration)
-                        .repeatForever(autoreverses: false)
-                ) {
-                    isRotating = true
-                }
-            }
+            .task(id: reduceMotion) { updateRotation() }
+    }
+
+    // MARK: - Function
+
+    /// "동작 줄이기"가 켜져 있으면 무한 회전을 멈춘다(아이콘 자체는 정지 상태로 계속 표시).
+    private func updateRotation() {
+        guard !reduceMotion else {
+            withAnimation(.linear(duration: .zero)) { isRotating = false }
+            return
+        }
+
+        withAnimation(
+            .linear(duration: Constants.rotationDuration)
+                .repeatForever(autoreverses: false)
+        ) {
+            isRotating = true
+        }
     }
 
     private var titleText: some View {

@@ -155,8 +155,13 @@ struct PendingApprovalSheet: View {
         } label: {
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                 .contentTransition(.symbolEffect(.replace))
-                .font(.system(size: Constants.selectionIconSize))
+                .font(.app(.title2))
                 .foregroundStyle(isSelected ? Color.indigo500 : Color.grey400)
+                .frame(
+                    minWidth: DefaultConstant.minimumTouchTarget,
+                    minHeight: DefaultConstant.minimumTouchTarget
+                )
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .transition(.scale.combined(with: .opacity))
@@ -270,6 +275,5 @@ struct PendingApprovalSheet: View {
 // MARK: - Constants
 
 private enum Constants {
-    static let selectionIconSize: CGFloat = 22
     static let selectionAnimationDuration: TimeInterval = 0.2
 }

@@ -450,6 +450,106 @@ struct ActivityViewModelRefreshTests {
     }
 }
 
+// MARK: - 일정 페이로드 단일 소유
+
+@MainActor
+@Suite("ActivityViewModel — 일정 페이로드 단일 소유 (도메인 규칙)")
+struct ActivityViewModelScheduleOwnershipTests {
+
+    /// 회귀 박제 — 자식 화면(`ChallengerAttendanceViewModel`)이 같은 엔드포인트를 다시
+    /// 조회하면 화면 진입 1회에 요청이 2건 나간다. 페이로드는 여기서만 조회한다.
+    @Test("화면 진입 1회 = 일정 조회 요청 1건")
+    func screenEntryQueriesSchedulesOnce() async {
+        let attendance = MockRootAttendanceUseCase()
+        attendance.availableSchedulesResult = .success([makeSchedule(scheduleId: "S-1")])
+        let viewModel = makeViewModel(attendance: attendance)
+
+        await viewModel.load()
+
+        #expect(attendance.fetchAvailableSchedulesCallCount == 1)
+    }
+
+    @Test("조회한 일정 원본을 자식에게 내려줄 수 있게 보관한다")
+    func fetchedSchedulesAreRetained() async {
+        let attendance = MockRootAttendanceUseCase()
+        attendance.availableSchedulesResult = .success([
+            makeSchedule(scheduleId: "S-1"),
+            makeSchedule(scheduleId: "S-2"),
+        ])
+        let viewModel = makeViewModel(attendance: attendance)
+
+        await viewModel.fetchSessions()
+
+        #expect(viewModel.schedules.map(\.scheduleId) == ["S-1", "S-2"])
+    }
+
+    @Test("배경 갱신은 일정 집합이 그대로여도 원본을 최신으로 바꾼다")
+    func refreshUpdatesSchedulesWithoutMembershipChange() async {
+        let attendance = MockRootAttendanceUseCase()
+        attendance.availableSchedulesResult = .success([makeSchedule(scheduleId: "S-1")])
+        let viewModel = makeViewModel(attendance: attendance)
+        await viewModel.fetchSessions()
+
+        attendance.availableSchedulesResult = .success([
+            makeSchedule(scheduleId: "S-1", attendanceStatus: .present),
+        ])
+        await viewModel.refreshSessions()
+
+        #expect(viewModel.schedules.first?.attendanceStatus == .present)
+    }
+}
+
+// MARK: - 서버 출석 상태 동기화
+
+@MainActor
+@Suite("ActivityViewModel — 서버 출석 상태 동기화 (도메인 규칙)")
+struct ActivityViewModelStatusSyncTests {
+
+    /// 세션 목록을 적재한 뒤 다음 배경 갱신이 돌려줄 일정을 갈아끼운다.
+    @MainActor
+    private func makeLoadedViewModel(
+        attendance: MockRootAttendanceUseCase,
+        initial: [ScheduleDetailData],
+        next: [ScheduleDetailData]
+    ) async -> ActivityViewModel {
+        attendance.availableSchedulesResult = .success(initial)
+        let viewModel = makeViewModel(attendance: attendance)
+        await viewModel.load()
+        attendance.availableSchedulesResult = .success(next)
+        return viewModel
+    }
+
+    @Test("배경 갱신 — 서버 출석 상태를 기존 Session 인스턴스에 전파한다")
+    func refreshPropagatesServerStatus() async throws {
+        let attendance = MockRootAttendanceUseCase()
+        let viewModel = await makeLoadedViewModel(
+            attendance: attendance,
+            initial: [makeSchedule(scheduleId: "S-1")],
+            next: [makeSchedule(scheduleId: "S-1", attendanceStatus: .present)]
+        )
+        let session = try #require(try loadedSessions(viewModel).first)
+
+        await viewModel.refreshSessions()
+
+        #expect(session.attendanceStatus == .present)
+    }
+
+    @Test("배경 갱신 — 서버가 상태를 안 주면 로컬 상태를 덮어쓰지 않는다")
+    func refreshKeepsLocalStatusWhenServerOmitsIt() async throws {
+        let attendance = MockRootAttendanceUseCase()
+        let viewModel = await makeLoadedViewModel(
+            attendance: attendance,
+            initial: [makeSchedule(scheduleId: "S-1", attendanceStatus: .late)],
+            next: [makeSchedule(scheduleId: "S-1", attendanceStatus: nil)]
+        )
+        let session = try #require(try loadedSessions(viewModel).first)
+
+        await viewModel.refreshSessions()
+
+        #expect(session.attendanceStatus == .late)
+    }
+}
+
 // MARK: - 사용자 식별자
 
 @MainActor

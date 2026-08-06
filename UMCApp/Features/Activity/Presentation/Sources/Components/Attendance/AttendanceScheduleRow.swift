@@ -32,10 +32,7 @@ struct AttendanceScheduleRow: View {
     }
 
     /// 진행중 카드만 은은한 indigo 틴트로 강조.
-    ///
-    /// (`Glass` 는 로컬 그림자 모디파이어와 이름이 겹칠 수 있어 SwiftUI 글래스 타입을
-    ///  명시적으로 한정한다.)
-    private var cardGlass: SwiftUICore.Glass {
+    private var cardGlass: Glass {
         switch status {
         case .inProgress:
             return .regular

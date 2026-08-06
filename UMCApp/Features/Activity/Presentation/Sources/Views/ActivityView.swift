@@ -29,9 +29,17 @@ struct ActivityView: View {
 
     /// 탭 스택의 공유 경로. 자식 화면이 요청한 push 를 이 저장소로 넘긴다.
     @Environment(PathStore.self) private var pathStore
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel: ActivityViewModel
     @State private var selectedSection: ActivitySection?
+
+    /// 출석 목록·상세가 공유하는 단일 ViewModel.
+    ///
+    /// 상세의 승인/반려가 목록 배지에 즉시 반영되려면 두 화면이 같은 인스턴스를 봐야 한다.
+    /// 딥링크(홈 → 일정 상세 → 출석 현황)는 목록을 거치지 않고 상세로 착지하므로, 소유자는
+    /// 목록이 아니라 두 진입점의 공통 조상인 탭 루트(이 화면)다.
+    @State private var attendanceViewModel: OperatorAttendanceViewModel
 
     private let container: DIContainer
     private let errorHandler: ErrorHandler
@@ -58,6 +66,12 @@ struct ActivityView: View {
                 ),
                 fetchUserIdUseCase: container.resolve(FetchUserIdUseCaseProtocol.self),
                 classifyScheduleUseCase: container.resolve(ClassifyScheduleUseCaseProtocol.self)
+            )
+        )
+        _attendanceViewModel = State(
+            initialValue: OperatorAttendanceViewModel(
+                errorHandler: errorHandler,
+                useCase: container.resolve(OperatorAttendanceUseCaseProtocol.self)
             )
         )
     }
@@ -92,6 +106,14 @@ struct ActivityView: View {
             .navigationTitle(currentSection.title)
             .navigationBarTitleDisplayMode(.inline)
             .umcDefaultBackground()
+            .navigationDestination(
+                for: ActivityDestination.self
+            ) { [attendanceViewModel] destination in
+                ActivityRoutingView(
+                    destination: destination,
+                    attendanceViewModel: attendanceViewModel
+                )
+            }
             .toolbar {
                 ToolBarCollection.ToolBarCenterMenu(
                     items: availableSections,
@@ -139,8 +161,13 @@ struct ActivityView: View {
 
         case (.admin, .attendanceManage):
             OperatorAttendanceView(
-                errorHandler: errorHandler,
-                useCase: container.resolve(OperatorAttendanceUseCaseProtocol.self)
+                viewModel: attendanceViewModel,
+                onScheduleSelected: { scheduleId in
+                    pathStore.push(
+                        ActivityDestination.attendanceDetail(scheduleId: scheduleId),
+                        on: .activity
+                    )
+                }
             )
 
         case (.admin, .studyManage):
@@ -186,8 +213,16 @@ struct ActivityView: View {
                     container: container,
                     errorHandler: errorHandler,
                     sessions: sessions,
+                    schedules: viewModel.schedules,
                     userId: userId
                 )
+                .task {
+                    await viewModel.startPollingIfNeeded()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active else { return }
+                    Task { await viewModel.refreshSessions() }
+                }
             } else {
                 missingUserIdView
             }

@@ -68,9 +68,7 @@ private struct MyAttendanceItemPresenter: View, Equatable {
     fileprivate enum Constants {
         static let cardSpacing: CGFloat = 12
         static let contentSectionSpacing: CGFloat = 4
-        static let statusRadius: CGFloat = 8
         static let infoIconSpacing: CGFloat = 4
-        static let policyCornerRadius: CGFloat = 12
         static let policyColumnSpacing: CGFloat = 2
         static let policyTextScaleFactor: CGFloat = 0.8
         static let titleLineLimit: Int = 2
@@ -84,6 +82,19 @@ private struct MyAttendanceItemPresenter: View, Equatable {
     // MARK: - Body
 
     var body: some View {
+        // 펼칠 내용이 없는 카드는 탭해도 아무 일이 없으므로 VoiceOver 에도 버튼으로
+        // 안내하지 않는다.
+        if hasExpandableContent {
+            Button(action: onTap) { card }
+                .buttonStyle(.plain)
+                .accessibilityValue(isExpanded ? "펼침" : "접힘")
+                .accessibilityHint(isExpanded ? "탭하면 접습니다" : "탭하면 출석 정보를 펼칩니다")
+        } else {
+            card
+        }
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
             header
 
@@ -100,10 +111,6 @@ private struct MyAttendanceItemPresenter: View, Equatable {
         .padding(DefaultConstant.defaultListPadding)
         .background(Color.grey000)
         .contentShape(Rectangle())
-        .onTapGesture {
-            guard hasExpandableContent else { return }
-            onTap()
-        }
     }
 
     // MARK: - Header
@@ -158,15 +165,8 @@ private struct MyAttendanceItemPresenter: View, Equatable {
         Text(model.status.text)
             .appFont(.caption1, weight: .semibold, color: model.status.fontColor)
             .padding(DefaultConstant.badgePadding)
-            .background(
-                model.status.backgroundColor,
-                in: RoundedRectangle(cornerRadius: Constants.statusRadius)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
-            .glassEffect(
-                .clear,
-                in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
-            )
+            .background(model.status.backgroundColor, in: Capsule())
+            .glassEffect(.clear, in: Capsule())
     }
 
     // MARK: - Expanded Section
@@ -218,7 +218,10 @@ private struct MyAttendanceItemPresenter: View, Equatable {
         .frame(maxWidth: .infinity)
         .background(
             Color.grey100,
-            in: RoundedRectangle(cornerRadius: Constants.policyCornerRadius)
+            in: ConcentricRectangle(
+                corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                isUniform: true
+            )
         )
     }
 

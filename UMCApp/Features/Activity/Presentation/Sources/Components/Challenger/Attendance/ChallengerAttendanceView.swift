@@ -170,8 +170,14 @@ struct ChallengerAttendanceView: View, Equatable {
                 .font(.title3)
                 .foregroundStyle(Color.grey700)
                 .padding(DefaultSpacing.spacing8)
+                // 글래스 원의 시각 크기는 유지한 채, 그 바깥으로 히트 영역만 넓힌다.
+                .glassEffect(.regular.interactive(), in: .circle)
+                .frame(
+                    minWidth: DefaultConstant.minimumTouchTarget,
+                    minHeight: DefaultConstant.minimumTouchTarget
+                )
+                .contentShape(.rect)
         }
-        .glassEffect(.regular.interactive(), in: .circle)
         .accessibilityLabel("출석 정책 보기")
         .popover(isPresented: $showPolicyPopover) {
             policyPopoverContent
@@ -182,7 +188,6 @@ struct ChallengerAttendanceView: View, Equatable {
     /// 출석 정책 3개 시각 팝오버 콘텐츠
     ///
     /// 시트 대신 ⓘ 버튼에 앵커된 말풍선으로 정책만 간편하게 확인합니다.
-    /// 첫 마운트 직후 정책이 비어 있으면 배경 갱신으로 채웁니다.
     @ViewBuilder
     private var policyPopoverContent: some View {
         if let policy = attendanceViewModel.attendancePolicy(for: session.info.sessionId) {
@@ -198,14 +203,11 @@ struct ChallengerAttendanceView: View, Equatable {
             }
             .padding(DefaultSpacing.spacing16)
         } else {
-            // 갱신을 요청하되 "불러오는 중" 이라고 단정하지 않는다. 일정 조회가 결선되기
-            // 전까지 refreshAvailableSchedules() 는 no-op 이라 기다려도 채워지지 않는다.
+            // 일정 페이로드에는 출석 정책이 붙은 일정만 실리므로(UseCase 필터), 여기 도달하면
+            // 기다려도 채워지지 않는다. "불러오는 중" 대신 사실을 그대로 안내한다.
             Text("등록된 출석 정책이 없어요")
                 .appFont(.footnote, color: .grey500)
                 .padding(DefaultSpacing.spacing16)
-                .task {
-                    await attendanceViewModel.refreshAvailableSchedules()
-                }
         }
     }
 
@@ -338,6 +340,11 @@ struct ChallengerAttendanceView: View, Equatable {
             Text("위치 인증이 안 되나요? 사유 제출하기")
                 .appFont(.caption1, color: .grey500)
                 .underline()
+                .frame(
+                    minWidth: DefaultConstant.minimumTouchTarget,
+                    minHeight: DefaultConstant.minimumTouchTarget
+                )
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .disabled(!canOpenReasonSheet)

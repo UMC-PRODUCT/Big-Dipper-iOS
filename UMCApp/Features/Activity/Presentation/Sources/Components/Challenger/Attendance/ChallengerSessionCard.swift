@@ -54,29 +54,31 @@ struct ChallengerSessionCard: View, Equatable {
     // MARK: - Body
 
     var body: some View {
-        HStack(spacing: DefaultSpacing.spacing16) {
-            CardIconImage(
-                image: info.category.symbol,
-                color: info.category.color,
-                isLoading: .constant(false)
-            )
-            contentSection
-                .frame(maxWidth: .infinity, alignment: .leading)
-            statusSection
+        Button(action: onTap) {
+            HStack(spacing: DefaultSpacing.spacing16) {
+                CardIconImage(
+                    image: info.category.symbol,
+                    color: info.category.color,
+                    isLoading: .constant(false)
+                )
+                contentSection
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                statusSection
+            }
+            .padding(DefaultConstant.defaultListPadding)
+            .background {
+                ConcentricRectangle(
+                    corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                    isUniform: true
+                )
+                .fill(Color.grey000)
+                .cardShadow()
+            }
+            .contentShape(Rectangle())
         }
-        .padding(DefaultConstant.defaultListPadding)
-        .background {
-            ConcentricRectangle(
-                corners: .concentric(minimum: DefaultConstant.concentricRadius),
-                isUniform: true
-            )
-            .fill(Color.grey000)
-            .glass()
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onTap()
-        }
+        .buttonStyle(.plain)
+        .accessibilityValue(isExpanded ? "펼침" : "접힘")
+        .accessibilityHint(isExpanded ? "탭하면 접습니다" : "탭하면 출석 정보를 펼칩니다")
     }
 
     // MARK: - View Components
@@ -117,12 +119,8 @@ struct ChallengerSessionCard: View, Equatable {
                 color: session.attendanceStatus.fontColor
             )
             .padding(DefaultConstant.badgePadding)
-            .background(session.attendanceStatus.backgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
-            .glassEffect(
-                .clear,
-                in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
-            )
+            .background(session.attendanceStatus.backgroundColor, in: Capsule())
+            .glassEffect(.clear, in: Capsule())
     }
 }
 

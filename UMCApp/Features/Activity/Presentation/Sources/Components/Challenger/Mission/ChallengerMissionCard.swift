@@ -86,7 +86,7 @@ fileprivate struct ChallengerMissionCardPresenter: View, Equatable {
                 isUniform: true
             )
             .fill(Color.white)
-            .glass()
+            .cardShadow()
         }
         .animation(
             .easeInOut(duration: DefaultConstant.animationTime),

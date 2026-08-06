@@ -15,48 +15,44 @@ import UMCFoundation
 
 /// 운영진 출석 관리 화면 (단일 통합 진입점)
 ///
-/// 출석 현황 목록을 루트로 두고, 행을 탭하면 같은 ViewModel 을 공유하는
-/// ``OperatorAttendanceDetailView`` 를 push 합니다. 상태·기간 필터는 우상단 툴바의 단일
-/// 메뉴로, 승인 대기 인박스는 상단 배너로 노출합니다.
+/// 출석 현황 목록을 루트로 두고, 행을 탭하면 상세 목적지 push 를 상위에 요청합니다. 상세와
+/// 같은 ViewModel 인스턴스를 공유하도록 소유는 탭 루트(``ActivityView``)가 맡습니다.
+/// 상태·기간 필터는 우상단 툴바의 단일 메뉴로, 승인 대기 인박스는 상단 배너로 노출합니다.
 ///
 /// - Important: 자체 `NavigationStack` 을 만들지 않습니다. 활동 탭의 스택 안에서 섹션 루트로
 ///   렌더되는 화면이라, 스택은 상위가 제공합니다(중첩 스택 방지).
 /// - Note: 위치 변경 시트는 공용 장소 선택기(`CoreUIComponents.PlaceSelectView`)를 그대로
 ///   사용합니다 — 별도 주입 seam 없이 시트 안에서 완결됩니다.
-public struct OperatorAttendanceView: View {
+struct OperatorAttendanceView: View {
 
     // MARK: - Property
 
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var viewModel: OperatorAttendanceViewModel
+    @Bindable private var viewModel: OperatorAttendanceViewModel
 
     /// "직접 입력" 기간 편집 시트 표시 플래그 (View 전용 일시 상태)
     @State private var isCustomDatePresented: Bool = false
 
-    /// push 된 상세 대상 일정 — `nil` 이면 목록만 표시한다.
-    @State private var pushedScheduleId: String?
+    /// 상세 화면 push 요청 — 목적지 등록을 소유한 탭 루트가 처리한다.
+    private let onScheduleSelected: (String) -> Void
 
     // MARK: - Init
 
     /// - Parameters:
-    ///   - errorHandler: 전역 에러 핸들러
-    ///   - useCase: 운영진 출석 UseCase
-    public init(
-        errorHandler: ErrorHandler,
-        useCase: OperatorAttendanceUseCaseProtocol
+    ///   - viewModel: 상세와 공유하는 출석 ViewModel (탭 루트 소유)
+    ///   - onScheduleSelected: 상세로 이동할 일정 식별자 전달
+    init(
+        viewModel: OperatorAttendanceViewModel,
+        onScheduleSelected: @escaping (String) -> Void
     ) {
-        _viewModel = State(
-            initialValue: OperatorAttendanceViewModel(
-                errorHandler: errorHandler,
-                useCase: useCase
-            )
-        )
+        self.viewModel = viewModel
+        self.onScheduleSelected = onScheduleSelected
     }
 
     // MARK: - Body
 
-    public var body: some View {
+    var body: some View {
         listStateContent
             .animation(
                 .easeInOut(duration: Constants.bannerAnimationDuration),
@@ -87,15 +83,14 @@ public struct OperatorAttendanceView: View {
                 customDateSheet
                     .presentationDragIndicator(.visible)
             }
-            .navigationDestination(item: $pushedScheduleId) { scheduleId in
-                OperatorAttendanceDetailView(
-                    viewModel: viewModel,
-                    scheduleId: scheduleId
-                )
-            }
             .task {
-                guard viewModel.listState.isIdle else { return }
-                await viewModel.fetchList()
+                // 탭 루트가 VM 을 소유해 섹션을 오갈 때 상태가 남는다. 최초 1회는 스피너 조회,
+                // 재진입은 기존 목록을 유지한 채 배경 갱신한다.
+                if viewModel.listState.isIdle {
+                    await viewModel.fetchList()
+                } else {
+                    await viewModel.refreshList()
+                }
             }
             .task(id: viewModel.listState.isComplete) {
                 await viewModel.startListPollingIfNeeded()
@@ -225,8 +220,6 @@ public struct OperatorAttendanceView: View {
     /// "직접 입력" 기간 편집 시트 — 시작/종료 날짜. 변경 즉시 재조회한다.
     @ViewBuilder
     private var customDateSheet: some View {
-        @Bindable var viewModel = viewModel
-
         NavigationStack {
             Form {
                 DatePicker(
@@ -300,11 +293,11 @@ public struct OperatorAttendanceView: View {
     private var pendingInboxBanner: some View {
         Button {
             guard let scheduleId = viewModel.firstPendingScheduleId else { return }
-            pushedScheduleId = scheduleId
+            onScheduleSelected(scheduleId)
         } label: {
             HStack(spacing: DefaultSpacing.spacing12) {
                 Image(systemName: "tray.and.arrow.down.fill")
-                    .font(.system(size: Constants.bannerIconSize))
+                    .font(.app(.body))
                     .foregroundStyle(Color.orange500)
 
                 Text("승인 대기 \(viewModel.totalPendingCount)건")
@@ -313,7 +306,7 @@ public struct OperatorAttendanceView: View {
                 Spacer()
 
                 Image(systemName: DefaultConstant.chevronForwardImage)
-                    .font(.system(size: Constants.chevronSize, weight: .semibold))
+                    .font(.app(.footnote, weight: .semibold))
                     .foregroundStyle(Color.grey400)
             }
             .padding(DefaultSpacing.spacing16)
@@ -374,7 +367,10 @@ public struct OperatorAttendanceView: View {
                 .padding(DefaultSpacing.spacing16)
                 .background(
                     .regularMaterial,
-                    in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius)
+                    in: ConcentricRectangle(
+                        corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                        isUniform: true
+                    )
                 )
 
                 Text(Constants.permissionGuideFooter)
@@ -417,7 +413,7 @@ public struct OperatorAttendanceView: View {
             LazyVStack(spacing: DefaultSpacing.spacing12) {
                 ForEach(infos) { info in
                     Button {
-                        pushedScheduleId = info.scheduleId
+                        onScheduleSelected(info.scheduleId)
                     } label: {
                         AttendanceScheduleRow(info: info)
                     }
@@ -433,8 +429,6 @@ public struct OperatorAttendanceView: View {
 
 private enum Constants {
     static let bannerAnimationDuration: TimeInterval = 0.2
-    static let bannerIconSize: CGFloat = 18
-    static let chevronSize: CGFloat = 13
     static let oneDayInSeconds: TimeInterval = 24 * 60 * 60
     static let permissionIconWidth: CGFloat = 32
     static let permissionRowSpacing: CGFloat = 2

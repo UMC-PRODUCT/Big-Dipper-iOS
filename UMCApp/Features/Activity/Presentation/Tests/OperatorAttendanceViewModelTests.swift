@@ -1113,4 +1113,42 @@ struct OperatorAttendanceViewModelScheduleIdentityTests {
     }
 }
 
+// MARK: - 딥링크 착지 (목록 미로드 진입)
+
+@MainActor
+@Suite("OperatorAttendanceViewModel — 딥링크 착지 (목록 미로드 진입)")
+struct OperatorAttendanceViewModelDeepLinkTests {
+
+    @Test("목록 조회 없이 상세 선택 → 상세만 로드되고 listState 는 .idle 로 남는다")
+    func selectScheduleWithoutList() async {
+        let useCase = MockOperatorAttendanceUseCase()
+        useCase.fetchDetailResult = makeScheduleInfo(scheduleId: "42", pendingCount: 1)
+        let viewModel = makeViewModel(useCase: useCase)
+
+        await viewModel.selectSchedule("42")
+
+        #expect(viewModel.detailState.value?.scheduleId == "42")
+        #expect(viewModel.listState.isIdle)
+        #expect(useCase.fetchListCalls.isEmpty)
+    }
+
+    @Test("목록 미로드 상태의 결정 → 상세만 갱신, 이후 목록 조회는 서버 값을 그대로 싣는다")
+    func decideWithoutListThenFetchList() async {
+        let useCase = MockOperatorAttendanceUseCase()
+        let pending = makeParticipant(memberId: "1", status: .presentPending)
+        let schedule = makeScheduleInfo(scheduleId: "42", participants: [pending])
+        useCase.fetchDetailResult = schedule
+        useCase.fetchListResult = [makeScheduleInfo(scheduleId: "42", pendingCount: 1)]
+        let viewModel = makeViewModel(useCase: useCase)
+        await viewModel.selectSchedule("42")
+
+        await viewModel.decideAttendance(participant: pending, isApproved: true)
+        // 딥링크 착지 후 뒤로 나가 목록이 처음 그려지는 순간
+        await viewModel.fetchList()
+
+        #expect(viewModel.detailState.value?.participants.first?.attendanceStatus == .present)
+        #expect(viewModel.listState.value?.first?.pendingCount == 1)
+    }
+}
+
 #endif
