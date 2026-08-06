@@ -8,7 +8,9 @@ let project = featureProject(
     domainExtraDependencies: [
         // 출석 도메인이 일정 조회/생성을 HomeDomain 의 canonical 자산으로 수행한다.
         // (ScheduleDetailData·ScheduleLocation·ScheduleAttendancePolicy·ScheduleRepositoryProtocol)
-        // Activity 안에 일정 모델을 다시 만들지 않는다 — #994 에서 확정한 재사용 경계.
+        // Activity 안에 일정 모델을 다시 만들지 않는다 — #994 에서 세운 재사용 경계를
+        // #981 에서 최종 확정했다: 전용 Schedule 모듈은 신설하지 않고 Home* 이 단일 소유자다.
+        // (docs/claude/build-and-modules.md "경계 정책 — 일정(Schedule)")
         //
         // HomeDomain 은 iOS 전용이라 watchOS 까지 확장된 ActivityDomain 의 destination 을
         // 그대로 두려면 의존을 iOS 로 한정해야 한다. 현재 UMCWatchApp 은 CoreWatchConnectivity
