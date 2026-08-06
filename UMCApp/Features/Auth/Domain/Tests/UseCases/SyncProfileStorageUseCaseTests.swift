@@ -275,6 +275,31 @@ struct SyncProfileStorageUseCaseTests {
         #expect(userSessionManager.allRoles == [.chapterPresident, .schoolPartLeader])
     }
 
+    @Test("프로필 동기화를 마치면 FCM 토큰 재동기화용 memberProfileUpdated를 발송한다")
+    func postsMemberProfileUpdatedAfterSync() async {
+        let userDefaults = makeIsolatedUserDefaults()
+        let useCase = SyncProfileStorageUseCase(
+            userSessionManager: UserSessionManager(),
+            userDefaults: userDefaults
+        )
+        let profile = Profile(memberId: "42", name: "A", nickname: "a", generations: ["11"])
+
+        // 병렬 실행되는 다른 테스트의 `execute`도 같은 알림을 발송하므로 최소 1회로 확인한다.
+        await confirmation("memberProfileUpdated 발송", expectedCount: 1...) { posted in
+            let observer = NotificationCenter.default.addObserver(
+                forName: .memberProfileUpdated,
+                object: nil,
+                queue: nil
+            ) { _ in posted() }
+            defer { NotificationCenter.default.removeObserver(observer) }
+
+            useCase.execute(profile: profile)
+        }
+
+        // 구독자(AppDelegate)가 토큰을 등록하려면 발송 시점에 memberId가 기록돼 있어야 한다.
+        #expect(userDefaults.string(forKey: AppStorageKey.memberId) == "42")
+    }
+
     @Test("역할이 없는 프로필은 UserSessionManager의 allRoles를 challenger 하나로 채운다")
     func fillsAllRolesWithChallengerWhenProfileHasNoRoles() {
         let userSessionManager = UserSessionManager()
