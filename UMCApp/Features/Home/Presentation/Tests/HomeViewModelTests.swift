@@ -116,15 +116,7 @@ struct HomeViewModelTests {
 
     @Test("fetchSchedules() 성공 시 일정 제목을 분류해 scheduleCategories를 채운다")
     func fetchSchedulesClassifiesLoadedSchedules() async {
-        let schedule = ScheduleDetailData(
-            scheduleId: "1",
-            name: "알고리즘 스터디",
-            description: "",
-            tags: [],
-            startsAt: .now,
-            endsAt: .now.addingTimeInterval(3600),
-            isParticipant: true
-        )
+        let schedule = makeSchedule(scheduleId: "1", name: "알고리즘 스터디")
         let fetchSchedulesUseCase = MockFetchSchedulesUseCase(result: [.now: [schedule]])
         let classifyScheduleUseCase = MockClassifyScheduleUseCase()
         classifyScheduleUseCase.resultsByTitle["알고리즘 스터디"] = .study
@@ -137,6 +129,48 @@ struct HomeViewModelTests {
 
         #expect(viewModel.category(for: "1") == .study)
         #expect(classifyScheduleUseCase.classifiedTitles == ["알고리즘 스터디"])
+    }
+
+    @Test("fetchSchedules() 실패 시 일정과 분류 결과를 함께 비운다")
+    func fetchSchedulesFailureClearsCategories() async {
+        let fetchSchedulesUseCase = MockFetchSchedulesUseCase(
+            result: [.now: [makeSchedule(scheduleId: "1", name: "알고리즘 스터디")]]
+        )
+        let classifyScheduleUseCase = MockClassifyScheduleUseCase()
+        classifyScheduleUseCase.resultsByTitle["알고리즘 스터디"] = .study
+        let viewModel = makeViewModel(
+            fetchSchedulesUseCase: fetchSchedulesUseCase,
+            classifyScheduleUseCase: classifyScheduleUseCase
+        )
+        await viewModel.fetchSchedules()
+
+        fetchSchedulesUseCase.error = DummyError()
+        await viewModel.fetchSchedules()
+
+        #expect(viewModel.scheduleByDates.isEmpty)
+        #expect(viewModel.scheduleCategories.isEmpty)
+        #expect(viewModel.category(for: "1") == .general)
+    }
+
+    @Test("월 이동으로 일정이 갱신되면 이전 달 분류 결과를 pruning한다")
+    func scheduleCategoriesArePrunedOnMonthChange() async {
+        let fetchSchedulesUseCase = MockFetchSchedulesUseCase(
+            result: [.now: [makeSchedule(scheduleId: "1", name: "알고리즘 스터디")]]
+        )
+        let classifyScheduleUseCase = MockClassifyScheduleUseCase()
+        classifyScheduleUseCase.resultsByTitle["알고리즘 스터디"] = .study
+        classifyScheduleUseCase.resultsByTitle["정기 회의"] = .meeting
+        let viewModel = makeViewModel(
+            fetchSchedulesUseCase: fetchSchedulesUseCase,
+            classifyScheduleUseCase: classifyScheduleUseCase
+        )
+        await viewModel.fetchSchedules(year: 2026, month: 7)
+
+        fetchSchedulesUseCase.result = [.now: [makeSchedule(scheduleId: "2", name: "정기 회의")]]
+        await viewModel.fetchSchedules(year: 2026, month: 8)
+
+        #expect(viewModel.scheduleCategories == ["2": .meeting])
+        #expect(viewModel.category(for: "1") == .general)
     }
 
     @Test("fetchProfile(forceRefresh: true)는 UseCase에 forceRefresh를 그대로 전달한다")
@@ -185,6 +219,18 @@ private func makeViewModel(
     return HomeViewModel(container: container)
 }
 
+private func makeSchedule(scheduleId: String, name: String) -> ScheduleDetailData {
+    ScheduleDetailData(
+        scheduleId: scheduleId,
+        name: name,
+        description: "",
+        tags: [],
+        startsAt: .now,
+        endsAt: .now.addingTimeInterval(3600),
+        isParticipant: true
+    )
+}
+
 private func makeProfile(generationNumbers: [String]) -> HomeProfileResult {
     HomeProfileResult(
         memberId: "1",
@@ -227,12 +273,19 @@ private final class MockFetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProt
     }
 }
 
-/// 프로필 로딩 상태 전이 테스트는 일정 조회 결과와 무관하므로 빈 결과만 반환한다.
-private struct MockFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol, Sendable {
-    var result: [Date: [ScheduleDetailData]] = [:]
+/// 프로필 로딩 상태 전이 테스트는 일정 조회 결과와 무관하므로 기본값은 빈 결과다.
+/// 월 이동/조회 실패 시나리오를 위해 호출 사이에 `result`/`error`를 바꿀 수 있다.
+private final class MockFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol, @unchecked Sendable {
+    var result: [Date: [ScheduleDetailData]]
+    var error: Error?
+
+    init(result: [Date: [ScheduleDetailData]] = [:]) {
+        self.result = result
+    }
 
     func execute(from: Date, to: Date, isAttendanceRequired: Bool) async throws -> [Date: [ScheduleDetailData]] {
-        result
+        if let error { throw error }
+        return result
     }
 }
 

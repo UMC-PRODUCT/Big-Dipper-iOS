@@ -48,6 +48,22 @@ struct ClassifyScheduleUseCaseTests {
         #expect(repository.classifyWithKeywordsCallCount == 1)
     }
 
+    @Test("모델 로드됐지만 ML 예측이 nil이면 키워드 분류 결과로 fallback한다")
+    func loadedModelWithNilMLResultFallsBackToKeywords() async {
+        let repository = MockScheduleClassifierRepository()
+        repository.isModelLoaded = true
+        repository.mlResult = nil
+        repository.keywordResult = .meeting
+        let useCase = ClassifyScheduleUseCase(repository: repository)
+
+        let result = await useCase.execute(title: "정기 회의")
+
+        #expect(result == .meeting)
+        #expect(repository.classifyWithMLCallCount == 1)
+        #expect(repository.classifyWithKeywordsCallCount == 1)
+        #expect(repository.cache["정기 회의"] == .meeting)
+    }
+
     @Test("분류 결과가 정규화된 캐시 키로 저장된다")
     func classificationResultIsCached() async {
         let repository = MockScheduleClassifierRepository()
