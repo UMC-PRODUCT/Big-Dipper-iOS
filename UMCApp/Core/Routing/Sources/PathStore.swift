@@ -35,6 +35,10 @@ public final class PathStore {
 
     // MARK: - Property
 
+    /// 현재 선택된 탭. `TabView(selection:)` 바인딩의 소스이자, 탭을 가로지르는 이동
+    /// (예: 홈의 일정 상세 → Activity 탭의 출석 현황)의 진입점이다.
+    public var selectedTab: NavigationTab = .home
+
     /// 탭별 경로. 값이 없는 탭은 루트(빈 경로)로 취급한다.
     private var paths: [NavigationTab: NavigationPath] = [:]
 
