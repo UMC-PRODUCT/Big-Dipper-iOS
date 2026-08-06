@@ -22,12 +22,20 @@ public enum HomeRouter: BaseTargetType {
     /// 기수 상세 조회 (시즌 카드의 활동일 계산용 시작일 조회)
     case getGisuDetail(gisuId: String)
 
+    /// FCM 토큰 등록/갱신
+    ///
+    /// - Note: 요청 바디 DTO(``RegisterFCMTokenRequestDTO``)는 모듈 내부 타입이라 연관값으로
+    ///   노출할 수 없어, 토큰 문자열만 받아 ``task`` 에서 DTO로 감싼다.
+    case putFCMToken(fcmToken: String)
+
     // MARK: - Path
 
     public var path: String {
         switch self {
         case .getGisuDetail(let gisuId):
             return "/api/v1/gisu/\(gisuId)"
+        case .putFCMToken:
+            return "/api/v1/notification/fcm/token"
         }
     }
 
@@ -37,6 +45,8 @@ public enum HomeRouter: BaseTargetType {
         switch self {
         case .getGisuDetail:
             return .get
+        case .putFCMToken:
+            return .put
         }
     }
 
@@ -46,6 +56,8 @@ public enum HomeRouter: BaseTargetType {
         switch self {
         case .getGisuDetail:
             return .requestPlain
+        case .putFCMToken(let fcmToken):
+            return .requestJSONEncodable(RegisterFCMTokenRequestDTO(fcmToken: fcmToken))
         }
     }
 }

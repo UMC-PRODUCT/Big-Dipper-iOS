@@ -46,6 +46,8 @@ let project = Project(
                     "LSApplicationQueriesSchemes": [
                         "kakaokompassauth", "kakaolink", "kakaotalk", "kakaoplus",
                     ],
+                    // 백그라운드에서 도착한 푸시를 AppDelegate가 받아 알림 보관함에 저장한다.
+                    "UIBackgroundModes": ["remote-notification"],
                 ]
             ),
             buildableFolders: [
@@ -79,6 +81,7 @@ let project = Project(
                 .project(target: "MaintenanceData", path: .relativeToRoot("Features/Maintenance")),
                 .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
                 .external(name: "FirebaseCore"),
+                .external(name: "FirebaseMessaging"),
                 .project(target: "UMCAppWidget", path: "UMCAppWidget"),
                 .project(target: "UMCWatchApp", path: "UMCWatchApp"),
             ],

@@ -27,6 +27,7 @@ struct UMCAppApp: App {
 
     // MARK: - Property
 
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var container: DIContainer
     @State private var errorHandler: ErrorHandler = .init()
@@ -82,6 +83,10 @@ struct UMCAppApp: App {
                     }
                 }
                 .task {
+                    appDelegate.configure(
+                        container: container,
+                        modelContext: sharedModelContainer.mainContext
+                    )
                     await maintenanceViewModel.check()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
@@ -147,7 +152,10 @@ extension UMCAppApp {
     ///   plist 부재/파싱 실패/플레이스홀더 값(`GOOGLE_APP_ID`가 `__`로 시작)이면 조용히
     ///   건너뛴다. 이 경우 RemoteConfig는 항상 fail-open으로 동작한다
     ///   (`MaintenanceData.RemoteConfigService` 참고).
-    private static func configureFirebaseIfNeeded() {
+    ///
+    /// - Note: `AppDelegate.didFinishLaunchingWithOptions`도 `Messaging` 접근 전에 이 메서드를
+    ///   호출한다. 두 진입점의 호출 순서는 보장되지 않지만 `FirebaseApp.app()` 가드로 멱등이다.
+    static func configureFirebaseIfNeeded() {
         guard FirebaseApp.app() == nil else { return }
         guard
             let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
