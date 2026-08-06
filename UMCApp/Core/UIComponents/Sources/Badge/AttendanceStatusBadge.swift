@@ -20,7 +20,6 @@ public struct AttendanceStatusBadge: View, Equatable {
     // MARK: - Constants
 
     fileprivate enum Constants {
-        static let backgroundOpacity: Double = 0.18
         static let unknownIconSize: CGFloat = 11
     }
 
@@ -49,7 +48,7 @@ public struct AttendanceStatusBadge: View, Equatable {
         .padding(.horizontal, DefaultSpacing.spacing8)
         .padding(.vertical, DefaultSpacing.spacing4)
         .glassEffect(
-            .clear.tint(status.tintColor.opacity(Constants.backgroundOpacity)),
+            .clear.tint(status.backgroundColor),
             in: Capsule()
         )
         .accessibilityElement(children: .combine)

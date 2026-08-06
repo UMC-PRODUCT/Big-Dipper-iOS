@@ -188,7 +188,7 @@ struct ChallengerAttendanceSessionView: View {
     private var emptySessionView: some View {
         emptyStateCard(
             systemImage: "checkmark.circle.fill",
-            tint: .green,
+            tint: .green500,
             title: "모든 세션 출석을 완료했어요",
             description: "지금은 출석할 수 있는 세션이 없어요.\n새로운 세션이 열리면 이곳에 표시됩니다."
         )
@@ -261,7 +261,7 @@ struct ChallengerAttendanceSessionView: View {
                 corners: .concentric(minimum: DefaultConstant.concentricRadius),
                 isUniform: true
             )
-            .fill(.white)
+            .fill(Color.grey000)
             .glass()
         }
     }

@@ -97,9 +97,9 @@ struct ParticipantAttendanceRow: View, Equatable {
                     Image(systemName: "location.fill")
                         .font(.system(size: Constants.verifiedIconSize))
                     Text("GPS 인증")
-                        .appFont(.caption2, color: .green)
+                        .appFont(.caption2)
                 }
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.green500)
             }
         }
     }
