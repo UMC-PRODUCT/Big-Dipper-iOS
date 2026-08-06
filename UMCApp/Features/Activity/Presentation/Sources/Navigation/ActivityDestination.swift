@@ -31,7 +31,9 @@ public enum ActivityDestination: Hashable, Sendable {
 
     /// 운영진의 단일 일정 출석 현황 화면.
     ///
-    /// 목적지 화면(`OperatorAttendanceDetailView`)은 연결되어 있다. 다만 레거시에서 이 경로를
-    /// 만들던 진입점(출석 현황 목록의 행 탭)은 아직 이 경로를 쓰지 않아 생산자가 없다.
+    /// 생산자는 두 곳이다 — 운영진 출석 목록의 행/승인 대기 배너 탭, 그리고 홈의 일정 상세
+    /// "출석 현황"(App `NavigationRoutingView`, 탭을 옮긴 뒤 이 목적지를 쌓는다).
+    /// 두 경로 모두 탭 루트가 소유한 하나의 `OperatorAttendanceViewModel` 로 착지하므로,
+    /// 상세의 승인/반려가 목록 배지에 그대로 반영된다.
     case attendanceDetail(scheduleId: String)
 }

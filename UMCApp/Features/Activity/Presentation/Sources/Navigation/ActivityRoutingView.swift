@@ -24,10 +24,17 @@ struct ActivityRoutingView: View {
 
     private let destination: ActivityDestination
 
+    /// 탭 루트가 소유한 출석 ViewModel. 목록을 거치지 않는 딥링크도 같은 인스턴스로 착지한다.
+    private let attendanceViewModel: OperatorAttendanceViewModel
+
     // MARK: - Init
 
-    init(destination: ActivityDestination) {
+    init(
+        destination: ActivityDestination,
+        attendanceViewModel: OperatorAttendanceViewModel
+    ) {
         self.destination = destination
+        self.attendanceViewModel = attendanceViewModel
     }
 
     // MARK: - Body
@@ -41,7 +48,10 @@ struct ActivityRoutingView: View {
             )
 
         case .attendanceDetail(let scheduleId):
-            OperatorAttendanceDetailRoute(scheduleId: scheduleId)
+            OperatorAttendanceDetailView(
+                viewModel: attendanceViewModel,
+                scheduleId: scheduleId
+            )
         }
     }
 }
@@ -90,49 +100,6 @@ private struct StudyScheduleRegistrationRoute: View {
                 studyRepository: di.resolve(StudyRepositoryProtocol.self),
                 registerScheduleUseCase: di.resolve(RegisterStudyScheduleUseCaseProtocol.self),
                 errorHandler: errorHandler
-            )
-        }
-    }
-}
-
-// MARK: - Operator Attendance Detail
-
-/// 운영진 출석 상세 화면의 조립 지점.
-///
-/// 목적지는 `scheduleId` 라는 값만 들고 오므로, 화면이 필요로 하는 ViewModel 은 여기서
-/// DI 로 만든다. 탭 재진입마다 새로 만들지 않도록 첫 등장 때 한 번만 생성한다.
-private struct OperatorAttendanceDetailRoute: View {
-
-    // MARK: - Property
-
-    @Environment(\.di) private var di
-    @Environment(ErrorHandler.self) private var errorHandler
-
-    @State private var viewModel: OperatorAttendanceViewModel?
-
-    private let scheduleId: String
-
-    // MARK: - Init
-
-    init(scheduleId: String) {
-        self.scheduleId = scheduleId
-    }
-
-    // MARK: - Body
-
-    var body: some View {
-        Group {
-            if let viewModel {
-                OperatorAttendanceDetailView(viewModel: viewModel, scheduleId: scheduleId)
-            } else {
-                ProgressView()
-            }
-        }
-        .task {
-            guard viewModel == nil else { return }
-            viewModel = OperatorAttendanceViewModel(
-                errorHandler: errorHandler,
-                useCase: di.resolve(OperatorAttendanceUseCaseProtocol.self)
             )
         }
     }
