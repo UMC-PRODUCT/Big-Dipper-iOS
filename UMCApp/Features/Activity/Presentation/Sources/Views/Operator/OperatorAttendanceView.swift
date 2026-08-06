@@ -297,7 +297,7 @@ struct OperatorAttendanceView: View {
         } label: {
             HStack(spacing: DefaultSpacing.spacing12) {
                 Image(systemName: "tray.and.arrow.down.fill")
-                    .font(.system(size: Constants.bannerIconSize))
+                    .font(.app(.body))
                     .foregroundStyle(Color.orange500)
 
                 Text("승인 대기 \(viewModel.totalPendingCount)건")
@@ -306,7 +306,7 @@ struct OperatorAttendanceView: View {
                 Spacer()
 
                 Image(systemName: DefaultConstant.chevronForwardImage)
-                    .font(.system(size: Constants.chevronSize, weight: .semibold))
+                    .font(.app(.footnote, weight: .semibold))
                     .foregroundStyle(Color.grey400)
             }
             .padding(DefaultSpacing.spacing16)
@@ -426,8 +426,6 @@ struct OperatorAttendanceView: View {
 
 private enum Constants {
     static let bannerAnimationDuration: TimeInterval = 0.2
-    static let bannerIconSize: CGFloat = 18
-    static let chevronSize: CGFloat = 13
     static let oneDayInSeconds: TimeInterval = 24 * 60 * 60
     static let permissionIconWidth: CGFloat = 32
     static let permissionRowSpacing: CGFloat = 2

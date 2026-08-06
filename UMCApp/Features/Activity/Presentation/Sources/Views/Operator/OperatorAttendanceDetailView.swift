@@ -197,6 +197,14 @@ struct OperatorAttendanceDetailView: View {
                     } label: {
                         Label("위치 변경", systemImage: "map.fill")
                             .appFont(.caption1, color: .indigo500)
+                            // 라벨을 프레임 상단에 고정해 제목과의 정렬을 유지한 채
+                            // 히트 영역만 아래로 넓힌다.
+                            .frame(
+                                minWidth: DefaultConstant.minimumTouchTarget,
+                                minHeight: DefaultConstant.minimumTouchTarget,
+                                alignment: .top
+                            )
+                            .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
                 }
@@ -246,7 +254,7 @@ struct OperatorAttendanceDetailView: View {
         } label: {
             HStack(spacing: DefaultSpacing.spacing8) {
                 Image(systemName: "clock.badge.exclamationmark")
-                    .font(.system(size: Constants.bannerIconSize, weight: .semibold))
+                    .font(.app(.subheadline, weight: .semibold))
                     .foregroundStyle(Color.orange600)
 
                 Text("승인 대기 \(count)건")
@@ -255,7 +263,7 @@ struct OperatorAttendanceDetailView: View {
                 Spacer()
 
                 Image(systemName: DefaultConstant.chevronForwardImage)
-                    .font(.system(size: Constants.chevronSize, weight: .semibold))
+                    .font(.app(.caption1, weight: .semibold))
                     .foregroundStyle(Color.orange400)
             }
             .padding(DefaultSpacing.spacing12)
@@ -307,7 +315,7 @@ struct OperatorAttendanceDetailView: View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
             HStack(spacing: DefaultSpacing.spacing4) {
                 Image(systemName: icon)
-                    .font(.system(size: Constants.statIconSize, weight: .semibold))
+                    .font(.app(.caption1, weight: .semibold))
                     .foregroundStyle(tint)
                 Text(label)
                     .appFont(.caption1, color: .grey500)
@@ -383,7 +391,7 @@ struct OperatorAttendanceDetailView: View {
     private var emptyParticipantView: some View {
         VStack(spacing: DefaultSpacing.spacing12) {
             Image(systemName: "person.2.slash")
-                .font(.system(size: Constants.emptyIconSize))
+                .font(.app(.title1))
                 .foregroundStyle(Color.grey400)
             Text("표시할 참여자가 없습니다")
                 .appFont(.subheadline, color: .grey500)
@@ -507,10 +515,6 @@ private struct LocationChangeTarget: Identifiable {
 // MARK: - Constants
 
 private enum Constants {
-    static let emptyIconSize: CGFloat = 28
-    static let bannerIconSize: CGFloat = 15
     static let bannerTintOpacity: Double = 0.16
-    static let chevronSize: CGFloat = 12
-    static let statIconSize: CGFloat = 12
     static let statValueMinimumScale: CGFloat = 0.8
 }

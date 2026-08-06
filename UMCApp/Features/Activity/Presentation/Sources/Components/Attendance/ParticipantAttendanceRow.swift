@@ -95,7 +95,7 @@ struct ParticipantAttendanceRow: View, Equatable {
             if participant.isLocationVerified {
                 HStack(spacing: Constants.verifiedIconSpacing) {
                     Image(systemName: "location.fill")
-                        .font(.system(size: Constants.verifiedIconSize))
+                        .font(.app(.caption2))
                     Text("GPS 인증")
                         .appFont(.caption2)
                 }
@@ -110,6 +110,5 @@ struct ParticipantAttendanceRow: View, Equatable {
 private enum Constants {
     static let avatarSize: CGFloat = 40
     static let reasonLineLimit: Int = 2
-    static let verifiedIconSize: CGFloat = 10
     static let verifiedIconSpacing: CGFloat = 2
 }

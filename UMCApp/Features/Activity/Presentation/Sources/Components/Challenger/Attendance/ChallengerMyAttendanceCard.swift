@@ -84,6 +84,19 @@ private struct MyAttendanceItemPresenter: View, Equatable {
     // MARK: - Body
 
     var body: some View {
+        // 펼칠 내용이 없는 카드는 탭해도 아무 일이 없으므로 VoiceOver 에도 버튼으로
+        // 안내하지 않는다.
+        if hasExpandableContent {
+            Button(action: onTap) { card }
+                .buttonStyle(.plain)
+                .accessibilityValue(isExpanded ? "펼침" : "접힘")
+                .accessibilityHint(isExpanded ? "탭하면 접습니다" : "탭하면 출석 정보를 펼칩니다")
+        } else {
+            card
+        }
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
             header
 
@@ -100,10 +113,6 @@ private struct MyAttendanceItemPresenter: View, Equatable {
         .padding(DefaultConstant.defaultListPadding)
         .background(Color.grey000)
         .contentShape(Rectangle())
-        .onTapGesture {
-            guard hasExpandableContent else { return }
-            onTap()
-        }
     }
 
     // MARK: - Header

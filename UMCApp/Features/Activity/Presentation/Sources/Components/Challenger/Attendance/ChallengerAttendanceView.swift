@@ -170,8 +170,14 @@ struct ChallengerAttendanceView: View, Equatable {
                 .font(.title3)
                 .foregroundStyle(Color.grey700)
                 .padding(DefaultSpacing.spacing8)
+                // 글래스 원의 시각 크기는 유지한 채, 그 바깥으로 히트 영역만 넓힌다.
+                .glassEffect(.regular.interactive(), in: .circle)
+                .frame(
+                    minWidth: DefaultConstant.minimumTouchTarget,
+                    minHeight: DefaultConstant.minimumTouchTarget
+                )
+                .contentShape(.rect)
         }
-        .glassEffect(.regular.interactive(), in: .circle)
         .accessibilityLabel("출석 정책 보기")
         .popover(isPresented: $showPolicyPopover) {
             policyPopoverContent
@@ -334,6 +340,11 @@ struct ChallengerAttendanceView: View, Equatable {
             Text("위치 인증이 안 되나요? 사유 제출하기")
                 .appFont(.caption1, color: .grey500)
                 .underline()
+                .frame(
+                    minWidth: DefaultConstant.minimumTouchTarget,
+                    minHeight: DefaultConstant.minimumTouchTarget
+                )
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .disabled(!canOpenReasonSheet)

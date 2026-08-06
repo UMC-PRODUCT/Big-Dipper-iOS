@@ -31,15 +31,9 @@ struct AttendanceMetaLabel<Content: View>: View {
     var body: some View {
         HStack(spacing: DefaultSpacing.spacing8) {
             Image(systemName: systemImage)
-                .font(.system(size: Constants.iconSize))
+                .font(.app(.caption1))
                 .foregroundStyle(Color.grey500)
             content()
         }
     }
-}
-
-// MARK: - Constants
-
-private enum Constants {
-    static let iconSize: CGFloat = 12
 }
