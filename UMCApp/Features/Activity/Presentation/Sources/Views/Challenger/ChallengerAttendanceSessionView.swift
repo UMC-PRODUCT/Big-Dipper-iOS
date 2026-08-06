@@ -246,7 +246,7 @@ struct ChallengerAttendanceSessionView: View {
                 isUniform: true
             )
             .fill(Color.grey000)
-            .glass()
+            .cardShadow()
         }
     }
 

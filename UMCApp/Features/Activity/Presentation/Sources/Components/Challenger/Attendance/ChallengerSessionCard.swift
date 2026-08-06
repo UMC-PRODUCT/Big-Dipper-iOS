@@ -72,7 +72,7 @@ struct ChallengerSessionCard: View, Equatable {
                     isUniform: true
                 )
                 .fill(Color.grey000)
-                .glass()
+                .cardShadow()
             }
             .contentShape(Rectangle())
         }
@@ -119,12 +119,8 @@ struct ChallengerSessionCard: View, Equatable {
                 color: session.attendanceStatus.fontColor
             )
             .padding(DefaultConstant.badgePadding)
-            .background(session.attendanceStatus.backgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
-            .glassEffect(
-                .clear,
-                in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
-            )
+            .background(session.attendanceStatus.backgroundColor, in: Capsule())
+            .glassEffect(.clear, in: Capsule())
     }
 }
 

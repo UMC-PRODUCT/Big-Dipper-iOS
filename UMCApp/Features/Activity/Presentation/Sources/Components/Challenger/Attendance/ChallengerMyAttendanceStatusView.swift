@@ -71,7 +71,7 @@ struct ChallengerMyAttendanceStatusView: View {
             corners: .concentric(minimum: DefaultConstant.concentricRadius),
             isUniform: true
         ))
-        .glass()
+        .cardShadow()
     }
 }
 

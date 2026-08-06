@@ -19,8 +19,10 @@ public struct Shadow1: ViewModifier {
     }
 }
 
-/// glass modifier
-public struct Glass: ViewModifier {
+/// 카드 표면용 drop shadow 2단.
+///
+/// 이름과 달리 Liquid Glass(`.glassEffect`)가 아니라 불투명 배경 위에 얹는 그림자다.
+public struct CardShadow: ViewModifier {
     public func body(content: Content) -> some View {
         content
             .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 8)
@@ -40,8 +42,8 @@ extension View {
         self.modifier(Shadow1())
     }
     
-    public func glass() -> some View {
-        self.modifier(Glass())
+    public func cardShadow() -> some View {
+        self.modifier(CardShadow())
     }
     
     public func blurShadow() -> some View {

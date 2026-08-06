@@ -95,7 +95,7 @@ struct ChallengerMissionCardContent: View, Equatable {
     ZStack {
         Color.grey100.ignoresSafeArea().frame(height: 400)
         ChallengerMissionCardContent(model: MissionPreviewData.singleMission)
-            .glass()
+            .cardShadow()
     }
 }
 

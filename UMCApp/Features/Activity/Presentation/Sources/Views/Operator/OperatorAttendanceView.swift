@@ -367,7 +367,10 @@ struct OperatorAttendanceView: View {
                 .padding(DefaultSpacing.spacing16)
                 .background(
                     .regularMaterial,
-                    in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius)
+                    in: ConcentricRectangle(
+                        corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                        isUniform: true
+                    )
                 )
 
                 Text(Constants.permissionGuideFooter)

@@ -63,7 +63,7 @@ struct ChallengerCurriculumProgressCard: View, Equatable {
                 isUniform: true
             )
             .fill(Color.white)
-            .glass()
+            .cardShadow()
         }
     }
 

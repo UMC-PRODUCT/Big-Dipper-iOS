@@ -68,9 +68,7 @@ private struct MyAttendanceItemPresenter: View, Equatable {
     fileprivate enum Constants {
         static let cardSpacing: CGFloat = 12
         static let contentSectionSpacing: CGFloat = 4
-        static let statusRadius: CGFloat = 8
         static let infoIconSpacing: CGFloat = 4
-        static let policyCornerRadius: CGFloat = 12
         static let policyColumnSpacing: CGFloat = 2
         static let policyTextScaleFactor: CGFloat = 0.8
         static let titleLineLimit: Int = 2
@@ -167,15 +165,8 @@ private struct MyAttendanceItemPresenter: View, Equatable {
         Text(model.status.text)
             .appFont(.caption1, weight: .semibold, color: model.status.fontColor)
             .padding(DefaultConstant.badgePadding)
-            .background(
-                model.status.backgroundColor,
-                in: RoundedRectangle(cornerRadius: Constants.statusRadius)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius))
-            .glassEffect(
-                .clear,
-                in: RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
-            )
+            .background(model.status.backgroundColor, in: Capsule())
+            .glassEffect(.clear, in: Capsule())
     }
 
     // MARK: - Expanded Section
@@ -227,7 +218,10 @@ private struct MyAttendanceItemPresenter: View, Equatable {
         .frame(maxWidth: .infinity)
         .background(
             Color.grey100,
-            in: RoundedRectangle(cornerRadius: Constants.policyCornerRadius)
+            in: ConcentricRectangle(
+                corners: .concentric(minimum: DefaultConstant.concentricRadius),
+                isUniform: true
+            )
         )
     }
 
