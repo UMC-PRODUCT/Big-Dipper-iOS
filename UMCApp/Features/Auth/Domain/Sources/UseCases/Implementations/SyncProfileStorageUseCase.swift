@@ -62,6 +62,10 @@ public final class SyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol 
         userDefaults.set(profile.isApproved, forKey: AppStorageKey.canAutoLogin)
 
         userSessionManager.updateRole(resolvedRole, allRoles: profile.roles.map(\.roleType))
+
+        // 로그인 진입점 4곳이 모두 이 UseCase를 거치므로, memberId 확보 시점의 FCM 토큰
+        // 재동기화 트리거는 여기 한 곳에서만 발송한다.
+        NotificationCenter.default.post(name: .memberProfileUpdated, object: nil)
     }
 
     // MARK: - Private Function

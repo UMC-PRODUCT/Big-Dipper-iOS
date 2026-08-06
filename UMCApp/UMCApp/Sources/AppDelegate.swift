@@ -60,6 +60,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         Messaging.messaging().delegate = self
         UNUserNotificationCenter.current().delegate = self
         registerRemoteNotificationsIfAuthorized()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(memberProfileDidUpdate),
+            name: .memberProfileUpdated,
+            object: nil
+        )
         return true
     }
 
@@ -132,6 +138,17 @@ extension Notification.Name {
 // MARK: - Private Function
 
 private extension AppDelegate {
+
+    /// 로그인/가입 직후 프로필이 저장되면 FCM 토큰을 다시 동기화한다.
+    ///
+    /// 앱 실행 시점에는 `memberId`가 없어 ``syncFCMTokenIfPossible(trigger:)``가 조기 반환하고,
+    /// 같은 세션 안에서 로그인해도 `applicationDidBecomeActive`는 다시 호출되지 않는다.
+    @objc
+    func memberProfileDidUpdate() {
+        Task { @MainActor in
+            await syncFCMTokenIfPossible(trigger: "memberProfileUpdated")
+        }
+    }
 
     /// FCM 토큰을 서버에 동기화한다.
     ///
