@@ -7,6 +7,7 @@
 
 import SwiftUI
 import ActivityDomain
+import CoreUIComponents
 
 /// `AttendanceStatus` 의 시각 표현 매핑.
 ///
@@ -16,17 +17,26 @@ public extension AttendanceStatus {
 
     /// 배지/버튼 배경 색상
     var backgroundColor: Color {
-        switch self {
-        case .beforeAttendance: return .gray.opacity(0.7)
-        case .pendingApproval:  return .yellow.opacity(0.7)
-        case .present:          return .green.opacity(0.7)
-        case .late:             return .yellow.opacity(0.7)
-        case .absent:           return .red.opacity(0.7)
-        }
+        badgeStatus.backgroundColor
     }
 
     /// 배지/버튼 폰트 색상
     var fontColor: Color {
-        .white
+        badgeStatus.foregroundColor
+    }
+}
+
+extension AttendanceStatus {
+
+    /// 공용 뱃지 색 매핑(``AttendanceBadgeStatus``)으로 변환한다. 색상만 사용한다.
+    /// `default` 를 두지 않아 도메인 케이스 추가 시 컴파일 단계에서 누락이 드러난다.
+    var badgeStatus: AttendanceBadgeStatus {
+        switch self {
+        case .beforeAttendance: return .pending
+        case .pendingApproval:  return .presentPending
+        case .present:          return .present
+        case .late:             return .late
+        case .absent:           return .absent
+        }
     }
 }

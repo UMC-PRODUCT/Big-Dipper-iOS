@@ -8,6 +8,7 @@
 import AuthDomain
 import CoreNetwork
 import Foundation
+import Moya
 import UMCFoundation
 
 /// 인증/세션 관련 Repository 구현체
@@ -101,6 +102,40 @@ public struct AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
                 body: LoginGoogleRequestDTO(accessToken: accessToken)
             )
         )
+    }
+
+    public func loginByEmail(email: String, password: String) async throws -> LoginByIdPwResult {
+        let response: Response
+        do {
+            response = try await adapter.requestWithoutAuth(
+                AuthRouter.loginByEmail(
+                    body: EmailLoginRequestDTO(email: email, password: password)
+                )
+            )
+        } catch let networkError as NetworkError {
+            throw Self.parseServerError(from: networkError) ?? networkError
+        }
+
+        do {
+            let apiResponse = try JSONDecoder().decode(
+                APIResponse<EmailLoginResponseDTO>.self,
+                from: response.data
+            )
+            let dto = try apiResponse.unwrap()
+
+            // 이메일 로그인은 서버가 항상 토큰을 발급한다. DTO가 누락 토큰을 빈 문자열로
+            // 흡수하므로, 빈 토큰을 유효 세션으로 저장하지 않도록 가드한다.
+            guard !dto.accessToken.isEmpty, !dto.refreshToken.isEmpty else {
+                throw RepositoryError.invalidResponse(
+                    detail: "loginByEmail: 서버 응답에 accessToken/refreshToken이 없습니다"
+                )
+            }
+
+            try await tokenStore.save(accessToken: dto.accessToken, refreshToken: dto.refreshToken)
+            return LoginByIdPwResult(memberId: dto.memberId)
+        } catch let decodingError as DecodingError {
+            throw RepositoryError.decodingError(detail: "\(decodingError)")
+        }
     }
 
     // MARK: - Private Function

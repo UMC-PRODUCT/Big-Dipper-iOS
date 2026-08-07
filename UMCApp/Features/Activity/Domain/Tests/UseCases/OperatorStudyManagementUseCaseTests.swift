@@ -22,7 +22,7 @@ private func makeUseCase(
 
 // MARK: - Mocks
 
-/// 운영진 스터디 관리 UseCase 가 사용하는 9개 메서드를 기록/제어하는 포커스드 Mock.
+/// 운영진 스터디 관리 UseCase 가 사용하는 11개 메서드를 기록/제어하는 포커스드 Mock.
 /// 본 UseCase 가 호출하지 않는 계약 메서드는 호출 시 `unimplemented` 로 즉시 실패시킵니다.
 private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryProtocol {
 
@@ -44,10 +44,23 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
 
     var fetchPageResult = StudyGroupDetailsPage(content: [], hasNext: false, nextCursor: nil)
     var resolveResult: String? = "C-1"
+    var groupNamesResult: [StudyGroupName] = []
+    var submissionsResult = StudyMemberSubmissionPage(
+        content: [],
+        hasNext: false,
+        nextCursor: nil
+    )
     var errorToThrow: Error?
 
     private(set) var fetchPageCalls: [(cursor: String?, size: Int)] = []
     private(set) var resolveCalls: [(memberId: String, preferredGeneration: String?)] = []
+    private(set) var groupNamesCallCount = 0
+    private(set) var submissionCalls: [(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    )] = []
     private(set) var createCalls: [(
         gisuId: String,
         name: String,
@@ -75,6 +88,23 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
         if let errorToThrow { throw errorToThrow }
         resolveCalls.append((memberId, preferredGeneration))
         return resolveResult
+    }
+
+    func fetchStudyGroupNames() async throws -> [StudyGroupName] {
+        if let errorToThrow { throw errorToThrow }
+        groupNamesCallCount += 1
+        return groupNamesResult
+    }
+
+    func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage {
+        if let errorToThrow { throw errorToThrow }
+        submissionCalls.append((studyGroupId, weekNos, cursor, size))
+        return submissionsResult
     }
 
     func createStudyGroup(
@@ -120,11 +150,7 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
 
     // MARK: 본 UseCase 미사용 — 호출 시 unimplemented
 
-    func fetchCurriculumProgress() async throws -> CurriculumProgressModel {
-        throw MockError.unimplemented
-    }
-
-    func fetchMissions() async throws -> [MissionCardModel] {
+    func fetchCurriculumOverview() async throws -> CurriculumOverview {
         throw MockError.unimplemented
     }
 
@@ -151,9 +177,10 @@ private final class MockStudyRepository: @unchecked Sendable, StudyRepositoryPro
 
 // MARK: - 위임 메서드 디스패치
 
-/// 9개 위임 메서드를 파라미터화해 에러 전파/변경 위임을 형제 대칭으로 검증하기 위한 디스패처.
+/// 11개 위임 메서드를 파라미터화해 에러 전파/변경 위임을 형제 대칭으로 검증하기 위한 디스패처.
 private enum DelegatingMethod: CaseIterable {
     case fetchPage, resolve, create
+    case fetchGroupNames, fetchSubmissions
     case update, delete, addMember, removeMember, addMentor, removeMentor
 
     /// update/delete/멤버·멘토 변경처럼 `Mutation` 으로 기록되는 케이스만 추림.
@@ -174,6 +201,15 @@ private enum DelegatingMethod: CaseIterable {
                 part: .front(type: .ios),
                 memberIds: [],
                 mentorIds: []
+            )
+        case .fetchGroupNames:
+            _ = try await useCase.fetchStudyGroupNames()
+        case .fetchSubmissions:
+            _ = try await useCase.fetchStudyMemberSubmissions(
+                studyGroupId: "G-1",
+                weekNos: ["1"],
+                cursor: nil,
+                size: 20
             )
         case .update:
             try await useCase.updateStudyGroup(groupId: "G-1", name: "새 이름")
@@ -199,7 +235,8 @@ private enum DelegatingMethod: CaseIterable {
         case .removeMember: return .init(kind: "removeMember", groupId: "G-1", id: "M-1")
         case .addMentor: return .init(kind: "addMentor", groupId: "G-1", id: "M-9")
         case .removeMentor: return .init(kind: "removeMentor", groupId: "G-1", id: "M-9")
-        case .fetchPage, .resolve, .create: return nil
+        case .fetchPage, .resolve, .create, .fetchGroupNames, .fetchSubmissions:
+            return nil
         }
     }
 }
@@ -245,6 +282,36 @@ struct OperatorStudyManagementUseCaseTests {
         let call = try #require(repository.resolveCalls.first)
         #expect(call.memberId == "M-1")
         #expect(call.preferredGeneration == generation)
+    }
+
+    // MARK: - 제출 현황 위임
+
+    @Test(
+        "제출 현황 — 그룹/주차 필터와 커서를 변형 없이 Repository 로 위임",
+        arguments: [
+            (String?.none, [String]()),
+            ("G-7", ["1", "3"])
+        ]
+    )
+    func submissionsForwardsFiltersVerbatim(
+        studyGroupId: String?,
+        weekNos: [String]
+    ) async throws {
+        let repository = MockStudyRepository()
+        let useCase = makeUseCase(repository: repository)
+
+        _ = try await useCase.fetchStudyMemberSubmissions(
+            studyGroupId: studyGroupId,
+            weekNos: weekNos,
+            cursor: "42",
+            size: 20
+        )
+
+        let call = try #require(repository.submissionCalls.first)
+        #expect(call.studyGroupId == studyGroupId)
+        #expect(call.weekNos == weekNos)
+        #expect(call.cursor == "42")
+        #expect(call.size == 20)
     }
 
     // MARK: - 생성 / 변경 위임

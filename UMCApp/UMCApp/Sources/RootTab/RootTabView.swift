@@ -5,31 +5,38 @@
 //  Created by euijjang97 on 7/8/26.
 //
 
+import SwiftUI
+
 import ActivityPresentation
 import CommunityPresentation
 import CoreDesignSystem
+import CoreRouting
 import HomePresentation
 import MyPagePresentation
 import NoticePresentation
-import SwiftUI
 
 /// `.main` 상태의 루트 탭 셸.
 ///
-/// Home/Notice/Activity/Community/MyPage 5개 탭을 탭별 독립 `NavigationStack`으로
-/// 구성한다. Home/Notice 탭은 실제 화면에 연결되어 있고, 나머지 3탭은 각 Feature의
-/// placeholder(`{Feature}FeatureView`)를 표시한다.
+/// Home/Notice/Activity/Community/MyPage 5개 탭을 탭별 독립 `NavigationStack`으로 구성한다.
+/// 각 스택의 경로는 공유 `PathStore` 가 들고 있고, 이 뷰가 그것을 `.environment` 로 내려보내
+/// Feature 가 App 을 import 하지 않고도 자기 화면을 push 할 수 있게 한다.
+///
+/// 목적지 렌더 분기는 두 갈래로 등록된다.
+/// - `NavigationDestination`: App 이 아직 들고 있는 Home/Notice 경로
+/// - Feature 소유 목적지(예: `ActivityDestination`): 해당 Feature 루트가 자기 스택에 직접 등록
+///
+/// `PathStore` 가 타입 소거 `NavigationPath` 를 쓰기 때문에 두 갈래가 한 스택에 공존한다.
 struct RootTabView: View {
 
     // MARK: - Property
 
-    @State private var selectedTab: TabCase = .home
     @State private var pathStore = PathStore()
 
     // MARK: - Body
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            ForEach(TabCase.allCases) { tab in
+        TabView(selection: $pathStore.selectedTab) {
+            ForEach(NavigationTab.allCases) { tab in
                 Tab(value: tab, role: tab.role) {
                     tabRootView(tab)
                 } label: {
@@ -38,11 +45,12 @@ struct RootTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .environment(pathStore)
     }
 
     // MARK: - Function
 
-    private func tabLabel(_ tab: TabCase) -> some View {
+    private func tabLabel(_ tab: NavigationTab) -> some View {
         VStack(alignment: .center, spacing: DefaultSpacing.spacing8) {
             Image(systemName: tab.systemImageName)
                 .renderingMode(.template)
@@ -56,37 +64,59 @@ struct RootTabView: View {
 
     /// 탭 케이스에 따른 루트 뷰를 독립 `NavigationStack`으로 감싼다.
     @ViewBuilder
-    private func tabRootView(_ tab: TabCase) -> some View {
+    private func tabRootView(_ tab: NavigationTab) -> some View {
         NavigationStack(path: pathBinding(for: tab)) {
             tabContent(tab)
                 .navigationDestination(for: NavigationDestination.self) { destination in
                     NavigationRoutingView(
                         destination: destination,
-                        push: { pushDestination($0, for: tab) }
+                        push: { pathStore.push($0, on: tab) }
                     )
                 }
         }
     }
 
-    /// Home/Notice 탭은 실제 화면에 연결하고, 나머지는 각 Feature의 placeholder를 표시한다.
+    /// 탭별 루트 화면. 실연결된 탭은 Feature 화면을, 아직인 탭은 placeholder를 표시한다.
+    ///
+    /// Home/Notice/Activity가 실연결 상태다. Activity는 자기 목적지(`ActivityDestination`) 등록까지
+    /// `ActivityFeatureView`가 맡으므로, App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다.
+    /// 반면 Home/Notice는 목적지가 App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
+    ///
+    /// - Note: Community/MyPage도 이식된 모듈이 있지만, 탭 실연결은 각 후속 이슈에서 진행한다.
     @ViewBuilder
-    private func tabContent(_ tab: TabCase) -> some View {
+    private func tabContent(_ tab: NavigationTab) -> some View {
         switch tab {
         case .home:
-            HomeFeatureView { detailItem in
-                pathStore.homePath.append(.notice(.detail(detailItem: detailItem)))
-            }
+            HomeFeatureView(
+                onNoticeSelected: { detailItem in
+                    pathStore.push(
+                        NavigationDestination.notice(.detail(detailItem: detailItem)),
+                        on: .home
+                    )
+                },
+                onScheduleSelected: { scheduleId in
+                    pathStore.push(
+                        NavigationDestination.home(.scheduleDetail(scheduleId: scheduleId)),
+                        on: .home
+                    )
+                },
+                onAlarmHistoryTapped: {
+                    pathStore.push(NavigationDestination.home(.alarmHistory), on: .home)
+                }
+            )
         case .notice:
             NoticeFeatureView(
                 onNoticeSelected: { detailItem in
-                    pathStore.noticePath.append(.notice(.detail(detailItem: detailItem)))
+                    pathStore.push(
+                        NavigationDestination.notice(.detail(detailItem: detailItem)),
+                        on: .notice
+                    )
                 },
                 onStaffNoticeSelected: {
-                    pathStore.noticePath.append(.notice(.staffNotice))
+                    pathStore.push(NavigationDestination.notice(.staffNotice), on: .notice)
                 }
             )
         case .activity:
-            // TODO: ActivityPresentation의 실제 ActivityView 연결 (Activity 탭 실연결 후속 이슈)
             ActivityFeatureView()
         case .community:
             // TODO: CommunityPresentation의 실제 CommunityView 연결 (Community 탭 실연결 후속 이슈)
@@ -98,32 +128,10 @@ struct RootTabView: View {
     }
 
     /// 탭별 독립 `NavigationStack` path 바인딩을 `PathStore`에 위임한다.
-    private func pathBinding(for tab: TabCase) -> Binding<[NavigationDestination]> {
-        switch tab {
-        case .home:
-            Binding(get: { pathStore.homePath }, set: { pathStore.homePath = $0 })
-        case .notice:
-            Binding(get: { pathStore.noticePath }, set: { pathStore.noticePath = $0 })
-        case .activity:
-            Binding(get: { pathStore.activityPath }, set: { pathStore.activityPath = $0 })
-        case .community:
-            Binding(get: { pathStore.communityPath }, set: { pathStore.communityPath = $0 })
-        case .mypage:
-            Binding(get: { pathStore.myPagePath }, set: { pathStore.myPagePath = $0 })
-        }
-    }
-    
-    /// 목적지를 현재 탭의 path에 push한다.
-    ///
-    /// `NavigationRoutingView`가 라우팅 도중 추가 push가 필요할 때(예: 공지 상세 → 수정) 호출된다.
-    /// 어느 탭에서 진입했는지에 따라 push 대상 배열을 나눠, 탭별 path 독립성을 유지한다.
-    private func pushDestination(_ destination: NavigationDestination, for tab: TabCase) {
-        switch tab {
-        case .home: pathStore.homePath.append(destination)
-        case .notice: pathStore.noticePath.append(destination)
-        case .activity: pathStore.activityPath.append(destination)
-        case .community: pathStore.communityPath.append(destination)
-        case .mypage: pathStore.myPagePath.append(destination)
-        }
+    private func pathBinding(for tab: NavigationTab) -> Binding<NavigationPath> {
+        Binding(
+            get: { pathStore[tab] },
+            set: { pathStore[tab] = $0 }
+        )
     }
 }

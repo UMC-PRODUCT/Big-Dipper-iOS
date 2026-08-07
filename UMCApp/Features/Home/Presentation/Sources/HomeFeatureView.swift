@@ -16,19 +16,36 @@ public struct HomeFeatureView: View {
 
     @Environment(\.di) private var di
     private let onNoticeSelected: (NoticeDetail) -> Void
+    private let onScheduleSelected: (String) -> Void
+    private let onAlarmHistoryTapped: () -> Void
 
     // MARK: - Init
 
-    /// - Parameter onNoticeSelected: 최근 공지 카드 탭 시 상세 화면 이동을 상위(App)에 위임하는 콜백.
-    ///   Home Feature는 App 타깃의 전역 `NavigationDestination`을 참조할 수 없어(Feature → App 의존
-    ///   방향 금지) 실제 push는 호출부(`RootTabView`)에서 수행한다.
-    public init(onNoticeSelected: @escaping (NoticeDetail) -> Void) {
+    /// Home Feature는 App 타깃의 전역 `NavigationDestination`을 참조할 수 없어(Feature → App 의존
+    /// 방향 금지) 화면 이동을 콜백으로 위임한다. 실제 push는 호출부(`RootTabView`)에서 수행한다.
+    ///
+    /// - Parameters:
+    ///   - onNoticeSelected: 최근 공지 카드 탭 시 공지 상세 이동 콜백
+    ///   - onScheduleSelected: 일정 카드 탭 시 일정 상세 이동 콜백 (일정 ID 전달)
+    ///   - onAlarmHistoryTapped: 툴바 알림 버튼 탭 시 알림 보관함 이동 콜백
+    public init(
+        onNoticeSelected: @escaping (NoticeDetail) -> Void,
+        onScheduleSelected: @escaping (String) -> Void,
+        onAlarmHistoryTapped: @escaping () -> Void
+    ) {
         self.onNoticeSelected = onNoticeSelected
+        self.onScheduleSelected = onScheduleSelected
+        self.onAlarmHistoryTapped = onAlarmHistoryTapped
     }
 
     // MARK: - Body
 
     public var body: some View {
-        HomeView(container: di, onNoticeSelected: onNoticeSelected)
+        HomeView(
+            container: di,
+            onNoticeSelected: onNoticeSelected,
+            onScheduleSelected: onScheduleSelected,
+            onAlarmHistoryTapped: onAlarmHistoryTapped
+        )
     }
 }

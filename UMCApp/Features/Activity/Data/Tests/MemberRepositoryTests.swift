@@ -9,6 +9,7 @@ import Testing
 import Foundation
 import Moya
 import ActivityDomain
+import CoreDomain
 import UMCFoundation
 @testable import ActivityData
 
@@ -119,6 +120,24 @@ private enum Fixture {
             "page": \(page), "size": 20, "totalElements": \(items.count),
             "totalPages": 1, "hasNext": \(hasNext), "hasPrevious": false
           }
+        }
+        """
+    }
+
+    /// 커서 검색 결과 페이지.
+    static func cursorPage(
+        items: [String],
+        nextCursor: Int? = nil,
+        hasNext: Bool = false
+    ) -> String {
+        let cursorValue = nextCursor.map(String.init) ?? "null"
+        return """
+        {
+          "cursor": {
+            "content": [\(items.joined(separator: ","))],
+            "nextCursor": \(cursorValue), "hasNext": \(hasNext)
+          },
+          "partCounts": []
         }
         """
     }
@@ -397,6 +416,132 @@ struct MemberRepositoryListTests {
 
         await #expect(throws: (any Error).self) {
             try await sut.fetchMembers()
+        }
+    }
+}
+
+// MARK: - Suite: 챌린저 커서 검색 계약
+
+@Suite("MemberRepository — 챌린저 커서 검색 (도메인 규칙)")
+struct MemberRepositoryChallengerSearchTests {
+
+    @Test("커서 검색 엔드포인트를 GET 으로 호출한다")
+    func callsCursorSearchEndpoint() async throws {
+        let (sut, stub) = makeRepository(
+            .success(Fixture.success(Fixture.cursorPage(items: [])))
+        )
+
+        _ = try await sut.searchChallengers(keyword: "길동", cursor: nil, size: 50)
+
+        #expect(stub.requestCount == 1)
+        #expect(stub.lastPath == "/api/v1/challenger/search/cursor")
+        #expect(stub.lastMethod == .get)
+    }
+
+    @Test("검색 항목을 ChallengerInfo 로 매핑하고 커서 정보를 보존한다")
+    func mapsItemsToChallengerInfo() async throws {
+        let page = Fixture.cursorPage(
+            items: [
+                Fixture.offsetItem(
+                    memberId: "100",
+                    challengerId: "C100",
+                    part: "IOS",
+                    name: "홍길동",
+                    nickname: "길동",
+                    gisu: 9
+                )
+            ],
+            nextCursor: 12,
+            hasNext: true
+        )
+        let (sut, _) = makeRepository(.success(Fixture.success(page)))
+
+        let result = try await sut.searchChallengers(keyword: "길동", cursor: nil, size: 50)
+        let challenger = try #require(result.challengers.first)
+
+        #expect(challenger.memberId == "100")
+        #expect(challenger.challengerId == "C100")
+        #expect(challenger.name == "홍길동")
+        #expect(challenger.nickname == "길동")
+        #expect(challenger.schoolName == "한성대")
+        #expect(challenger.part == .front(type: .ios))
+        #expect(result.hasNext)
+        #expect(result.nextCursor == 12)
+    }
+
+    @Test("기수는 '9기' 표시 문구가 아니라 챌린저 ID 해석에 쓰는 숫자 문자열이다")
+    func mapsGenerationAsPlainNumber() async throws {
+        let page = Fixture.cursorPage(
+            items: [Fixture.offsetItem(memberId: "100", gisu: 9)]
+        )
+        let (sut, _) = makeRepository(.success(Fixture.success(page)))
+
+        let result = try await sut.searchChallengers(keyword: nil, cursor: nil, size: 50)
+        let challenger = try #require(result.challengers.first)
+
+        // selectionKey 구성과 resolveChallengerId(preferredGeneration:) 비교가
+        // 숫자 문자열을 전제한다.
+        #expect(challenger.gen == "9")
+        #expect(challenger.selectionKey == "100|9|IOS")
+    }
+
+    @Test("기수 정보가 없으면 gen 을 빈 문자열로 둔다")
+    func mapsMissingGenerationAsEmpty() async throws {
+        let item = """
+        {
+          "challengerId": "C100", "memberId": "100", "gisuId": "70",
+          "part": "IOS", "name": "홍길동", "nickname": "길동",
+          "schoolName": "한성대", "pointSum": 0, "roleTypes": []
+        }
+        """
+        let (sut, _) = makeRepository(
+            .success(Fixture.success(Fixture.cursorPage(items: [item])))
+        )
+
+        let result = try await sut.searchChallengers(keyword: nil, cursor: nil, size: 50)
+        let challenger = try #require(result.challengers.first)
+
+        // 빈 문자열은 호출부(OperatorStudyManagementViewModel)가 "기수 미지정"으로 읽는 신호다.
+        #expect(challenger.gen.isEmpty)
+    }
+
+    @Test("memberId 가 없는 항목은 선택 키를 만들 수 없어 제외한다")
+    func skipsItemsWithoutMemberId() async throws {
+        let page = Fixture.cursorPage(
+            items: [
+                Fixture.offsetItem(memberId: ""),
+                Fixture.offsetItem(memberId: "100")
+            ]
+        )
+        let (sut, _) = makeRepository(.success(Fixture.success(page)))
+
+        let result = try await sut.searchChallengers(keyword: nil, cursor: nil, size: 50)
+
+        #expect(result.challengers.count == 1)
+        #expect(result.challengers.first?.memberId == "100")
+    }
+
+    @Test("마지막 페이지는 hasNext 가 false 이고 커서가 없다")
+    func mapsLastPage() async throws {
+        let page = Fixture.cursorPage(
+            items: [Fixture.offsetItem(memberId: "100")],
+            nextCursor: nil,
+            hasNext: false
+        )
+        let (sut, _) = makeRepository(.success(Fixture.success(page)))
+
+        let result = try await sut.searchChallengers(keyword: nil, cursor: 3, size: 50)
+
+        #expect(result.hasNext == false)
+        #expect(result.nextCursor == nil)
+    }
+
+    @Test("네트워크 실패는 그대로 전파한다")
+    func propagatesNetworkFailure() async {
+        let (sut, _) = makeRepository(.failure(TestError.network))
+
+        await #expect(throws: TestError.network) {
+            _ = try await sut.searchChallengers(keyword: "길동", cursor: nil, size: 50)
         }
     }
 }

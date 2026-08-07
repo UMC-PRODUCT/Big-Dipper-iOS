@@ -28,7 +28,8 @@ public final class HomeViewModel {
     /// 실패 시 빈 딕셔너리로 degrade한다 (원본 AppProduct와 동일한 정책).
     public private(set) var scheduleByDates: [Date: [ScheduleDetailData]] = [:]
 
-    /// 일정 ID(``ScheduleDetailData/scheduleId``) → 분류된 카테고리. 분류가 끝난 일정만 채워지며,
+    /// 일정 ID(``ScheduleDetailData/scheduleId``) → 분류된 카테고리. 현재 로드된 일정만 담으며
+    /// (월 이동/조회 실패 시 ``scheduleByDates`` 와 동일하게 정리된다),
     /// 조회는 ``category(for:)`` 를 통해 기본값(``ScheduleIconCategory/general``)과 함께 사용한다.
     public private(set) var scheduleCategories: [String: ScheduleIconCategory] = [:]
 
@@ -109,7 +110,7 @@ public final class HomeViewModel {
             let startOfMonth = calendar.date(from: DateComponents(year: targetYear, month: targetMonth, day: 1)),
             let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth)
         else {
-            scheduleByDates = [:]
+            clearSchedules()
             return
         }
 
@@ -121,7 +122,7 @@ public final class HomeViewModel {
             )
             await classifySchedules(scheduleByDates.values.flatMap { $0 })
         } catch {
-            scheduleByDates = [:]
+            clearSchedules()
         }
     }
 
@@ -139,12 +140,26 @@ public final class HomeViewModel {
 
     /// 일정 제목을 분류해 ``scheduleCategories`` 를 갱신한다. 빈 제목이거나 분류가 실패해도
     /// UseCase가 `.general`을 반환하므로 별도 에러 처리는 필요 없다.
+    ///
+    /// 결과는 로컬 딕셔너리에 누적한 뒤 한 번만 할당한다. 뷰 무효화가 일정 수만큼 쪼개지는 것을
+    /// 막고, 현재 일정 집합으로 새로 구성하므로 이전 달 분류 결과가 함께 pruning된다.
     private func classifySchedules(_ schedules: [ScheduleDetailData]) async {
+        var categories: [String: ScheduleIconCategory] = [:]
+
         for schedule in schedules {
-            scheduleCategories[schedule.scheduleId] = await classifyScheduleUseCase.execute(
+            categories[schedule.scheduleId] = await classifyScheduleUseCase.execute(
                 title: schedule.name
             )
         }
+
+        scheduleCategories = categories
+    }
+
+    /// 일정 조회가 불가능하거나 실패했을 때의 degrade 처리. 캘린더는 흐름을 막지 않아야 하므로
+    /// 일정과 분류 결과를 함께 비운다 (UseCase 레이어의 분류 캐시는 유지된다).
+    private func clearSchedules() {
+        scheduleByDates = [:]
+        scheduleCategories = [:]
     }
 
     /// 최신 기수의 최근 공지 5건을 조회한다. 소속 기수가 없으면 빈 목록으로 처리한다.

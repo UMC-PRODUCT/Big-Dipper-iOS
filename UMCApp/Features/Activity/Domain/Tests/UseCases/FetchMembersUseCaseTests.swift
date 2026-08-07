@@ -48,6 +48,8 @@ private final class MockMemberRepository: @unchecked Sendable, MemberRepositoryP
     enum MockError: Error {
         /// 에러 전파 경로 검증용 스텁 에러
         case stubbed
+        /// 본 UseCase 가 호출하면 안 되는 계약 메서드를 건드렸음을 알리는 표식
+        case unimplemented
     }
 
     /// 챌린저 포인트 부여 호출 1건을 기록하는 값 타입
@@ -93,6 +95,16 @@ private final class MockMemberRepository: @unchecked Sendable, MemberRepositoryP
         fetchMembersPageCalls.append(page)
         if let error { throw error }
         return fetchMembersPageResult
+    }
+
+    /// 본 UseCase 는 챌린저 검색을 노출하지 않는다 (``SearchChallengersUseCase`` 담당).
+    /// 계약 충족용 구현이며 호출되면 즉시 실패시켜 오배선을 드러낸다.
+    func searchChallengers(
+        keyword: String?,
+        cursor: Int?,
+        size: Int
+    ) async throws -> ChallengerSearchPage {
+        throw MockError.unimplemented
     }
 
     func grantPoint(

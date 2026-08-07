@@ -30,9 +30,19 @@ final class MockHomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
     private(set) var fetchMyProfileCallCount = 0
     private(set) var fetchMyProfileReceivedForceRefresh: Bool?
 
+    var registerFCMTokenResult: Result<Void, Error> = .success(())
+    private(set) var registerFCMTokenCallCount = 0
+    private(set) var registerFCMTokenReceivedToken: String?
+
     func fetchMyProfile(forceRefresh: Bool) async throws -> HomeProfileResult {
         fetchMyProfileCallCount += 1
         fetchMyProfileReceivedForceRefresh = forceRefresh
         return try fetchMyProfileResult.get()
+    }
+
+    func registerFCMToken(fcmToken: String) async throws {
+        registerFCMTokenCallCount += 1
+        registerFCMTokenReceivedToken = fcmToken
+        try registerFCMTokenResult.get()
     }
 }

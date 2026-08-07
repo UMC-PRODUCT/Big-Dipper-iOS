@@ -15,11 +15,11 @@ public protocol StudyRepositoryProtocol {
 
     // MARK: - 커리큘럼 / 미션
 
-    /// 커리큘럼 진행률 정보 조회
-    func fetchCurriculumProgress() async throws -> CurriculumProgressModel
-
-    /// 미션 목록 조회
-    func fetchMissions() async throws -> [MissionCardModel]
+    /// 커리큘럼 개요(진행률 + 주차별 미션) 조회
+    ///
+    /// 서버가 둘을 단일 응답으로 내려주므로 한 번의 요청으로 함께 반환합니다.
+    /// 진행률과 미션을 따로 조회하는 진입점을 두면 같은 엔드포인트를 중복 호출하게 됩니다.
+    func fetchCurriculumOverview() async throws -> CurriculumOverview
 
     /// 주차 커리큘럼 옵션 목록 조회
     ///
@@ -62,6 +62,37 @@ public protocol StudyRepositoryProtocol {
         preferredGeneration: String?
     ) async throws -> String?
 
+    /// 관리 가능한 스터디 그룹 이름 목록 조회
+    ///
+    /// `GET /api/v1/study-groups/names`
+    ///
+    /// 그룹 필터 드롭다운처럼 목록 전체가 필요한 화면 전용입니다. 상세가 필요하면
+    /// ``fetchStudyGroupDetailsPage(cursor:size:)`` 를 사용하세요.
+    func fetchStudyGroupNames() async throws -> [StudyGroupName]
+
+    // MARK: - 스터디원 제출 현황
+
+    /// 스터디원 워크북 제출 현황 페이지 조회
+    ///
+    /// `GET /api/v2/curriculums/workbook-submissions`
+    ///
+    /// 행 단위는 **스터디원**이며 주차는 각 행의 `weeks` 배열에 담깁니다.
+    /// 워크북을 배포받지 않은 인원도 포함되며, 그 주차는 `challengerWorkbookId` 가 `nil`,
+    /// 상태가 ``ChallengerWorkbookStatus/notSubmitted`` 로 옵니다.
+    ///
+    /// - Parameters:
+    ///   - studyGroupId: 특정 그룹만 조회 (`nil` 이면 요청자가 관리 가능한 전체 그룹).
+    ///     권한 범위 밖 그룹을 요청하면 서버가 빈 목록이 아니라 403 을 반환합니다.
+    ///   - weekNos: 조회할 주차 번호 목록 (비어 있으면 전체 주차)
+    ///   - cursor: 직전 페이지 마지막 `studyGroupMemberId` (첫 페이지는 `nil`)
+    ///   - size: 페이지 크기 (스터디원 기준, 서버 최대 100)
+    func fetchStudyMemberSubmissions(
+        studyGroupId: String?,
+        weekNos: [String],
+        cursor: String?,
+        size: Int
+    ) async throws -> StudyMemberSubmissionPage
+
     // MARK: - 운영진 스터디 그룹 CRUD
 
     /// 스터디 그룹 생성
@@ -101,7 +132,8 @@ public protocol StudyRepositoryProtocol {
     /// 일정 생성 후 받은 `scheduleId` 를 스터디 그룹/주차 커리큘럼에 연결
     ///
     /// `POST /api/v1/study-groups/schedules` 엔드포인트의 단순 래퍼.
-    /// 1단계 일정 생성은 별도 `ScheduleRepositoryProtocol.generateSchedule(...)` 사용.
+    /// 1단계 일정 생성은 `HomeDomain` 의 `ScheduleRepositoryProtocol.createSchedule(_:)` 사용.
+    /// 두 단계를 묶는 조립은 ``RegisterStudyScheduleUseCaseProtocol`` 이 맡는다.
     ///
     /// 모두 서버 응답 식별자 → `String`.
     func linkStudyGroupSchedule(

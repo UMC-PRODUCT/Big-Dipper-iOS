@@ -15,9 +15,8 @@ import UMCFoundation
 /// 비밀번호 재설정 화면 — 이메일 인증(`PASSWORD_RESET` 목적) 후 새 비밀번호를 입력받아
 /// 재설정을 완료한다.
 ///
-/// - Note: 프로덕션 네비게이션 배선은 이 Task(#947)의 범위가 아니다. 실제 진입 경로는
-///   ID/PW 로그인 화면(#943)이 이식된 뒤 그 화면에서 연결되며, 이 화면은 `#if DEBUG`
-///   진입점(`AppRootView`)을 통해서만 현재 리뷰/QA 가능하다.
+/// - Note: `EmailLoginView`의 "비밀번호 찾기"에서 push되는 화면이므로 자체
+///   `NavigationStack`을 두지 않는다(중첩 시 네비게이션 바가 이중으로 표시된다).
 public struct ResetPasswordView: View {
 
     // MARK: - Property
@@ -49,50 +48,48 @@ public struct ResetPasswordView: View {
     // MARK: - Body
 
     public var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: DefaultSpacing.spacing24) {
-                    FormEmailField(
-                        title: "이메일",
-                        placeholder: "example@example.com",
-                        text: $viewModel.emailVerificationFlow.email,
-                        isVerified: $viewModel.emailVerificationFlow.isEmailVerified,
-                        onVerificationRequested: {
-                            try await viewModel.emailVerificationFlow.requestEmailVerification()
-                        },
-                        onVerificationComplete: { code in
-                            try await viewModel.emailVerificationFlow.verifyEmailCode(code)
-                        },
-                        onResend: {
-                            try await viewModel.emailVerificationFlow.resendEmailVerification()
-                        },
-                        submitLabel: .next,
-                        onSubmit: { focusedField = .password },
-                        onEmailChanged: { viewModel.emailVerificationFlow.handleEmailChanged() }
+        ScrollView {
+            VStack(alignment: .leading, spacing: DefaultSpacing.spacing24) {
+                FormEmailField(
+                    title: "이메일",
+                    placeholder: "example@example.com",
+                    text: $viewModel.emailVerificationFlow.email,
+                    isVerified: $viewModel.emailVerificationFlow.isEmailVerified,
+                    onVerificationRequested: {
+                        try await viewModel.emailVerificationFlow.requestEmailVerification()
+                    },
+                    onVerificationComplete: { code in
+                        try await viewModel.emailVerificationFlow.verifyEmailCode(code)
+                    },
+                    onResend: {
+                        try await viewModel.emailVerificationFlow.resendEmailVerification()
+                    },
+                    submitLabel: .next,
+                    onSubmit: { focusedField = .password },
+                    onEmailChanged: { viewModel.emailVerificationFlow.handleEmailChanged() }
+                )
+
+                Text(Constants.deliveryNotice)
+                    .appFont(.footnote, color: .grey500)
+
+                if viewModel.emailVerificationFlow.isEmailVerified {
+                    SignUpPasswordSection(
+                        password: $viewModel.newPassword,
+                        passwordConfirm: $viewModel.newPasswordConfirm,
+                        isPasswordValid: viewModel.isPasswordValid,
+                        isPasswordConfirmed: viewModel.isPasswordConfirmed,
+                        focusBinding: $focusedField,
+                        onConfirmSubmit: { focusedField = nil }
                     )
-
-                    Text(Constants.deliveryNotice)
-                        .appFont(.footnote, color: .grey500)
-
-                    if viewModel.emailVerificationFlow.isEmailVerified {
-                        SignUpPasswordSection(
-                            password: $viewModel.newPassword,
-                            passwordConfirm: $viewModel.newPasswordConfirm,
-                            isPasswordValid: viewModel.isPasswordValid,
-                            isPasswordConfirmed: viewModel.isPasswordConfirmed,
-                            focusBinding: $focusedField,
-                            onConfirmSubmit: { focusedField = nil }
-                        )
-                    }
                 }
-                .safeAreaPadding(.vertical, DefaultConstant.defaultContentTopMargins)
-                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
             }
-            .scrollDismissesKeyboard(.interactively)
-            .navigation(naviTitle: NavigationTitle.Auth.resetPassword, displayMode: .inline)
-            .safeAreaInset(edge: .bottom) {
-                submitButton
-            }
+            .safeAreaPadding(.vertical, DefaultConstant.defaultContentTopMargins)
+            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .navigation(naviTitle: NavigationTitle.Auth.resetPassword, displayMode: .inline)
+        .safeAreaInset(edge: .bottom) {
+            submitButton
         }
         .onChange(of: viewModel.resetPasswordState) { _, newState in
             handleResetPasswordStateChange(newState)

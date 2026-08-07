@@ -5,7 +5,10 @@
 //  Created by euijjang97 on 7/8/26.
 //
 
+import ActivityPresentation
 import CoreDI
+import CoreRouting
+import HomePresentation
 import NoticePresentation
 import SwiftUI
 import UMCFoundation
@@ -20,6 +23,7 @@ struct NavigationRoutingView: View {
 
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
+    @Environment(PathStore.self) private var pathStore
     private let destination: NavigationDestination
     /// 라우팅된 화면이 다시 push를 요청할 때 호출하는 콜백. 진입 탭의 path에 append된다.
     private let push: (NavigationDestination) -> Void
@@ -35,8 +39,35 @@ struct NavigationRoutingView: View {
 
     var body: some View {
         switch destination {
+        case .home(let route):
+            homeView(route)
         case .notice(let route):
             noticeView(route)
+        }
+    }
+}
+
+// MARK: - Home Routing
+
+private extension NavigationRoutingView {
+    @ViewBuilder
+    func homeView(_ route: NavigationDestination.Home) -> some View {
+        switch route {
+        case .alarmHistory:
+            NoticeAlarmView()
+        case .scheduleDetail(let scheduleId):
+            ScheduleDetailView(
+                container: di,
+                scheduleId: scheduleId,
+                onAttendanceStatusTapped: {
+                    // 출석 현황은 Activity 탭이 소유한 목적지라, 탭을 옮긴 뒤 그 탭 스택에 쌓는다.
+                    pathStore.selectedTab = .activity
+                    pathStore.push(
+                        ActivityDestination.attendanceDetail(scheduleId: scheduleId),
+                        on: .activity
+                    )
+                }
+            )
         }
     }
 }

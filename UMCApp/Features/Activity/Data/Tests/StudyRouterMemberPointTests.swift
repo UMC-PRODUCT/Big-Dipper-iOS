@@ -41,6 +41,9 @@ struct StudyRouterMemberPointPathMethodTests {
         let search = StudyRouter.searchChallengersOffset(
             query: ChallengerSearchQuery(page: 0, size: 20, schoolId: "5")
         )
+        let cursorSearch = StudyRouter.searchChallengersCursor(
+            query: ChallengerSearchCursorQuery(keyword: "길동")
+        )
         let create = StudyRouter.createChallengerPoint(
             challengerId: "7", body: makePointBody()
         )
@@ -48,19 +51,24 @@ struct StudyRouterMemberPointPathMethodTests {
         let profile = StudyRouter.getChallengerProfile(challengerId: "7")
 
         #expect(search.path == "/api/v1/challenger/search/offset")
+        #expect(cursorSearch.path == "/api/v1/challenger/search/cursor")
         #expect(create.path == "/api/v1/challenger/7/points")
         #expect(delete.path == "/api/v1/challenger/points/99")
         #expect(profile.path == "/api/v1/challenger/7")
     }
 
-    @Test("searchChallengersOffset / getChallengerProfile 의 method 는 GET 이다")
+    @Test("검색(오프셋·커서) / getChallengerProfile 의 method 는 GET 이다")
     func getMethods() {
         let search = StudyRouter.searchChallengersOffset(
             query: ChallengerSearchQuery(page: 0, size: 20, schoolId: "5")
         )
+        let cursorSearch = StudyRouter.searchChallengersCursor(
+            query: ChallengerSearchCursorQuery(keyword: "길동")
+        )
         let profile = StudyRouter.getChallengerProfile(challengerId: "7")
 
         #expect(search.method == .get)
+        #expect(cursorSearch.method == .get)
         #expect(profile.method == .get)
     }
 
@@ -95,6 +103,20 @@ struct StudyRouterMemberPointTaskTests {
         #expect(extracted.parameters["page"] as? Int == 2)
         #expect(extracted.parameters["size"] as? Int == 20)
         #expect(extracted.parameters["schoolId"] as? String == "5")
+        #expect((extracted.encoding as? URLEncoding)?.destination == .queryString)
+    }
+
+    @Test("searchChallengersCursor 는 query DTO 를 queryString 으로 인코딩한다")
+    func cursorSearchTaskEncodesQueryString() throws {
+        let router = StudyRouter.searchChallengersCursor(
+            query: ChallengerSearchCursorQuery(cursor: 42, size: 30, keyword: "길동")
+        )
+
+        let extracted = try #require(requestParameters(of: router.task))
+
+        #expect(extracted.parameters["cursor"] as? Int == 42)
+        #expect(extracted.parameters["size"] as? Int == 30)
+        #expect(extracted.parameters["keyword"] as? String == "길동")
         #expect((extracted.encoding as? URLEncoding)?.destination == .queryString)
     }
 
@@ -142,6 +164,34 @@ struct ChallengerSearchAndPointDTOEncodingTests {
         #expect(parameters["size"] as? Int == 20)
         #expect(parameters["schoolId"] as? String == "5")
         #expect(parameters["schoolId"] as? Int == nil)      // 식별자는 숫자가 아님
+    }
+
+    @Test("ChallengerSearchCursorQuery — cursor 는 서버 Long 계약대로 Int 로 실린다")
+    func cursorQueryKeepsIntCursor() {
+        let query = ChallengerSearchCursorQuery(cursor: 42, size: 30, keyword: "길동")
+
+        let parameters = query.toParameters
+
+        #expect(parameters.count == 3)
+        #expect(parameters["cursor"] as? Int == 42)
+        #expect(parameters["cursor"] as? String == nil)  // Request 는 서버 정수 계약 유지
+        #expect(parameters["size"] as? Int == 30)
+        #expect(parameters["keyword"] as? String == "길동")
+    }
+
+    @Test(
+        "ChallengerSearchCursorQuery — 빈 커서/키워드는 파라미터에서 제외한다",
+        arguments: [nil, ""]
+    )
+    func cursorQueryOmitsEmptyValues(keyword: String?) {
+        let query = ChallengerSearchCursorQuery(cursor: nil, size: 50, keyword: keyword)
+
+        let parameters = query.toParameters
+
+        #expect(parameters.count == 1)
+        #expect(parameters["size"] as? Int == 50)
+        #expect(parameters["cursor"] == nil)
+        #expect(parameters["keyword"] == nil)
     }
 
     @Test("ChallengerPointCreateRequestDTO — pointType 은 서버 rawValue, 배점은 정수로 직렬화한다")

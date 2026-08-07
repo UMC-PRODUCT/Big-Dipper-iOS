@@ -26,12 +26,18 @@ public extension Notification.Name {
     /// 이 알림을 받으면 승인 대기 안내 화면으로 이동해야 합니다.
     static let navigateToPendingApproval = Notification.Name("navigateToPendingApproval")
 
+    /// 멤버 프로필이 로컬 저장소에 동기화되었을 때 발송되는 알림.
+    ///
+    /// `AppDelegate`가 수신해 FCM 토큰을 재동기화합니다. 앱 실행 직후에는 `memberId`가 없어
+    /// 토큰 등록이 건너뛰어지므로, 같은 세션에서 로그인한 사용자를 위한 재시도 트리거입니다.
+    static let memberProfileUpdated = Notification.Name("memberProfileUpdated")
+
     // MARK: - Domain Updates
 
     /// 출석 승인/반려 상태 변경 알림.
     ///
     /// 운영진이 출석을 승인/반려하면 발송됩니다.
-    /// 챌린저 ViewModel이 수신하여 `myHistory`를 갱신합니다.
+    /// Activity 탭 ViewModel이 수신하여 세션 목록을 서버 상태로 다시 맞춥니다.
     static let attendanceStatusChanged = Notification.Name("attendanceStatusChanged")
 
     /// 기수 매핑 정보가 갱신되었을 때 발송되는 알림.

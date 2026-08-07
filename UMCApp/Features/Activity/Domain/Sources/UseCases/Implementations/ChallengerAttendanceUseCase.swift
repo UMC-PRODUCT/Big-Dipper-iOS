@@ -6,18 +6,34 @@
 //
 
 import Foundation
+import HomeDomain
 import UMCFoundation
 
 /// `ChallengerAttendanceUseCaseProtocol` 의 기본 구현체
 ///
 /// - 위치/지오펜스 의존은 `LocationProviding` Protocol 로 주입.
 /// - `scheduleId` 는 서버 String ID 로 전 레이어 통일 (Repository 도 String 으로 수신).
+/// - 일정 조회는 `HomeDomain` 의 canonical `ScheduleRepositoryProtocol` 을 그대로 사용한다.
 public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProtocol {
 
     // MARK: - Property
 
     private let repository: ChallengerAttendanceRepositoryProtocol
+    private let scheduleRepository: ScheduleRepositoryProtocol
     private let locationProvider: LocationProviding
+
+    /// 일정 조회 구간 (일 단위)
+    ///
+    /// 서버가 `from~to` 를 **일정 시작 시각** 기준으로 거르므로, `from = now` 로 조회하면
+    /// 이미 시작했지만 출석 창이 열려 있는 진행 중 일정이 빠진다. 그래서 하루를 앞당긴다.
+    private enum LookupWindow {
+        /// 출석 가능 목록 조회 시작 오프셋
+        static let availableFromDays: Int = -1
+        /// 출석 가능 목록 조회 종료 오프셋
+        static let availableToDays: Int = 14
+        /// 출석 이력 조회 시작 오프셋 (월 단위)
+        static let historyFromMonths: Int = -6
+    }
 
     // MARK: - Computed Property
 
@@ -35,10 +51,47 @@ public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
 
     public init(
         repository: ChallengerAttendanceRepositoryProtocol,
+        scheduleRepository: ScheduleRepositoryProtocol,
         locationProvider: LocationProviding
     ) {
         self.repository = repository
+        self.scheduleRepository = scheduleRepository
         self.locationProvider = locationProvider
+    }
+
+    // MARK: - 일정 조회
+
+    /// 출석 가능한 일정 목록 조회
+    ///
+    /// 출석 정책이 붙어 있고, 본인이 참여자이며, 출석 창이 아직 안 닫힌 일정만 남깁니다.
+    /// 출석 창이 아직 열리지 않은 일정도 포함해 View 가 "출석 전" 으로 표시할 수 있게 합니다.
+    public func fetchAvailableSchedules(now: Date) async throws -> [ScheduleDetailData] {
+        let calendar = Calendar.kstGregorian
+        let from = calendar.date(
+            byAdding: .day, value: LookupWindow.availableFromDays, to: now
+        ) ?? now
+        let to = calendar.date(
+            byAdding: .day, value: LookupWindow.availableToDays, to: now
+        ) ?? now
+
+        let schedules = try await fetchAttendanceSchedules(from: from, to: to)
+        return schedules.filter {
+            $0.requiresAttendanceApproval
+                && $0.isParticipant
+                && $0.attendanceWindowEndsAt > now
+        }
+    }
+
+    /// 내 출석 이력 조회
+    ///
+    /// 최근 6개월 구간에서 출석 정책이 붙은 일정만 남깁니다.
+    public func fetchMyHistory(now: Date) async throws -> [ScheduleDetailData] {
+        let from = Calendar.kstGregorian.date(
+            byAdding: .month, value: LookupWindow.historyFromMonths, to: now
+        ) ?? now
+
+        let schedules = try await fetchAttendanceSchedules(from: from, to: now)
+        return schedules.filter(\.requiresAttendanceApproval)
     }
 
     // MARK: - 출석 액션
@@ -161,6 +214,22 @@ public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
     }
 
     // MARK: - Private
+
+    /// 출석 필수 일정을 기간으로 조회해 시작 시각 오름차순 평탄 목록으로 돌려준다.
+    ///
+    /// canonical Repository 는 캘린더 표시를 위해 KST 자정 기준 날짜별 딕셔너리를 반환하므로,
+    /// 출석 화면이 쓰는 단일 목록으로 펼친다. 딕셔너리는 순서를 보장하지 않아 정렬이 필요하다.
+    private func fetchAttendanceSchedules(
+        from: Date,
+        to: Date
+    ) async throws -> [ScheduleDetailData] {
+        let grouped = try await scheduleRepository.fetchMySchedules(
+            from: from,
+            to: to,
+            isAttendanceRequired: true
+        )
+        return grouped.values.flatMap { $0 }.sorted { $0.startsAt < $1.startsAt }
+    }
 
     /// 사유 결석/지각 공통 제출
     ///

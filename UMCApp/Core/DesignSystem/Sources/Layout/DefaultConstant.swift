@@ -16,6 +16,9 @@ public enum DefaultConstant {
     public static let cornerRadius: CGFloat = 24
     public static let iconPadding: CGFloat = 8
 
+    /// 탭 가능한 요소의 최소 히트 영역 (Apple HIG 기준값).
+    public static let minimumTouchTarget: CGFloat = 44
+
     public static let defaultSafeHorizon: CGFloat = 16
     public static let defaultSafeTop: CGFloat = 20
     public static let defaultSafeBottom: CGFloat = 56

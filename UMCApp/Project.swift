@@ -22,6 +22,7 @@ let project = Project(
                     "NSBluetoothPeripheralUsageDescription": "주변 명함을 교환하기 위해 블루투스를 사용합니다.",
                     "NFCReaderUsageDescription": "NFC로 명함 정보를 주고받습니다.",
                     "NSNearbyInteractionUsageDescription": "근거리에서 정확한 명함 교환을 위해 위치를 사용합니다.",
+                    "NSLocationWhenInUseUsageDescription": "GPS 기반 스마트 출석 체크를 위해 위치 정보를 사용합니다.",
                     // Secrets/Shared.xcconfig(+ Secrets.xcconfig)에서 주입되는 값.
                     // UMCFoundation의 Config가 이 키들을 읽는다.
                     // (BASE_URL / KAKAO_KEY / TMAP_SECRET_KEY / GOOGLE_CLIENT_ID / GOOGLE_REVERSED_CLIENT_ID)
@@ -45,6 +46,8 @@ let project = Project(
                     "LSApplicationQueriesSchemes": [
                         "kakaokompassauth", "kakaolink", "kakaotalk", "kakaoplus",
                     ],
+                    // 백그라운드에서 도착한 푸시를 AppDelegate가 받아 알림 보관함에 저장한다.
+                    "UIBackgroundModes": ["remote-notification"],
                 ]
             ),
             buildableFolders: [
@@ -54,13 +57,17 @@ let project = Project(
             entitlements: .file(path: "UMCApp.entitlements"),
             dependencies: [
                 .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
+                .project(target: "CoreRouting", path: .relativeToRoot("Core/Routing")),
                 .project(target: "AuthPresentation", path: .relativeToRoot("Features/Auth")),
                 .project(target: "AuthData", path: .relativeToRoot("Features/Auth")),
                 .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
                 .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
                 .project(target: "NoticePresentation", path: .relativeToRoot("Features/Notice")),
                 .project(target: "NoticeData", path: .relativeToRoot("Features/Notice")),
+                .project(target: "ActivityDomain", path: .relativeToRoot("Features/Activity")),
                 .project(target: "ActivityPresentation", path: .relativeToRoot("Features/Activity")),
+                .project(target: "ActivityData", path: .relativeToRoot("Features/Activity")),
+                .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
                 .project(target: "HomePresentation", path: .relativeToRoot("Features/Home")),
                 .project(target: "HomeData", path: .relativeToRoot("Features/Home")),
                 .project(target: "CommunityPresentation", path: .relativeToRoot("Features/Community")),
@@ -74,6 +81,7 @@ let project = Project(
                 .project(target: "MaintenanceData", path: .relativeToRoot("Features/Maintenance")),
                 .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
                 .external(name: "FirebaseCore"),
+                .external(name: "FirebaseMessaging"),
                 .project(target: "UMCAppWidget", path: "UMCAppWidget"),
                 .project(target: "UMCWatchApp", path: "UMCWatchApp"),
             ],

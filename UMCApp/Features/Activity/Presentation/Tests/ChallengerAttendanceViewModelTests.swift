@@ -8,8 +8,13 @@
 import Foundation
 import Testing
 import ActivityDomain
+import HomeDomain
 import UMCFoundation
 @testable import ActivityPresentation
+
+// Mock 과 이를 사용하는 헬퍼·스위트 전체를 하나의 가드 안에 둔다.
+// (`makeViewModel` 은 Mock 을 파라미터 타입으로 직접 참조한다)
+#if DEBUG
 
 // MARK: - Helpers
 
@@ -70,6 +75,28 @@ private func makePolicy(
     )
 }
 
+/// 일정 픽스처.
+///
+/// `attendanceStatus` 는 폴링 동기화 테스트에서만 의미가 있어 기본값은 `nil`(서버 미제공)이다.
+private func makeScheduleDetail(
+    scheduleId: String = "S-1",
+    policy: ScheduleAttendancePolicy? = nil,
+    attendanceStatus: ScheduleAttendanceStatus? = nil,
+    startsAt: Date = fixedNow
+) -> ScheduleDetailData {
+    ScheduleDetailData(
+        scheduleId: scheduleId,
+        name: "1주차 OT",
+        description: "",
+        tags: [],
+        startsAt: startsAt,
+        endsAt: startsAt.addingTimeInterval(3_600),
+        isParticipant: true,
+        attendancePolicy: policy,
+        attendanceStatus: attendanceStatus
+    )
+}
+
 @MainActor
 private func makeViewModel(
     useCase: MockChallengerAttendanceUseCase,
@@ -84,8 +111,6 @@ private func makeViewModel(
 private struct DummyError: Error {}
 
 // MARK: - Mocks
-
-#if DEBUG
 
 private final class MockChallengerAttendanceUseCase: @unchecked Sendable,
     ChallengerAttendanceUseCaseProtocol {
@@ -131,7 +156,21 @@ private final class MockChallengerAttendanceUseCase: @unchecked Sendable,
     private(set) var isWithinAttendanceTimeCallCount: Int = 0
     private(set) var stopGeofenceMonitoringCallCount: Int = 0
 
+    /// 일정 조회 호출 기록 — SUT 가 조회 경로를 되살리지 않았는지 확인하는 용도.
+    private(set) var fetchAvailableSchedulesCallCount: Int = 0
+    private(set) var fetchMyHistoryCallCount: Int = 0
+
     // MARK: Protocol
+
+    func fetchAvailableSchedules(now: Date) async throws -> [ScheduleDetailData] {
+        fetchAvailableSchedulesCallCount += 1
+        return []
+    }
+
+    func fetchMyHistory(now: Date) async throws -> [ScheduleDetailData] {
+        fetchMyHistoryCallCount += 1
+        return []
+    }
 
     func requestGPSAttendance(
         sessionId: SessionID,
@@ -179,8 +218,6 @@ private final class MockChallengerAttendanceUseCase: @unchecked Sendable,
         stopGeofenceMonitoringCallCount += 1
     }
 }
-
-#endif
 
 // MARK: - GPS 출석 요청
 
@@ -443,12 +480,12 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
     }
 
     @Test("정책 조회 후 → 서버 정책 우선 판정 (폴백 미사용)")
-    func timeWindowPrefersServerPolicy() {
+    func timeWindowPrefersServerPolicy() async {
         let useCase = MockChallengerAttendanceUseCase()
         useCase.timeWindowToReturn = .expired  // 폴백이 쓰였다면 expired 가 나와야 함
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        viewModel.updateSchedulePolicies([session.info.sessionId: makePolicy()])
+        viewModel.apply(schedules: [makeScheduleDetail(policy: makePolicy())])
 
         let window = viewModel.timeWindow(for: session, now: fixedNow)
 
@@ -470,12 +507,12 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
     func timeWindowPolicyBoundaries(
         offset: TimeInterval,
         expected: AttendanceTimeWindow
-    ) {
+    ) async {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
         // 정책: checkIn = fixedNow-600, onTimeEnd = fixedNow+600, lateEnd = fixedNow+1200
-        viewModel.updateSchedulePolicies([session.info.sessionId: makePolicy()])
+        viewModel.apply(schedules: [makeScheduleDetail(policy: makePolicy())])
 
         let window = viewModel.timeWindow(
             for: session,
@@ -483,6 +520,50 @@ struct ChallengerAttendanceViewModelTimeWindowTests {
         )
 
         #expect(window == expected)
+    }
+
+    // MARK: - 정책 조회 (표시용)
+
+    @Test("조회된 정책은 판정과 같은 페이로드에서 읽힌다")
+    func attendancePolicyReadsLoadedPayload() async {
+        let useCase = MockChallengerAttendanceUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
+        let session = makeSession()
+        let policy = makePolicy()
+        viewModel.apply(schedules: [makeScheduleDetail(policy: policy)])
+
+        #expect(viewModel.attendancePolicy(for: session.info.sessionId) == policy)
+    }
+
+    @Test("정책 미조회 세션은 nil 을 반환한다")
+    func attendancePolicyReturnsNilWhenNotFetched() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+        let session = makeSession()
+
+        #expect(viewModel.attendancePolicy(for: session.info.sessionId) == nil)
+    }
+
+    // MARK: - 서버 일정 ID 조회 (제출 경로)
+
+    @Test("전달된 일정의 서버 ID가 반환된다")
+    func scheduleIdReadsAppliedPayload() {
+        let useCase = MockChallengerAttendanceUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
+        let session = makeSession()
+        viewModel.apply(schedules: [makeScheduleDetail(scheduleId: "S-1")])
+
+        #expect(viewModel.scheduleId(for: session.info.sessionId) == "S-1")
+    }
+
+    /// 회귀 박제 — 일정 ID가 없으면 출석·사유 제출이 서버에 도달할 수 없다.
+    /// 화면은 이 nil 을 근거로 액션 버튼을 비활성화해, 사용자가 작성한 사유가
+    /// 조용히 버려지지 않게 한다.
+    @Test("일정 페이로드에 없는 세션은 nil 을 반환한다")
+    func scheduleIdReturnsNilWhenNotApplied() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+        let session = makeSession()
+
+        #expect(viewModel.scheduleId(for: session.info.sessionId) == nil)
     }
 }
 
@@ -532,13 +613,15 @@ struct ChallengerAttendanceViewModelGuidanceTests {
     }
 
     @Test("정책 조회 + 정시 → 마감 시각과 남은 시간 표시")
-    func guidanceShowsOnTimeDeadlineWithPolicy() throws {
+    func guidanceShowsOnTimeDeadlineWithPolicy() async throws {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        viewModel.updateSchedulePolicies([
-            session.info.sessionId: makePolicy(
-                onTimeEndAt: fixedNow.addingTimeInterval(420)  // 7분 뒤 마감
+        viewModel.apply(schedules: [
+            makeScheduleDetail(
+                policy: makePolicy(
+                    onTimeEndAt: fixedNow.addingTimeInterval(420)  // 7분 뒤 마감
+                )
             )
         ])
 
@@ -549,14 +632,16 @@ struct ChallengerAttendanceViewModelGuidanceTests {
     }
 
     @Test("정책 조회 + 지각 → 지각 마감 시각과 남은 시간 표시")
-    func guidanceShowsLateDeadlineWithPolicy() throws {
+    func guidanceShowsLateDeadlineWithPolicy() async throws {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        viewModel.updateSchedulePolicies([
-            session.info.sessionId: makePolicy(
-                onTimeEndAt: fixedNow.addingTimeInterval(-60),  // 정시 마감 지남
-                lateEndAt: fixedNow.addingTimeInterval(720)     // 지각 마감 12분 뒤
+        viewModel.apply(schedules: [
+            makeScheduleDetail(
+                policy: makePolicy(
+                    onTimeEndAt: fixedNow.addingTimeInterval(-60),  // 정시 마감 지남
+                    lateEndAt: fixedNow.addingTimeInterval(720)     // 지각 마감 12분 뒤
+                )
             )
         ])
 
@@ -567,13 +652,15 @@ struct ChallengerAttendanceViewModelGuidanceTests {
     }
 
     @Test("정책 조회 + 출석 시작 전 → 시작 시각 안내")
-    func guidanceShowsCheckInStartWithPolicy() throws {
+    func guidanceShowsCheckInStartWithPolicy() async throws {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        viewModel.updateSchedulePolicies([
-            session.info.sessionId: makePolicy(
-                checkInStartAt: fixedNow.addingTimeInterval(600)  // 10분 뒤 시작
+        viewModel.apply(schedules: [
+            makeScheduleDetail(
+                policy: makePolicy(
+                    checkInStartAt: fixedNow.addingTimeInterval(600)  // 10분 뒤 시작
+                )
             )
         ])
 
@@ -592,13 +679,15 @@ struct ChallengerAttendanceViewModelGuidanceTests {
     func guidanceFormatsHourScaleRemaining(
         secondsLeft: TimeInterval,
         suffix: String
-    ) throws {
+    ) async throws {
         let useCase = MockChallengerAttendanceUseCase()
         let viewModel = makeViewModel(useCase: useCase)
         let session = makeSession()
-        viewModel.updateSchedulePolicies([
-            session.info.sessionId: makePolicy(
-                onTimeEndAt: fixedNow.addingTimeInterval(secondsLeft)
+        viewModel.apply(schedules: [
+            makeScheduleDetail(
+                policy: makePolicy(
+                    onTimeEndAt: fixedNow.addingTimeInterval(secondsLeft)
+                )
             )
         ])
 
@@ -712,3 +801,54 @@ struct ChallengerAttendanceViewModelDelegationTests {
         #expect(useCase.stopGeofenceMonitoringCallCount == 1)
     }
 }
+
+// MARK: - 일정 페이로드 반영
+
+@MainActor
+@Suite("ChallengerAttendanceViewModel — 일정 페이로드 반영 (도메인 규칙)")
+struct ChallengerAttendanceViewModelScheduleTests {
+
+    /// 회귀 박제 — 이 ViewModel 은 일정을 직접 조회하지 않는다. 조회를 되살리면 상위
+    /// (`ActivityViewModel`)와 같은 엔드포인트를 두 번 때리게 된다.
+    @Test("전달 전 → 일정 매핑이 nil")
+    func scheduleLookupNilBeforeApply() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+
+        #expect(viewModel.schedule(for: SessionID(value: "S-1")) == nil)
+        #expect(viewModel.scheduleId(for: SessionID(value: "S-1")) == nil)
+    }
+
+    @Test("전달 후 → SessionID 와 같은 scheduleId 를 돌려준다")
+    func scheduleLookupResolvesAppliedPayload() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+
+        viewModel.apply(schedules: [makeScheduleDetail(scheduleId: "S-1")])
+
+        #expect(viewModel.scheduleId(for: SessionID(value: "S-1")) == "S-1")
+        #expect(viewModel.scheduleId(for: SessionID(value: "S-9")) == nil)
+    }
+
+    @Test("페이로드를 다시 전달하면 최신 목록으로 교체한다")
+    func applyReplacesPayload() {
+        let viewModel = makeViewModel(useCase: MockChallengerAttendanceUseCase())
+
+        viewModel.apply(schedules: [makeScheduleDetail(scheduleId: "S-1")])
+        viewModel.apply(schedules: [makeScheduleDetail(scheduleId: "S-2")])
+
+        #expect(viewModel.schedules.map(\.scheduleId) == ["S-2"])
+        #expect(viewModel.scheduleId(for: SessionID(value: "S-1")) == nil)
+    }
+
+    @Test("페이로드를 반영해도 일정 조회 요청은 보내지 않는다")
+    func applyDoesNotQueryUseCase() {
+        let useCase = MockChallengerAttendanceUseCase()
+        let viewModel = makeViewModel(useCase: useCase)
+
+        viewModel.apply(schedules: [makeScheduleDetail()])
+
+        #expect(useCase.fetchAvailableSchedulesCallCount == 0)
+        #expect(useCase.fetchMyHistoryCallCount == 0)
+    }
+}
+
+#endif

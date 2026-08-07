@@ -16,8 +16,14 @@ let project = featureProject(
         "Data/Sources/MLModels/**",
     ],
     presentationExtraDependencies: [
+        // 홈 진입 시 앱스토어 리뷰 요청(requestReview) 환경 값 사용.
+        .sdk(name: "StoreKit", type: .framework),
+        // 일정 상세의 "지도 보기"가 MKMapItem.openInMaps()로 Apple Maps를 연다.
+        .sdk(name: "MapKit", type: .framework),
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
+        // 일정 상세의 출석 진입 분기가 전역 `UserSessionManager`의 활동 모드를 읽는다.
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
     ],
@@ -36,6 +42,7 @@ let project = featureProject(
     includesPresentationTests: true,
     presentationTestDependencies: [
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),

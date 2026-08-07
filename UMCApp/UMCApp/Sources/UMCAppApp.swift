@@ -9,6 +9,7 @@ import CoreDesignSystem
 import CoreDI
 import FirebaseCore
 import GoogleSignIn
+import HomeDomain
 import KakaoSDKAuth
 import KakaoSDKCommon
 import MaintenancePresentation
@@ -17,6 +18,7 @@ import NoticeData
 import NoticePresentation
 import SwiftData
 import SwiftUI
+import TipKit
 import UMCFoundation
 import os.log
 
@@ -25,6 +27,7 @@ struct UMCAppApp: App {
 
     // MARK: - Property
 
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var container: DIContainer
     @State private var errorHandler: ErrorHandler = .init()
@@ -47,12 +50,21 @@ struct UMCAppApp: App {
         container.registerMemberProfileDependencies()
         container.registerAuthDependencies()
         container.registerHomeDependencies()
+        container.registerActivityDependencies()
         container.registerMyPageDependencies()
         container.registerMaintenanceDependencies()
+        #if DEBUG
+        // 카카오 로그인 서버 미등록 기간 한정 stub 세션 (StubSessionMode.swift 단일 토글).
+        // 실제 등록 뒤 · 최초 resolve 전에 호출해야 오버라이드가 안전하다 (last-wins).
+        if StubSessionMode.isEnabled {
+            container.registerStubSessionOverrides()
+        }
+        #endif
         _container = State(initialValue: container)
         // RemoteConfig 접근은 lazy이므로, FirebaseApp.configure() 이전에 이 ViewModel을
         // 만들어도 실제 RemoteConfig 인스턴스는 생성되지 않는다.
         _maintenanceViewModel = State(initialValue: MaintenanceViewModel(container: container))
+        try? Tips.configure()
     }
 
     // MARK: - Body
@@ -71,6 +83,10 @@ struct UMCAppApp: App {
                     }
                 }
                 .task {
+                    appDelegate.configure(
+                        container: container,
+                        modelContext: sharedModelContainer.mainContext
+                    )
                     await maintenanceViewModel.check()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
@@ -136,7 +152,10 @@ extension UMCAppApp {
     ///   plist 부재/파싱 실패/플레이스홀더 값(`GOOGLE_APP_ID`가 `__`로 시작)이면 조용히
     ///   건너뛴다. 이 경우 RemoteConfig는 항상 fail-open으로 동작한다
     ///   (`MaintenanceData.RemoteConfigService` 참고).
-    private static func configureFirebaseIfNeeded() {
+    ///
+    /// - Note: `AppDelegate.didFinishLaunchingWithOptions`도 `Messaging` 접근 전에 이 메서드를
+    ///   호출한다. 두 진입점의 호출 순서는 보장되지 않지만 `FirebaseApp.app()` 가드로 멱등이다.
+    static func configureFirebaseIfNeeded() {
         guard FirebaseApp.app() == nil else { return }
         guard
             let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
@@ -163,6 +182,7 @@ extension UMCAppApp {
         let schema = Schema([
             NoticeReadRecord.self,
             AITokenDailyUsageRecord.self,
+            NoticeHistoryData.self,
         ])
 
         do {

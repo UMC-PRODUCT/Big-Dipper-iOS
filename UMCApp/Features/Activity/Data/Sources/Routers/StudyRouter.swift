@@ -31,11 +31,20 @@ enum StudyRouter: Sendable {
     case getStudyGroupDetail(groupId: String)
     /// 멤버 프로필 조회 (resolveChallengerId · 멤버 관리 용) — `GET /api/v1/member/profile/{memberId}`
     case getMemberProfile(memberId: String)
+    /// 관리 가능한 스터디 그룹 이름 목록 — `GET /api/v1/study-groups/names`
+    case getStudyGroupNames
+
+    // MARK: - 제출 현황
+
+    /// 스터디원 워크북 제출 현황 조회 — `GET /api/v2/curriculums/workbook-submissions`
+    case getStudyMemberSubmissions(query: StudyMemberSubmissionQuery)
 
     // MARK: - 멤버 / 포인트
 
     /// 학교 단위 챌린저 오프셋 검색 — `GET /api/v1/challenger/search/offset`
     case searchChallengersOffset(query: ChallengerSearchQuery)
+    /// 키워드 챌린저 커서 검색 — `GET /api/v1/challenger/search/cursor`
+    case searchChallengersCursor(query: ChallengerSearchCursorQuery)
     /// 챌린저 포인트 부여 — `POST /api/v1/challenger/{challengerId}/points`
     case createChallengerPoint(challengerId: String, body: ChallengerPointCreateRequestDTO)
     /// 챌린저 포인트 삭제 — `DELETE /api/v1/challenger/points/{challengerPointId}`
@@ -77,8 +86,14 @@ extension StudyRouter: BaseTargetType {
             return "/api/v1/study-groups/\(groupId)"
         case .getMemberProfile(let memberId):
             return "/api/v1/member/profile/\(memberId)"
+        case .getStudyGroupNames:
+            return "/api/v1/study-groups/names"
+        case .getStudyMemberSubmissions:
+            return "/api/v2/curriculums/workbook-submissions"
         case .searchChallengersOffset:
             return "/api/v1/challenger/search/offset"
+        case .searchChallengersCursor:
+            return "/api/v1/challenger/search/cursor"
         case .createChallengerPoint(let challengerId, _):
             return "/api/v1/challenger/\(challengerId)/points"
         case .deleteChallengerPoint(let challengerPointId):
@@ -110,7 +125,10 @@ extension StudyRouter: BaseTargetType {
              .getMyStudyGroups,
              .getStudyGroupDetail,
              .getMemberProfile,
+             .getStudyGroupNames,
+             .getStudyMemberSubmissions,
              .searchChallengersOffset,
+             .searchChallengersCursor,
              .getChallengerProfile:
             return .get
         case .createStudyGroup,
@@ -148,6 +166,19 @@ extension StudyRouter: BaseTargetType {
                 parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
+        case .searchChallengersCursor(let query):
+            return .requestParameters(
+                parameters: query.toParameters,
+                encoding: URLEncoding.queryString
+            )
+        case .getStudyMemberSubmissions(let query):
+            // 주차 필터가 리스트라 배열 인코딩을 지정한다. 기본값(.brackets)은 `weekNos[]=1`
+            // 로 직렬화되는데, 서버는 `List<Long> weekNos` 를 `weekNos=1&weekNos=2` 형태로
+            // 바인딩하므로 대괄호가 붙으면 필터가 통째로 무시된다.
+            return .requestParameters(
+                parameters: query.toParameters,
+                encoding: URLEncoding(destination: .queryString, arrayEncoding: .noBrackets)
+            )
         case .createStudyGroup(let body):
             return .requestJSONEncodable(body)
         case .updateStudyGroup(_, let body):
@@ -158,6 +189,7 @@ extension StudyRouter: BaseTargetType {
             return .requestJSONEncodable(body)
         case .getStudyGroupDetail,
              .getMemberProfile,
+             .getStudyGroupNames,
              .getChallengerProfile,
              .deleteStudyGroup,
              .addStudyGroupMember,

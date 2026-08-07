@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 
 /// 스터디 조회에 필요한 현재 사용자 컨텍스트(기수·담당 파트) 제공자.
 ///
@@ -28,8 +29,8 @@ protocol StudyContextProviding {
 
 /// `UserDefaults` 기반 기본 컨텍스트 제공자.
 ///
-/// 레거시 `AppStorageKey` 와 동일한 키(`gisuId`, `responsiblePart`)를 읽어, 향후 세션
-/// 저장소가 도입되어도 같은 키를 공유하면 그대로 호환됩니다. `UserDefaults` 결합을 이
+/// 키 상수와 식별자 해석은 ``UMCFoundation/AppStorageKey`` 의 canonical 헬퍼에 위임하고,
+/// 이 타입은 스터디 조회에만 필요한 파트 정규화 정책을 얹습니다. `UserDefaults` 결합을 이
 /// 작은 어댑터 한 곳에 격리해 Repository 본체는 추상화에만 의존합니다.
 struct UserDefaultsStudyContextProvider: StudyContextProviding {
 
@@ -37,13 +38,8 @@ struct UserDefaultsStudyContextProvider: StudyContextProviding {
 
     private let defaults: UserDefaults
 
-    /// 담당 파트 키에 매핑되는 알려진 서버 파트 문자열.
-    private static let knownParts: Set<String> = [
-        "PLAN", "DESIGN", "WEB", "ANDROID", "IOS", "NODEJS", "SPRINGBOOT"
-    ]
-
     /// 담당 파트 미설정/미지원 시 사용할 기본 파트.
-    private static let fallbackPart = "IOS"
+    private static let fallbackPart: UMCPartType = .front(type: .ios)
 
     // MARK: - Init
 
@@ -53,26 +49,21 @@ struct UserDefaultsStudyContextProvider: StudyContextProviding {
 
     // MARK: - StudyContextProviding
 
-    /// `gisuId` 를 `String` 우선으로 읽고, 레거시 `Int` 저장값(>0)이면 문자열로 변환합니다.
     var gisuId: String? {
-        if let value = defaults.string(forKey: Key.gisuId), !value.isEmpty {
-            return value
-        }
-        let legacyInt = defaults.integer(forKey: Key.gisuId)
-        return legacyInt > 0 ? String(legacyInt) : nil
+        AppStorageKey.gisuIdString(in: defaults)
     }
 
-    /// 담당 파트를 대문자로 정규화하고, 알려지지 않은 값이면 기본 파트로 대체합니다.
+    /// 저장된 담당 파트를 canonical ``UMCPartType`` 으로 해석하고, 스터디 조회 대상이 아닌
+    /// 값이면 기본 파트로 대체합니다.
+    ///
+    /// - Note: 운영진(`ADMIN`)은 기술 파트가 아니라 역할이므로 스터디 파트 조회 대상에서
+    ///   제외합니다. `SyncProfileStorageUseCase` 가 운영진 프로필의 `responsiblePart` 를
+    ///   그대로 저장하므로 실제로 들어올 수 있는 값이며, 이때도 기본 파트로 대체합니다.
     var part: String {
-        let stored = defaults.string(forKey: Key.responsiblePart) ?? Self.fallbackPart
-        let normalized = stored.uppercased()
-        return Self.knownParts.contains(normalized) ? normalized : Self.fallbackPart
-    }
-
-    // MARK: - Storage Key
-
-    private enum Key {
-        static let gisuId = "gisuId"
-        static let responsiblePart = "responsiblePart"
+        let stored = defaults.string(forKey: AppStorageKey.responsiblePart) ?? ""
+        guard let part = UMCPartType(apiValue: stored.uppercased()), part != .admin else {
+            return Self.fallbackPart.apiValue
+        }
+        return part.apiValue
     }
 }

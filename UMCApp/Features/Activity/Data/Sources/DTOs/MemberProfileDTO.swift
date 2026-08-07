@@ -9,22 +9,28 @@ import Foundation
 import UMCFoundation
 // MARK: - MemberProfileDTO
 
-/// 멤버 프로필 응답 DTO (챌린저 ID 해석 전용)
+/// 멤버 프로필 응답 DTO (챌린저 ID·닉네임 해석 전용)
 ///
 /// `GET /api/v1/member/profile/{memberId}`
 ///
-/// ``StudyRepository/resolveChallengerId(memberId:preferredGeneration:)`` 가
-/// `challengerRecords` 만 사용하므로 본 DTO 는 해당 필드만 디코딩한다(나머지 응답 필드는
-/// `Codable` 이 무시). 서버 식별자는 전 레이어 `String` 통일 규칙에 따라 `String` 으로 디코딩한다.
+/// 스터디 그룹 응답이 주지 않는 `challengerId`·`nickname` 을 이 응답에서 해석한다. 필요한
+/// 필드만 디코딩하며 나머지 응답 필드는 `Codable` 이 무시한다. 서버 식별자는 전 레이어 `String`
+/// 통일 규칙에 따라 `String` 으로 디코딩한다.
+///
+/// - Note: 타인 프로필 조회는 서버에서 민감 정보가 필터링되지만, `nickname` 과
+///   `challengerRecords[].challengerId` 는 보존된다. 상벌점(`challengerPoints`)만 빈 배열로
+///   내려오므로 이 경로로는 포인트를 얻을 수 없다.
 struct MemberProfileDTO: Codable, Sendable, Equatable {
 
     // MARK: - Property
 
+    let nickname: String?
     let challengerRecords: [MemberChallengerRecordDTO]
 
     // MARK: - CodingKeys
 
     private enum CodingKeys: String, CodingKey {
+        case nickname
         case challengerRecords
     }
 
@@ -32,6 +38,7 @@ struct MemberProfileDTO: Codable, Sendable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        nickname = try container.decodeIfPresent(String.self, forKey: .nickname)
         challengerRecords = try container.decodeIfPresent(
             [MemberChallengerRecordDTO].self,
             forKey: .challengerRecords
@@ -42,6 +49,7 @@ struct MemberProfileDTO: Codable, Sendable, Equatable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(nickname, forKey: .nickname)
         try container.encode(challengerRecords, forKey: .challengerRecords)
     }
 }

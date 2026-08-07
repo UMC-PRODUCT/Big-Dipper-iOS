@@ -26,6 +26,8 @@ public enum AuthRouter: BaseTargetType {
     case loginApple(body: LoginAppleRequestDTO)
     /// Google 소셜 로그인
     case loginGoogle(body: LoginGoogleRequestDTO)
+    /// 이메일(ID/PW) 로그인
+    case loginByEmail(body: EmailLoginRequestDTO)
     /// 이메일 인증 코드 발송
     case sendEmailVerification(body: SendEmailVerificationRequestDTO)
     /// 이메일 인증 코드 재전송
@@ -59,6 +61,8 @@ public enum AuthRouter: BaseTargetType {
             return "/api/v1/auth/login/apple"
         case .loginGoogle:
             return "/api/v1/auth/login/google"
+        case .loginByEmail:
+            return "/api/v1/auth/login/email"
         case .sendEmailVerification:
             return "/api/v1/auth/email-verification"
         case .resendEmailVerification:
@@ -90,7 +94,7 @@ public enum AuthRouter: BaseTargetType {
         switch self {
         case .checkEmailAvailability, .fetchSchools, .fetchTerms:
             return .get
-        case .loginKakao, .loginApple, .loginGoogle,
+        case .loginKakao, .loginApple, .loginGoogle, .loginByEmail,
              .sendEmailVerification, .resendEmailVerification, .verifyEmailCode,
              .register, .registerByEmail, .registerCredential, .registerExistingChallenger:
             return .post
@@ -110,6 +114,8 @@ public enum AuthRouter: BaseTargetType {
         case .loginApple(let body):
             return .requestJSONEncodable(body)
         case .loginGoogle(let body):
+            return .requestJSONEncodable(body)
+        case .loginByEmail(let body):
             return .requestJSONEncodable(body)
         case .sendEmailVerification(let body):
             return .requestJSONEncodable(body)

@@ -74,7 +74,7 @@ private struct NoticeItemPresenter: View, Equatable {
         .background {
             ConcentricRectangle(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true)
                 .fill(.white)
-                .glass()
+                .cardShadow()
         }
     }
 }

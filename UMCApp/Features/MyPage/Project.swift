@@ -11,6 +11,7 @@ let project = featureProject(
     ],
     presentationExtraDependencies: [
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
+        .project(target: "CorePhoto", path: .relativeToRoot("Core/Photo")),
         .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "BadgeDomain", path: .relativeToRoot("Features/Badge")),
     ],

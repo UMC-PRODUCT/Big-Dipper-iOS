@@ -238,13 +238,17 @@ public struct ToolBarCollection {
     }
     
     /// 앱 브랜딩용 로고를 상단 좌측에 배치하는 툴바입니다.
+    ///
+    /// - Note: 로고 애셋은 `CoreUIComponents` 리소스 번들에 있어 다른 모듈에서 `ImageResource`로
+    ///   전달할 수 없다. 따라서 `AuthLogoBlock`과 동일하게 컴포넌트가 애셋을 직접 참조한다.
     public struct Logo: ToolbarContent {
-        public let image: ImageResource
-        @Namespace var namespace
-        
+        @Namespace private var namespace
+
+        public init() {}
+
         public var body: some ToolbarContent {
             ToolbarItem(placement: .topBarLeading) {
-                Image(image)
+                Image("logoLight", bundle: .module)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 80, height: 40)
@@ -542,7 +546,24 @@ public struct ToolBarCollection {
         public var onRejectSelected: () -> Void
         public var onApproveAll: () -> Void
         public var onRejectAll: () -> Void
-        
+
+        /// 기본 memberwise init 은 internal 이라 다른 모듈에서 쓸 수 없어 public init 을 노출한다.
+        public init(
+            isSelecting: Binding<Bool>,
+            selectedCount: Int,
+            onApproveSelected: @escaping () -> Void,
+            onRejectSelected: @escaping () -> Void,
+            onApproveAll: @escaping () -> Void,
+            onRejectAll: @escaping () -> Void
+        ) {
+            self._isSelecting = isSelecting
+            self.selectedCount = selectedCount
+            self.onApproveSelected = onApproveSelected
+            self.onRejectSelected = onRejectSelected
+            self.onApproveAll = onApproveAll
+            self.onRejectAll = onRejectAll
+        }
+
         private var hasSelection: Bool {
             selectedCount > 0
         }
