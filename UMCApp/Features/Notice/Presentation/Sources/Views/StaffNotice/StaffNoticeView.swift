@@ -230,7 +230,11 @@ public struct StaffNoticeView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     pathStore.noticePath.append(
-                        .notice(.editor(mode: .create, selectedGisuId: gisuId, initialCategory: category))
+                        .notice(.editor(
+                            mode: .create,
+                            selectedGisuId: gisuId,
+                            initialCategory: category
+                        ))
                     )
                 } label: {
                     Image(systemName: "square.and.pencil")
@@ -255,11 +259,6 @@ public struct StaffNoticeView: View {
         default:
             return nil
         }
-    }
-
-    /// 지부장은 운영진 공지 작성 불가 (읽기 전용)
-    private var isReadOnlyStaffAccess: Bool {
-        viewModel.memberRole == .chapterPresident
     }
 
     // MARK: - User Context

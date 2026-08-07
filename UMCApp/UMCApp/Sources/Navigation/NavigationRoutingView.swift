@@ -47,7 +47,9 @@ private extension NavigationRoutingView {
         case .detail(let detailItem):
             NoticeDetailView(container: di, errorHandler: errorHandler, model: detailItem)
         case .staffNotice, .editor:
-            // StaffNoticeView / NoticeEditorView는 아직 NoticePresentation에 이식되지 않았다.
+            // StaffNoticeView / NoticeEditorView 자체는 NoticePresentation에 이식됐지만,
+            // 두 화면은 로컬 `NoticeNavigation.PathStore`로 push되므로 이 라우터를 타지 않는다.
+            // Notice 탭 실연결 후속 이슈에서 목적지 타입을 일원화하며 함께 연결한다.
             Text("아직 지원하지 않는 화면입니다")
         }
     }

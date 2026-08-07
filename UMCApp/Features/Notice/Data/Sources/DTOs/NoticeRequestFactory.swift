@@ -36,7 +36,6 @@ enum NoticeRequestFactory {
         let requestChapterId: String?
         let requestSchoolId: String?
         let requestPart: UMCPartType?
-        let requestNoticeTab = ManagementTeam.challenger.rawValue
 
         switch selectedMainFilter {
         case .all, .central:
@@ -66,7 +65,7 @@ enum NoticeRequestFactory {
             chapterId: requestChapterId,
             schoolId: requestSchoolId,
             part: requestPart,
-            noticeTab: requestNoticeTab,
+            noticeTab: ManagementTeam.challenger.rawValue,
             page: page,
             size: pageSize,
             sort: sort

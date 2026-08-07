@@ -48,6 +48,7 @@ final class StaffNoticeViewModel {
     let errorHandler: ErrorHandler
 
     private var isFetchingFirstPage: Bool = false
+    private var tabSwitchTask: Task<Void, Never>?
 
     private enum Pagination {
         static let pageSize: Int = 20
@@ -87,7 +88,7 @@ final class StaffNoticeViewModel {
     // MARK: - Tab Selection
 
     func selectTab(_ tab: StaffNoticeTab) {
-        guard accessibleTabs.contains(tab) else { return }
+        guard accessibleTabs.contains(tab), tab != selectedTab else { return }
         selectedTab = tab
         isSearchMode = false
         searchQuery = ""
@@ -95,8 +96,14 @@ final class StaffNoticeViewModel {
             hasNoAccessFromServer = false
             noticeItems = .loading
         }
-        Task {
-            await fetchNotices()
+
+        // 이전 탭 요청이 끝나기 전에 새 탭을 누르면 `isFetchingFirstPage` 가드에 막혀
+        // 새 요청이 통째로 버려지고 이전 탭 목록이 남는다. 취소 후 완료를 기다렸다가 이어간다.
+        let previousTask = tabSwitchTask
+        tabSwitchTask = Task { [weak self] in
+            previousTask?.cancel()
+            _ = await previousTask?.value
+            await self?.fetchNotices()
         }
     }
 
@@ -199,14 +206,21 @@ final class StaffNoticeViewModel {
             applyPagedResponse(response, page: page)
         } catch is CancellationError {
             handleCancelledFetch(page: page, previousState: previousState)
-        } catch let error as NSError where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+        } catch let error as NSError where error.domain == NSURLErrorDomain
+            && error.code == NSURLErrorCancelled {
             handleCancelledFetch(page: page, previousState: previousState)
         } catch let error as RepositoryError {
-            handleFetchError(.repository(error), page: page, action: "staffFetchNotices", failure: error)
+            handleFetchError(
+                .repository(error), page: page, action: "staffFetchNotices", failure: error
+            )
         } catch let error as DomainError {
-            handleFetchError(.domain(error), page: page, action: "staffFetchNotices", failure: error)
+            handleFetchError(
+                .domain(error), page: page, action: "staffFetchNotices", failure: error
+            )
         } catch let error as NetworkError {
-            handleFetchError(.network(error), page: page, action: "staffFetchNotices", failure: error)
+            handleFetchError(
+                .network(error), page: page, action: "staffFetchNotices", failure: error
+            )
         } catch {
             handleFetchError(
                 .unknown(message: error.localizedDescription),
@@ -218,12 +232,11 @@ final class StaffNoticeViewModel {
     }
 
     private func buildRequest(tab: StaffNoticeTab, page: Int) -> NoticeListRequest {
-        let resolvedSchoolId: String? = if tab.requiresSchoolId, memberRole != .chapterPresident, let schoolIdValue = Int(schoolId), schoolIdValue > 0 {
-            schoolId
-        } else {
-            nil
-        }
-        
+        // 지부장은 SCHOOL_CORE viewerRole로 매핑되어 학교 단위 필터 없이 조회한다.
+        let needsSchoolId = tab.requiresSchoolId && memberRole != .chapterPresident
+        let hasValidSchoolId = (Int(schoolId) ?? 0) > 0
+        let resolvedSchoolId: String? = needsSchoolId && hasValidSchoolId ? schoolId : nil
+
         return NoticeListRequest(
             gisuId: gisuId,
             chapterId: nil,

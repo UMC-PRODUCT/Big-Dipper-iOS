@@ -46,6 +46,7 @@ public struct NoticeListQuery: Encodable {
     public var toParameters: [String: Any] {
         var params: [String: Any] = [
             "gisuId": gisuId,
+            "noticeTab": noticeTab,
             "page": page,
             "size": size,
         ]
