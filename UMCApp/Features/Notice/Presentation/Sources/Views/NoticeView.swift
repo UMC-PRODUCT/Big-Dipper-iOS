@@ -18,7 +18,6 @@ public struct NoticeView: View {
     
     // MARK: - Properties
     @Environment(ErrorHandler.self) var errorHandler
-    @State private var hasAppearedOnce: Bool = false
     private let onNoticeSelected: (NoticeDetail) -> Void
     private let onStaffNoticeSelected: () -> Void
     @AppStorage(AppStorageKey.schoolName) private var schoolName: String = ""
@@ -87,13 +86,9 @@ public struct NoticeView: View {
             .toolbar { toolbarContent }
             .safeAreaBar(edge: .top) { topSafeAreaContent }
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                if hasAppearedOnce {
-                    Task { await reloadNoticesAfterReturningFromDetail() }
-                } else {
-                    hasAppearedOnce = true
-                }
-            }
+            // 상세에서 pop해 돌아오면 뷰가 재등장하며 이 task가 다시 실행된다.
+            // `fetchGisuList()` → `refreshSelectedGenerationContext()` → `fetchNotices()`로
+            // 목록(읽음 상태 포함)이 재조회되므로 별도 복귀 감지가 필요 없다.
             .task {
                 applyUserContext()
                 syncSelectedGisuIdForNoticeEditor()
@@ -206,19 +201,15 @@ public struct NoticeView: View {
         await viewModel.retryCurrentRequest()
     }
 
+    /// 검색 중이면 검색을, 아니면 일반 목록을 현재 조건 그대로 다시 조회합니다.
     @MainActor
-    private func reloadNoticesAfterReturningFromDetail() async {
+    private func reloadCurrentNoticeList() async {
         if viewModel.isSearchMode,
            !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             await viewModel.searchNotices(keyword: viewModel.searchQuery)
         } else {
             await viewModel.fetchNotices()
         }
-    }
-
-    @MainActor
-    private func reloadCurrentNoticeList() async {
-        await reloadNoticesAfterReturningFromDetail()
     }
 
     @MainActor

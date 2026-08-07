@@ -21,8 +21,9 @@ struct NavigationRoutingView: View {
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
     private let destination: NavigationDestination
+    /// 라우팅된 화면이 다시 push를 요청할 때 호출하는 콜백. 진입 탭의 path에 append된다.
     private let push: (NavigationDestination) -> Void
-    
+
     // MARK: - Init
 
     init(destination: NavigationDestination, push: @escaping (NavigationDestination) -> Void) {
@@ -63,7 +64,11 @@ private extension NavigationRoutingView {
                     push(.notice(.detail(detailItem: detailItem)))
                 },
                 onCreateNotice: { gisuId, category in
-                    push(.notice(.editor(mode: .create, selectedGisuId: gisuId, initialCategory: category)))
+                    push(.notice(.editor(
+                        mode: .create,
+                        selectedGisuId: gisuId,
+                        initialCategory: category
+                    )))
                 }
             )
         case .editor(let mode, let selectedGisuId, let initialCategory):

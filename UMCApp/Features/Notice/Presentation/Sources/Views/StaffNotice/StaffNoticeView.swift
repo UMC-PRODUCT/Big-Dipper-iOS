@@ -20,7 +20,6 @@ import NoticeDomain
 public struct StaffNoticeView: View {
 
     // MARK: - Properties
-    @Environment(ErrorHandler.self) private var errorHandler
     @AppStorage(AppStorageKey.memberRole) private var memberRoleRaw: String = ""
     @AppStorage(AppStorageKey.schoolId) private var schoolId: String = ""
     @AppStorage(AppStorageKey.gisuId) private var gisuId: String = ""
@@ -256,11 +255,6 @@ public struct StaffNoticeView: View {
         }
     }
 
-    /// 지부장은 운영진 공지 작성 불가 (읽기 전용)
-    private var isReadOnlyStaffAccess: Bool {
-        viewModel.memberRole == .chapterPresident
-    }
-
     // MARK: - User Context
 
     private func applyUserContext() {
@@ -306,7 +300,7 @@ public struct StaffNoticeView: View {
 
     private func handleSearchChanged(_ newValue: String) {
         searchTask?.cancel()
-        let keyword = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        let keyword = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
         searchTask = Task {
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }

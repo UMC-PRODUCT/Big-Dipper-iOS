@@ -16,8 +16,8 @@ import SwiftUI
 /// `.main` 상태의 루트 탭 셸.
 ///
 /// Home/Notice/Activity/Community/MyPage 5개 탭을 탭별 독립 `NavigationStack`으로
-/// 구성한다. 최소 수직 슬라이스이므로 Home 탭만 실제 화면(`HomeFeatureView`)에 연결되고,
-/// 나머지 4탭은 각 Feature의 placeholder(`{Feature}FeatureView`)를 표시한다.
+/// 구성한다. Home/Notice 탭은 실제 화면에 연결되어 있고, 나머지 3탭은 각 Feature의
+/// placeholder(`{Feature}FeatureView`)를 표시한다.
 struct RootTabView: View {
 
     // MARK: - Property
@@ -68,10 +68,7 @@ struct RootTabView: View {
         }
     }
 
-    /// Home 탭만 실제 화면에 연결하고, 나머지는 각 Feature의 placeholder를 표시한다.
-    ///
-    /// - Note: Notice/MyPage는 이미 이식된 모듈이 있지만, 탭 실연결은 후속 이슈에서
-    ///   진행한다(#910 범위 밖).
+    /// Home/Notice 탭은 실제 화면에 연결하고, 나머지는 각 Feature의 placeholder를 표시한다.
     @ViewBuilder
     private func tabContent(_ tab: TabCase) -> some View {
         switch tab {

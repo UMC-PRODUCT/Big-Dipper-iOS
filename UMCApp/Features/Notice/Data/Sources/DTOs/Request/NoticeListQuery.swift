@@ -18,6 +18,8 @@ public struct NoticeListQuery: Encodable {
     public let chapterId: String?
     public let schoolId: String?
     public let part: UMCPartType?
+    /// 대상 역할 하한선 (필수). 일반 챌린저 공지는 `CHALLENGER`,
+    /// 운영진 공지는 `CENTRAL_MEMBER` / `SCHOOL_CORE` / `SCHOOL_PART_LEADER`.
     public let noticeTab: String
     public let page: Int
     public let size: Int
@@ -46,6 +48,7 @@ public struct NoticeListQuery: Encodable {
     public var toParameters: [String: Any] {
         var params: [String: Any] = [
             "gisuId": gisuId,
+            "noticeTab": noticeTab,
             "page": page,
             "size": size,
         ]

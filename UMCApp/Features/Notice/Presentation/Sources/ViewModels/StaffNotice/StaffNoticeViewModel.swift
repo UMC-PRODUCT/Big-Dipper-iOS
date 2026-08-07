@@ -199,7 +199,7 @@ final class StaffNoticeViewModel {
             applyPagedResponse(response, page: page)
         } catch is CancellationError {
             handleCancelledFetch(page: page, previousState: previousState)
-        } catch let error as NSError where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+        } catch let error as NSError where isRequestCancellation(error) {
             handleCancelledFetch(page: page, previousState: previousState)
         } catch let error as RepositoryError {
             handleFetchError(.repository(error), page: page, action: "staffFetchNotices", failure: error)
@@ -217,17 +217,26 @@ final class StaffNoticeViewModel {
         }
     }
 
-    private func buildRequest(tab: StaffNoticeTab, page: Int) -> NoticeListRequest {
-        let resolvedSchoolId: String? = if tab.requiresSchoolId, memberRole != .chapterPresident, let schoolIdValue = Int(schoolId), schoolIdValue > 0 {
-            schoolId
-        } else {
-            nil
+    /// 요청 취소(URLSession cancel)로 인한 실패인지 판별합니다.
+    private func isRequestCancellation(_ error: NSError) -> Bool {
+        error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled
+    }
+
+    /// 지부장은 학교 단위 필터 없이 전체를 조회하므로 `schoolId`를 보내지 않습니다.
+    private func resolveSchoolId(for tab: StaffNoticeTab) -> String? {
+        guard tab.requiresSchoolId,
+              memberRole != .chapterPresident,
+              let schoolIdValue = Int(schoolId), schoolIdValue > 0 else {
+            return nil
         }
-        
-        return NoticeListRequest(
+        return schoolId
+    }
+
+    private func buildRequest(tab: StaffNoticeTab, page: Int) -> NoticeListRequest {
+        NoticeListRequest(
             gisuId: gisuId,
             chapterId: nil,
-            schoolId: resolvedSchoolId,
+            schoolId: resolveSchoolId(for: tab),
             part: nil,
             noticeTab: tab.rawValue,
             page: page,
