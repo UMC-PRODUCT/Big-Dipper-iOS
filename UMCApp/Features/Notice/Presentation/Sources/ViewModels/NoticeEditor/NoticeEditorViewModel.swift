@@ -12,6 +12,7 @@ import SwiftData
 import UIKit
 import UMCFoundation
 import CoreDI
+import CoreDomain
 import NoticeDomain
 
 /// 공지사항 에디터 ViewModel

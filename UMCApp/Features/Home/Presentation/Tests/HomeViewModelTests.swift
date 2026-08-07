@@ -6,6 +6,7 @@
 //
 
 import CoreDI
+import CoreDomain
 import Foundation
 import HomeDomain
 import NoticeDomain
@@ -216,7 +217,16 @@ private func makeViewModel(
     container.register(FetchRecentNoticesUseCaseProtocol.self) { recentNoticesUseCase }
     container.register(FetchSchedulesUseCaseProtocol.self) { fetchSchedulesUseCase }
     container.register(ClassifyScheduleUseCaseProtocol.self) { classifyScheduleUseCase }
+    container.register(ChallengerGenRepositoryProtocol.self) { StubChallengerGenRepository() }
     return HomeViewModel(container: container)
+}
+
+/// 기수 매핑 저장은 홈 상태 전이와 무관하므로 no-op으로 둔다 (저장 로직은 HomeDataTests에서 검증).
+private struct StubChallengerGenRepository: ChallengerGenRepositoryProtocol {
+
+    func replaceMappings(_ pairs: [(gen: String, gisuId: String)]) throws {}
+
+    func fetchGenGisuIdPairs() throws -> [(gen: String, gisuId: String)] { [] }
 }
 
 private func makeSchedule(scheduleId: String, name: String) -> ScheduleDetailData {

@@ -12,6 +12,7 @@ import CoreNetwork
 import Foundation
 import HomeData
 import HomeDomain
+import SwiftData
 import Testing
 
 @testable import UMCApp
@@ -38,10 +39,17 @@ private struct ActivityResolution: Sendable, CustomStringConvertible {
 /// Home 등록을 함께 태우는 이유: 출석·스터디 일정이 `HomeDomain` 의 canonical
 /// `ScheduleRepositoryProtocol` 을 재사용하므로 Activity 단독 등록은 운영 부트스트랩
 /// (`UMCAppApp`)과 다른 상태가 된다. 운영과 같은 순서로 조립해 실제 해석 경로를 검증한다.
+///
+/// Home 조립이 요구하는 `ModelContext` 는 디스크를 건드리지 않도록 인메모리 컨테이너에서 만든다.
+/// `mainContext` 는 `@MainActor` 격리라 비격리 헬퍼에서 쓸 수 없어 새 컨텍스트를 직접 만든다.
 private func makeContainer() throws -> DIContainer {
     let container = DIContainer()
     try registerNetworkAdapter(in: container)
-    container.registerHomeDependencies()
+    let modelContainer = try ModelContainer(
+        for: GenerationMappingRecord.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    container.registerHomeDependencies(modelContext: ModelContext(modelContainer))
     container.registerActivityDependencies()
     return container
 }

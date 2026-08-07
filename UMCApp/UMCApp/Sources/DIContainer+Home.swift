@@ -11,9 +11,14 @@ import CoreNetwork
 import HomeData
 import HomeDomain
 import NoticeDomain
+import SwiftData
 
 extension DIContainer {
-    func registerHomeDependencies() {
+    /// - Parameter modelContext: 기수 매핑 로컬 저장소(SwiftData)에 주입할 컨텍스트.
+    func registerHomeDependencies(modelContext: ModelContext) {
+        register(ChallengerGenRepositoryProtocol.self) {
+            ChallengerGenRepository(modelContext: modelContext)
+        }
         register(HomeRepositoryProtocol.self) {
             HomeRepository(
                 adapter: self.resolve(MoyaNetworkAdapter.self),

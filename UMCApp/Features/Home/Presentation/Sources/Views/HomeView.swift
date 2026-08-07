@@ -7,6 +7,7 @@
 
 import CoreDesignSystem
 import CoreDI
+import CoreDomain
 import CoreUIComponents
 import HomeDomain
 import NoticeDomain
@@ -392,12 +393,20 @@ private struct PreviewClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol {
     }
 }
 
+/// SwiftData 저장소 없이 화면을 그리기 위한 프리뷰 전용 기수 매핑 저장소 (절대규칙 #5)
+private struct PreviewChallengerGenRepository: ChallengerGenRepositoryProtocol {
+    func replaceMappings(_ pairs: [(gen: String, gisuId: String)]) throws {}
+
+    func fetchGenGisuIdPairs() throws -> [(gen: String, gisuId: String)] { [] }
+}
+
 #Preview {
     let container = DIContainer()
     container.register(FetchHomeProfileUseCaseProtocol.self) { PreviewFetchHomeProfileUseCase() }
     container.register(FetchRecentNoticesUseCaseProtocol.self) { PreviewFetchRecentNoticesUseCase() }
     container.register(FetchSchedulesUseCaseProtocol.self) { PreviewFetchSchedulesUseCase() }
     container.register(ClassifyScheduleUseCaseProtocol.self) { PreviewClassifyScheduleUseCase() }
+    container.register(ChallengerGenRepositoryProtocol.self) { PreviewChallengerGenRepository() }
     return NavigationStack {
         HomeView(container: container)
     }

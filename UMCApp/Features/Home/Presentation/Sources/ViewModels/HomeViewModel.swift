@@ -6,10 +6,14 @@
 //
 
 import CoreDI
+import CoreDomain
 import Foundation
 import HomeDomain
 import NoticeDomain
 import UMCFoundation
+import os.log
+
+private let logger = Logger(subsystem: "UMCApp", category: "Home")
 
 /// 홈 화면(시즌/세대 카드/최근 공지/일정 캘린더) ViewModel
 @Observable
@@ -42,6 +46,7 @@ public final class HomeViewModel {
     private let fetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProtocol
     private let fetchMySchedulesUseCase: FetchSchedulesUseCaseProtocol
     private let classifyScheduleUseCase: ClassifyScheduleUseCaseProtocol
+    private let challengerGenRepository: ChallengerGenRepositoryProtocol
 
     // MARK: - Init
 
@@ -50,6 +55,7 @@ public final class HomeViewModel {
         fetchRecentNoticesUseCase = container.resolve(FetchRecentNoticesUseCaseProtocol.self)
         fetchMySchedulesUseCase = container.resolve(FetchSchedulesUseCaseProtocol.self)
         classifyScheduleUseCase = container.resolve(ClassifyScheduleUseCaseProtocol.self)
+        challengerGenRepository = container.resolve(ChallengerGenRepositoryProtocol.self)
     }
 
     // MARK: - Function
@@ -77,6 +83,7 @@ public final class HomeViewModel {
             let sortedGenerations = sortedByGenerationDescending(profile.generations)
             seasonState = .loaded(profile.seasonTypes)
             generationState = .loaded(sortedGenerations)
+            syncGenerationMappings(sortedGenerations)
             await fetchRecentNotices(latestGisuId: sortedGenerations.first?.gisuId)
         } catch is CancellationError {
             seasonState = previousSeasonState
@@ -137,6 +144,21 @@ public final class HomeViewModel {
     }
 
     // MARK: - Private Function
+
+    /// 프로필의 기수 목록을 (gen, gisuId) 로컬 매핑에 반영하고 갱신을 브로드캐스트한다.
+    /// 공지 탭이 기수 필터를 이 매핑으로 구성하므로, 홈 프로필 조회가 유일한 생산자다.
+    ///
+    /// 저장 실패는 홈 화면 표시에 치명적이지 않으므로 `Loadable` 상태를 깨지 않고 로그만 남긴다.
+    private func syncGenerationMappings(_ generations: [HomeGeneration]) {
+        do {
+            try challengerGenRepository.replaceMappings(
+                generations.map { (gen: $0.gen, gisuId: $0.gisuId) }
+            )
+            NotificationCenter.default.post(name: .generationMappingsUpdated, object: nil)
+        } catch {
+            logger.error("기수 매핑 동기화 실패: \(error.localizedDescription)")
+        }
+    }
 
     /// 일정 제목을 분류해 ``scheduleCategories`` 를 갱신한다. 빈 제목이거나 분류가 실패해도
     /// UseCase가 `.general`을 반환하므로 별도 에러 처리는 필요 없다.
