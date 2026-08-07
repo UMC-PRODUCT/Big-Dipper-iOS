@@ -431,7 +431,7 @@
 | `Domain/Impl/Notice/NoticeClassifierUseCaseImpl.swift` | HomeDomain |
 | `Domain/Impl/Schedule/ScheduleClassifierRepositoryImpl.swift` | HomeDomain |
 | `Domain/Impl/Schedule/ScheduleClassifierUseCaseImpl.swift` | HomeDomain |
-| `Domain/Interface/ChallengerGenRepositoryProtocol.swift` | HomeDomain |
+| `Domain/Interface/ChallengerGenRepositoryProtocol.swift` | CoreDomain (Member — 생산자 Home/소비자 Notice 공용, #1083) |
 | `Domain/Interface/ChallengerSearchRepositoryProtocol.swift` | HomeDomain |
 | `Domain/Interface/HomeRepositoryProtocol.swift` | HomeDomain |
 | `Domain/Interface/Notice/NoticeClassifierRepository.swift` | HomeDomain |

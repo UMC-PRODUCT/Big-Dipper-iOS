@@ -9,6 +9,7 @@ import CoreDesignSystem
 import CoreDI
 import FirebaseCore
 import GoogleSignIn
+import HomeData
 import HomeDomain
 import KakaoSDKAuth
 import KakaoSDKCommon
@@ -49,7 +50,9 @@ struct UMCAppApp: App {
         container.registerNoticeDependencies()
         container.registerMemberProfileDependencies()
         container.registerAuthDependencies()
-        container.registerHomeDependencies()
+        container.registerHomeDependencies(
+            modelContext: sharedModelContainer.mainContext
+        )
         container.registerActivityDependencies()
         container.registerMyPageDependencies()
         container.registerMaintenanceDependencies()
@@ -183,6 +186,7 @@ extension UMCAppApp {
             NoticeReadRecord.self,
             AITokenDailyUsageRecord.self,
             NoticeHistoryData.self,
+            GenerationMappingRecord.self,
         ])
 
         do {

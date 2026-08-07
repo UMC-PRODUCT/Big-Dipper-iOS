@@ -8,6 +8,7 @@
 import Foundation
 import UMCFoundation
 import CoreDI
+import CoreDomain
 import NoticeDomain
 
 /// 공지사항 리스트 탭 화면 ViewModel
