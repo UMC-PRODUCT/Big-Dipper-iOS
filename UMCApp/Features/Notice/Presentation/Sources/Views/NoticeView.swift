@@ -17,7 +17,6 @@ import NoticeDomain
 public struct NoticeView: View {
     
     // MARK: - Properties
-    @Environment(ErrorHandler.self) var errorHandler
     private let onNoticeSelected: (NoticeDetail) -> Void
     private let onStaffNoticeSelected: () -> Void
     @AppStorage(AppStorageKey.schoolName) private var schoolName: String = ""
@@ -227,7 +226,7 @@ public struct NoticeView: View {
     /// 검색어 변경 시 1초 디바운스 후 실시간 검색합니다.
     private func handleSearchChanged(_ newValue: String) {
         searchTask?.cancel()
-        let keyword = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        let keyword = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
         searchTask = Task {
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
