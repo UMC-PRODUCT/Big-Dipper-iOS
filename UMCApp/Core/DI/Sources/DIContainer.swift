@@ -169,7 +169,12 @@ extension DIContainer {
         modelContext: ModelContext
     ) -> DIContainer {
         let container = DIContainer()
-        
+
+        // MARK: - SwiftData
+        container.register(ModelContext.self) {
+            modelContext
+        }
+
         // MARK: - Token Store (NetworkClient보다 먼저 등록)
         container.register(TokenStore.self) {
             KeychainTokenStore()
