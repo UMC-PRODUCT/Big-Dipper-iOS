@@ -22,7 +22,8 @@ extension DIContainer {
     ///   ``ActivityData/LocationManagerAdapter`` 를 등록한다. 위치 로직을 feature 모듈에
     ///   재구현하지 않는다.
     /// - Important: 출석·스터디 일정이 `HomeDomain` 의 canonical `ScheduleRepositoryProtocol`
-    ///   을 쓰므로 ``DIContainer/registerHomeDependencies()`` 가 **먼저** 호출돼 있어야 한다.
+    ///   을 쓰므로 ``DIContainer/registerHomeDependencies(modelContext:)`` 가 **먼저**
+    ///   호출돼 있어야 한다.
     ///   같은 엔드포인트를 Activity 에 다시 등록하면 Repository 인스턴스가 두 벌 생기므로
     ///   재등록하지 않고 `resolve` 로만 재사용한다.
     func registerActivityDependencies() {
