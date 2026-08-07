@@ -34,6 +34,6 @@ enum NavigationDestination: Hashable {
     enum Notice: Hashable {
         case detail(detailItem: NoticeDetail)
         case staffNotice
-        case editor(mode: NoticeEditorMode, selectedGisuId: String?)
+        case editor(mode: NoticeEditorMode, selectedGisuId: String?, initialCategory: EditorMainCategory? = nil)
     }
 }
