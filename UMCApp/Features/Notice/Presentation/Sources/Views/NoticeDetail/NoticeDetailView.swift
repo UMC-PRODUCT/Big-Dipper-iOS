@@ -18,18 +18,22 @@ import NoticeDomain
 public struct NoticeDetailView: View {
 
     // MARK: - Property
-
-    // TODO: 나중에 교체
-    @State private var pathStore = PathStore()
-    // @Environment(\.di) var di
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: NoticeDetailViewModel
     @State private var isReadStatusBarCollapsed: Bool = false
     @State private var isRetryingNoticeDetail: Bool = false
     private let errorHandler: ErrorHandler
+    private let onEditRequested: (NoticeEditorMode) -> Void
 
     // MARK: - Initializer
-    public init(container: DIContainer, errorHandler: ErrorHandler, model: NoticeDetail) {
+    public init(
+        container: DIContainer,
+        errorHandler: ErrorHandler,
+        model: NoticeDetail,
+        onEditRequested: @escaping (NoticeEditorMode) -> Void
+    ) {
         self.errorHandler = errorHandler
+        self.onEditRequested = onEditRequested
         self._viewModel = .init(wrappedValue: .init(container: container, errorHandler: errorHandler, model: model))
     }
 
@@ -232,8 +236,6 @@ public struct NoticeDetailView: View {
                 NoticeVoteCard(
                     vote: vote,
                     isSubmitting: viewModel.isSubmittingVote,
-                    // TODO: 위에랑 같이
-                    //container: di,
                     container: viewModel.container,
                     onVote: { optionIds in
                         Task {
@@ -448,7 +450,7 @@ public struct NoticeDetailView: View {
         guard (!noticeID.isEmpty && noticeID != "0") else { return }
 
         let editMode = NoticeEditorMode.edit(noticeId: noticeID, notice: notice)
-        pathStore.noticePath.append(.notice(.editor(mode: editMode, selectedGisuId: nil)))
+        onEditRequested(editMode)
     }
 
     /// 공지 삭제 처리
@@ -464,8 +466,7 @@ public struct NoticeDetailView: View {
 
     /// 삭제 확인 시 상세 화면을 즉시 닫습니다.
     private func closeDetailScreenImmediately() {
-        guard !pathStore.noticePath.isEmpty else { return }
-        pathStore.noticePath.removeLast()
+        dismiss()
     }
 
     /// 수정/삭제 권한 없음 안내
@@ -477,12 +478,6 @@ public struct NoticeDetailView: View {
             positiveBtnTitle: "확인"
         )
     }
-
-    // TODO: 위에랑 같이 교체하기
-    /// PathStore 접근
-//    private var pathStore: PathStore {
-//        di.resolve(PathStore.self)
-//    }
 
     /// 공지 상세의 타입(중앙/지부/교내/파트)을 내비게이션 서브타이틀로 노출합니다.
     private var noticeTypeSubtitle: String {

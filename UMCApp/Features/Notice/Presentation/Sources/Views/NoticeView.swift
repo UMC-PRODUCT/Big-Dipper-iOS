@@ -17,10 +17,8 @@ import NoticeDomain
 public struct NoticeView: View {
     
     // MARK: - Properties
-    // TODO: 나중에 교체
-    @State private var pathStore = PathStore()
-    // @Environment(\.di) var di
-    @Environment(ErrorHandler.self) var errorHandler
+    private let onNoticeSelected: (NoticeDetail) -> Void
+    private let onStaffNoticeSelected: () -> Void
     @AppStorage(AppStorageKey.schoolName) private var schoolName: String = ""
     @AppStorage(AppStorageKey.chapterName) private var chapterName: String = ""
     @AppStorage(AppStorageKey.responsiblePart) private var responsiblePart: String = ""
@@ -35,13 +33,16 @@ public struct NoticeView: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var isRetryingNotices: Bool = false
     
-    /// PathStore 접근
-//    private var pathStore: PathStore {
-//        di.resolve(PathStore.self)
-//    }
     
     // MARK: - Initializer
-    public init(container: DIContainer, errorHandler: ErrorHandler) {
+    public init(
+        container: DIContainer,
+        errorHandler: ErrorHandler,
+        onNoticeSelected: @escaping (NoticeDetail) -> Void,
+        onStaffNoticeSelected: @escaping () -> Void
+    ) {
+        self.onNoticeSelected = onNoticeSelected
+        self.onStaffNoticeSelected = onStaffNoticeSelected
         _viewModel = State(
             initialValue: NoticeViewModel(container: container, errorHandler: errorHandler)
         )
@@ -74,8 +75,7 @@ public struct NoticeView: View {
     
     // MARK: - Body
     public var body: some View {
-        NavigationStack(path: noticePathBinding) {
-            content
+        content
             .searchable(text: $search, prompt: Constants.searchPlaceholder)
             .searchToolbarBehavior(.minimize)
             .navigationTitle(viewModel.selectedMainFilter.labelText)
@@ -85,18 +85,13 @@ public struct NoticeView: View {
             .toolbar { toolbarContent }
             .safeAreaBar(edge: .top) { topSafeAreaContent }
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: NavigationDestination.self, destination: navigationDestinationView)
+            // 상세에서 pop해 돌아오면 뷰가 재등장하며 이 task가 다시 실행된다.
+            // `fetchGisuList()` → `refreshSelectedGenerationContext()` → `fetchNotices()`로
+            // 목록(읽음 상태 포함)이 재조회되므로 별도 복귀 감지가 필요 없다.
             .task {
                 applyUserContext()
                 syncSelectedGisuIdForNoticeEditor()
                 viewModel.fetchGisuList()
-            }
-            .onChange(of: pathStore.noticePath.count) { oldCount, newCount in
-                guard newCount < oldCount, newCount == 0 else { return }
-
-                Task {
-                    await reloadNoticesAfterReturningFromDetail()
-                }
             }
             .onChange(of: viewModel.selectedGeneration) { _, _ in
                 syncSelectedGisuIdForNoticeEditor()
@@ -111,7 +106,6 @@ public struct NoticeView: View {
                 searchTask?.cancel()
             }
             .umcDefaultBackground()
-        }
     }
 
     // MARK: - Content Rendering
@@ -206,19 +200,15 @@ public struct NoticeView: View {
         await viewModel.retryCurrentRequest()
     }
 
+    /// 검색 중이면 검색을, 아니면 일반 목록을 현재 조건 그대로 다시 조회합니다.
     @MainActor
-    private func reloadNoticesAfterReturningFromDetail() async {
+    private func reloadCurrentNoticeList() async {
         if viewModel.isSearchMode,
            !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             await viewModel.searchNotices(keyword: viewModel.searchQuery)
         } else {
             await viewModel.fetchNotices()
         }
-    }
-
-    @MainActor
-    private func reloadCurrentNoticeList() async {
-        await reloadNoticesAfterReturningFromDetail()
     }
 
     @MainActor
@@ -236,7 +226,7 @@ public struct NoticeView: View {
     /// 검색어 변경 시 1초 디바운스 후 실시간 검색합니다.
     private func handleSearchChanged(_ newValue: String) {
         searchTask?.cancel()
-        let keyword = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        let keyword = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
         searchTask = Task {
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
@@ -252,8 +242,7 @@ public struct NoticeView: View {
     /// 공지 셀 탭/무한스크롤 트리거를 묶은 row 구성입니다.
     private func noticeRow(_ item: NoticeItemModel) -> some View {
         NoticeItem(model: item) {
-            let noticeDetail = item.toNoticeDetail()
-            pathStore.noticePath.append(.notice(.detail(detailItem: noticeDetail)))
+            onNoticeSelected(item.toNoticeDetail())
         }
         .task(id: item.id) {
             await viewModel.loadNextPageIfNeeded(currentItem: item)
@@ -301,19 +290,6 @@ public struct NoticeView: View {
         Binding(
             get: { viewModel.selectedGeneration },
             set: { viewModel.selectGeneration($0) }
-        )
-    }
-
-    /// 현재 탭의 Notice NavigationPath 바인딩입니다.
-    private var noticePathBinding: Binding<[NavigationDestination]> {
-        Binding(
-            get: { pathStore.noticePath },
-            set: { newValue in
-                // NavigationStack이 동일 경로를 다시 쓰는 경우를 무시해
-                // "tried to update multiple times per frame" 경고를 줄입니다.
-                guard pathStore.noticePath != newValue else { return }
-                pathStore.noticePath = newValue
-            }
         )
     }
 
@@ -367,7 +343,7 @@ public struct NoticeView: View {
         if viewModel.memberRole?.canAccessStaffNotice == true {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    pathStore.noticePath.append(.notice(.staffNotice))
+                    onStaffNoticeSelected()
                 } label: {
                     Image(systemName: "person.badge.shield.checkmark")
                         .imageScale(.medium)
@@ -382,10 +358,5 @@ public struct NoticeView: View {
         if viewModel.showSubFilter {
             NoticeSubFilter(viewModel: viewModel)
         }
-    }
-
-    /// Notice 탭 내 destination 라우팅 뷰입니다.
-    private func navigationDestinationView(_ destination: NavigationDestination) -> some View {
-        NavigationRoutingView(destination: destination)
     }
 }

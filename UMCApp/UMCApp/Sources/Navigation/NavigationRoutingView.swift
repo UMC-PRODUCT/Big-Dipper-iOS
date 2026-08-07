@@ -23,14 +23,16 @@ struct NavigationRoutingView: View {
 
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
-    // `NoticePresentation` 이 같은 이름의 로컬 스텁을 아직 들고 있어 모듈을 명시한다.
-    @Environment(CoreRouting.PathStore.self) private var pathStore
+    @Environment(PathStore.self) private var pathStore
     private let destination: NavigationDestination
+    /// 라우팅된 화면이 다시 push를 요청할 때 호출하는 콜백. 진입 탭의 path에 append된다.
+    private let push: (NavigationDestination) -> Void
 
     // MARK: - Init
 
-    init(destination: NavigationDestination) {
+    init(destination: NavigationDestination, push: @escaping (NavigationDestination) -> Void) {
         self.destination = destination
+        self.push = push
     }
 
     // MARK: - Body
@@ -77,12 +79,36 @@ private extension NavigationRoutingView {
     func noticeView(_ route: NavigationDestination.Notice) -> some View {
         switch route {
         case .detail(let detailItem):
-            NoticeDetailView(container: di, errorHandler: errorHandler, model: detailItem)
-        case .staffNotice, .editor:
-            // StaffNoticeView / NoticeEditorView 자체는 NoticePresentation에 이식됐지만,
-            // 두 화면은 로컬 `NoticeNavigation.PathStore`로 push되므로 이 라우터를 타지 않는다.
-            // Notice 탭 실연결 후속 이슈에서 목적지 타입을 일원화하며 함께 연결한다.
-            Text("아직 지원하지 않는 화면입니다")
+            NoticeDetailView(
+                container: di,
+                errorHandler: errorHandler,
+                model: detailItem,
+                onEditRequested: { mode in
+                    push(.notice(.editor(mode: mode, selectedGisuId: nil)))
+                }
+            )
+        case .staffNotice:
+            StaffNoticeView(
+                container: di,
+                errorHandler: errorHandler,
+                onNoticeSelected: { detailItem in
+                    push(.notice(.detail(detailItem: detailItem)))
+                },
+                onCreateNotice: { gisuId, category in
+                    push(.notice(.editor(
+                        mode: .create,
+                        selectedGisuId: gisuId,
+                        initialCategory: category
+                    )))
+                }
+            )
+        case .editor(let mode, let selectedGisuId, let initialCategory):
+            NoticeEditorView(
+                container: di,
+                mode: mode,
+                selectedGisuId: selectedGisuId,
+                initialCategory: initialCategory
+            )
         }
     }
 }

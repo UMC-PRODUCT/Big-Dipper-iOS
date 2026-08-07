@@ -22,7 +22,7 @@ import NoticePresentation
 /// Feature 가 App 을 import 하지 않고도 자기 화면을 push 할 수 있게 한다.
 ///
 /// 목적지 렌더 분기는 두 갈래로 등록된다.
-/// - `NavigationDestination`: App 이 아직 들고 있는 Notice 경로
+/// - `NavigationDestination`: App 이 아직 들고 있는 Home/Notice 경로
 /// - Feature 소유 목적지(예: `ActivityDestination`): 해당 Feature 루트가 자기 스택에 직접 등록
 ///
 /// `PathStore` 가 타입 소거 `NavigationPath` 를 쓰기 때문에 두 갈래가 한 스택에 공존한다.
@@ -30,9 +30,7 @@ struct RootTabView: View {
 
     // MARK: - Property
 
-    // `NoticePresentation` 이 같은 이름의 로컬 스텁(`NoticeNavigation.swift`)을 아직 들고 있어
-    // 모듈을 명시한다. Notice 탭이 공유 경로로 옮겨오면 그 스텁과 함께 접두사도 사라진다.
-    @State private var pathStore = CoreRouting.PathStore()
+    @State private var pathStore = PathStore()
 
     // MARK: - Body
 
@@ -70,19 +68,21 @@ struct RootTabView: View {
         NavigationStack(path: pathBinding(for: tab)) {
             tabContent(tab)
                 .navigationDestination(for: NavigationDestination.self) { destination in
-                    NavigationRoutingView(destination: destination)
+                    NavigationRoutingView(
+                        destination: destination,
+                        push: { pathStore.push($0, on: tab) }
+                    )
                 }
         }
     }
 
     /// 탭별 루트 화면. 실연결된 탭은 Feature 화면을, 아직인 탭은 placeholder를 표시한다.
     ///
-    /// Home과 Activity가 실연결 상태다. Activity는 자기 목적지(`ActivityDestination`) 등록까지
+    /// Home/Notice/Activity가 실연결 상태다. Activity는 자기 목적지(`ActivityDestination`) 등록까지
     /// `ActivityFeatureView`가 맡으므로, App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다.
-    /// 반면 Home은 목적지가 App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
+    /// 반면 Home/Notice는 목적지가 App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
     ///
-    /// - Note: Notice/Community/MyPage도 이식된 모듈이 있지만, 탭 실연결은 각 후속 이슈에서
-    ///   진행한다.
+    /// - Note: Community/MyPage도 이식된 모듈이 있지만, 탭 실연결은 각 후속 이슈에서 진행한다.
     @ViewBuilder
     private func tabContent(_ tab: NavigationTab) -> some View {
         switch tab {
@@ -105,8 +105,17 @@ struct RootTabView: View {
                 }
             )
         case .notice:
-            // TODO: NoticePresentation의 실제 NoticeView 연결 (Notice 탭 실연결 후속 이슈)
-            NoticeFeatureView()
+            NoticeFeatureView(
+                onNoticeSelected: { detailItem in
+                    pathStore.push(
+                        NavigationDestination.notice(.detail(detailItem: detailItem)),
+                        on: .notice
+                    )
+                },
+                onStaffNoticeSelected: {
+                    pathStore.push(NavigationDestination.notice(.staffNotice), on: .notice)
+                }
+            )
         case .activity:
             ActivityFeatureView()
         case .community:

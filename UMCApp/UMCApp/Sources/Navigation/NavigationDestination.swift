@@ -18,10 +18,9 @@ import NoticeDomain
 ///   타입을 자기 모듈에 두면 된다(예: `ActivityPresentation.ActivityDestination`).
 ///   `.notice` 는 연관값이 `NoticeDomain.NoticeDetail` 이라 Notice 모듈로 옮기는 편이 자연스럽고,
 ///   그 이전은 Notice 탭 실연결 이슈 소관이라 지금은 App 에 둔다. 옮기고 나면 이 타입은 사라진다.
-/// - Warning: 이 타입과 `NavigationRoutingView` 는 `NoticePresentation` 의 로컬 스텁에도
-///   **같은 이름으로** 선언되어 있다. 지금은 같은 모듈 선언이 우선해 App 것이 잡히지만,
-///   이 파일을 지우면 `RootTabView` 의 참조가 컴파일 에러 없이 구조만 비슷한 `NoticePresentation`
-///   타입으로 조용히 갈아탄다. 삭제는 `RootTabView` 의 목적지 등록·push 갱신과 반드시 함께 한다.
+/// - Note: `NoticePresentation`은 App 타깃을 참조할 수 없어(Feature → App 의존 방향 금지)
+///   이 타입을 직접 쓸 수 없다. 그래서 Notice의 각 화면은 콜백 클로저로 화면 전환 의도만
+///   상위에 알리고, 실제 push는 `RootTabView`/`NavigationRoutingView`가 수행한다(#1027).
 enum NavigationDestination: Hashable {
     case home(Home)
     case notice(Notice)
@@ -34,6 +33,10 @@ enum NavigationDestination: Hashable {
     enum Notice: Hashable {
         case detail(detailItem: NoticeDetail)
         case staffNotice
-        case editor(mode: NoticeEditorMode, selectedGisuId: String?, initialCategory: EditorMainCategory? = nil)
+        case editor(
+            mode: NoticeEditorMode,
+            selectedGisuId: String?,
+            initialCategory: EditorMainCategory? = nil
+        )
     }
 }
