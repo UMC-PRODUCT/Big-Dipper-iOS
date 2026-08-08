@@ -18,6 +18,7 @@ public struct HomeFeatureView: View {
     private let onNoticeSelected: (NoticeDetail) -> Void
     private let onScheduleSelected: (String) -> Void
     private let onAlarmHistoryTapped: () -> Void
+    private let onScheduleRegistrationTapped: () -> Void
 
     // MARK: - Init
 
@@ -28,14 +29,17 @@ public struct HomeFeatureView: View {
     ///   - onNoticeSelected: 최근 공지 카드 탭 시 공지 상세 이동 콜백
     ///   - onScheduleSelected: 일정 카드 탭 시 일정 상세 이동 콜백 (일정 ID 전달)
     ///   - onAlarmHistoryTapped: 툴바 알림 버튼 탭 시 알림 보관함 이동 콜백
+    ///   - onScheduleRegistrationTapped: 일정 등록 버튼 탭 시 일정 등록 화면 이동 콜백
     public init(
         onNoticeSelected: @escaping (NoticeDetail) -> Void,
         onScheduleSelected: @escaping (String) -> Void,
-        onAlarmHistoryTapped: @escaping () -> Void
+        onAlarmHistoryTapped: @escaping () -> Void,
+        onScheduleRegistrationTapped: @escaping () -> Void
     ) {
         self.onNoticeSelected = onNoticeSelected
         self.onScheduleSelected = onScheduleSelected
         self.onAlarmHistoryTapped = onAlarmHistoryTapped
+        self.onScheduleRegistrationTapped = onScheduleRegistrationTapped
     }
 
     // MARK: - Body
@@ -45,7 +49,8 @@ public struct HomeFeatureView: View {
             container: di,
             onNoticeSelected: onNoticeSelected,
             onScheduleSelected: onScheduleSelected,
-            onAlarmHistoryTapped: onAlarmHistoryTapped
+            onAlarmHistoryTapped: onAlarmHistoryTapped,
+            onScheduleRegistrationTapped: onScheduleRegistrationTapped
         )
     }
 }

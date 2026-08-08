@@ -27,6 +27,7 @@ enum NavigationDestination: Hashable {
 
     enum Home: Hashable {
         case alarmHistory
+        case registrationSchedule
         case scheduleDetail(scheduleId: String)
     }
 

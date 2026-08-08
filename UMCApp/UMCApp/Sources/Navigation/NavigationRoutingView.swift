@@ -55,6 +55,8 @@ private extension NavigationRoutingView {
         switch route {
         case .alarmHistory:
             NoticeAlarmView()
+        case .registrationSchedule:
+            ScheduleRegistrationView(container: di)
         case .scheduleDetail(let scheduleId):
             ScheduleDetailView(
                 container: di,

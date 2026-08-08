@@ -84,5 +84,6 @@ public enum NavigationTitle {
         case school = "학교 선택"
         case part = "파트 선택"
         case placeSearch = "어느 위치를 찾고 있나요?"
+        case tag = "태그"
     }
 }
