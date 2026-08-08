@@ -8,7 +8,9 @@
 import SwiftUI
 import CoreDI
 import CoreDesignSystem
+import CoreDomain
 import CoreUIComponents
+import MyPageDomain
 
 /// 실명 투표 시 특정 옵션에 투표한 사용자 명단을 표시하는 시트
 public struct VoteVoterListSheet: View {
@@ -112,9 +114,9 @@ public struct VoteVoterListSheet: View {
 
         await withTaskGroup(of: MemberProfileSummary?.self) { group in
             for memberId in memberIds {
-                guard !memberId.isEmpty else { continue }
+                guard let memberIdValue = Int(memberId) else { continue }
                 group.addTask {
-                    try? await repository.fetchMemberProfile(memberId: memberId)
+                    try? await repository.fetchMemberProfile(memberId: memberIdValue)
                 }
             }
 

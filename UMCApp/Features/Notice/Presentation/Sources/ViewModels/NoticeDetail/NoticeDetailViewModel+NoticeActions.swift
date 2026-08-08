@@ -7,6 +7,7 @@
 
 import Foundation
 import UMCFoundation
+import MyPageDomain
 import NoticeDomain
 
 extension NoticeDetailViewModel {
@@ -89,8 +90,8 @@ extension NoticeDetailViewModel {
     public func fetchAuthorProfileIfNeeded(for detail: NoticeDetail) async {
         hasResolvedAuthorProfile = false
 
-        guard let memberId = detail.authorMemberId,
-              !memberId.isEmpty else {
+        guard let rawMemberId = detail.authorMemberId,
+              let memberId = Int(rawMemberId) else {
             isAuthorProfileLoading = false
             authorProfileSummary = nil
             hasResolvedAuthorProfile = true
