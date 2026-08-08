@@ -43,25 +43,7 @@ public final class AuthorizationRepository: AuthorizationRepositoryProtocol, @un
             APIResponse<ResourcePermissionResponseDTO>.self,
             from: response.data
         )
-        let dto = try apiResponse.unwrap()
 
-        guard let mappedResourceType = AuthorizationResourceType(rawValue: dto.resourceType) else {
-            throw RepositoryError.decodingError(
-                detail: "Unknown resourceType: \(dto.resourceType)"
-            )
-        }
-
-        let granted = Set(
-            dto.permissions.compactMap { item -> AuthorizationPermissionType? in
-                guard item.hasPermission else { return nil }
-                return AuthorizationPermissionType(rawValue: item.permissionType)
-            }
-        )
-
-        return ResourcePermission(
-            resourceType: mappedResourceType,
-            resourceId: dto.resourceId,
-            grantedPermissions: granted
-        )
+        return try apiResponse.unwrap().toDomain()
     }
 }
