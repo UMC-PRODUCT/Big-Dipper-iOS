@@ -110,12 +110,18 @@ public final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Se
         return try apiResponse.unwrap().value
     }
 
-    /// 일정을 삭제한다.
+    /// 일정을 부분 수정한다. 전송할 필드 선별은 요청 DTO 의 인코딩이 담당한다.
     ///
     /// 성공 응답 본문이 비어 있을 수 있어(204 등) 그 경우는 성공으로 간주한다.
-    public func deleteSchedule(scheduleId: String) async throws {
+    public func updateSchedule(
+        scheduleId: String,
+        request: ScheduleUpdateRequest
+    ) async throws {
         let response = try await networkRequesting.request(
-            ScheduleV2Router.deleteSchedule(scheduleId: scheduleId)
+            ScheduleV2Router.patchSchedule(
+                scheduleId: scheduleId,
+                body: ScheduleUpdateRequestDTO(domain: request)
+            )
         )
 
         guard !response.data.isEmpty else { return }
@@ -128,10 +134,81 @@ public final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Se
             try apiResponse.validateSuccess()
         } catch let decodingError as DecodingError {
             #if DEBUG
+            print("[ScheduleRepository] updateSchedule decodingError=\(decodingError)")
+            #endif
+            throw RepositoryError.decodingError(detail: "\(decodingError)")
+        }
+    }
+
+    /// 일정을 삭제한다.
+    ///
+    /// 성공 응답 본문이 비어 있을 수 있어(204 등) 그 경우는 성공으로 간주한다.
+    /// 출석 기록을 이유로 거부된 응답은 강제 삭제 안내가 가능하도록 도메인 에러로 승격한다.
+    public func deleteSchedule(scheduleId: String) async throws {
+        let response = try await networkRequesting.request(
+            ScheduleV2Router.deleteSchedule(scheduleId: scheduleId)
+        )
+
+        guard !response.data.isEmpty else { return }
+
+        let apiResponse: APIResponse<EmptyResult>
+        do {
+            apiResponse = try JSONDecoder().decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+        } catch let decodingError as DecodingError {
+            #if DEBUG
             print("[ScheduleRepository] deleteSchedule decodingError=\(decodingError)")
             #endif
             throw RepositoryError.decodingError(detail: "\(decodingError)")
         }
+
+        do {
+            try apiResponse.validateSuccess()
+        } catch let serverError as RepositoryError {
+            throw Self.mapDeleteError(serverError)
+        }
+    }
+
+    /// 출석 기록이 있는 일정을 강제 삭제한다. 권한 검증은 서버가 한다.
+    public func forceDeleteSchedule(scheduleId: String) async throws {
+        let response = try await networkRequesting.request(
+            ScheduleV2Router.forceDeleteSchedule(scheduleId: scheduleId)
+        )
+
+        guard !response.data.isEmpty else { return }
+
+        do {
+            let apiResponse = try JSONDecoder().decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let decodingError as DecodingError {
+            #if DEBUG
+            print("[ScheduleRepository] forceDeleteSchedule decodingError=\(decodingError)")
+            #endif
+            throw RepositoryError.decodingError(detail: "\(decodingError)")
+        }
+    }
+
+    /// 삭제 거부 응답 중 "출석 기록 존재" 케이스만 도메인 에러로 승격한다.
+    ///
+    /// 호출부가 강제 삭제로 에스컬레이션할지 판단하는 유일한 신호라 일반 서버 에러와 구분한다.
+    ///
+    /// ponytail: 서버가 이 거부에 전용 code 를 주지 않아 메시지 문자열 스니핑에 의존한다.
+    /// 서버 문구가 바뀌면 일반 서버 에러로 조용히 되돌아간다 — 전용 code(예: `SCHEDULE-00xx`)가
+    /// 생기면 code 우선 판정으로 교체하고 문자열은 fallback 으로 남긴다.
+    private static func mapDeleteError(_ error: RepositoryError) -> Error {
+        guard case .serverError(let code, let message) = error else { return error }
+
+        let combined = "\(code ?? "") \(message ?? "")"
+        let hasAttendanceRecords = combined.contains("출석 기록")
+            || combined.contains("출석 데이터")
+            || (combined.contains("출석") && combined.contains("삭제"))
+
+        return hasAttendanceRecords ? DomainError.scheduleHasAttendanceRecords : error
     }
 }
 

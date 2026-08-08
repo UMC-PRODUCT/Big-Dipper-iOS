@@ -58,6 +58,7 @@ private extension NavigationRoutingView {
         case .scheduleDetail(let scheduleId):
             ScheduleDetailView(
                 container: di,
+                errorHandler: errorHandler,
                 scheduleId: scheduleId,
                 onAttendanceStatusTapped: {
                     // 출석 현황은 Activity 탭이 소유한 목적지라, 탭을 옮긴 뒤 그 탭 스택에 쌓는다.

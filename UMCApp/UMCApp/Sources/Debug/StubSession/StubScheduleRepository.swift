@@ -56,7 +56,13 @@ struct StubScheduleRepository: ScheduleRepositoryProtocol {
         StubSessionFixtures.createdScheduleId
     }
 
+    /// 저장소가 없으므로 수정은 no-op 이다 (화면 흐름만 통과시킨다).
+    func updateSchedule(scheduleId: String, request: ScheduleUpdateRequest) async throws {}
+
     /// 저장소가 없으므로 삭제는 no-op 이다 (호출부의 롤백 흐름만 통과시킨다).
     func deleteSchedule(scheduleId: String) async throws {}
+
+    /// 강제 삭제도 같은 이유로 no-op 이다.
+    func forceDeleteSchedule(scheduleId: String) async throws {}
 }
 #endif

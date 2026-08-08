@@ -186,8 +186,16 @@ private final class MockScheduleRepository: @unchecked Sendable, ScheduleReposit
         fatalError("createSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
     }
 
+    func updateSchedule(scheduleId: String, request: ScheduleUpdateRequest) async throws {
+        fatalError("updateSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
+    }
+
     func deleteSchedule(scheduleId: String) async throws {
         fatalError("deleteSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
+    }
+
+    func forceDeleteSchedule(scheduleId: String) async throws {
+        fatalError("forceDeleteSchedule 은 ChallengerAttendanceUseCase 계약 밖입니다.")
     }
 }
 
