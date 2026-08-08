@@ -40,6 +40,15 @@ extension DIContainer {
         register(FetchScheduleDetailUseCaseProtocol.self) {
             FetchScheduleDetailUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
         }
+        register(UpdateScheduleUseCaseProtocol.self) {
+            UpdateScheduleUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
+        }
+        register(DeleteScheduleUseCaseProtocol.self) {
+            DeleteScheduleUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
+        }
+        register(ForceDeleteScheduleUseCaseProtocol.self) {
+            ForceDeleteScheduleUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
+        }
         register(RegisterFCMTokenUseCaseProtocol.self) {
             RegisterFCMTokenUseCase(repository: self.resolve(HomeRepositoryProtocol.self))
         }

@@ -14,7 +14,8 @@ import UMCFoundation
 
 /// 일정 상세 화면 ViewModel
 ///
-/// 조회는 읽기 전용이다. 수정/삭제는 대상 화면과 권한 판정이 아직 이식되지 않아 다루지 않는다.
+/// 조회 실패는 화면 내 `Loadable` 로, 삭제·강제 삭제 실패는 흐름을 끊는 `ErrorHandler` 로 나눠 처리한다.
+/// 수정은 편집 화면이 아직 이식되지 않아 권한만 계산해 두고 진입점을 노출하지 않는다.
 @Observable
 @MainActor
 final class ScheduleDetailViewModel {
@@ -23,11 +24,31 @@ final class ScheduleDetailViewModel {
 
     private(set) var data: Loadable<ScheduleDetailData> = .idle
 
+    var alertPrompt: AlertPrompt?
+
+    /// - TODO: (#1091) 일정 편집 화면 이식 후 수정 진입점 연결
+    private(set) var canEditSchedule: Bool = false
+
+    private(set) var canDeleteSchedule: Bool = false
+    private(set) var canForceDeleteSchedule: Bool = false
+    private(set) var isDeleting: Bool = false
+    private(set) var isDeleted: Bool = false
+
     private let scheduleId: String
     private let fetchScheduleDetailUseCase: FetchScheduleDetailUseCaseProtocol
+    private let deleteScheduleUseCase: DeleteScheduleUseCaseProtocol
+    private let forceDeleteScheduleUseCase: ForceDeleteScheduleUseCaseProtocol
+    private let authorizationUseCase: AuthorizationUseCaseProtocol
     private let userSession: UserSessionManager
+    private let errorHandler: ErrorHandler
 
     // MARK: - Computed Property
+
+    /// 이미 시작된 일정인지 여부. 시작된 일정은 서버가 수정을 거부한다.
+    var isScheduleStarted: Bool {
+        guard let schedule = data.value else { return false }
+        return Date() >= schedule.startsAt
+    }
 
     /// 출석 현황 화면으로 진입할 수 있는지 여부.
     ///
@@ -48,9 +69,13 @@ final class ScheduleDetailViewModel {
 
     // MARK: - Init
 
-    init(container: DIContainer, scheduleId: String) {
+    init(container: DIContainer, scheduleId: String, errorHandler: ErrorHandler) {
         self.scheduleId = scheduleId
+        self.errorHandler = errorHandler
         fetchScheduleDetailUseCase = container.resolve(FetchScheduleDetailUseCaseProtocol.self)
+        deleteScheduleUseCase = container.resolve(DeleteScheduleUseCaseProtocol.self)
+        forceDeleteScheduleUseCase = container.resolve(ForceDeleteScheduleUseCaseProtocol.self)
+        authorizationUseCase = container.resolve(AuthorizationUseCaseProtocol.self)
         userSession = container.resolve(UserSessionManager.self)
     }
 
@@ -90,7 +115,103 @@ final class ScheduleDetailViewModel {
         mapItem.openInMaps()
     }
 
+    /// 일정 리소스 권한을 조회한다.
+    ///
+    /// 조회에 실패하면 권한을 전부 닫는다. 상세 응답에는 권한 필드가 없어 대체할 근거가 없고,
+    /// 열어 두면 서버가 거부할 액션을 노출하게 된다.
+    func fetchSchedulePermission() async {
+        do {
+            let permission = try await authorizationUseCase.getResourcePermission(
+                resourceType: .schedule,
+                resourceId: scheduleId
+            )
+            canEditSchedule = permission.hasAny([.edit, .write, .manage])
+            canDeleteSchedule = permission.hasAny([.delete, .manage])
+            canForceDeleteSchedule = permission.hasAny([.forceDelete, .manage])
+        } catch {
+            canEditSchedule = false
+            canDeleteSchedule = false
+            canForceDeleteSchedule = false
+        }
+    }
+
+    /// 삭제 확인 다이얼로그를 띄운다.
+    func showDeleteConfirmation() {
+        alertPrompt = AlertPrompt(
+            title: "일정 삭제",
+            message: "일정을 삭제하겠습니까?",
+            positiveBtnTitle: "삭제",
+            positiveBtnAction: { [weak self] in
+                Task { @MainActor in await self?.deleteSchedule() }
+            },
+            negativeBtnTitle: "취소",
+            negativeBtnAction: {},
+            isPositiveBtnDestructive: true
+        )
+    }
+
+    /// 일정을 삭제한다.
+    ///
+    /// 서버가 출석 기록을 이유로 거부했고 강제 삭제 권한까지 있을 때만 2차 확인으로 넘긴다.
+    /// 권한이 없으면 강제 삭제를 제안해 봐야 서버가 다시 거부하므로 일반 에러 경로를 탄다.
+    func deleteSchedule() async {
+        guard !isDeleting else { return }
+        isDeleting = true
+        defer { isDeleting = false }
+
+        do {
+            try await deleteScheduleUseCase.execute(scheduleId: scheduleId)
+            isDeleted = true
+        } catch DomainError.scheduleHasAttendanceRecords where canForceDeleteSchedule {
+            showForceDeleteConfirmation()
+        } catch {
+            errorHandler.handle(
+                error,
+                context: ErrorContext(
+                    feature: "Home",
+                    action: "deleteSchedule",
+                    retryAction: { [weak self] in await self?.deleteSchedule() }
+                )
+            )
+        }
+    }
+
     // MARK: - Private Function
+
+    private func showForceDeleteConfirmation() {
+        alertPrompt = AlertPrompt(
+            title: "출석 기록 포함 일정 강제 삭제",
+            message:
+                "이 일정에는 이미 출석 기록이 있습니다.\n강제 삭제하면 출석 데이터까지 함께 삭제되며, 되돌릴 수 없습니다.",
+            positiveBtnTitle: "강제 삭제",
+            positiveBtnAction: { [weak self] in
+                Task { @MainActor in await self?.forceDeleteSchedule() }
+            },
+            negativeBtnTitle: "취소",
+            negativeBtnAction: {},
+            isPositiveBtnDestructive: true
+        )
+    }
+
+    private func forceDeleteSchedule() async {
+        guard !isDeleting else { return }
+        isDeleting = true
+        defer { isDeleting = false }
+
+        do {
+            try await forceDeleteScheduleUseCase.execute(scheduleId: scheduleId)
+            isDeleted = true
+        } catch {
+            errorHandler.handle(
+                error,
+                context: ErrorContext(
+                    feature: "Home",
+                    action: "forceDeleteSchedule",
+                    retryAction: { [weak self] in await self?.forceDeleteSchedule() }
+                )
+            )
+        }
+    }
 
     private func displayText(for status: ScheduleAttendanceStatus) -> String {
         switch status {

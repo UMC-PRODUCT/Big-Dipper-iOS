@@ -29,8 +29,12 @@ enum ScheduleV2Router: BaseTargetType {
     case getScheduleDetail(scheduleId: String)
     /// 일정 생성
     case postSchedule(body: ScheduleCreateRequestDTO)
+    /// 일정 수정 (부분 갱신 — 본문에 실린 필드만 반영된다)
+    case patchSchedule(scheduleId: String, body: ScheduleUpdateRequestDTO)
     /// 일정 삭제 (스터디 일정 등록 2단계 실패 시 1단계 롤백 등)
     case deleteSchedule(scheduleId: String)
+    /// 일정 강제 삭제 (출석 기록이 있어 일반 삭제가 거부된 일정 — 서버가 권한을 검증한다)
+    case forceDeleteSchedule(scheduleId: String)
 
     // MARK: - Path
 
@@ -42,6 +46,10 @@ enum ScheduleV2Router: BaseTargetType {
             return "/api/v2/schedules"
         case .getScheduleDetail(let scheduleId), .deleteSchedule(let scheduleId):
             return "/api/v2/schedules/\(scheduleId)"
+        case .patchSchedule(let scheduleId, _):
+            return "/api/v2/schedules/\(scheduleId)"
+        case .forceDeleteSchedule(let scheduleId):
+            return "/api/v2/schedules/\(scheduleId)/force"
         }
     }
 
@@ -53,7 +61,9 @@ enum ScheduleV2Router: BaseTargetType {
             return .get
         case .postSchedule:
             return .post
-        case .deleteSchedule:
+        case .patchSchedule:
+            return .patch
+        case .deleteSchedule, .forceDeleteSchedule:
             return .delete
         }
     }
@@ -69,7 +79,9 @@ enum ScheduleV2Router: BaseTargetType {
             )
         case .postSchedule(let body):
             return .requestJSONEncodable(body)
-        case .getScheduleDetail, .deleteSchedule:
+        case .patchSchedule(_, let body):
+            return .requestJSONEncodable(body)
+        case .getScheduleDetail, .deleteSchedule, .forceDeleteSchedule:
             return .requestPlain
         }
     }

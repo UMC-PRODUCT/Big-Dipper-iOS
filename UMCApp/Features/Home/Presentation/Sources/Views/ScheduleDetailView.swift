@@ -15,8 +15,8 @@ import UMCFoundation
 
 /// 일정 상세 화면.
 ///
-/// 읽기 전용이다. 일정 수정/삭제·강제 삭제는 대상 화면과 권한 판정 UseCase 가 아직 이식되지
-/// 않아 이번 범위에서 제외했고, 장소는 역지오코딩 없이 좌표 그대로 Apple Maps 로 넘긴다.
+/// 장소는 역지오코딩 없이 좌표 그대로 Apple Maps 로 넘긴다. 수정 진입점은 편집 화면이 아직
+/// 이식되지 않아(#1091) 툴바에 노출하지 않고, 삭제·강제 삭제만 권한에 따라 연다.
 ///
 /// 출석 진입은 활동 모드로 갈린다. Admin 모드면 출석 현황 화면으로 이동하는 버튼을, 그 외에는
 /// 내 출석 상태를 read-only 로 보여 준다. 출석 비필수 일정은 두 경우 모두 표시하지 않는다.
@@ -24,6 +24,7 @@ public struct ScheduleDetailView: View {
 
     // MARK: - Property
 
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: ScheduleDetailViewModel
     private let onAttendanceStatusTapped: () -> Void
 
@@ -35,6 +36,8 @@ public struct ScheduleDetailView: View {
         static let attendanceTitle: String = "출석"
         static let attendanceStatusButtonTitle: String = "출석 현황"
         static let myAttendanceStatusTitle: String = "내 출석 상태"
+        static let deleteActionTitle: String = "삭제하기"
+        static let deleteIcon: String = "trash"
         static let failedTitle: String = "일정을 불러오지 못했어요"
         static let failedSystemImage: String = "exclamationmark.triangle"
     }
@@ -43,17 +46,23 @@ public struct ScheduleDetailView: View {
 
     /// - Parameters:
     ///   - container: UseCase·세션을 resolve할 DI 컨테이너
+    ///   - errorHandler: 삭제·강제 삭제 실패를 전역 Alert 로 올릴 핸들러
     ///   - scheduleId: 조회할 일정 식별자
     ///   - onAttendanceStatusTapped: 출석 현황 버튼 탭 시 화면 이동을 위임하는 콜백
     ///
-    /// - Note: 이 화면의 실패는 모두 인라인(`Loadable`)으로 표시하므로 `ErrorHandler` 를 받지 않는다.
+    /// - Note: 조회 실패는 인라인(`Loadable`)으로 남고, 흐름을 끊는 삭제 실패만 `ErrorHandler` 로 간다.
     public init(
         container: DIContainer,
+        errorHandler: ErrorHandler,
         scheduleId: String,
         onAttendanceStatusTapped: @escaping () -> Void
     ) {
         _viewModel = State(
-            initialValue: ScheduleDetailViewModel(container: container, scheduleId: scheduleId)
+            initialValue: ScheduleDetailViewModel(
+                container: container,
+                scheduleId: scheduleId,
+                errorHandler: errorHandler
+            )
         )
         self.onAttendanceStatusTapped = onAttendanceStatusTapped
     }
@@ -67,9 +76,42 @@ public struct ScheduleDetailView: View {
                 naviTitle: NavigationTitle.Activity.scheduleDetail,
                 displayMode: .inline
             )
-            .task {
-                await viewModel.load()
+            .toolbar { toolbarContent }
+            .alertPrompt(item: $viewModel.alertPrompt)
+            .onChange(of: viewModel.isDeleted) { _, isDeleted in
+                if isDeleted { dismiss() }
             }
+            .task {
+                async let detail: Void = viewModel.load()
+                async let permission: Void = viewModel.fetchSchedulePermission()
+                await detail
+                await permission
+            }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        if !toolbarActions.isEmpty {
+            ToolBarCollection.ToolbarTrailingMenu(actions: toolbarActions)
+        }
+    }
+
+    /// 삭제 중에는 액션을 비워 중복 요청을 막는다.
+    private var toolbarActions: [ToolBarCollection.ToolbarTrailingMenu.ActionItem] {
+        guard viewModel.data.value != nil,
+              viewModel.canDeleteSchedule,
+              !viewModel.isDeleting else { return [] }
+
+        return [
+            .init(
+                title: Constants.deleteActionTitle,
+                icon: Constants.deleteIcon,
+                role: .destructive,
+                action: viewModel.showDeleteConfirmation
+            )
+        ]
     }
 
     // MARK: - Content
@@ -318,15 +360,40 @@ private struct PreviewFetchScheduleDetailUseCase: FetchScheduleDetailUseCaseProt
     }
 }
 
+/// 삭제 액션을 노출하기 위한 프리뷰 전용 권한 스텁 (절대규칙 #5)
+private struct PreviewAuthorizationUseCase: AuthorizationUseCaseProtocol {
+    func getResourcePermission(
+        resourceType: AuthorizationResourceType,
+        resourceId: String
+    ) async throws -> ResourcePermission {
+        ResourcePermission(
+            resourceType: resourceType,
+            resourceId: resourceId,
+            grantedPermissions: [.delete]
+        )
+    }
+}
+
+private struct PreviewDeleteScheduleUseCase: DeleteScheduleUseCaseProtocol,
+                                             ForceDeleteScheduleUseCaseProtocol {
+    func execute(scheduleId: String) async throws {}
+}
+
 #Preview {
     let container = DIContainer()
     container.register(FetchScheduleDetailUseCaseProtocol.self) {
         PreviewFetchScheduleDetailUseCase()
     }
+    container.register(DeleteScheduleUseCaseProtocol.self) { PreviewDeleteScheduleUseCase() }
+    container.register(ForceDeleteScheduleUseCaseProtocol.self) {
+        PreviewDeleteScheduleUseCase()
+    }
+    container.register(AuthorizationUseCaseProtocol.self) { PreviewAuthorizationUseCase() }
     container.register(UserSessionManager.self) { UserSessionManager() }
     return NavigationStack {
         ScheduleDetailView(
             container: container,
+            errorHandler: ErrorHandler(),
             scheduleId: "1",
             onAttendanceStatusTapped: {}
         )

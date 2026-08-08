@@ -37,10 +37,24 @@ public protocol ScheduleRepositoryProtocol {
     /// - Returns: 생성된 일정 식별자 (서버 정수를 절대 규칙 #2 에 따라 `String` 으로 보존)
     func createSchedule(_ request: ScheduleCreationRequest) async throws -> String
 
+    /// 일정을 부분 수정한다.
+    ///
+    /// 요청 모델에서 값이 설정된 필드만 서버로 전송되므로, 화면이 바꾸지 않은 항목은
+    /// 다시 채워 보내지 않아도 기존 값이 유지된다.
+    func updateSchedule(scheduleId: String, request: ScheduleUpdateRequest) async throws
+
     /// 일정을 삭제한다.
     ///
     /// 스터디 일정 등록 2단계(그룹 연결)가 실패했을 때 1단계 일정을 되돌리는 용도로 쓴다.
     ///
-    /// - Note: 서버는 출석 기록이 있는 일정의 일반 삭제를 거부한다.
+    /// - Note: 서버는 출석 기록이 있는 일정의 일반 삭제를 거부한다. 이 경우
+    ///   `DomainError.scheduleHasAttendanceRecords` 로 던져지며, 강제 삭제로 넘어갈지
+    ///   판단하는 유일한 신호다.
     func deleteSchedule(scheduleId: String) async throws
+
+    /// 출석 기록이 있는 일정을 강제 삭제한다.
+    ///
+    /// 일반 삭제가 출석 기록을 이유로 거부됐을 때의 에스컬레이션 경로다.
+    /// 호출 권한(일정 기수의 최고 관리자)은 서버가 검증하고 그 외에는 403 으로 반려한다.
+    func forceDeleteSchedule(scheduleId: String) async throws
 }
