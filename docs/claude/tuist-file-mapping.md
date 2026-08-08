@@ -755,13 +755,13 @@
 | 레거시 파일 | → Tuist 목적지 |
 |---|---|
 | `Alert/AlertPromprt.swift` | CoreFoundation (Alert) |
-| `Common/Authorization/DTOs/ResourcePermissionDTO.swift` | CoreNetwork (Authorization/DTOs) |
-| `Common/Authorization/Models/ResourcePermission.swift` | CoreFoundation (Model) |
-| `Common/Authorization/Repositories/AuthorizationRepository.swift` | CoreNetwork (Authorization) |
-| `Common/Authorization/Repositories/AuthorizationRepositoryProtocol.swift` | CoreFoundation (Model) |
-| `Common/Authorization/Router/AuthorizationRouter.swift` | CoreNetwork (Authorization) |
-| `Common/Authorization/UseCases/AuthorizationUseCase.swift` | CoreFoundation (Model) |
-| `Common/Authorization/UseCases/AuthorizationUseCaseProtocol.swift` | CoreFoundation (Model) |
+| `Common/Authorization/DTOs/ResourcePermissionDTO.swift` | CoreNetwork (Authorization) — 이미 이관됨 |
+| `Common/Authorization/Models/ResourcePermission.swift` | CoreDomain (Authorization) — 이미 이관됨 |
+| `Common/Authorization/Repositories/AuthorizationRepository.swift` | CoreNetwork (Authorization) — 이미 이관됨 |
+| `Common/Authorization/Repositories/AuthorizationRepositoryProtocol.swift` | CoreDomain (Authorization) — 이미 이관됨 |
+| `Common/Authorization/Router/AuthorizationRouter.swift` | CoreNetwork (Authorization) — 이미 이관됨 |
+| `Common/Authorization/UseCases/AuthorizationUseCase.swift` | CoreDomain (Authorization) — 이미 이관됨 |
+| `Common/Authorization/UseCases/AuthorizationUseCaseProtocol.swift` | CoreDomain (Authorization) — 이미 이관됨 |
 | `Common/DesignSystem/Styles/ButtonStyles.swift` | CoreDesignSystem |
 | `Common/DesignSystem/Tokens/TypographyTokens.swift` | CoreDesignSystem |
 | `Common/Enum/AppStorageKey.swift` | CoreFoundation (Enums) — 이미 이관됨 |
