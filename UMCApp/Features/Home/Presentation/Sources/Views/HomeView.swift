@@ -8,6 +8,7 @@
 import CoreDesignSystem
 import CoreDI
 import CoreDomain
+import CoreRouting
 import CoreUIComponents
 import HomeDomain
 import NoticeDomain
@@ -28,12 +29,16 @@ struct HomeView: View {
     // MARK: - Property
 
     @Environment(\.requestReview) private var requestReview
+    /// 홈 탭 스택의 공유 경로. 루트 복귀 감지에만 쓰므로, 경로 저장소를 주입하지 않는
+    /// 프리뷰/테스트 호출부가 깨지지 않도록 옵셔널로 받는다.
+    @Environment(PathStore.self) private var pathStore: PathStore?
     @State private var viewModel: HomeViewModel
     @State private var selectedDate: Date = .now
     @State private var currentMonth: Date = .now
     private let onNoticeSelected: (NoticeDetail) -> Void
     private let onScheduleSelected: (String) -> Void
     private let onAlarmHistoryTapped: () -> Void
+    private let onScheduleRegistrationTapped: () -> Void
     private let reviewRequestPolicy: ReviewRequestPolicy
 
     // MARK: - Constants
@@ -52,6 +57,7 @@ struct HomeView: View {
     ///   - onNoticeSelected: 최근 공지 카드 탭 시 상세 화면 이동을 위임하는 콜백
     ///   - onScheduleSelected: 일정 카드 탭 시 일정 상세 이동을 위임하는 콜백
     ///   - onAlarmHistoryTapped: 툴바 알림 버튼 탭 시 알림 보관함 이동을 위임하는 콜백
+    ///   - onScheduleRegistrationTapped: 툴바 일정 등록 버튼 탭 시 등록 화면 이동을 위임하는 콜백
     ///   - reviewRequestPolicy: 리뷰 요청 간격 정책 (프리뷰/테스트용 주입 지점)
     init(
         container: DIContainer,
@@ -59,12 +65,14 @@ struct HomeView: View {
         onNoticeSelected: @escaping (NoticeDetail) -> Void = { _ in },
         onScheduleSelected: @escaping (String) -> Void = { _ in },
         onAlarmHistoryTapped: @escaping () -> Void = {},
+        onScheduleRegistrationTapped: @escaping () -> Void = {},
         reviewRequestPolicy: ReviewRequestPolicy = ReviewRequestPolicy()
     ) {
         _viewModel = State(initialValue: viewModel ?? HomeViewModel(container: container))
         self.onNoticeSelected = onNoticeSelected
         self.onScheduleSelected = onScheduleSelected
         self.onAlarmHistoryTapped = onAlarmHistoryTapped
+        self.onScheduleRegistrationTapped = onScheduleRegistrationTapped
         self.reviewRequestPolicy = reviewRequestPolicy
     }
 
@@ -87,23 +95,22 @@ struct HomeView: View {
         .umcDefaultBackground()
         .toolbar {
             ToolBarCollection.Logo()
+            // ponytail: 임시 진입점 — 하단 탭 액세서리(#1057) 결선 후 제거.
+            ToolBarCollection.AddBtn(action: onScheduleRegistrationTapped)
             ToolBarCollection.BellBtn(action: onAlarmHistoryTapped)
         }
         .task {
             await viewModel.fetchProfileIfNeeded()
             requestReviewIfDue()
         }
-        .task {
-            await viewModel.fetchSchedules()
+        // 최초 진입(depth 0)과 홈 루트 복귀를 한 트리거로 처리한다. 별도 `.task`를 두면
+        // 최초 진입에서 같은 달을 두 번 조회하게 된다.
+        .task(id: pathStore?.depth(of: .home) ?? 0) {
+            guard pathStore?.isAtRoot(.home) ?? true else { return }
+            await fetchSchedules(of: currentMonth)
         }
         .onChange(of: currentMonth) { _, newMonth in
-            let calendar = Calendar.kstGregorian
-            Task {
-                await viewModel.fetchSchedules(
-                    year: calendar.component(.year, from: newMonth),
-                    month: calendar.component(.month, from: newMonth)
-                )
-            }
+            Task { await fetchSchedules(of: newMonth) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .memberPenaltyUpdated)) { _ in
             // 상벌점이 방금 변경됐으므로 세션 프로필 캐시를 우회해 서버 최신값으로 갱신한다.
@@ -280,6 +287,15 @@ struct HomeView: View {
     }
 
     // MARK: - Function
+
+    /// 지정한 달(KST 기준 연/월)의 일정을 조회한다.
+    private func fetchSchedules(of month: Date) async {
+        let calendar = Calendar.kstGregorian
+        await viewModel.fetchSchedules(
+            year: calendar.component(.year, from: month),
+            month: calendar.component(.month, from: month)
+        )
+    }
 
     /// 마지막 요청 이후 4주가 지났으면 앱스토어 리뷰를 요청한다.
     private func requestReviewIfDue() {

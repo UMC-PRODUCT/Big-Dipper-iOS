@@ -102,6 +102,9 @@ struct RootTabView: View {
                 },
                 onAlarmHistoryTapped: {
                     pathStore.push(NavigationDestination.home(.alarmHistory), on: .home)
+                },
+                onScheduleRegistrationTapped: {
+                    pathStore.push(NavigationDestination.home(.registrationSchedule), on: .home)
                 }
             )
         case .notice:

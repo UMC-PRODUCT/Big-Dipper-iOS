@@ -40,6 +40,9 @@ extension DIContainer {
         register(FetchScheduleDetailUseCaseProtocol.self) {
             FetchScheduleDetailUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
         }
+        register(GenerateScheduleUseCaseProtocol.self) {
+            GenerateScheduleUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
+        }
         register(UpdateScheduleUseCaseProtocol.self) {
             UpdateScheduleUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
         }

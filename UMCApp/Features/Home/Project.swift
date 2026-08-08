@@ -25,6 +25,8 @@ let project = featureProject(
         // 일정 상세의 출석 진입 분기가 전역 `UserSessionManager`의 활동 모드를 읽는다.
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
+        // 홈 루트가 공유 `PathStore` 의 홈 스택 깊이로 루트 복귀를 감지해 월별 일정을 재조회한다.
+        .project(target: "CoreRouting", path: .relativeToRoot("Core/Routing")),
         .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
     ],
     includesDomainTests: true,
