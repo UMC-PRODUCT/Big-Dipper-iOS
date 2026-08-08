@@ -8,12 +8,9 @@
 import CoreDesignSystem
 import SwiftUI
 
-/// 로그인 액션 영역 — 카카오/Apple/Google 소셜 버튼 + UMC 계정(ID·PW) 진입.
+/// 로그인 액션 영역 — 카카오/Apple/Google 소셜 버튼 + UMC 계정(ID·PW) 진입 + 고객센터 푸터.
 ///
 /// 콜백 기반 dumb 컴포넌트라 여러 화면에서 재사용 가능하다.
-///
-/// - Note: 고객센터 문의 버튼은 이 컴포넌트의 스코프에 포함되지 않는다
-///   (카카오플러스 채널 연동은 별도 매니저 — 이 화면의 스코프 밖).
 public struct LoginActionStack: View {
 
     // MARK: - Property
@@ -23,6 +20,13 @@ public struct LoginActionStack: View {
     private let onAppleTap: () -> Void
     private let onGoogleTap: () -> Void
     private let onEmailTap: () -> Void
+    private let onSupportTap: () -> Void
+
+    private enum Constants {
+        static let supportInquiryPrompt: String = "로그인에 문제가 있으신가요?"
+        static let supportChannelLabel: String = "고객센터"
+        static let supportChannelSuffix: String = "로 문의해 주세요."
+    }
 
     // MARK: - Init
 
@@ -31,13 +35,15 @@ public struct LoginActionStack: View {
         onKakaoTap: @escaping () -> Void,
         onAppleTap: @escaping () -> Void,
         onGoogleTap: @escaping () -> Void,
-        onEmailTap: @escaping () -> Void
+        onEmailTap: @escaping () -> Void,
+        onSupportTap: @escaping () -> Void
     ) {
         self.isLoading = isLoading
         self.onKakaoTap = onKakaoTap
         self.onAppleTap = onAppleTap
         self.onGoogleTap = onGoogleTap
         self.onEmailTap = onEmailTap
+        self.onSupportTap = onSupportTap
     }
 
     // MARK: - Body
@@ -46,7 +52,10 @@ public struct LoginActionStack: View {
         VStack(spacing: DefaultSpacing.spacing32) {
             socialLoginSection
             Divider()
-            emailLoginButton
+            VStack(spacing: DefaultSpacing.spacing12) {
+                emailLoginButton
+                supportFooter
+            }
         }
     }
 
@@ -104,6 +113,28 @@ public struct LoginActionStack: View {
         .accessibilityLabel(Text("UMC 계정으로 로그인"))
         .accessibilityHint(Text("아이디와 비밀번호 입력 화면으로 이동합니다"))
     }
+
+    private var supportFooter: some View {
+        VStack(spacing: DefaultSpacing.spacing4) {
+            Text(Constants.supportInquiryPrompt)
+                .appFont(.footnote, color: .grey500)
+            HStack(spacing: .zero) {
+                Button(action: onSupportTap) {
+                    Text(Constants.supportChannelLabel)
+                        .foregroundStyle(.indigo)
+                        .appFont(.footnote, color: .grey500)
+                        .underline()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("고객센터로 문의하기"))
+                .accessibilityHint(Text("카카오톡 UMC 문의 채널을 엽니다"))
+
+                Text(Constants.supportChannelSuffix)
+                    .appFont(.footnote, color: .grey500)
+            }
+        }
+        .multilineTextAlignment(.center)
+    }
 }
 
 #if DEBUG
@@ -113,7 +144,8 @@ public struct LoginActionStack: View {
         onKakaoTap: {},
         onAppleTap: {},
         onGoogleTap: {},
-        onEmailTap: {}
+        onEmailTap: {},
+        onSupportTap: {}
     )
     .padding()
 }

@@ -9,6 +9,7 @@ import AuthDomain
 import CoreDesignSystem
 import CoreDI
 import CoreDomain
+import CoreNetwork
 import CoreUIComponents
 import SwiftUI
 import UMCFoundation
@@ -29,6 +30,7 @@ public struct LoginView: View {
     /// 이메일 로그인 화면을 push할 때 그대로 전달하기 위해 보관한다.
     private let container: DIContainer
     private let errorHandler: ErrorHandler
+    private let kakaoPlusManager = KakaoPlusManager()
 
     // MARK: - Init
 
@@ -57,7 +59,10 @@ public struct LoginView: View {
                     onKakaoTap: { Task { await viewModel.loginWithKakao() } },
                     onAppleTap: { viewModel.loginWithApple() },
                     onGoogleTap: { Task { await viewModel.loginWithGoogle() } },
-                    onEmailTap: { isEmailLoginPresented = true }
+                    onEmailTap: { isEmailLoginPresented = true },
+                    onSupportTap: {
+                        kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
+                    }
                 )
                 .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
                 .padding(.bottom, DefaultConstant.defaultSafeBottom)
