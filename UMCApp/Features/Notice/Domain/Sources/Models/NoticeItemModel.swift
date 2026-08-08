@@ -14,7 +14,7 @@ import UMCFoundation
 public struct NoticeItemModel: Equatable, Identifiable {
     public let id = UUID()
     public let noticeId: String
-    public let generation: String
+    public var generation: String
     // 공지 출처 (중앙/지부/교내)
     public let scope: NoticeScope
     // 공지 카테고리 (일반/파트별)
@@ -31,10 +31,14 @@ public struct NoticeItemModel: Equatable, Identifiable {
     public let images: [String]
     public let vote: NoticeVote?
     public let viewCount: String
-    public let scopeDisplayName: String?
-    public let targetsAllGenerations: Bool
+    public var scopeDisplayName: String?
+    public var targetsAllGenerations: Bool
+    /// 지부명 보정을 위한 원본 지부 식별자
+    public let targetChapterId: String?
+    /// 기수 역매핑을 위한 원본 기수 식별자
+    public let targetGisuId: String?
     public let parts: [UMCPartType]
-    public let isRead: Bool
+    public var isRead: Bool
 
     public init(
         noticeId: String = UUID().uuidString,
@@ -55,6 +59,8 @@ public struct NoticeItemModel: Equatable, Identifiable {
         viewCount: String,
         scopeDisplayName: String? = nil,
         targetsAllGenerations: Bool = false,
+        targetChapterId: String? = nil,
+        targetGisuId: String? = nil,
         parts: [UMCPartType] = [],
         isRead: Bool = false
     ) {
@@ -76,6 +82,8 @@ public struct NoticeItemModel: Equatable, Identifiable {
         self.viewCount = viewCount
         self.scopeDisplayName = scopeDisplayName
         self.targetsAllGenerations = targetsAllGenerations
+        self.targetChapterId = targetChapterId
+        self.targetGisuId = targetGisuId
         self.parts = parts
         self.isRead = isRead
     }

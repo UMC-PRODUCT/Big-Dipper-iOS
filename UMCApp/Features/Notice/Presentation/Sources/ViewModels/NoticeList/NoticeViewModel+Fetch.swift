@@ -110,7 +110,7 @@ extension NoticeViewModel {
         do {
             let request = buildNoticeListRequest(gisuId: gisuId, page: page)
             let response = try await requestAction(request)
-            applyPagedResponse(response, page: page)
+            try await applyPagedResponse(response, page: page)
         } catch is CancellationError {
             handleCancelledFetch(page: page, previousState: previousState)
         } catch let error as NSError where isRequestCancellation(error) {
@@ -186,7 +186,7 @@ extension NoticeViewModel {
     ///   - response: 공지 페이징 응답 DTO
     ///   - page: 조회한 페이지 인덱스
     @MainActor
-    private func applyPagedResponse(_ response: NoticePage, page: Int) {
+    private func applyPagedResponse(_ response: NoticePage, page: Int) async throws {
         #if DEBUG
         print(
             "[NoticeViewModel] applyPagedResponse " +
@@ -213,54 +213,92 @@ extension NoticeViewModel {
             return
         }
 
-        let readNoticeIDs = resolvedReadNoticeIDs()
-        let mappedItems = response.items.map { item -> NoticeItemModel in
-
-            guard readNoticeIDs.contains(item.noticeId) else {
-                return item
-            }
-
-            return NoticeItemModel(
-                noticeId: item.noticeId,
-                generation: item.generation,
-                scope: item.scope,
-                category: item.category,
-                mustRead: item.mustRead,
-                isAlert: item.isAlert,
-                date: item.date,
-                title: item.title,
-                content: item.content,
-                writer: item.writer,
-                authorNickname: item.authorNickname,
-                authorName: item.authorName,
-                links: item.links,
-                images: item.images,
-                vote: item.vote,
-                viewCount: item.viewCount,
-                scopeDisplayName: item.scopeDisplayName,
-                targetsAllGenerations: item.targetsAllGenerations,
-                parts: item.parts,
-                isRead: true
-            )
-        }
-        pagingState.applySuccess(page: page, hasNextPage: response.hasNext)
-
         /// 현재 선택된 조회 필터에 맞지 않는 공지를 클라이언트 측에서 정리합니다.
         ///
         /// iOS-01은 서버-01, 서버-03만 노출하도록 후처리합니다.
-        let items: [NoticeItemModel]
+        let filteredItems: [NoticeItemModel]
         if case .central = selectedMainFilter {
-            items = mappedItems.filter { $0.scope == .central && $0.category == .general }
+            filteredItems = response.items.filter {
+                $0.scope == .central && $0.category == .general
+            }
         } else {
-            items = mappedItems
+            filteredItems = response.items
         }
-        
+
+        let branchNames = await resolveBranchNameOverrides(from: filteredItems)
+        // 지부명 조회 중 취소된 요청의 결과가 목록에 커밋되지 않도록 차단
+        try Task.checkCancellation()
+
+        let readNoticeIDs = resolvedReadNoticeIDs()
+        let items = filteredItems.map { item -> NoticeItemModel in
+            var corrected = item
+            if let generation = resolvedGeneration(for: item) {
+                corrected.generation = generation
+                corrected.targetsAllGenerations = false
+            }
+            if let chapterId = item.targetChapterId, let branchName = branchNames[chapterId] {
+                corrected.scopeDisplayName = branchName
+            }
+            corrected.isRead = readNoticeIDs.contains(item.noticeId)
+            return corrected
+        }
+        pagingState.applySuccess(page: page, hasNextPage: response.hasNext)
+
         if page == 0 {
             noticeItems = .loaded(items)
         } else {
             let mergedItems = (noticeItems.value ?? []) + items
             noticeItems = .loaded(mergedItems)
         }
+    }
+
+    /// 지부 공지 중 지부명이 비어 있는 항목의 chapterId를 실제 지부명으로 해석합니다.
+    /// - Returns: chapterId → 지부명 매핑. 조회에 실패한 chapterId는 포함하지 않습니다.
+    @MainActor
+    private func resolveBranchNameOverrides(
+        from items: [NoticeItemModel]
+    ) async -> [String: String] {
+        let missingBranchIds = Set(
+            items.compactMap { item -> String? in
+                guard item.scope == .branch else { return nil }
+                let displayName = item.scopeDisplayName?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard displayName.isEmpty else { return nil }
+                guard let chapterId = item.targetChapterId,
+                      !chapterId.isEmpty, chapterId != "0" else { return nil }
+                return chapterId
+            }
+        )
+
+        guard !missingBranchIds.isEmpty else { return [:] }
+
+        var resolved: [String: String] = [:]
+        for chapterId in missingBranchIds {
+            if let cached = chapterNameCache[chapterId] {
+                resolved[chapterId] = cached
+                continue
+            }
+            // 조회 실패 시 기본 칩 라벨(지부)로 fallback
+            guard let chapterName = try? await noticeEditorTargetUseCase
+                .fetchBranchName(chapterId: chapterId) else { continue }
+            chapterNameCache[chapterId] = chapterName
+            resolved[chapterId] = chapterName
+        }
+        return resolved
+    }
+
+    /// 기수 값이 유효하지 않으면 gisuId로 기수를 역매핑합니다.
+    /// - Returns: 보정된 기수. 보정할 수 없으면 `nil`
+    private func resolvedGeneration(for item: NoticeItemModel) -> String? {
+        if let generation = Int(item.generation), generation > 0 {
+            return item.generation
+        }
+
+        guard let gisuId = item.targetGisuId, !gisuId.isEmpty, gisuId != "0" else {
+            return nil
+        }
+
+        return gisuPairs.first(where: { $0.gisuId == gisuId })?.gen
     }
 
     private func resolvedReadNoticeIDs() -> Set<String> {
