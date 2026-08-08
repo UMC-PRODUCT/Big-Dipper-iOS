@@ -35,6 +35,7 @@ import AuthDomain
 import CoreDesignSystem
 import CoreDI
 import CoreDomain
+import CoreNetwork
 import CoreUIComponents
 import SwiftUI
 import UMCFoundation
@@ -66,6 +67,7 @@ public struct BootstrapView: View {
     /// 이메일 로그인 화면을 push할 때 그대로 전달하기 위해 보관한다.
     private let container: DIContainer
     private let errorHandler: ErrorHandler
+    private let kakaoPlusManager = KakaoPlusManager()
 
     private enum Constants {
         /// 시네마틱 종료 시점. `RefractiveCinematic` 시퀀스 총 길이(preDelay 0.4 + bloom 1.0 +
@@ -138,7 +140,10 @@ public struct BootstrapView: View {
                     onKakaoTap: { Task { await loginViewModel.loginWithKakao() } },
                     onAppleTap: { loginViewModel.loginWithApple() },
                     onGoogleTap: { Task { await loginViewModel.loginWithGoogle() } },
-                    onEmailTap: { isEmailLoginPresented = true }
+                    onEmailTap: { isEmailLoginPresented = true },
+                    onSupportTap: {
+                        kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
+                    }
                 )
                 .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
                 .padding(.bottom, DefaultConstant.defaultSafeBottom)
