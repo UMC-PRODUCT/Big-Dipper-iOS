@@ -10,6 +10,8 @@ import SwiftUI
 import ActivityPresentation
 import CommunityPresentation
 import CoreDesignSystem
+import CoreDI
+import CoreDomain
 import CoreRouting
 import HomePresentation
 import MyPagePresentation
@@ -32,6 +34,26 @@ struct RootTabView: View {
 
     @State private var pathStore = PathStore()
 
+    @Environment(\.di) private var di
+
+    // MARK: - Computed Property
+
+    private var userSession: UserSessionManager {
+        di.resolve(UserSessionManager.self)
+    }
+
+    /// Activity 탭 하단 액세서리(운영진 모드 전환 토글) 노출 여부.
+    ///
+    /// 릴리스 빌드에서 운영진 섹션(출석/스터디/멤버 관리)에 도달하는 유일한 경로다.
+    /// 게이팅 규칙은 ``ActivityAccessoryVisibility`` 참조.
+    private var isActivityAccessoryVisible: Bool {
+        ActivityAccessoryVisibility.isVisible(
+            selectedTab: pathStore.selectedTab,
+            isActivityTabAtRoot: pathStore.isAtRoot(.activity),
+            canToggleAdminMode: userSession.canToggleAdminMode
+        )
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -45,6 +67,9 @@ struct RootTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .tabViewBottomAccessory(isEnabled: isActivityAccessoryVisible) {
+            ActivityModeAccessoryView(userSession: userSession)
+        }
         .environment(pathStore)
     }
 
