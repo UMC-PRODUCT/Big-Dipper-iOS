@@ -15,8 +15,8 @@ import UMCFoundation
 
 /// 일정 상세 화면.
 ///
-/// 장소는 역지오코딩 없이 좌표 그대로 Apple Maps 로 넘긴다. 수정 진입점은 편집 화면이 아직
-/// 이식되지 않아(#1091) 툴바에 노출하지 않고, 삭제·강제 삭제만 권한에 따라 연다.
+/// 장소는 역지오코딩 없이 좌표 그대로 Apple Maps 로 넘긴다. 툴바 액션(수정/삭제)은 각각의
+/// 리소스 권한에 따라 독립적으로 노출하고, 수정은 편집 모드 등록 화면을 시트로 띄운다.
 ///
 /// 출석 진입은 활동 모드로 갈린다. Admin 모드면 출석 현황 화면으로 이동하는 버튼을, 그 외에는
 /// 내 출석 상태를 read-only 로 보여 준다. 출석 비필수 일정은 두 경우 모두 표시하지 않는다.
@@ -26,6 +26,11 @@ public struct ScheduleDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: ScheduleDetailViewModel
+
+    /// 편집 시트에 실을 일정. `nil` 이면 시트가 닫힌 상태다.
+    @State private var editingSchedule: ScheduleDetailData?
+
+    private let container: DIContainer
     private let onAttendanceStatusTapped: () -> Void
 
     // MARK: - Constants
@@ -36,6 +41,8 @@ public struct ScheduleDetailView: View {
         static let attendanceTitle: String = "출석"
         static let attendanceStatusButtonTitle: String = "출석 현황"
         static let myAttendanceStatusTitle: String = "내 출석 상태"
+        static let editActionTitle: String = "수정하기"
+        static let editIcon: String = "pencil"
         static let deleteActionTitle: String = "삭제하기"
         static let deleteIcon: String = "trash"
         static let failedTitle: String = "일정을 불러오지 못했어요"
@@ -64,6 +71,7 @@ public struct ScheduleDetailView: View {
                 errorHandler: errorHandler
             )
         )
+        self.container = container
         self.onAttendanceStatusTapped = onAttendanceStatusTapped
     }
 
@@ -78,6 +86,16 @@ public struct ScheduleDetailView: View {
             )
             .toolbar { toolbarContent }
             .alertPrompt(item: $viewModel.alertPrompt)
+            .sheet(
+                item: $editingSchedule,
+                // 저장 여부를 시트에서 돌려받는 배관 대신, 닫힐 때 항상 재조회해 최신 값을 맞춘다.
+                onDismiss: { Task { await viewModel.load() } }
+            ) { detail in
+                // 편집 화면 툴바가 `.toolbar` 기반이라 시트 안에서도 네비게이션 컨테이너가 필요하다.
+                NavigationStack {
+                    ScheduleRegistrationView(container: container, mode: .edit, prefill: detail)
+                }
+            }
             .onChange(of: viewModel.isDeleted) { _, isDeleted in
                 if isDeleted { dismiss() }
             }
@@ -98,20 +116,34 @@ public struct ScheduleDetailView: View {
         }
     }
 
-    /// 삭제 중에는 액션을 비워 중복 요청을 막는다.
+    /// 권한별로 구성되는 툴바 액션 목록. 삭제 중에는 비워 중복 요청을 막는다.
     private var toolbarActions: [ToolBarCollection.ToolbarTrailingMenu.ActionItem] {
-        guard viewModel.data.value != nil,
-              viewModel.canDeleteSchedule,
-              !viewModel.isDeleting else { return [] }
+        guard let detail = viewModel.data.value, !viewModel.isDeleting else { return [] }
 
-        return [
-            .init(
-                title: Constants.deleteActionTitle,
-                icon: Constants.deleteIcon,
-                role: .destructive,
-                action: viewModel.showDeleteConfirmation
+        var actions: [ToolBarCollection.ToolbarTrailingMenu.ActionItem] = []
+
+        if viewModel.canEditSchedule {
+            actions.append(
+                .init(
+                    title: Constants.editActionTitle,
+                    icon: Constants.editIcon,
+                    action: { editingSchedule = detail }
+                )
             )
-        ]
+        }
+
+        if viewModel.canDeleteSchedule {
+            actions.append(
+                .init(
+                    title: Constants.deleteActionTitle,
+                    icon: Constants.deleteIcon,
+                    role: .destructive,
+                    action: viewModel.showDeleteConfirmation
+                )
+            )
+        }
+
+        return actions
     }
 
     // MARK: - Content

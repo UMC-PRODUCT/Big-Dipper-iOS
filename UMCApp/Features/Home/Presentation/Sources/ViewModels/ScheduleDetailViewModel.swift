@@ -15,7 +15,7 @@ import UMCFoundation
 /// 일정 상세 화면 ViewModel
 ///
 /// 조회 실패는 화면 내 `Loadable` 로, 삭제·강제 삭제 실패는 흐름을 끊는 `ErrorHandler` 로 나눠 처리한다.
-/// 수정은 편집 화면이 아직 이식되지 않아 권한만 계산해 두고 진입점을 노출하지 않는다.
+/// 수정·삭제 진입점 노출 여부는 리소스 권한으로 각각 판단한다.
 @Observable
 @MainActor
 final class ScheduleDetailViewModel {
@@ -26,7 +26,6 @@ final class ScheduleDetailViewModel {
 
     var alertPrompt: AlertPrompt?
 
-    /// - TODO: (#1091) 일정 편집 화면 이식 후 수정 진입점 연결
     private(set) var canEditSchedule: Bool = false
 
     private(set) var canDeleteSchedule: Bool = false
