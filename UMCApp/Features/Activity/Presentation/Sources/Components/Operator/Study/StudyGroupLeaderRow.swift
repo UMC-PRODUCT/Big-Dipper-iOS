@@ -134,6 +134,7 @@ struct StudyGroupLeaderRow: View, Equatable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview {
     VStack(spacing: DefaultSpacing.spacing16) {
         StudyGroupLeaderRow(
@@ -161,3 +162,4 @@ struct StudyGroupLeaderRow: View, Equatable {
     }
     .padding()
 }
+#endif

@@ -48,6 +48,7 @@ public struct Progress: View {
 }
 
 // MARK: - Preview
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     VStack(spacing: 100) {
         Progress(message: "로딩중!", size: .small)
@@ -57,3 +58,4 @@ public struct Progress: View {
         Progress(message: "잠시만 기다려주세요!", size: .large)
     }
 }
+#endif

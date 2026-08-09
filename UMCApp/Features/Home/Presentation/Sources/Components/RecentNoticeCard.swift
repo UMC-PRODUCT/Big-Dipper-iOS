@@ -106,6 +106,7 @@ struct RecentNoticeCard: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     VStack(spacing: DefaultSpacing.spacing12) {
         RecentNoticeCard(notice: NoticeItemModel(
@@ -142,3 +143,4 @@ struct RecentNoticeCard: View {
     }
     .padding()
 }
+#endif

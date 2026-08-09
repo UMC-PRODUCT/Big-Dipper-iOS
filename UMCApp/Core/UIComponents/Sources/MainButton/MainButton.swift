@@ -101,6 +101,7 @@ extension MainButton: AnyMainButton { }
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("MainButton with Styles") {
     VStack(spacing: 16) {
         MainButton("Primary Button") { }
@@ -177,3 +178,4 @@ extension MainButton: AnyMainButton { }
     }
     .padding()
 }
+#endif

@@ -65,6 +65,7 @@ struct DateCell: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     HStack(spacing: DefaultSpacing.spacing8) {
         DateCell(date: .now, isSelected: true, hasSchedule: true, isToday: true)
@@ -73,3 +74,4 @@ struct DateCell: View {
     }
     .padding()
 }
+#endif

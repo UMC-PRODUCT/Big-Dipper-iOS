@@ -137,6 +137,7 @@ struct CalendarGridCard: View, Equatable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     @Previewable @State var selectedDate: Date = .now
     @Previewable @State var month: Date = .now
@@ -148,3 +149,4 @@ struct CalendarGridCard: View, Equatable {
     )
     .padding()
 }
+#endif

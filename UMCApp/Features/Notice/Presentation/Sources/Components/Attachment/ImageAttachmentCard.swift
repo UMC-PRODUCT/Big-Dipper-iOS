@@ -111,6 +111,7 @@ struct ImageAttachmentCard: View, Equatable {
 }
 
 // MARK: - Preview
+#if DEBUG
 #Preview("기본 이미지 카드") {
     @Previewable @State var noticeImageItems: [NoticeImageItem] = []
     @Previewable @State var selectedItems: [PhotosPickerItem] = []
@@ -175,3 +176,4 @@ struct ImageAttachmentCard: View, Equatable {
     }
     .padding()
 }
+#endif

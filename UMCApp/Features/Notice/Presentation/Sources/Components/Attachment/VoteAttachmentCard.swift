@@ -113,6 +113,7 @@ struct VoteAttachmentCard: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     @Previewable @State var formData = VoteFormData()
     
@@ -126,3 +127,4 @@ struct VoteAttachmentCard: View {
         )
     }
 }
+#endif
