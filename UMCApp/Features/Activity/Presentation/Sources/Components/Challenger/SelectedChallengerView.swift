@@ -106,8 +106,7 @@ struct SelectedChallengerView: View {
             RemoteImage(
                 urlString: info.profileImage ?? "",
                 size: CGSize(width: 40, height: 40),
-                cornerRadius: 0,
-                placeholderImage: "person.fill"
+                cornerRadius: 0
             )
             .clipShape(Circle())
 

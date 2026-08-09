@@ -18,7 +18,6 @@ struct StudyGroupMemberChip: View, Equatable {
     fileprivate enum Constants {
         static let avatarSize: CGFloat = 22
         static let avatarCornerRadius: CGFloat = 0
-        static let avatarPlaceholderImageName: String = "person.fill"
         static let bestBorderWidth: CGFloat = 1
         static let bestPointThreshold: Int = 0
         /// 칩 corner radius — Nested Material/Glass 환경에서 ConcentricRectangle inheritance가
@@ -118,8 +117,7 @@ struct StudyGroupMemberChip: View, Equatable {
                 width: Constants.avatarSize,
                 height: Constants.avatarSize
             ),
-            cornerRadius: Constants.avatarCornerRadius,
-            placeholderImage: Constants.avatarPlaceholderImageName
+            cornerRadius: Constants.avatarCornerRadius
         )
         .clipShape(Circle())
     }

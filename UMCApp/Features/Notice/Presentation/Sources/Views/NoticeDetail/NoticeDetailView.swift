@@ -53,7 +53,6 @@ public struct NoticeDetailView: View {
         static let linkItemSpacing: CGFloat = DefaultSpacing.spacing12
         static let bottomButtonPadding: CGFloat = DefaultSpacing.spacing16
         static let detailSheetDetents: Set<PresentationDetent> = [.fraction(0.72)]
-        static let defaultProfileImageName: String = "defaultProfile"
         static let noticeEditTitle: String = "수정하기"
         static let noticeDeleteTitle: String = "삭제하기"
         static let editIcon: String = "pencil"
@@ -187,8 +186,7 @@ public struct NoticeDetailView: View {
             RemoteImage(
                 urlString: imageURL,
                 size: Constants.profileSize,
-                cornerRadius: Constants.profileSize.width / 2,
-                placeholderImage: Constants.defaultProfileImageName
+                cornerRadius: Constants.profileSize.width / 2
             )
         } else if !viewModel.hasResolvedAuthorProfile || viewModel.isAuthorProfileLoading {
             Circle()
@@ -200,9 +198,7 @@ public struct NoticeDetailView: View {
                         .tint(.grey500)
                 }
         } else {
-            // TODO: 프로필 사진 설정
-            // Image(.defaultProfile)
-            Image(systemName: "person.circle.fill")
+            Image.umcDefaultProfile
                 .resizable()
                 .frame(width: Constants.profileSize.width, height: Constants.profileSize.height)
                 .clipShape(.circle)

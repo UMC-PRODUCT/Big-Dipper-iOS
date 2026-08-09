@@ -29,7 +29,6 @@ public struct VoteAllVotersSheet: View {
         static let profileSize: CGSize = .init(width: 36, height: 36)
         static let itemSpacing: CGFloat = 10
         static let itemPadding: CGFloat = 10
-        static let defaultProfileImageName: String = "defaultProfile"
         static let nameSpacing: CGFloat = 4
     }
 
@@ -101,8 +100,7 @@ public struct VoteAllVotersSheet: View {
                 RemoteImage(
                     urlString: voter.profileImageURL ?? "",
                     size: Constants.profileSize,
-                    cornerRadius: Constants.profileSize.width / 2,
-                    placeholderImage: Constants.defaultProfileImageName
+                    cornerRadius: Constants.profileSize.width / 2
                 )
 
                 VStack(alignment: .leading, spacing: Constants.nameSpacing) {
@@ -121,8 +119,7 @@ public struct VoteAllVotersSheet: View {
                 RemoteImage(
                     urlString: "",
                     size: Constants.profileSize,
-                    cornerRadius: Constants.profileSize.width / 2,
-                    placeholderImage: Constants.defaultProfileImageName
+                    cornerRadius: Constants.profileSize.width / 2
                 )
 
                 Text("ID: \(memberId)")

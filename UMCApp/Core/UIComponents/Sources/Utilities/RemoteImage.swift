@@ -47,10 +47,7 @@ public struct RemoteImage: View {
     
     /// 이미지 콘텐츠 모드 (fill, fit 등)
     let contentMode: ContentMode
-    
-    /// 로드 실패 시 표시할 플레이스홀더 시스템 이미지 이름
-    public let placeholderImage: String
-    
+
     // MARK: - Init
     
     /// RemoteImage 뷰를 초기화합니다.
@@ -60,21 +57,18 @@ public struct RemoteImage: View {
     ///   - cornerRadius: 모서리 둥글기 (기본값: 15)
     ///   - ratio: 이미지 비율 (옵셔널)
     ///   - contentMode: 콘텐츠 모드 (기본값: .fill)
-    ///   - placeholderImage: 실패 시 보여줄 시스템 이미지 이름 (기본값: "person.circle.fill")
     public init(
         urlString: String,
         size: CGSize,
         cornerRadius: CGFloat = 15,
         ratio: CGFloat? = nil,
-        contentMode: ContentMode = .fill,
-        placeholderImage: String = "person.circle.fill"
+        contentMode: ContentMode = .fill
     ) {
         self.urlString = urlString
         self.size = size
         self.cornerRadius = cornerRadius
         self.ratio = ratio
         self.contentMode = contentMode
-        self.placeholderImage = placeholderImage
     }
     
     // MARK: - Body
@@ -102,12 +96,8 @@ public struct RemoteImage: View {
                 .onFailure { _ in isError = true }
                 .resizable()
         } else {
-            // TODO: 프로필 사진 설정
-            // Image(.defaultProfile)
-            Image(systemName: "person.circle.fill")
+            Image.umcDefaultProfile
                 .resizable()
-                .symbolRenderingMode(.multicolor)
-                .foregroundStyle(.black)
         }
     }
 }

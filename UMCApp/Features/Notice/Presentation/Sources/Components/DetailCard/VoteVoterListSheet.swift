@@ -30,7 +30,6 @@ public struct VoteVoterListSheet: View {
         static let itemSpacing: CGFloat = 12
         static let itemPadding: CGFloat = 12
         static let sheetDetents: Set<PresentationDetent> = [.medium]
-        static let defaultProfileImageName: String = "defaultProfile"
     }
 
     // MARK: - Body
@@ -66,8 +65,7 @@ public struct VoteVoterListSheet: View {
                 RemoteImage(
                     urlString: voter.profileImageURL ?? "",
                     size: Constants.profileSize,
-                    cornerRadius: Constants.profileSize.width / 2,
-                    placeholderImage: Constants.defaultProfileImageName
+                    cornerRadius: Constants.profileSize.width / 2
                 )
 
                 VStack(alignment: .leading, spacing: 4) {
