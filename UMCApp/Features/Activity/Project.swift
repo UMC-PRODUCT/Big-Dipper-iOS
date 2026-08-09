@@ -38,7 +38,6 @@ let project = featureProject(
     presentationExtraDependencies: [
         // 출석 ViewModel 이 ScheduleDetailData·ScheduleAttendancePolicy 를 직접 다룬다.
         .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
-        .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         // OperatorStudyManagementViewModel 이 멤버/멘토 선택 입력 타입(ChallengerInfo)을 사용.
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         // ChallengerMemberListView 가 DIContainer 로 UseCase·세션을 resolve (Home/Notice 동일 패턴).

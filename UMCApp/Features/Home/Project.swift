@@ -20,7 +20,6 @@ let project = featureProject(
         .sdk(name: "StoreKit", type: .framework),
         // 일정 상세의 "지도 보기"가 MKMapItem.openInMaps()로 Apple Maps를 연다.
         .sdk(name: "MapKit", type: .framework),
-        .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
         // 일정 상세의 출석 진입 분기가 전역 `UserSessionManager`의 활동 모드를 읽는다.
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
