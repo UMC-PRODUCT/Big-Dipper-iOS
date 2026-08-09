@@ -10,7 +10,8 @@ import CoreRouting
 /// Activity 탭 하단 액세서리(운영진 모드 전환 토글) 노출 여부를 결정하는 순수 규칙.
 ///
 /// 액세서리는 Activity 탭이 선택돼 있고, 그 탭의 NavigationStack이 루트이며, 사용자가
-/// 운영진 모드로 전환 가능할 때만 보인다 (레거시 `UmcTab.shouldShowAccessory()` 동등).
+/// 운영진 모드로 전환 가능할 때만 보인다 (레거시 `UmcTab.shouldShowAccessory()`의 Activity
+/// 분기와 동등 — 그 함수는 다른 탭도 함께 다루지만 이 규칙은 Activity 전용이다).
 enum ActivityAccessoryVisibility {
 
     // MARK: - Function
