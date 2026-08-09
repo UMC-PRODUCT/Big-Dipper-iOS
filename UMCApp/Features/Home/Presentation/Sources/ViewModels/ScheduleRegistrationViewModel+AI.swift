@@ -34,7 +34,14 @@ extension ScheduleRegistrationViewModel {
     func requestAIAutofill() async {
         let rawText = aiRawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !rawText.isEmpty, !aiAutofillState.isLoading else { return }
-        guard case .available = SystemLanguageModel.default.availability else { return }
+        // 툴바 진입 버튼이 이미 가용성으로 가려져 있어 보통은 여기까지 오지 않는다. 시트를 연 뒤
+        // 설정에서 Apple Intelligence 가 꺼질 수 있어 마지막 방어선으로 남긴다.
+        guard case .available = SystemLanguageModel.default.availability else {
+            aiAutofillState = .failed(
+                .unknown(message: "이 기기에서는 Apple Intelligence를 사용할 수 없습니다.")
+            )
+            return
+        }
 
         aiAutofillState = .loading
 
@@ -45,11 +52,8 @@ extension ScheduleRegistrationViewModel {
             await persistDailyTokenUsage(session: session)
             aiAutofillState = .loaded(true)
         } catch {
-            aiAutofillState = .idle
-            errorHandler?.handle(error, context: ErrorContext(
-                feature: "Home",
-                action: "requestAIAutofill"
-            ))
+            // 시트를 띄운 채 문장을 고쳐 바로 재시도할 수 있도록 전역 Alert 대신 인라인으로 알린다.
+            aiAutofillState = .failed(.unknown(message: error.localizedDescription))
         }
     }
 

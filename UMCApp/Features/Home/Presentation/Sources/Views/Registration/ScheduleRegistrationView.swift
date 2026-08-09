@@ -5,14 +5,18 @@
 //  Created by euijjang97 on 1/22/26.
 //
 
+import ActivityDomain
+import ActivityPresentation
 import CoreDesignSystem
 import CoreDI
+import CoreDomain
 import CoreLocation
 import CoreUIComponents
 import FoundationModels
 import HomeDomain
 import SwiftData
 import SwiftUI
+import UIKit
 import UMCFoundation
 
 /// 일정 등록/수정 화면.
@@ -81,6 +85,7 @@ public struct ScheduleRegistrationView: View {
                 viewModel.errorHandler = errorHandler
                 viewModel.modelContext = modelContext
                 viewModel.restoreDailyTokenUsage()
+                await viewModel.loadCapabilities()
             }
     }
 
@@ -91,7 +96,8 @@ public struct ScheduleRegistrationView: View {
             inlineErrorSection
 
             Section {
-                titleField
+                TitleField(title: titleBinding)
+                    .equatable()
             }
 
             placeSection
@@ -106,6 +112,8 @@ public struct ScheduleRegistrationView: View {
             Section {
                 TagSelectionRow(tagList: tagBinding)
             }
+
+            participantSection
 
             Section {
                 MemoEditor(memo: $viewModel.memo)
@@ -131,18 +139,6 @@ public struct ScheduleRegistrationView: View {
                     .appFont(.subheadline, color: Color.red500)
             }
         }
-    }
-
-    private var titleField: some View {
-        TextField(
-            "",
-            text: titleBinding,
-            prompt: Text("일정 제목")
-                .foregroundStyle(Color.grey400)
-        )
-        .appFont(.body, color: Color.grey900)
-        .submitLabel(.return)
-        .tint(.indigo500)
     }
 
     private var allDayToggle: some View {
@@ -178,13 +174,10 @@ public struct ScheduleRegistrationView: View {
         dateTimeRow(title: "종료", date: $viewModel.endDate, field: .end)
     }
 
-    /// 출석 정책 입력 섹션
-    ///
-    /// ponytail: `ScheduleCapabilities` 권한 조회를 이식하지 않아 토글을 항상 노출한다. 권한이
-    /// 없는 사용자는 서버가 생성을 거부한다 — 권한 UseCase 이식 후 사전 차단으로 승격.
+    /// 출석 정책 입력 섹션. 서버 권한이 없으면 섹션 자체를 숨겨 사전 차단한다.
     @ViewBuilder
     private var attendancePolicySection: some View {
-        if !viewModel.isAllDay {
+        if viewModel.showsAttendancePolicySection {
             Section {
                 Toggle(isOn: attendanceToggleBinding) {
                     Text("출석 필수")
@@ -209,8 +202,21 @@ public struct ScheduleRegistrationView: View {
         }
     }
 
-    // ponytail: 참여자 선택은 SelectedChallengerView 가 ActivityPresentation internal 이라 제외
-    // — 공용 승격 후 결선. 최대 초대 인원 표시도 참여자 섹션과 함께 빠졌다.
+    /// 참여자 선택 + 초대 상한 초과 안내 섹션
+    private var participantSection: some View {
+        Section {
+            ParticipantSelectionRow(
+                participants: participantBinding,
+                maxParticipantCount: viewModel.maxParticipantCount,
+                selectedCount: viewModel.selectedParticipantCount
+            )
+
+            if let message = viewModel.participantOverflowMessage {
+                Text(message)
+                    .appFont(.footnote, color: Color.red500)
+            }
+        }
+    }
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
@@ -257,6 +263,13 @@ public struct ScheduleRegistrationView: View {
         Binding(
             get: { viewModel.tags },
             set: { viewModel.updateTagsFromUser($0) }
+        )
+    }
+
+    private var participantBinding: Binding<[ChallengerInfo]> {
+        Binding(
+            get: { viewModel.participants },
+            set: { viewModel.updateParticipants($0) }
         )
     }
 
@@ -370,6 +383,14 @@ public struct ScheduleRegistrationView: View {
 
     /// 같은 슬롯을 다시 누르면 접고, 다른 슬롯을 누르면 그쪽으로 옮긴다.
     private func toggleScheduleSlot(_ slot: ScheduleDateSlot) {
+        // 제목/메모 입력 중 피커를 열면 키보드가 피커를 가리므로 먼저 내린다. Form 스크롤로만
+        // 내려가는 `.scrollDismissesKeyboard` 로는 행 탭이 잡히지 않는다.
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
         withAnimation {
             openScheduleSlot = (openScheduleSlot == slot) ? nil : slot
         }
@@ -392,6 +413,100 @@ public struct ScheduleRegistrationView: View {
 
         let field: Field
         let component: Component
+    }
+}
+
+// MARK: - TitleField
+
+/// 일정 제목 입력 필드
+///
+/// 입력마다 태그 자동 추천이 돌면서 폼 전체가 다시 그려지므로, 제목이 실제로 바뀔 때만
+/// 갱신되도록 `Equatable` 로 감싼다.
+private struct TitleField: View, Equatable {
+
+    // MARK: - Property
+
+    @Binding var title: String
+
+    private enum Constants {
+        static let placeholder = "일정 제목"
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.title == rhs.title
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        TextField(
+            "",
+            text: $title,
+            prompt: Text(Constants.placeholder)
+                .foregroundStyle(Color.grey400)
+        )
+        .appFont(.body, color: Color.grey900)
+        .submitLabel(.return)
+        .tint(.indigo500)
+    }
+}
+
+// MARK: - ParticipantSelectionRow
+
+/// 참여자 선택 시트를 여는 행
+private struct ParticipantSelectionRow: View {
+
+    // MARK: - Property
+
+    @Binding var participants: [ChallengerInfo]
+
+    /// 초대 인원 상한. `nil` 이면 상한을 몰라 인원만 표시한다.
+    let maxParticipantCount: Int?
+
+    /// 작성자를 포함해 실제로 초대되는 인원 수
+    let selectedCount: Int
+
+    @State private var showsParticipantPicker: Bool = false
+
+    private enum Constants {
+        static let title = "참여자"
+        static let chevron = "chevron.right"
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        Button {
+            showsParticipantPicker.toggle()
+        } label: {
+            HStack {
+                Text(Constants.title)
+                    .appFont(.body, color: Color.grey900)
+
+                Spacer()
+
+                selectedCountLabel
+            }
+        }
+        .sheet(isPresented: $showsParticipantPicker) {
+            SelectedChallengerView(challenger: $participants)
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var selectedCountLabel: some View {
+        HStack(spacing: DefaultSpacing.spacing8) {
+            Text(countText)
+                .appFont(.callout, color: Color.grey500)
+
+            Image(systemName: Constants.chevron)
+                .foregroundStyle(Color.grey500)
+        }
+    }
+
+    private var countText: String {
+        guard let maxParticipantCount else { return "\(selectedCount)명" }
+        return "\(selectedCount) / \(maxParticipantCount)"
     }
 }
 
@@ -517,6 +632,8 @@ private struct AIAutofillSheet: View {
 
                 autofillButton
 
+                failureMessage
+
                 usageFootnote
 
                 Spacer()
@@ -601,6 +718,19 @@ private struct AIAutofillSheet: View {
         .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
 
+    /// 자동완성 실패 안내
+    ///
+    /// 시트 안에서 그대로 재시도할 수 있도록 전역 Alert 대신 인라인으로 보여 준다. 실패해도
+    /// 입력한 문장이 남아 있어야 사용자가 문장을 고쳐 다시 시도할 수 있다.
+    @ViewBuilder
+    private var failureMessage: some View {
+        if case .failed(let error) = viewModel.aiAutofillState {
+            Text(error.userMessage)
+                .appFont(.footnote, color: Color.red500)
+                .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+        }
+    }
+
     @ViewBuilder
     private var usageFootnote: some View {
         if viewModel.aiCumulativeUsedTokens > 0 {
@@ -632,6 +762,22 @@ private struct PreviewClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol {
     func execute(title: String) async -> ScheduleIconCategory { .study }
 }
 
+private struct PreviewFetchScheduleCapabilitiesUseCase: FetchScheduleCapabilitiesUseCaseProtocol {
+    func execute() async throws -> ScheduleCapabilities {
+        ScheduleCapabilities(
+            canCreateSchedule: true,
+            canCreateAttendanceRequiredSchedule: true,
+            maxParticipantCount: "30"
+        )
+    }
+}
+
+private struct PreviewSearchChallengersUseCase: SearchChallengersUseCaseProtocol {
+    func execute(keyword: String?, cursor: Int?, size: Int) async throws -> ChallengerSearchPage {
+        ChallengerSearchPage(challengers: [], hasNext: false, nextCursor: nil)
+    }
+}
+
 #Preview("ScheduleRegistrationView") {
     let container = DIContainer()
     container.register(GenerateScheduleUseCaseProtocol.self) {
@@ -642,6 +788,13 @@ private struct PreviewClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol {
     }
     container.register(ClassifyScheduleUseCaseProtocol.self) {
         PreviewClassifyScheduleUseCase()
+    }
+    container.register(FetchScheduleCapabilitiesUseCaseProtocol.self) {
+        PreviewFetchScheduleCapabilitiesUseCase()
+    }
+    // SelectedChallengerView 가 참여자 시트에서 자체 resolve 하므로 프리뷰에도 등록이 필요하다.
+    container.register(SearchChallengersUseCaseProtocol.self) {
+        PreviewSearchChallengersUseCase()
     }
 
     return NavigationStack {

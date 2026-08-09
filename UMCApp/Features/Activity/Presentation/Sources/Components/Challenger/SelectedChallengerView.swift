@@ -15,8 +15,9 @@ import UMCFoundation
 
 /// 선택된 챌린저(멘토/스터디원) 목록을 확인·삭제하고, 검색으로 새 인원을 추가하는 화면.
 ///
-/// 스터디 그룹 생성 폼과 그룹 관리 화면이 시트로 띄우므로 자체 `NavigationStack` 을 가집니다.
-struct SelectedChallengerView: View {
+/// 스터디 그룹 생성 폼과 그룹 관리 화면, 홈 일정 등록 화면이 시트로 띄우므로 자체
+/// `NavigationStack` 을 가집니다.
+public struct SelectedChallengerView: View {
 
     // MARK: - Property
 
@@ -44,7 +45,7 @@ struct SelectedChallengerView: View {
     /// - Parameters:
     ///   - challenger: 상위 화면의 선택 목록 바인딩
     ///   - searchUseCase: 검색 UseCase (기본값 `nil` — DI 컨테이너에서 해석)
-    init(
+    public init(
         challenger: Binding<[ChallengerInfo]>,
         searchUseCase: SearchChallengersUseCaseProtocol? = nil
     ) {
@@ -54,7 +55,7 @@ struct SelectedChallengerView: View {
 
     // MARK: - Body
 
-    var body: some View {
+    public var body: some View {
         NavigationStack {
             content
                 .navigationTitle(NavigationTitle.Activity.participant.rawValue)

@@ -33,7 +33,7 @@ struct ScheduleCapabilitiesDTOTests {
 
         #expect(domain.canCreateSchedule)
         #expect(domain.canCreateAttendanceRequiredSchedule)
-        #expect(domain.maxParticipantCount == 30)
+        #expect(domain.maxParticipantCount == "30")
     }
 
     @Test("키가 누락되면 권한 없음 · 초대 인원 0 으로 흡수된다")
@@ -42,7 +42,7 @@ struct ScheduleCapabilitiesDTOTests {
 
         #expect(domain.canCreateSchedule == false)
         #expect(domain.canCreateAttendanceRequiredSchedule == false)
-        #expect(domain.maxParticipantCount == 0)
+        #expect(domain.maxParticipantCount == "0")
     }
 }
 

@@ -26,6 +26,11 @@ let project = featureProject(
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         // 홈 루트가 공유 `PathStore` 의 홈 스택 깊이로 루트 복귀를 감지해 월별 일정을 재조회한다.
         .project(target: "CoreRouting", path: .relativeToRoot("Core/Routing")),
+        // 일정 등록의 참여자 선택이 Activity 의 챌린저 검색 UI(SelectedChallengerView)를 그대로
+        // 쓴다. ActivityDomain 은 그 이니셜라이저의 검색 UseCase 타입 해석에 필요하다.
+        // Activity 쪽은 HomeDomain 만 참조하므로 타겟 그래프에 순환이 생기지 않는다.
+        .project(target: "ActivityDomain", path: .relativeToRoot("Features/Activity")),
+        .project(target: "ActivityPresentation", path: .relativeToRoot("Features/Activity")),
         .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
     ],
     includesDomainTests: true,
