@@ -210,6 +210,16 @@ struct AuthRouterRequestDTOEncodingTests {
         #expect(json["oAuthVerificationToken"] as? String == "oauth-token")
     }
 
+    @Test("LoginKakaoRequestDTO — clientType 기본값 \"IOS\"가 함께 인코딩됨")
+    func loginKakaoDTOEncodesClientType() throws {
+        let json = try encodeToJSON(
+            LoginKakaoRequestDTO(accessToken: "kakao-token", email: "a@umc.kr")
+        )
+        #expect(json["accessToken"] as? String == "kakao-token")
+        #expect(json["email"] as? String == "a@umc.kr")
+        #expect(json["clientType"] as? String == "IOS")
+    }
+
     @Test("CheckEmailAvailabilityQuery.toParameters — email 단일 키")
     func checkEmailAvailabilityQueryParameters() {
         let query = CheckEmailAvailabilityQuery(email: "a@umc.kr")
