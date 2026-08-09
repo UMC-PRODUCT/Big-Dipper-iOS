@@ -609,7 +609,7 @@
 
 | 레거시 파일 | → Tuist 목적지 |
 |---|---|
-| `Data/AITokenDailyUsageRecord.swift` | NoticeData |
+| `Data/AITokenDailyUsageRecord.swift` | **NoticeDomain** (`Sources/Models/`) — SwiftData 영속 모델이지만 소비자가 `NoticeEditorViewModel+AI` / `NoticeDetailViewModel+AI` / `ScheduleRegistrationViewModel+AI` 로 전부 Presentation 이라, NoticeData 로 내리면 NoticePresentation·HomePresentation → NoticeData 역방향 의존이 생긴다. `Home/Domain/.../NoticeHistoryData.swift` 와 동일 선례(#1096) |
 | `Data/DTOs/NoticeDTO.swift` | NoticeData |
 | `Data/DTOs/NoticeDetailContentDTO.swift` | NoticeData |
 | `Data/DTOs/NoticeDetailDTO.swift` | NoticeData |
@@ -633,8 +633,8 @@
 | `Data/Repositories/NoticeRepository.swift` | NoticeData |
 | `Data/Router/NoticeEditorTargetRouter.swift` | NoticeData |
 | `Data/Router/NoticeRouter.swift` | NoticeData |
-| `Domain/Enums/NoticeItemTag.swift` | NoticeDomain |
-| `Domain/Enums/NoticeRequestFactory.swift` | NoticeData (`Sources/DTOs/`) — 요청 Query DTO(`NoticeListQuery`) 생성 → Data 레이어 |
+| `Domain/Enums/NoticeItemTag.swift` | **NoticePresentation** (`Sources/Tags/`) — `SwiftUI.Color` 를 프로퍼티로 갖는 UI 표시용 값 타입이고 소비자도 `NoticeItemModel+Tags` / `NoticeDetail+UI` / `NoticeDetailView` 로 전부 Presentation 이다(#1096) |
+| `Domain/Enums/NoticeRequestFactory.swift` | **이식 제외(dead)** — 이식됐다가 소비자 0건으로 확인돼 제거됨(#1028). `NoticeListRequest` 조립은 `NoticeViewModel+Fetch.buildNoticeListRequest` 가 담당 |
 | `Domain/Enums/NoticeType.swift` | NoticeDomain |
 | `Domain/Enums/StaffNoticeTab.swift` | NoticeDomain |
 | `Domain/Interfaces/NoticeEditorTargetRepositoryProtocol.swift` | NoticeDomain |
