@@ -8,7 +8,6 @@ let project = featureProject(
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ],
     presentationExtraDependencies: [
-        .project(target: "BusinessCardPresentation", path: .relativeToRoot("Features/BusinessCard")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
         // 승인 대기 화면의 로그아웃/탈퇴가 전역 `UserSessionManager.reset()`(#959)을 호출한다.
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
