@@ -49,6 +49,14 @@ final class ScheduleDetailViewModel {
         return Date() >= schedule.startsAt
     }
 
+    /// 수정 진입을 열어도 되는지 여부.
+    ///
+    /// 권한이 있어도 이미 시작된 일정은 서버가 `SCHEDULE-0028` 로 거부하므로, 편집 화면을 다 채운
+    /// 뒤 저장 단계에서 튕기지 않도록 진입 자체를 막는다.
+    var isEditActionEnabled: Bool {
+        canEditSchedule && !isScheduleStarted
+    }
+
     /// 출석 현황 화면으로 진입할 수 있는지 여부.
     ///
     /// 출석 현황은 운영진 화면이므로 Admin 모드일 때만, 그리고 출석 정책이 붙은 일정에만 연다.

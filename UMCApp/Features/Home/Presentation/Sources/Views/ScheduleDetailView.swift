@@ -17,6 +17,7 @@ import UMCFoundation
 ///
 /// 장소는 역지오코딩 없이 좌표 그대로 Apple Maps 로 넘긴다. 툴바 액션(수정/삭제)은 각각의
 /// 리소스 권한에 따라 독립적으로 노출하고, 수정은 편집 모드 등록 화면을 시트로 띄운다.
+/// 이미 시작된 일정은 수정 진입을 막고 그 이유를 상단 안내로 알린다.
 ///
 /// 출석 진입은 활동 모드로 갈린다. Admin 모드면 출석 현황 화면으로 이동하는 버튼을, 그 외에는
 /// 내 출석 상태를 read-only 로 보여 준다. 출석 비필수 일정은 두 경우 모두 표시하지 않는다.
@@ -43,8 +44,13 @@ public struct ScheduleDetailView: View {
         static let myAttendanceStatusTitle: String = "내 출석 상태"
         static let editActionTitle: String = "수정하기"
         static let editIcon: String = "pencil"
+        static let editBlockedLabel: String = "일정 수정 불가"
+        static let startedScheduleNotice: String = "이미 시작된 일정은 수정할 수 없습니다"
+        static let lockIcon: String = "lock.fill"
         static let deleteActionTitle: String = "삭제하기"
         static let deleteIcon: String = "trash"
+        static let deletingLabel: String = "일정 삭제 중"
+        static let menuIcon: String = "ellipsis"
         static let failedTitle: String = "일정을 불러오지 못했어요"
         static let failedSystemImage: String = "exclamationmark.triangle"
     }
@@ -109,41 +115,57 @@ public struct ScheduleDetailView: View {
 
     // MARK: - Toolbar
 
+    /// 삭제 중에는 메뉴 자리를 진행 표시로 대체한다.
+    ///
+    /// 레거시는 툴바에 놓인 휴지통 버튼만 `ProgressView` 로 갈아 끼웠지만, 여기서는 액션이
+    /// `ellipsis` 메뉴 하나로 접혀 있어 항목만 바꾸면 메뉴를 열기 전까지 진행 상황이 보이지 않는다.
+    /// 그래서 메뉴 라벨 위치를 통째로 바꿔 닫힌 상태에서도 삭제 중임이 드러나게 하고, 동시에
+    /// 메뉴가 사라지므로 중복 요청도 그대로 막힌다.
+    ///
+    /// 공용 `ToolBarCollection.ToolbarTrailingMenu` 는 항목별 비활성화·접근성 문구를 표현할 수
+    /// 없어 이 화면에서는 메뉴를 직접 구성한다.
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if !toolbarActions.isEmpty {
-            ToolBarCollection.ToolbarTrailingMenu(actions: toolbarActions)
+        if viewModel.isDeleting {
+            ToolbarItem(placement: .topBarTrailing) {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.red)
+                    .accessibilityLabel(Constants.deletingLabel)
+            }
+        } else if let detail = viewModel.data.value,
+                  viewModel.canEditSchedule || viewModel.canDeleteSchedule {
+            ToolbarItem(placement: .topBarTrailing) {
+                actionMenu(detail)
+            }
         }
     }
 
-    /// 권한별로 구성되는 툴바 액션 목록. 삭제 중에는 비워 중복 요청을 막는다.
-    private var toolbarActions: [ToolBarCollection.ToolbarTrailingMenu.ActionItem] {
-        guard let detail = viewModel.data.value, !viewModel.isDeleting else { return [] }
-
-        var actions: [ToolBarCollection.ToolbarTrailingMenu.ActionItem] = []
-
-        if viewModel.canEditSchedule {
-            actions.append(
-                .init(
-                    title: Constants.editActionTitle,
-                    icon: Constants.editIcon,
-                    action: { editingSchedule = detail }
+    private func actionMenu(_ detail: ScheduleDetailData) -> some View {
+        Menu {
+            if viewModel.canEditSchedule {
+                Button { editingSchedule = detail } label: {
+                    Label(Constants.editActionTitle, systemImage: Constants.editIcon)
+                }
+                .disabled(!viewModel.isEditActionEnabled)
+                .accessibilityLabel(
+                    viewModel.isEditActionEnabled
+                        ? Constants.editActionTitle
+                        : Constants.editBlockedLabel
                 )
-            )
-        }
-
-        if viewModel.canDeleteSchedule {
-            actions.append(
-                .init(
-                    title: Constants.deleteActionTitle,
-                    icon: Constants.deleteIcon,
-                    role: .destructive,
-                    action: viewModel.showDeleteConfirmation
+                .accessibilityHint(
+                    viewModel.isEditActionEnabled ? "" : Constants.startedScheduleNotice
                 )
-            )
-        }
+            }
 
-        return actions
+            if viewModel.canDeleteSchedule {
+                Button(role: .destructive, action: viewModel.showDeleteConfirmation) {
+                    Label(Constants.deleteActionTitle, systemImage: Constants.deleteIcon)
+                }
+            }
+        } label: {
+            Image(systemName: Constants.menuIcon)
+        }
     }
 
     // MARK: - Content
@@ -194,7 +216,17 @@ public struct ScheduleDetailView: View {
 
             SchedulePlaceDateInfo(data: data, onMapLinkTapped: viewModel.openInMaps)
                 .equatable()
+
+            if viewModel.canEditSchedule, viewModel.isScheduleStarted {
+                startedScheduleNotice
+            }
         }
+    }
+
+    /// 잠긴 수정 메뉴의 이유를 설명하는 안내. 수정 권한이 없으면 막힌 진입점 자체가 없어 띄우지 않는다.
+    private var startedScheduleNotice: some View {
+        Label(Constants.startedScheduleNotice, systemImage: Constants.lockIcon)
+            .appFont(.caption1, color: .grey500)
     }
 
     // MARK: - Attendance Section
@@ -392,7 +424,7 @@ private struct PreviewFetchScheduleDetailUseCase: FetchScheduleDetailUseCaseProt
     }
 }
 
-/// 삭제 액션을 노출하기 위한 프리뷰 전용 권한 스텁 (절대규칙 #5)
+/// 수정·삭제 액션을 노출하기 위한 프리뷰 전용 권한 스텁 (절대규칙 #5)
 private struct PreviewAuthorizationUseCase: AuthorizationUseCaseProtocol {
     func getResourcePermission(
         resourceType: AuthorizationResourceType,
@@ -401,7 +433,7 @@ private struct PreviewAuthorizationUseCase: AuthorizationUseCaseProtocol {
         ResourcePermission(
             resourceType: resourceType,
             resourceId: resourceId,
-            grantedPermissions: [.delete]
+            grantedPermissions: [.edit, .delete]
         )
     }
 }
