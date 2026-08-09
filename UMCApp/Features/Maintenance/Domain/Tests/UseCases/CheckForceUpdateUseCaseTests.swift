@@ -12,10 +12,14 @@ import Testing
 
 private func makeUseCase(
     minimumVersion: String?,
-    currentVersion: String
+    currentVersion: String,
+    appStoreVersion: String? = nil
 ) -> CheckForceUpdateUseCase {
     CheckForceUpdateUseCase(
         service: StubRemoteConfigService(stubbedMinimumVersion: minimumVersion),
+        appStoreVersionService: StubAppStoreVersionService(
+            stubbedLatestVersion: appStoreVersion
+        ),
         currentVersion: currentVersion
     )
 }
@@ -81,5 +85,59 @@ struct CheckForceUpdateUseCaseTests {
         let useCase = makeUseCase(minimumVersion: "abc", currentVersion: "1.7.0")
 
         #expect(await useCase.execute() == false)
+    }
+}
+
+@Suite("CheckForceUpdateUseCase — App Store 게시 버전 기반 2차 게이트")
+struct CheckForceUpdateUseCaseAppStoreGateTests {
+
+    @Test("콘솔 값이 없어도 스토어 마이너 버전이 높으면 차단한다 (1.7.0 < 1.8.0)")
+    func blocksWhenAppStoreMinorVersionHigher() async {
+        let useCase = makeUseCase(
+            minimumVersion: nil,
+            currentVersion: "1.7.0",
+            appStoreVersion: "1.8.0"
+        )
+
+        #expect(await useCase.execute() == true)
+    }
+
+    @Test("스토어 패치 버전만 높으면 차단하지 않는다 (1.7.0 vs 1.7.1)")
+    func noBlockWhenOnlyAppStorePatchVersionHigher() async {
+        let useCase = makeUseCase(
+            minimumVersion: nil,
+            currentVersion: "1.7.0",
+            appStoreVersion: "1.7.1"
+        )
+
+        #expect(await useCase.execute() == false)
+    }
+
+    @Test("스토어 조회 실패 시 RemoteConfig 판정만 반영한다 (fail-open)")
+    func fallsBackToRemoteConfigWhenLookupFails() async {
+        let passingCase = makeUseCase(
+            minimumVersion: "1.7.0",
+            currentVersion: "1.7.0",
+            appStoreVersion: nil
+        )
+        let blockingCase = makeUseCase(
+            minimumVersion: "1.8.0",
+            currentVersion: "1.7.0",
+            appStoreVersion: nil
+        )
+
+        #expect(await passingCase.execute() == false)
+        #expect(await blockingCase.execute() == true)
+    }
+
+    @Test("스토어가 통과여도 RemoteConfig 가 차단이면 차단한다 (OR 결합)")
+    func blocksWhenOnlyRemoteConfigGateRequiresUpdate() async {
+        let useCase = makeUseCase(
+            minimumVersion: "1.7.1",
+            currentVersion: "1.7.0",
+            appStoreVersion: "1.7.0"
+        )
+
+        #expect(await useCase.execute() == true)
     }
 }
