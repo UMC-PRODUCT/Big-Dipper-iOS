@@ -1,11 +1,10 @@
 //
 //  SyncProfileStorageUseCase.swift
-//  AuthDomain
+//  CoreDomain
 //
 //  Created by euijjang97 on 7/10/26.
 //
 
-import CoreDomain
 import Foundation
 import UMCFoundation
 

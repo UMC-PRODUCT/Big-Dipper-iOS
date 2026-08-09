@@ -218,6 +218,10 @@ private func makeViewModel(
     container.register(FetchSchedulesUseCaseProtocol.self) { fetchSchedulesUseCase }
     container.register(ClassifyScheduleUseCaseProtocol.self) { classifyScheduleUseCase }
     container.register(ChallengerGenRepositoryProtocol.self) { StubChallengerGenRepository() }
+    container.register(FetchMemberProfileUseCaseProtocol.self) { StubFetchMemberProfileUseCase() }
+    container.register(SyncProfileStorageUseCaseProtocol.self) {
+        StubSyncProfileStorageUseCase()
+    }
     return HomeViewModel(container: container)
 }
 
@@ -227,6 +231,20 @@ private struct StubChallengerGenRepository: ChallengerGenRepositoryProtocol {
     func replaceMappings(_ pairs: [(gen: String, gisuId: String)]) throws {}
 
     func fetchGenGisuIdPairs() throws -> [(gen: String, gisuId: String)] { [] }
+}
+
+private struct StubFetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol {
+
+    func execute() async throws -> Profile {
+        Profile(memberId: "1", name: "테스터", nickname: "tester", generations: ["11"])
+    }
+}
+
+/// 실제 `UserDefaults`/`UserSessionManager`를 오염시키지 않도록 no-op으로 둔다
+/// (저장 규칙은 `SyncProfileStorageUseCaseTests`에서 검증).
+private struct StubSyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol {
+
+    func execute(profile: Profile) {}
 }
 
 private func makeSchedule(scheduleId: String, name: String) -> ScheduleDetailData {
@@ -300,13 +318,18 @@ private final class MockFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol, @u
 }
 
 /// 제목별로 분류 결과를 주입할 수 있는 Mock. 매칭이 없으면 `.general`을 반환한다.
+///
+/// ViewModel이 분류를 병렬로 실행하므로 호출 기록은 락으로 보호한다.
 private final class MockClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol,
                                                  @unchecked Sendable {
     var resultsByTitle: [String: ScheduleIconCategory] = [:]
-    private(set) var classifiedTitles: [String] = []
+    var classifiedTitles: [String] { lock.withLock { recordedTitles } }
+
+    private let lock = NSLock()
+    private var recordedTitles: [String] = []
 
     func execute(title: String) async -> ScheduleIconCategory {
-        classifiedTitles.append(title)
+        lock.withLock { recordedTitles.append(title) }
         return resultsByTitle[title] ?? .general
     }
 }
