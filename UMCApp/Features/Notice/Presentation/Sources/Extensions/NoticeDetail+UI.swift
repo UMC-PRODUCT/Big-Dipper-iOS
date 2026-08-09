@@ -65,12 +65,3 @@ extension TargetAudience {
         .joined(separator: " / ")
     }
 }
-
-// TODO: dateRange 모듈 추가
-
-//extension NoticeVote {
-//    /// 날짜 포맷 (MM.dd - MM.dd)
-//    public var formattedPeriod: String {
-//        startDate.dateRange(to: endDate)
-//    }
-//}
