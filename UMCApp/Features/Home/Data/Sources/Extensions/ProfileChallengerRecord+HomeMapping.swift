@@ -42,24 +42,23 @@ extension ProfileChallengerRecord {
             return lhsDate > rhsDate
         }
 
-        var rewardTotal = 0
-        var penaltyTotal = 0
+        var rewardTotal: Double = 0
+        var penaltyTotal: Double = 0
 
         let pointLogs = sortedPoints.map { point -> PointLog in
             let isReward = Self.rewardPointTypes.contains(point.pointType)
-            let intPoint = Int(point.point)
 
             if isReward {
-                rewardTotal += abs(intPoint)
+                rewardTotal += abs(point.point)
             } else {
-                penaltyTotal += abs(intPoint)
+                penaltyTotal += abs(point.point)
             }
 
             return PointLog(
                 id: point.id,
                 reason: point.description,
                 date: Self.displayDateString(from: point.createdAt),
-                point: intPoint,
+                point: point.point,
                 isReward: isReward
             )
         }

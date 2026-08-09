@@ -114,6 +114,29 @@ private enum Fixture {
         """.utf8)
     }
 
+    static func record(
+        gisuId: String,
+        points: [ProfileChallengerPoint]
+    ) -> ProfileChallengerRecord {
+        ProfileChallengerRecord(
+            challengerId: "challenger-1",
+            memberId: "1",
+            gisu: "12",
+            gisuId: gisuId,
+            chapterId: nil,
+            chapterName: nil,
+            part: "IOS",
+            schoolId: "5",
+            schoolName: "한성대",
+            name: nil,
+            nickname: nil,
+            email: nil,
+            profileImageLink: nil,
+            status: .active,
+            challengerPoints: points
+        )
+    }
+
     /// 기수 기록이 없어 기수 상세 네트워크 호출이 발생하지 않는 최소 프로필
     static func minimalProfile(memberId: String) -> Profile {
         Profile(
@@ -218,26 +241,85 @@ struct HomeRepositoryTests {
         let expectedGeneration = HomeGeneration(
             gisuId: "1002",
             gen: "12",
-            penaltyPoint: 1,
-            rewardPoint: 2,
+            penaltyPoint: 1.0,
+            rewardPoint: 2.0,
             pointLogs: [
                 PointLog(
                     id: "point-penalty",
                     reason: "지각",
                     date: expectedFormatter.string(from: newerPointDate),
-                    point: -1,
+                    point: -1.0,
                     isReward: false
                 ),
                 PointLog(
                     id: "point-reward",
                     reason: "우수 워크북",
                     date: expectedFormatter.string(from: olderPointDate),
-                    point: 2,
+                    point: 2.0,
                     isReward: true
                 ),
             ]
         )
         #expect(result.generations == [expectedGeneration])
+    }
+
+    @Test("소수 배점(-0.5)이 절삭되지 않고 로그·합계에 그대로 반영된다")
+    func fetchMyProfileKeepsFractionalPoints() async throws {
+        let now = Date()
+        var kstCalendar = Calendar(identifier: .gregorian)
+        kstCalendar.timeZone = ServerDateTimeConverter.kstTimeZone
+        let startAtString = ServerDateTimeConverter.toUTCDateTimeString(
+            kstCalendar.date(byAdding: .day, value: -3, to: now)!
+        )
+
+        let fractionalPenalty = ProfileChallengerPoint(
+            id: "point-half-penalty",
+            pointType: "LATE_ATTENDANCE",
+            point: -0.5,
+            description: "지각",
+            createdAt: ServerDateTimeConverter.toUTCDateTimeString(now)
+        )
+        let fractionalReward = ProfileChallengerPoint(
+            id: "point-half-reward",
+            pointType: ChallengerPointType.blogChallenge.rawValue,
+            point: 1.5,
+            description: "블로그 챌린지",
+            createdAt: ServerDateTimeConverter.toUTCDateTimeString(now)
+        )
+        let profile = Profile(
+            memberId: "1",
+            name: "홍길동",
+            nickname: "길동",
+            generations: ["12"],
+            roles: [],
+            challengerRecords: [
+                Fixture.record(
+                    gisuId: "1002",
+                    points: [fractionalPenalty, fractionalReward]
+                )
+            ]
+        )
+
+        let memberProfileRepository = MockMemberProfileRepository()
+        memberProfileRepository.result = .success(profile)
+        let network = StubHomeNetwork(
+            .success(Fixture.gisuDetailBody(gisuId: "1002", startAt: startAtString))
+        )
+        let repository = HomeRepository(
+            networkRequesting: network,
+            memberProfileRepository: memberProfileRepository
+        )
+
+        let result = try await repository.fetchMyProfile()
+
+        let generation = try #require(result.generations.first)
+        let penaltyLog = try #require(generation.pointLogs.first { !$0.isReward })
+        let rewardLog = try #require(generation.pointLogs.first { $0.isReward })
+
+        #expect(penaltyLog.point == -0.5, "소수 벌점이 0으로 절삭되면 안 된다")
+        #expect(rewardLog.point == 1.5)
+        #expect(generation.penaltyPoint == 0.5)
+        #expect(generation.rewardPoint == 1.5)
     }
 
     @Test("활동일 계산이 HomeRouter.getGisuDetail(gisuId:)를 호출한다")
