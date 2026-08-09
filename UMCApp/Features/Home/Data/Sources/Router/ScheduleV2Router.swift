@@ -12,7 +12,7 @@ import Moya
 
 /// 일정 V2 API 라우터
 ///
-/// 일정 도메인의 목록 조회와 생성/삭제를 다룬다. 출석 관련 엔드포인트
+/// 일정 도메인의 목록·권한 조회와 생성/삭제를 다룬다. 출석 관련 엔드포인트
 /// (`/api/v2/schedules/attendance`, `/api/v2/schedules/{id}/attendance`,
 /// `.../attendances/decide`, `.../attendances/excuse`, `.../attendances/request`)는
 /// `ActivityData`의 `AttendanceRouter`에 있다.
@@ -27,6 +27,8 @@ enum ScheduleV2Router: BaseTargetType {
     case getMySchedules(query: MySchedulesQuery)
     /// 단일 일정 상세 조회 (`deleteSchedule` 과 경로가 같고 method 로만 갈린다)
     case getScheduleDetail(scheduleId: String)
+    /// 일정 생성/수정 권한 조회 (생성 가능 여부 · 출석 정책 부착 권한 · 최대 초대 인원)
+    case getCapabilities
     /// 일정 생성
     case postSchedule(body: ScheduleCreateRequestDTO)
     /// 일정 수정 (부분 갱신 — 본문에 실린 필드만 반영된다)
@@ -42,6 +44,8 @@ enum ScheduleV2Router: BaseTargetType {
         switch self {
         case .getMySchedules:
             return "/api/v2/schedules/me"
+        case .getCapabilities:
+            return "/api/v2/schedules/capabilities"
         case .postSchedule:
             return "/api/v2/schedules"
         case .getScheduleDetail(let scheduleId), .deleteSchedule(let scheduleId):
@@ -57,7 +61,7 @@ enum ScheduleV2Router: BaseTargetType {
 
     var method: Moya.Method {
         switch self {
-        case .getMySchedules, .getScheduleDetail:
+        case .getMySchedules, .getScheduleDetail, .getCapabilities:
             return .get
         case .postSchedule:
             return .post
@@ -81,7 +85,7 @@ enum ScheduleV2Router: BaseTargetType {
             return .requestJSONEncodable(body)
         case .patchSchedule(_, let body):
             return .requestJSONEncodable(body)
-        case .getScheduleDetail, .deleteSchedule, .forceDeleteSchedule:
+        case .getScheduleDetail, .getCapabilities, .deleteSchedule, .forceDeleteSchedule:
             return .requestPlain
         }
     }

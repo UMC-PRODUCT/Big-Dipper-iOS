@@ -52,6 +52,14 @@ extension DIContainer {
         register(ForceDeleteScheduleUseCaseProtocol.self) {
             ForceDeleteScheduleUseCase(repository: self.resolve(ScheduleRepositoryProtocol.self))
         }
+        register(ScheduleCapabilitiesRepositoryProtocol.self) {
+            ScheduleCapabilitiesRepository(adapter: self.resolve(MoyaNetworkAdapter.self))
+        }
+        register(FetchScheduleCapabilitiesUseCaseProtocol.self) {
+            FetchScheduleCapabilitiesUseCase(
+                repository: self.resolve(ScheduleCapabilitiesRepositoryProtocol.self)
+            )
+        }
         register(RegisterFCMTokenUseCaseProtocol.self) {
             RegisterFCMTokenUseCase(repository: self.resolve(HomeRepositoryProtocol.self))
         }
