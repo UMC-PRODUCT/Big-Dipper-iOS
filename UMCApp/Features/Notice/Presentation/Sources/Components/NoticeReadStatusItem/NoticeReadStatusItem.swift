@@ -64,8 +64,7 @@ private struct NoticeReadStatusItemPresenter: View, Equatable {
             RemoteImage(
                 urlString: model.profileImageURL ?? "",
                 size: Constant.profileSize,
-                cornerRadius: Constant.profileSize.width / 2,
-                placeholderImage: "defaultProfile"
+                cornerRadius: Constant.profileSize.width / 2
             )
 
             UserInfoSection(model: model)

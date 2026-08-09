@@ -91,8 +91,7 @@ struct StudyGroupLeaderRow: View, Equatable {
                 width: Constants.avatarSize,
                 height: Constants.avatarSize
             ),
-            cornerRadius: 0,
-            placeholderImage: "person.fill"
+            cornerRadius: 0
         )
         .clipShape(Circle())
     }

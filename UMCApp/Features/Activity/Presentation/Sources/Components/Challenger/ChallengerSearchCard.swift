@@ -78,8 +78,7 @@ struct ChallengerSearchCard: View, Equatable {
         RemoteImage(
             urlString: challenger.profileImage ?? "",
             size: CGSize(width: Constants.imageSize, height: Constants.imageSize),
-            cornerRadius: Constants.imageSize / 2,
-            placeholderImage: "person.fill"
+            cornerRadius: Constants.imageSize / 2
         )
     }
 

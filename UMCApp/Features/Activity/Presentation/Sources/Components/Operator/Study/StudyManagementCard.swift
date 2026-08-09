@@ -105,8 +105,7 @@ private struct StudyManagementCardHeader: View, Equatable {
                 width: StudyManagementCard.Constants.avatarSize,
                 height: StudyManagementCard.Constants.avatarSize
             ),
-            cornerRadius: 0,
-            placeholderImage: "person.fill"
+            cornerRadius: 0
         )
         .clipShape(Circle())
     }

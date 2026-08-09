@@ -133,8 +133,7 @@ struct PendingApprovalSheet: View {
 
             RemoteImage(
                 urlString: participant.profileImageURL,
-                size: CGSize(width: DefaultConstant.iconSize, height: DefaultConstant.iconSize),
-                placeholderImage: "person.fill"
+                size: CGSize(width: DefaultConstant.iconSize, height: DefaultConstant.iconSize)
             )
 
             VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
