@@ -12,6 +12,10 @@ let project = featureProject(
     presentationExtraDependencies: [
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
         .project(target: "CorePhoto", path: .relativeToRoot("Core/Photo")),
+        // 탭 루트가 자기 목적지(MyPageDestination)를 탭 스택에 push 한다.
+        .project(target: "CoreRouting", path: .relativeToRoot("Core/Routing")),
+        // 로그아웃/탈퇴가 UserSessionManager·MemberProfileRepository 캐시를 직접 정리한다.
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         // 소셜 연동 추가/해제(#1029)가 AuthDomain의 MemberOAuth UseCase와
         // CoreNetwork의 소셜 로그인 매니저를 사용한다.
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),

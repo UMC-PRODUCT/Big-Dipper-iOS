@@ -16,7 +16,13 @@ public struct SettingSection: View {
     // MARK: - Property
     
     private let sectionType: MyPageSectionType
-    
+
+    // MARK: - Init
+
+    public init(sectionType: MyPageSectionType = .settings) {
+        self.sectionType = sectionType
+    }
+
     // MARK: - Body
     
     public var body: some View {
