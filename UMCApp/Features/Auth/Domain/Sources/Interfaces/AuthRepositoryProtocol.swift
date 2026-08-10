@@ -50,4 +50,24 @@ public protocol AuthRepositoryProtocol {
     ///   - password: 평문 비밀번호 (TLS 구간 서버 해싱 위임)
     /// - Returns: 로그인 결과 (회원 ID). 토큰 저장은 Repository가 처리한다.
     func loginByEmail(email: String, password: String) async throws -> LoginByIdPwResult
+
+    /// 내 OAuth 연동 목록을 조회한다.
+    /// - Returns: 연동된 OAuth 목록
+    func fetchMyOAuth() async throws -> [MemberOAuth]
+
+    /// OAuth 수단을 추가 연동한다.
+    /// - Parameter oAuthVerificationToken: 소셜 로그인으로 발급받은 검증 토큰
+    /// - Returns: 연동 완료 후 전체 OAuth 목록
+    func addMemberOAuth(oAuthVerificationToken: String) async throws -> [MemberOAuth]
+
+    /// OAuth 수단 연동을 해제한다.
+    /// - Parameters:
+    ///   - memberOAuthId: 해제할 OAuth 연동 ID
+    ///   - googleAccessToken: Google 해제 검증용 액세스 토큰
+    ///   - kakaoAccessToken: Kakao 해제 검증용 액세스 토큰
+    func deleteMemberOAuth(
+        memberOAuthId: String,
+        googleAccessToken: String?,
+        kakaoAccessToken: String?
+    ) async throws
 }

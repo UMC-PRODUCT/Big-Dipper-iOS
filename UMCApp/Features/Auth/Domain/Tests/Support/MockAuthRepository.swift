@@ -119,4 +119,48 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         loginByEmailReceivedPassword = password
         return try loginByEmailResult.get()
     }
+
+    // MARK: - fetchMyOAuth
+
+    var fetchMyOAuthResult: Result<[MemberOAuth], Error> = .failure(MockError.notStubbed)
+    private(set) var fetchMyOAuthCallCount = 0
+
+    func fetchMyOAuth() async throws -> [MemberOAuth] {
+        fetchMyOAuthCallCount += 1
+        return try fetchMyOAuthResult.get()
+    }
+
+    // MARK: - addMemberOAuth
+
+    var addMemberOAuthResult: Result<[MemberOAuth], Error> = .failure(MockError.notStubbed)
+    private(set) var addMemberOAuthCallCount = 0
+    private(set) var addMemberOAuthReceivedToken: String?
+
+    func addMemberOAuth(oAuthVerificationToken: String) async throws -> [MemberOAuth] {
+        addMemberOAuthCallCount += 1
+        addMemberOAuthReceivedToken = oAuthVerificationToken
+        return try addMemberOAuthResult.get()
+    }
+
+    // MARK: - deleteMemberOAuth
+
+    var deleteMemberOAuthError: Error?
+    private(set) var deleteMemberOAuthCallCount = 0
+    private(set) var deleteMemberOAuthReceivedId: String?
+    private(set) var deleteMemberOAuthReceivedGoogleAccessToken: String?
+    private(set) var deleteMemberOAuthReceivedKakaoAccessToken: String?
+
+    func deleteMemberOAuth(
+        memberOAuthId: String,
+        googleAccessToken: String?,
+        kakaoAccessToken: String?
+    ) async throws {
+        deleteMemberOAuthCallCount += 1
+        deleteMemberOAuthReceivedId = memberOAuthId
+        deleteMemberOAuthReceivedGoogleAccessToken = googleAccessToken
+        deleteMemberOAuthReceivedKakaoAccessToken = kakaoAccessToken
+        if let deleteMemberOAuthError {
+            throw deleteMemberOAuthError
+        }
+    }
 }

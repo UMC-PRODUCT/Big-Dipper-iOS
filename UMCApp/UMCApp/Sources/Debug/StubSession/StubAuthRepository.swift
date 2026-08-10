@@ -43,5 +43,19 @@ struct StubAuthRepository: AuthRepositoryProtocol {
     func loginByEmail(email: String, password: String) async throws -> LoginByIdPwResult {
         LoginByIdPwResult(memberId: StubSessionFixtures.profile.memberId)
     }
+
+    func fetchMyOAuth() async throws -> [MemberOAuth] {
+        []
+    }
+
+    func addMemberOAuth(oAuthVerificationToken: String) async throws -> [MemberOAuth] {
+        []
+    }
+
+    func deleteMemberOAuth(
+        memberOAuthId: String,
+        googleAccessToken: String?,
+        kakaoAccessToken: String?
+    ) async throws {}
 }
 #endif

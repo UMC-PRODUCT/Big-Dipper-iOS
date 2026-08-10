@@ -53,15 +53,15 @@ public struct ProfileData: Identifiable, Equatable, Hashable {
 
 /// 연동된 소셜 계정의 서버 식별자와 타입을 나타내는 모델입니다.
 public struct SocialConnection: Identifiable, Equatable, Hashable {
-    /// OAuth 연동 ID
-    public let memberOAuthId: Int
+    /// OAuth 연동 ID (서버 응답 String 기준)
+    public let memberOAuthId: String
 
     /// 연동된 소셜 타입
     public let socialType: SocialType
 
-    public var id: Int { memberOAuthId }
+    public var id: String { memberOAuthId }
 
-    public init(memberOAuthId: Int, socialType: SocialType) {
+    public init(memberOAuthId: String, socialType: SocialType) {
         self.memberOAuthId = memberOAuthId
         self.socialType = socialType
     }

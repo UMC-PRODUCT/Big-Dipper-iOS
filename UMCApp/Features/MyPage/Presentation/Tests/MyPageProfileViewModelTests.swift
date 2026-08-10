@@ -8,7 +8,9 @@
 import Testing
 import Foundation
 import UMCFoundation
+import AuthDomain
 import CoreDomain
+import CoreNetwork
 import MyPageDomain
 @testable import MyPagePresentation
 
@@ -61,7 +63,7 @@ struct MyPageProfileViewModelTests {
     func submitImageUpdateCallsImageUseCase() async throws {
         let original = makeStubProfileData(
             challengeId: 1,
-            socialConnections: [SocialConnection(memberOAuthId: 10, socialType: .kakao)]
+            socialConnections: [SocialConnection(memberOAuthId: "10", socialType: .kakao)]
         )
         // 서버 응답의 socialConnections가 비어 있어도 VM이 로컬 값을 복원해야 함
         let serverProfile = makeStubProfileData(challengeId: 42, socialConnections: [])
@@ -193,7 +195,7 @@ struct MyPageProfileViewModelTests {
     func addActivityLogSuccess() async throws {
         let original = makeStubProfileData(
             challengeId: 1,
-            socialConnections: [SocialConnection(memberOAuthId: 5, socialType: .apple)]
+            socialConnections: [SocialConnection(memberOAuthId: "5", socialType: .apple)]
         )
         let refreshed = makeStubProfileData(challengeId: 55, socialConnections: [])
         let mock = MockMyPageRepository()
@@ -227,6 +229,81 @@ struct MyPageProfileViewModelTests {
         #expect(viewModel.didRecentlyAddActivityLog == false)
         #expect(viewModel.isAddingActivityLog == false)
     }
+
+    // MARK: - disconnectSocial
+
+    @Test("카카오 연동 해제 — kakaoAccessToken 전달 + 재조회 결과로 목록 갱신 + 진행 플래그 복구")
+    func disconnectKakaoPassesKakaoTokenAndRefreshesConnections() async throws {
+        let kakao = SocialConnection(memberOAuthId: "10", socialType: .kakao)
+        let deleteUseCase = SpyDeleteMemberOAuthUseCase()
+        let viewModel = makeViewModel(
+            profile: makeStubProfileData(
+                socialConnections: [kakao, SocialConnection(memberOAuthId: "11", socialType: .apple)]
+            ),
+            fetchMyOAuthUseCase: StubFetchMyOAuthUseCase(result: .success([
+                MemberOAuth(memberOAuthId: "11", memberId: "1", provider: .apple)
+            ])),
+            deleteMemberOAuthUseCase: deleteUseCase
+        )
+
+        try await viewModel.disconnectSocial(kakao)
+
+        #expect(deleteUseCase.callCount == 1)
+        #expect(deleteUseCase.receivedMemberOAuthId == "10")
+        #expect(deleteUseCase.receivedKakaoAccessToken == "kakao-token")
+        #expect(deleteUseCase.receivedGoogleAccessToken == nil)
+        #expect(viewModel.profileData.socialConnections.map(\.socialType) == [.apple])
+        #expect(viewModel.disconnectingSocialType == nil)
+    }
+
+    @Test("구글 연동 해제 — googleAccessToken만 전달")
+    func disconnectGooglePassesGoogleToken() async throws {
+        let google = SocialConnection(memberOAuthId: "20", socialType: .google)
+        let deleteUseCase = SpyDeleteMemberOAuthUseCase()
+        let viewModel = makeViewModel(
+            profile: makeStubProfileData(socialConnections: [google]),
+            deleteMemberOAuthUseCase: deleteUseCase
+        )
+
+        try await viewModel.disconnectSocial(google)
+
+        #expect(deleteUseCase.receivedGoogleAccessToken == "google-token")
+        #expect(deleteUseCase.receivedKakaoAccessToken == nil)
+        #expect(viewModel.profileData.socialConnections.isEmpty)
+    }
+
+    @Test("애플 연동 해제 — 검증 토큰 없이 요청")
+    func disconnectApplePassesNoVerificationToken() async throws {
+        let apple = SocialConnection(memberOAuthId: "30", socialType: .apple)
+        let deleteUseCase = SpyDeleteMemberOAuthUseCase()
+        let viewModel = makeViewModel(
+            profile: makeStubProfileData(socialConnections: [apple]),
+            deleteMemberOAuthUseCase: deleteUseCase
+        )
+
+        try await viewModel.disconnectSocial(apple)
+
+        #expect(deleteUseCase.receivedGoogleAccessToken == nil)
+        #expect(deleteUseCase.receivedKakaoAccessToken == nil)
+    }
+
+    @Test("연동 해제 실패 — 에러 전파 + 기존 목록 유지 + 진행 플래그 복구")
+    func disconnectFailureKeepsExistingConnections() async {
+        let kakao = SocialConnection(memberOAuthId: "10", socialType: .kakao)
+        let deleteUseCase = SpyDeleteMemberOAuthUseCase()
+        deleteUseCase.error = MyPageTestError.boom
+        let viewModel = makeViewModel(
+            profile: makeStubProfileData(socialConnections: [kakao]),
+            deleteMemberOAuthUseCase: deleteUseCase
+        )
+
+        await #expect(throws: MyPageTestError.boom) {
+            try await viewModel.disconnectSocial(kakao)
+        }
+
+        #expect(viewModel.profileData.socialConnections == [kakao])
+        #expect(viewModel.disconnectingSocialType == nil)
+    }
 }
 
 // MARK: - Helpers
@@ -234,10 +311,71 @@ struct MyPageProfileViewModelTests {
 @MainActor
 private func makeViewModel(
     profile: ProfileData,
-    repository: MockMyPageRepository = MockMyPageRepository()
+    repository: MockMyPageRepository = MockMyPageRepository(),
+    fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol = StubFetchMyOAuthUseCase(result: .success([])),
+    deleteMemberOAuthUseCase: SpyDeleteMemberOAuthUseCase = SpyDeleteMemberOAuthUseCase()
 ) -> MyPageProfileViewModel {
+    // GoogleLoginManaging은 MainActor 격리라 파라미터 기본값으로 만들 수 없어 본문에서 생성한다.
     MyPageProfileViewModel(
         profileData: profile,
-        useCaseProvider: makeUseCaseProvider(repository)
+        useCaseProvider: makeUseCaseProvider(repository),
+        fetchMyOAuthUseCase: fetchMyOAuthUseCase,
+        deleteMemberOAuthUseCase: deleteMemberOAuthUseCase,
+        kakaoLoginManager: StubKakaoLoginManager(),
+        googleLoginManager: StubGoogleLoginManager()
     )
+}
+
+// MARK: - Stubs (소셜 연동)
+
+private struct StubFetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol {
+    let result: Result<[MemberOAuth], Error>
+
+    func execute() async throws -> [MemberOAuth] {
+        try result.get()
+    }
+}
+
+private final class SpyDeleteMemberOAuthUseCase: DeleteMemberOAuthUseCaseProtocol, @unchecked Sendable {
+    var error: Error?
+    private(set) var callCount = 0
+    private(set) var receivedMemberOAuthId: String?
+    private(set) var receivedGoogleAccessToken: String?
+    private(set) var receivedKakaoAccessToken: String?
+
+    func execute(
+        memberOAuthId: String,
+        googleAccessToken: String?,
+        kakaoAccessToken: String?
+    ) async throws {
+        callCount += 1
+        receivedMemberOAuthId = memberOAuthId
+        receivedGoogleAccessToken = googleAccessToken
+        receivedKakaoAccessToken = kakaoAccessToken
+        if let error { throw error }
+    }
+}
+
+private final class StubKakaoLoginManager: KakaoLoginManaging, @unchecked Sendable {
+    var accessToken = "kakao-token"
+
+    func login() async throws -> (accessToken: String, email: String) {
+        (accessToken, "kakao@umc.dev")
+    }
+
+    func fetchAccessToken() async throws -> String {
+        accessToken
+    }
+}
+
+private final class StubGoogleLoginManager: GoogleLoginManaging, @unchecked Sendable {
+    var accessToken = "google-token"
+
+    func login() async throws -> (accessToken: String, email: String?) {
+        (accessToken, nil)
+    }
+
+    func fetchAccessToken() async throws -> String {
+        accessToken
+    }
 }
