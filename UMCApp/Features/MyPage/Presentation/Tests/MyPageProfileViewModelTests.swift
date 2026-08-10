@@ -207,6 +207,8 @@ struct MyPageProfileViewModelTests {
         #expect(mock.addChallengerRecordCallCount == 1)
         #expect(mock.addChallengerRecordReceivedCode == "UMC-CODE")
         #expect(mock.fetchMyProfileCallCount == 1)
+        // 기록 추가는 세션 캐시를 무효화하지 않으므로 캐시를 우회해야 방금 추가한 이력이 보인다.
+        #expect(mock.fetchMyProfileReceivedForceRefresh == true)
         #expect(viewModel.profileData.challengeId == 55)
         #expect(viewModel.profileData.socialConnections == original.socialConnections)
         #expect(viewModel.didRecentlyAddActivityLog == true)
