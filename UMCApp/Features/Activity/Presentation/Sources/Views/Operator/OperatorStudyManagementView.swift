@@ -16,6 +16,9 @@ import UMCFoundation
 ///
 /// 운영진이 스터디와 활동을 관리하는 화면입니다.
 /// ViewModel 과 세션은 상위(라우터/루트 화면)에서 주입받습니다.
+///
+/// 본문은 성격이 다른 두 섹션(``OperatorStudyGroupSection`` / ``OperatorStudySubmissionSection``)이
+/// 맡고, 이 화면은 섹션 전환과 두 섹션에 걸친 툴바·시트·알럿만 관리합니다.
 struct OperatorStudyManagementView: View {
 
     // MARK: - Property
@@ -71,22 +74,10 @@ struct OperatorStudyManagementView: View {
     // MARK: - Constants
 
     private enum Constants {
-        static let permissionTitle: String = "스터디 그룹 관리"
-        static let permissionDescription: String = "등록된 스터디 그룹이 없습니다\n스터디 그룹 생성에는 별도 권한이 필요해요"
-        static let permissionGuideTitle: String = "스터디 관리가 가능한 역할"
-        static let roleChapterLeader: String = "지부장"
-        static let rolePresident: String = "회장 / 부회장"
-        static let roleOperator: String = "운영진"
-        static let roleChapterLeaderDescription: String = "지부 내 전체 학교의 스터디를 관리할 수 있어요"
-        static let rolePresidentDescription: String = "소속 학교의 스터디 그룹을 생성·관리할 수 있어요"
-        static let roleOperatorDescription: String = "담당 파트의 스터디를 조회할 수 있어요"
         static let sectionPickerTitle: String = "스터디 관리 섹션"
-        static let allGroupsFilterTitle: String = "전체 그룹"
-        static let submissionLoadingMessage: String = "제출 현황 불러오는 중..."
-        static let submissionIdleTitle: String = "제출 현황을 불러올 준비가 됐어요"
-        static let submissionIdleDescription: String = "아래 버튼을 눌러 불러올 수 있어요."
-        static let submissionEmptyDescription: String =
-            "선택한 조건에 해당하는 스터디원이 없어요.\n그룹이나 주차 필터를 바꿔보세요."
+        static let workbookUnavailableTitle: String = "준비 중"
+        static let workbookUnavailableMessage: String = "워크북 상세 화면은 커리큘럼 상세 이식 후 연결됩니다."
+        static let confirmTitle: String = "확인"
     }
 
     // MARK: - Body
@@ -97,9 +88,15 @@ struct OperatorStudyManagementView: View {
 
             switch selectedSection {
             case .groups:
-                groupManagementContentView
+                OperatorStudyGroupSection(
+                    viewModel: viewModel,
+                    canCreateStudyGroup: canCreateStudyGroup,
+                    onRegisterSchedule: onRegisterSchedule
+                )
             case .submissions:
-                submissionContentView
+                OperatorStudySubmissionSection(viewModel: viewModel) {
+                    showWorkbookDetailUnavailable = true
+                }
             }
         }
             .task {
@@ -145,10 +142,13 @@ struct OperatorStudyManagementView: View {
                 )
             }
             .alertPrompt(item: $viewModel.alertPrompt)
-            .alert("준비 중", isPresented: $showWorkbookDetailUnavailable) {
-                Button("확인", role: .cancel) {}
+            .alert(
+                Constants.workbookUnavailableTitle,
+                isPresented: $showWorkbookDetailUnavailable
+            ) {
+                Button(Constants.confirmTitle, role: .cancel) {}
             } message: {
-                Text("워크북 상세 화면은 커리큘럼 상세 이식 후 연결됩니다.")
+                Text(Constants.workbookUnavailableMessage)
             }
     }
 
@@ -170,380 +170,6 @@ struct OperatorStudyManagementView: View {
     /// 스터디 그룹 생성 권한 확인 (보유 역할 중 회장/부회장 포함 여부)
     private var canCreateStudyGroup: Bool {
         userSession.hasAnyRole(where: { $0.canCreateStudyGroup })
-    }
-
-    // MARK: - Group Management View
-
-    @ViewBuilder
-    private var groupManagementContentView: some View {
-        switch viewModel.studyGroupDetailsState {
-        case .idle, .loading:
-            loadingView(message: "스터디 그룹 관리 불러오는 중...")
-
-        case .loaded:
-            if viewModel.studyGroupDetails.isEmpty {
-                groupManagementEmptyView
-            } else {
-                groupManagementListView(groups: viewModel.studyGroupDetails)
-            }
-
-        case .failed(let error):
-            errorView(error: error) {
-                await viewModel.fetchGroupManagementData()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var groupManagementEmptyView: some View {
-        if canCreateStudyGroup {
-            ContentUnavailableView {
-                Label("등록된 스터디 그룹이 없어요", systemImage: "person.3")
-            } description: {
-                Text("스터디 그룹 생성 기능을 준비하고 있어요.\n곧 이곳에서 스터디원과 멘토를 배정할 수 있어요.")
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-        } else {
-            permissionDeniedView
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-        }
-    }
-
-    private func groupManagementListView(groups: [StudyGroupInfo]) -> some View {
-        ScrollView {
-            // Apple iOS 26 가이드: 같은 화면에 Liquid Glass가 여러 개 있을 때
-            // GlassEffectContainer 로 묶어 카드 사이 morphing/blending + 렌더링 성능 ↑
-            GlassEffectContainer(spacing: DefaultSpacing.spacing16) {
-                LazyVStack(spacing: DefaultSpacing.spacing16) {
-                    ForEach(groups) { group in
-                        StudyGroupCard(
-                            detail: group,
-                            onEdit: {
-                                viewModel.showEditSheet(for: group)
-                            },
-                            onDelete: {
-                                Task { await viewModel.deleteGroup(group) }
-                            },
-                            onAddMember: {
-                                viewModel.showAddMemberSheet(for: group)
-                            },
-                            onAddMentor: {
-                                viewModel.showAddMentorSheet(for: group)
-                            },
-                            onSchedule: {
-                                guard viewModel.canRegisterSchedule(for: group) else {
-                                    viewModel.presentScheduleRegistrationDenied()
-                                    return
-                                }
-                                onRegisterSchedule(group)
-                            },
-                            onRemoveMember: { member in
-                                Task {
-                                    await viewModel.removeMember(member, from: group)
-                                }
-                            },
-                            onRemoveMentor: { mentor in
-                                Task {
-                                    await viewModel.removeMentor(mentor, from: group)
-                                }
-                            }
-                        )
-                        .equatable()
-                        .task {
-                            await viewModel.loadMoreGroupManagementDataIfNeeded(
-                                currentGroupID: group.id
-                            )
-                        }
-                    }
-
-                    if viewModel.isLoadingMoreStudyGroupDetails {
-                        ProgressView()
-                            .tint(Color.grey500)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, DefaultSpacing.spacing8)
-                    }
-                }
-            }
-            .safeAreaPadding(
-                .horizontal,
-                DefaultConstant.defaultSafeBtnPadding
-            )
-        }
-        .contentMargins(
-            .bottom,
-            DefaultConstant.defaultContentBottomMargins,
-            for: .scrollContent
-        )
-    }
-
-    // MARK: - Submission View
-
-    /// 제출 현황 섹션 — 필터 + 상태별 본문
-    private var submissionContentView: some View {
-        VStack(spacing: DefaultSpacing.spacing12) {
-            submissionFilterBar
-
-            switch viewModel.submissionsState {
-            // `.idle` 을 스피너로 그리지 않는다. 조회가 취소되면 이 상태로 되돌아오는데,
-            // 그때 in-flight 가 없으므로 스피너는 영원히 돌기만 한다. 재시도 수단을 준다.
-            case .idle:
-                submissionRetryView(
-                    title: Constants.submissionIdleTitle,
-                    systemImage: "doc.text.magnifyingglass",
-                    description: Constants.submissionIdleDescription
-                )
-
-            case .loading:
-                loadingView(message: Constants.submissionLoadingMessage)
-
-            case .loaded(let rows):
-                if rows.isEmpty {
-                    submissionEmptyView
-                } else {
-                    submissionListView(rows: rows)
-                }
-
-            case .failed(let error):
-                submissionRetryView(
-                    title: "불러오지 못했어요",
-                    systemImage: "exclamationmark.triangle",
-                    description: error.userMessage
-                )
-            }
-        }
-        .task {
-            await viewModel.fetchSubmissions()
-        }
-    }
-
-    private func submissionRetryView(
-        title: String,
-        systemImage: String,
-        description: String
-    ) -> some View {
-        RetryContentUnavailableView(
-            title: title,
-            systemImage: systemImage,
-            description: description,
-            isRetrying: false,
-            topPadding: DefaultSpacing.spacing32
-        ) {
-            await viewModel.retrySubmissions()
-        }
-        .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-    }
-
-    /// 그룹·주차 필터 — 서버가 두 필터를 모두 선택 파라미터로 받는다.
-    private var submissionFilterBar: some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing8) {
-            // ChipButton 의 buttonSize/buttonStyle 은 `AnyChipButton` 전용이라 둘을 이어 붙일 수
-            // 없다(첫 모디파이어가 `some View` 를 돌려줌). 두 값 모두 Environment 로 전달한다.
-            ScrollView(.horizontal) {
-                HStack(spacing: DefaultSpacing.spacing8) {
-                    ChipButton(
-                        Constants.allGroupsFilterTitle,
-                        isSelected: viewModel.selectedSubmissionGroupId == nil
-                    ) {
-                        Task { await viewModel.selectSubmissionGroup(nil) }
-                    }
-
-                    ForEach(viewModel.studyGroupNames) { group in
-                        ChipButton(
-                            group.name,
-                            isSelected: viewModel.selectedSubmissionGroupId == group.groupId
-                        ) {
-                            Task { await viewModel.selectSubmissionGroup(group.groupId) }
-                        }
-                    }
-                }
-                .environment(\.chipButtonSize, .small)
-                .environment(\.chipButtonStyle, .filter)
-                .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-            }
-            .scrollIndicators(.hidden)
-
-            if !viewModel.availableSubmissionWeekNos.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(spacing: DefaultSpacing.spacing8) {
-                        ForEach(viewModel.availableSubmissionWeekNos, id: \.self) { weekNo in
-                            ChipButton(
-                                "\(weekNo)주차",
-                                isSelected: viewModel.selectedSubmissionWeekNos
-                                    .contains(weekNo)
-                            ) {
-                                Task { await viewModel.toggleSubmissionWeek(weekNo) }
-                            }
-                        }
-                    }
-                    .environment(\.chipButtonSize, .small)
-                    .environment(\.chipButtonStyle, .fame)
-                    .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
-                }
-                .scrollIndicators(.hidden)
-            }
-        }
-    }
-
-    private var submissionEmptyView: some View {
-        ContentUnavailableView {
-            Label("제출 현황이 없어요", systemImage: "doc.text.magnifyingglass")
-        } description: {
-            Text(Constants.submissionEmptyDescription)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-    }
-
-    private func submissionListView(rows: [StudyMemberSubmission]) -> some View {
-        ScrollView {
-            // 카드마다 Liquid Glass 를 쓰므로 Container 로 묶어 렌더링 비용을 줄인다.
-            GlassEffectContainer(spacing: DefaultSpacing.spacing16) {
-                LazyVStack(spacing: DefaultSpacing.spacing16) {
-                    ForEach(rows) { submission in
-                        StudyManagementCard(submission: submission) { _ in
-                            // TODO: 워크북 상세(WORKBOOK-102) 진입 결선 - [26.08.03] 이재원
-                            //  — 상세 화면이 미이식이라 진입은 보류하고 안내만 표시한다.
-                            showWorkbookDetailUnavailable = true
-                        }
-                        .task {
-                            await viewModel.loadMoreSubmissionsIfNeeded(
-                                currentMemberID: submission.studyGroupMemberId
-                            )
-                        }
-                    }
-
-                    if viewModel.isLoadingMoreSubmissions {
-                        ProgressView()
-                            .tint(Color.grey500)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, DefaultSpacing.spacing8)
-                    }
-                }
-            }
-            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeBtnPadding)
-        }
-        .contentMargins(
-            .bottom,
-            DefaultConstant.defaultContentBottomMargins,
-            for: .scrollContent
-        )
-    }
-
-    // MARK: - Loading View
-
-    private func loadingView(message: String) -> some View {
-        VStack(spacing: DefaultSpacing.spacing12) {
-            ProgressView()
-                .controlSize(.large)
-                .tint(Color.grey500)
-
-            Text(message)
-                .appFont(.subheadline, color: .grey500)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-    }
-
-    // MARK: - Permission Denied View
-
-    private var permissionDeniedView: some View {
-        ScrollView {
-            VStack(spacing: DefaultSpacing.spacing32) {
-                ContentUnavailableView {
-                    Label(Constants.permissionTitle, systemImage: "person.3")
-                } description: {
-                    Text(Constants.permissionDescription)
-                        .multilineTextAlignment(.center)
-                }
-
-                VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
-                    Text(Constants.permissionGuideTitle)
-                        .appFont(.callout, weight: .semibold)
-
-                    permissionRoleRow(
-                        icon: "building.columns.fill",
-                        role: Constants.roleChapterLeader,
-                        description: Constants.roleChapterLeaderDescription
-                    )
-
-                    permissionRoleRow(
-                        icon: "star.fill",
-                        role: Constants.rolePresident,
-                        description: Constants.rolePresidentDescription
-                    )
-
-                    permissionRoleRow(
-                        icon: "person.badge.key.fill",
-                        role: Constants.roleOperator,
-                        description: Constants.roleOperatorDescription
-                    )
-                }
-                .padding(DefaultSpacing.spacing16)
-                .background(
-                    .regularMaterial,
-                    in: .rect(cornerRadius: DefaultConstant.defaultCornerRadius)
-                )
-            }
-            .padding(.top, DefaultSpacing.spacing32)
-        }
-    }
-
-    private func permissionRoleRow(
-        icon: String,
-        role: String,
-        description: String
-    ) -> some View {
-        HStack(spacing: DefaultSpacing.spacing12) {
-            Image(systemName: icon)
-                .font(.app(.title3))
-                .foregroundStyle(Color.grey600)
-                .frame(width: 32, alignment: .center)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(role)
-                    .appFont(.subheadline)
-                Text(description)
-                    .appFont(.footnote)
-                    .foregroundStyle(Color.grey500)
-            }
-        }
-    }
-
-    // MARK: - Error View
-
-    /// 로딩 실패 처리.
-    ///
-    /// 레거시는 `AppError.isPermissionDenied`(403)로 권한 안내 분기를 판단했으나 이식된
-    /// `AppError` 에는 해당 프로퍼티가 없다. 권한 안내의 의도(생성 권한 없는 사용자에게 역할
-    /// 가이드 노출)를 세션 권한(`canCreateStudyGroup`)으로 대신 판단한다.
-    @ViewBuilder
-    private func errorView(
-        error: AppError,
-        retryAction: @escaping () async -> Void
-    ) -> some View {
-        if !canCreateStudyGroup {
-            permissionDeniedView
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-        } else {
-            RetryContentUnavailableView(
-                title: "불러오지 못했어요",
-                systemImage: "exclamationmark.triangle",
-                description: error.userMessage,
-                isRetrying: false,
-                topPadding: DefaultSpacing.spacing32
-            ) {
-                await retryAction()
-            }
-            .safeAreaPadding(
-                .horizontal,
-                DefaultConstant.defaultSafeHorizon
-            )
-        }
     }
 }
 
