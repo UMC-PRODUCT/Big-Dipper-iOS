@@ -77,6 +77,9 @@ struct MyPageView: View {
 
             AuthSection(
                 alertPrompt: $viewModel.alertPrompt,
+                onChangePassword: {
+                    pathStore.push(MyPageDestination.changePassword, on: .mypage)
+                },
                 onLogout: { endSession("logout", perform: viewModel.logout) },
                 onDeleteAccount: { endSession("deleteAccount", perform: viewModel.deleteAccount) }
             )

@@ -17,4 +17,7 @@ enum MyPageDestination: Hashable {
     ///
     /// - Parameter logType: 진입 시 처음 보여줄 활동 종류. 화면 안에서 세 종류를 전환할 수 있다.
     case myActivePosts(logType: MyActiveLogsType)
+
+    /// 비밀번호 변경. 화면은 `AuthPresentation` 이 소유한다.
+    case changePassword
 }
