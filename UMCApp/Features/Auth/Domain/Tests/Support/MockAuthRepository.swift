@@ -142,6 +142,22 @@ final class MockAuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         return try addMemberOAuthResult.get()
     }
 
+    // MARK: - changePassword
+
+    var changePasswordError: Error?
+    private(set) var changePasswordCallCount = 0
+    private(set) var changePasswordReceivedCurrentPassword: String?
+    private(set) var changePasswordReceivedNewPassword: String?
+
+    func changePassword(currentPassword: String, newPassword: String) async throws {
+        changePasswordCallCount += 1
+        changePasswordReceivedCurrentPassword = currentPassword
+        changePasswordReceivedNewPassword = newPassword
+        if let changePasswordError {
+            throw changePasswordError
+        }
+    }
+
     // MARK: - deleteMemberOAuth
 
     var deleteMemberOAuthError: Error?

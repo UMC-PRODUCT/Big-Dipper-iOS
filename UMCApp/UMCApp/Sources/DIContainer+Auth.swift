@@ -116,5 +116,11 @@ extension DIContainer {
                 repository: self.resolve(AuthRegistrationRepositoryProtocol.self)
             )
         }
+
+        // MARK: - 비밀번호 변경(ChangePassword) 관련 UseCase
+
+        register(ChangePasswordUseCaseProtocol.self) {
+            ChangePasswordUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
+        }
     }
 }
