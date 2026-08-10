@@ -133,6 +133,57 @@ struct ScheduleDetailPermissionTests {
     }
 }
 
+@MainActor
+@Suite("ScheduleDetailViewModel — 시작된 일정 수정 차단과 삭제 진행 표시")
+struct ScheduleDetailEditGuardTests {
+
+    @Test("아직 시작하지 않은 일정은 수정 진입이 열린다")
+    func upcomingScheduleAllowsEdit() async {
+        let viewModel = makeViewModel(permissions: [.edit], startsAtOffset: 3_600)
+        await viewModel.load()
+
+        await viewModel.fetchSchedulePermission()
+
+        #expect(viewModel.isScheduleStarted == false)
+        #expect(viewModel.isEditActionEnabled)
+    }
+
+    @Test("이미 시작된 일정은 수정 권한이 있어도 진입을 막는다")
+    func startedScheduleBlocksEdit() async {
+        let viewModel = makeViewModel(permissions: [.edit], startsAtOffset: -3_600)
+        await viewModel.load()
+
+        await viewModel.fetchSchedulePermission()
+
+        #expect(viewModel.isScheduleStarted)
+        #expect(viewModel.canEditSchedule)
+        #expect(viewModel.isEditActionEnabled == false)
+    }
+
+    @Test("상세를 아직 못 불러왔으면 시작된 일정으로 단정하지 않는다")
+    func unloadedScheduleIsNotStarted() {
+        let viewModel = makeViewModel(permissions: [.edit], startsAtOffset: -3_600)
+
+        #expect(viewModel.isScheduleStarted == false)
+    }
+
+    @Test("삭제하는 동안 진행 중 상태가 노출되고 완료되면 내려간다")
+    func deletionExposesProgressState() async {
+        let probe = DeleteProgressProbe()
+        let viewModel = makeViewModel(permissions: [.delete], deleteProbe: probe)
+        probe.onExecute = { [weak viewModel, weak probe] in
+            probe?.isDeletingObserved = viewModel?.isDeleting ?? false
+        }
+        await viewModel.fetchSchedulePermission()
+
+        await viewModel.deleteSchedule()
+
+        #expect(probe.isDeletingObserved)
+        #expect(viewModel.isDeleting == false)
+        #expect(viewModel.isDeleted)
+    }
+}
+
 // MARK: - Helpers
 
 @MainActor
@@ -141,17 +192,22 @@ private func makeViewModel(
     isAdminMode: Bool = false,
     permissions: Set<AuthorizationPermissionType> = [],
     permissionFails: Bool = false,
-    deleteError: Error? = nil
+    deleteError: Error? = nil,
+    startsAtOffset: TimeInterval = 0,
+    deleteProbe: DeleteProgressProbe? = nil
 ) -> ScheduleDetailViewModel {
     let container = DIContainer()
     container.register(FetchScheduleDetailUseCaseProtocol.self) {
-        StubFetchScheduleDetailUseCase(hasAttendancePolicy: hasAttendancePolicy)
+        StubFetchScheduleDetailUseCase(
+            hasAttendancePolicy: hasAttendancePolicy,
+            startsAtOffset: startsAtOffset
+        )
     }
     container.register(AuthorizationUseCaseProtocol.self) {
         StubAuthorizationUseCase(permissions: permissions, shouldFail: permissionFails)
     }
     container.register(DeleteScheduleUseCaseProtocol.self) {
-        StubDeleteScheduleUseCase(error: deleteError)
+        StubDeleteScheduleUseCase(error: deleteError, probe: deleteProbe)
     }
     container.register(ForceDeleteScheduleUseCaseProtocol.self) {
         StubForceDeleteScheduleUseCase()
@@ -178,9 +234,10 @@ private func makeSession(isAdminMode: Bool) -> UserSessionManager {
 private struct StubFetchScheduleDetailUseCase: FetchScheduleDetailUseCaseProtocol {
 
     let hasAttendancePolicy: Bool
+    let startsAtOffset: TimeInterval
 
     func execute(scheduleId: String) async throws -> ScheduleDetailData {
-        let startsAt = Date.now
+        let startsAt = Date.now.addingTimeInterval(startsAtOffset)
         return ScheduleDetailData(
             scheduleId: scheduleId,
             name: "정기 세미나",
@@ -218,11 +275,23 @@ private struct StubAuthorizationUseCase: AuthorizationUseCaseProtocol {
     }
 }
 
+/// 삭제 UseCase 실행 도중의 `isDeleting` 을 관찰하기 위한 훅.
+///
+/// 삭제는 성공/실패 후 곧바로 플래그를 내리므로, 실행 중 시점을 잡지 않으면 진행 표시를 검증할 수 없다.
+@MainActor
+private final class DeleteProgressProbe {
+    var isDeletingObserved: Bool = false
+    var onExecute: (() -> Void)?
+}
+
 private struct StubDeleteScheduleUseCase: DeleteScheduleUseCaseProtocol {
 
     let error: Error?
+    let probe: DeleteProgressProbe?
 
     func execute(scheduleId: String) async throws {
+        let capturedProbe = probe
+        await MainActor.run { capturedProbe?.onExecute?() }
         if let error { throw error }
     }
 }

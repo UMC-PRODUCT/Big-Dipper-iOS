@@ -292,6 +292,8 @@ public struct LinkTextPresenter: View {
 
 // MARK: - Preview
 // url을 https:// 까지 입력해야 정상작동!
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     NoticeLinkCard(url: "https://www.naver.com")
 }
+#endif

@@ -6,6 +6,7 @@
 //
 
 import CoreDI
+import CoreDomain
 import Foundation
 import HomeDomain
 import SwiftData
@@ -27,6 +28,10 @@ final class ScheduleRegistrationViewModel {
     private let generateScheduleUseCase: GenerateScheduleUseCaseProtocol
     private let updateScheduleUseCase: UpdateScheduleUseCaseProtocol
     private let classifyScheduleUseCase: ClassifyScheduleUseCaseProtocol
+    private let fetchScheduleCapabilitiesUseCase: FetchScheduleCapabilitiesUseCaseProtocol
+
+    /// 현재 로그인한 사용자의 멤버 식별자. 작성자를 참여자에 강제로 포함할 때 쓴다.
+    private let currentMemberId: String?
 
     /// 전역 에러 핸들러. 뷰가 Environment 값을 넘겨준다.
     var errorHandler: ErrorHandler?
@@ -79,6 +84,14 @@ final class ScheduleRegistrationViewModel {
 
     var alertPrompt: AlertPrompt?
 
+    // MARK: - Participant Property
+
+    /// 초대할 참여자 목록. 수정 모드에서는 기존 참여자로 채워진다.
+    private(set) var participants: [ChallengerInfo] = []
+
+    /// 서버가 내려준 일정 생성 권한. `nil` 은 "아직 모름"(미조회 또는 조회 실패)이다.
+    private(set) var capabilities: ScheduleCapabilities?
+
     // MARK: - Attendance Policy Property
 
     var isAttendanceRequired: Bool = false
@@ -118,7 +131,40 @@ final class ScheduleRegistrationViewModel {
     var canSubmit: Bool {
         guard !trimmedTitle.isEmpty, !sanitizedTags.isEmpty else { return false }
         guard attendancePolicyErrorMessage == nil else { return false }
+        guard participantOverflowMessage == nil else { return false }
         return isOnline || hasValidPlace
+    }
+
+    /// 출석 정책 섹션을 노출할지 여부.
+    ///
+    /// 권한을 모르는 동안(미조회·조회 실패)에는 기존처럼 노출한다. 조회 실패로 섹션을 잠그면
+    /// 권한 있는 운영진까지 출석 일정을 못 만들고, 어차피 최종 판정은 서버가 한다.
+    /// 이미 출석 정책이 붙은 일정은 권한과 무관하게 열어 해제 경로를 남긴다.
+    var showsAttendancePolicySection: Bool {
+        guard !isAllDay else { return false }
+        let isPermitted = capabilities?.canCreateAttendanceRequiredSchedule ?? true
+        return isPermitted || initialIsAttendanceRequired
+    }
+
+    /// 초대 가능 인원 상한. 권한을 모르거나 서버가 0 을 주면 상한 없음으로 본다.
+    var maxParticipantCount: Int? {
+        guard let raw = capabilities?.maxParticipantCount,
+              let limit = Int(raw), limit > 0
+        else { return nil }
+        return limit
+    }
+
+    /// 작성자를 포함해 실제로 서버에 나갈 인원 수 (상한 검사·화면 표시 공통 기준).
+    var selectedParticipantCount: Int {
+        submitParticipantMemberIds.count
+    }
+
+    /// 초대 인원이 상한을 넘었을 때의 인라인 안내. `nil` 이면 통과.
+    var participantOverflowMessage: String? {
+        guard let limit = maxParticipantCount, selectedParticipantCount > limit else {
+            return nil
+        }
+        return "최대 \(limit)명까지 초대할 수 있습니다. 현재 \(selectedParticipantCount)명 선택됨."
     }
 
     /// 대면 일정에 필요한 장소 정보(이름 + 실좌표)가 모두 갖춰졌는지.
@@ -184,6 +230,24 @@ final class ScheduleRegistrationViewModel {
         )
     }
 
+    /// 송신용 참여자 식별자 목록 — 작성자 본인을 항상 포함한다.
+    ///
+    /// 작성자가 빠지면 방금 만든 일정에 본인이 참여자로 없어 내 일정 목록에서 사라진다.
+    private var submitParticipantMemberIds: [String] {
+        var memberIds = Set(participants.map(\.memberId).filter { !$0.isEmpty })
+        if let currentMemberId, !currentMemberId.isEmpty {
+            memberIds.insert(currentMemberId)
+        }
+        return memberIds.sorted()
+    }
+
+    /// 수정 모드 PATCH 의 참여자 목록. 변화가 없으면 `nil` 로 필드를 빼 서버 값을 보존한다.
+    private var participantTransitionValue: [String]? {
+        guard let initialEditSnapshot else { return nil }
+        let current = submitParticipantMemberIds
+        return initialEditSnapshot.participantMemberIds == current ? nil : current
+    }
+
     /// 수정 모드 PATCH 의 출석 필수 전환 플래그. 변화가 없으면 `nil` 로 필드를 빼 기존 상태를 둔다.
     private var attendanceRequiredTransitionFlag: Bool? {
         initialIsAttendanceRequired == isAttendanceRequired ? nil : isAttendanceRequired
@@ -197,11 +261,37 @@ final class ScheduleRegistrationViewModel {
 
     // MARK: - Init
 
-    init(container: DIContainer) {
+    /// - Parameters:
+    ///   - container: UseCase 를 resolve 할 DI 컨테이너
+    ///   - currentMemberId: 작성자 강제 포함에 쓰는 멤버 식별자. 기본값은 로그인 세션 값이다.
+    init(container: DIContainer, currentMemberId: String? = AppStorageKey.memberIdString()) {
         generateScheduleUseCase = container.resolve(GenerateScheduleUseCaseProtocol.self)
         updateScheduleUseCase = container.resolve(UpdateScheduleUseCaseProtocol.self)
         classifyScheduleUseCase = container.resolve(ClassifyScheduleUseCaseProtocol.self)
+        fetchScheduleCapabilitiesUseCase = container.resolve(
+            FetchScheduleCapabilitiesUseCaseProtocol.self
+        )
+        self.currentMemberId = currentMemberId
         prefillAttendancePolicyIfNeeded()
+    }
+
+    // MARK: - Capabilities
+
+    /// 서버에서 일정 생성 권한을 받아 온다. 화면 진입 시 한 번 호출한다.
+    ///
+    /// 조회에 실패해도 화면을 막지 않는다. 권한은 "모름"으로 남아 토글 노출·상한 검사가 기존
+    /// 동작을 유지하고, 최종 거부는 서버 응답으로 처리한다.
+    func loadCapabilities() async {
+        guard let loaded = try? await fetchScheduleCapabilitiesUseCase.execute() else { return }
+        capabilities = loaded
+
+        // 권한이 없는데 토글이 켜져 있으면 내린다. 단 진입 시점부터 출석 필수였던 일정은 두는데,
+        // 여기서 내리면 PATCH 가 해제로 나가 서버의 기존 출석 데이터가 지워지기 때문이다.
+        guard !loaded.canCreateAttendanceRequiredSchedule, !initialIsAttendanceRequired else {
+            return
+        }
+        isAttendanceRequired = false
+        validateAttendancePolicy()
     }
 
     // MARK: - Prefill
@@ -225,8 +315,7 @@ final class ScheduleRegistrationViewModel {
         tags = detail.tags.compactMap(Self.scheduleTag(from:))
         isTagManuallyOverridden = !tags.isEmpty
 
-        // ponytail: 참여자 선택은 SelectedChallengerView 가 ActivityPresentation internal 이라
-        // 제외 — 공용 승격 후 결선. 수정 시 participantMemberIds 는 nil 로 보내 서버 값을 보존한다.
+        participants = detail.participants.map(Self.challengerInfo(from:))
 
         if let policy = detail.attendancePolicy {
             isAttendanceRequired = true
@@ -252,6 +341,23 @@ final class ScheduleRegistrationViewModel {
             ?? ScheduleIconCategory.selectableCases.first { $0.korean == normalized }
         guard let matched, !matched.isDeprecated else { return nil }
         return matched
+    }
+
+    /// 일정 상세의 참여자를 참여자 선택 UI 가 쓰는 모델로 옮긴다.
+    ///
+    /// 일정 응답에는 기수·파트가 없다. 두 값은 선택 UI 의 행 식별 키에만 쓰이고 서버로 나가는
+    /// 값(`memberId`)에는 영향이 없어 비운 채로 둔다. 그래서 검색으로 같은 사람을 다시 고르면
+    /// 키가 달라지는데, 중복은 ``updateParticipants(_:)`` 가 `memberId` 기준으로 접는다.
+    private static func challengerInfo(from participant: ScheduleParticipant) -> ChallengerInfo {
+        ChallengerInfo(
+            memberId: participant.memberId,
+            gen: "",
+            name: participant.name,
+            nickname: participant.nickname,
+            schoolName: participant.schoolName,
+            profileImage: participant.profileImageUrl.isEmpty ? nil : participant.profileImageUrl,
+            part: .admin
+        )
     }
 
     // MARK: - Input Function
@@ -288,6 +394,15 @@ final class ScheduleRegistrationViewModel {
 
         tags = sanitized
         isTagManuallyOverridden = !sanitized.isEmpty
+    }
+
+    /// 참여자 선택 결과를 반영한다.
+    ///
+    /// 프리필로 만든 항목은 기수·파트가 비어 있어 검색 결과와 행 식별 키가 다르다. 같은 사람이
+    /// 두 줄로 남지 않도록 `memberId` 기준으로 접는다.
+    func updateParticipants(_ newParticipants: [ChallengerInfo]) {
+        var seenMemberIds: Set<String> = []
+        participants = newParticipants.filter { seenMemberIds.insert($0.memberId).inserted }
     }
 
     /// 장소 선택 결과를 반영한다.
@@ -438,9 +553,7 @@ final class ScheduleRegistrationViewModel {
             startsAt: effectiveStartsAt,
             endsAt: effectiveEndsAt,
             location: submitLocation,
-            // ponytail: 참여자 선택은 SelectedChallengerView 가 ActivityPresentation internal
-            // 이라 제외 — 공용 승격 후 결선.
-            participantMemberIds: [],
+            participantMemberIds: submitParticipantMemberIds,
             tags: sanitizedTags.map(\.rawValue),
             attendancePolicy: submitAttendancePolicy
         )
@@ -484,8 +597,7 @@ final class ScheduleRegistrationViewModel {
             startsAt: effectiveStartsAt,
             endsAt: effectiveEndsAt,
             location: submitLocation,
-            // ponytail: 참여자 선택 UI 를 이식하지 않아 nil(변경 없음)로 서버 값을 보존한다.
-            participantMemberIds: nil,
+            participantMemberIds: participantTransitionValue,
             tags: sanitizedTags.map(\.rawValue),
             attendancePolicy: submitAttendancePolicy,
             isOnline: isOnlineTransitionFlag,
@@ -525,6 +637,7 @@ final class ScheduleRegistrationViewModel {
             endDate: endDate,
             memo: memo,
             tags: sanitizedTags.map(\.rawValue).sorted(),
+            participantMemberIds: submitParticipantMemberIds,
             isAttendanceRequired: isAttendanceRequired,
             checkInStartAt: attendanceCheckInStartAt,
             onTimeEndAt: attendanceOnTimeEndAt,
@@ -545,6 +658,7 @@ final class ScheduleRegistrationViewModel {
         let endDate: Date
         let memo: String
         let tags: [String]
+        let participantMemberIds: [String]
         let isAttendanceRequired: Bool
         let checkInStartAt: Date
         let onTimeEndAt: Date

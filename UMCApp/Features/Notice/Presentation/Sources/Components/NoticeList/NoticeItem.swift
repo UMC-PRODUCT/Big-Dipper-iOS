@@ -163,6 +163,7 @@ private struct BottomSection: View, Equatable {
     }
 }
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     VStack(spacing: 16) {
         NoticeItem(model: NoticeItemModel(
@@ -198,3 +199,4 @@ private struct BottomSection: View, Equatable {
         }
     }
 }
+#endif

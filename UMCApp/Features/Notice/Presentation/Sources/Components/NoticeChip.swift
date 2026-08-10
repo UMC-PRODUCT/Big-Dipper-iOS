@@ -38,6 +38,7 @@ public struct NoticeChip: View {
 }
 
 // MARK: - Preview
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     HStack {
         NoticeChip(noticeType: .core)
@@ -46,3 +47,4 @@ public struct NoticeChip: View {
         NoticeChip(noticeType: .part)
     }
 }
+#endif

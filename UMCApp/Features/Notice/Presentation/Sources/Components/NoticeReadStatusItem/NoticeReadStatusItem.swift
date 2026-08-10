@@ -112,6 +112,7 @@ private struct UserInfoSection: View, Equatable {
     }
 }
 
+#if DEBUG
 #Preview {
     VStack {
         NoticeReadStatusItem(
@@ -139,3 +140,4 @@ private struct UserInfoSection: View, Equatable {
         )
     }
 }
+#endif

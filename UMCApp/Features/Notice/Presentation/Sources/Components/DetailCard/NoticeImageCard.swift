@@ -264,6 +264,7 @@ private extension KFImage {
 }
 
 // MARK: - Preview
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     NoticeImageCard(imageURLs: [
         "https://picsum.photos/200/200",
@@ -281,3 +282,4 @@ private extension KFImage {
         "https://httpbin.org/delay/10"
     ])
 }
+#endif

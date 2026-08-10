@@ -22,8 +22,8 @@ public struct ScheduleCapabilitiesDTO: Codable, Sendable, Equatable {
     /// 출석 정책을 포함한 일정을 만들 수 있는지 여부 (운영진 `true` / 일반 챌린저 `false`)
     public let canCreateAttendanceRequiredSchedule: Bool
 
-    /// 직책별 최대 초대 가능 인원. 식별자가 아닌 수량이므로 `Int` 로 흡수한다.
-    public let maxParticipantCount: Int
+    /// 직책별 최대 초대 가능 인원. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    public let maxParticipantCount: String
 
     private enum CodingKeys: String, CodingKey {
         case canCreateSchedule
@@ -41,9 +41,11 @@ public struct ScheduleCapabilitiesDTO: Codable, Sendable, Equatable {
         canCreateAttendanceRequiredSchedule = try container.decodeBoolFlexibleIfPresent(
             forKey: .canCreateAttendanceRequiredSchedule
         ) ?? false
-        maxParticipantCount = try container.decodeIntFlexibleIfPresent(
+        // 숫자/문자열 어느 쪽으로 와도 같은 값이 되도록 숫자 파싱을 한 번 거친 뒤 문자열로 보존한다.
+        let parsedMaxParticipantCount = try container.decodeIntFlexibleIfPresent(
             forKey: .maxParticipantCount
-        ) ?? 0
+        )
+        maxParticipantCount = parsedMaxParticipantCount.map { String($0) } ?? "0"
     }
 
     // MARK: - Function

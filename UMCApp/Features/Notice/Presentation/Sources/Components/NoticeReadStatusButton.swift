@@ -124,6 +124,7 @@ public struct NoticeReadStatusButton: View {
 
 
 // MARK: - Preview
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     VStack(spacing: 20) {
         NoticeReadStatusButton(confirmedCount: 1100, totalCount: 1250) {
@@ -148,3 +149,4 @@ public struct NoticeReadStatusButton: View {
     }
     .padding()
 }
+#endif

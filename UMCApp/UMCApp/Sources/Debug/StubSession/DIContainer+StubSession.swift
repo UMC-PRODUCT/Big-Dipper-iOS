@@ -35,6 +35,9 @@ extension DIContainer {
         register(ScheduleRepositoryProtocol.self) {
             StubScheduleRepository()
         }
+        register(ScheduleCapabilitiesRepositoryProtocol.self) {
+            StubScheduleCapabilitiesRepository()
+        }
         register(NoticeRepositoryProtocol.self) {
             StubNoticeRepository()
         }

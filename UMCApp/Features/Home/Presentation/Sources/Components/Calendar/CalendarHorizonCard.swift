@@ -100,6 +100,7 @@ struct CalendarHorizonCard: View, Equatable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     @Previewable @State var selectedDate: Date = .now
     @Previewable @State var month: Date = .now
@@ -110,3 +111,4 @@ struct CalendarHorizonCard: View, Equatable {
         scheduledDates: [.now, .now.addingTimeInterval(60 * 60 * 24 * 3)]
     )
 }
+#endif

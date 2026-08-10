@@ -10,7 +10,10 @@ import HomeDomain
 import SwiftUI
 
 /// 홈 화면 시즌 카드 — 소속 기수 목록 또는 누적 활동일을 표시한다.
-struct SeasonCard: View {
+///
+/// 홈 스크롤/상태 갱신마다 재평가되지만 표시 값은 프로필 재조회 때만 바뀌므로,
+/// `Equatable`로 불필요한 body 재계산을 걸러낸다 (호출부에서 `.equatable()` 적용).
+struct SeasonCard: View, Equatable {
 
     // MARK: - Property
 
@@ -88,6 +91,7 @@ struct SeasonCard: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     HStack(spacing: DefaultSpacing.spacing12) {
         SeasonCard(seasonType: .gens(["11", "12"]))
@@ -95,3 +99,4 @@ struct SeasonCard: View {
     }
     .padding()
 }
+#endif

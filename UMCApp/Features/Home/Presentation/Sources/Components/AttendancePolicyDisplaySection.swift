@@ -173,6 +173,7 @@ struct AttendancePolicyDisplaySection: View, Equatable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview {
     let now = Date()
     ScrollView {
@@ -186,3 +187,4 @@ struct AttendancePolicyDisplaySection: View, Equatable {
         .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
     }
 }
+#endif

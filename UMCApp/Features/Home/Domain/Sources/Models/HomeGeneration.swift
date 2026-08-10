@@ -17,8 +17,9 @@ public struct HomeGeneration: Identifiable, Equatable, Sendable {
 
     public let gisuId: String
     public let gen: String
-    public let penaltyPoint: Int
-    public let rewardPoint: Int
+    /// ``PointLog/point`` 합계이므로 소수 배점을 잃지 않도록 `Double`로 유지한다.
+    public let penaltyPoint: Double
+    public let rewardPoint: Double
     public let pointLogs: [PointLog]
 
     // MARK: - Init
@@ -26,8 +27,8 @@ public struct HomeGeneration: Identifiable, Equatable, Sendable {
     public init(
         gisuId: String,
         gen: String,
-        penaltyPoint: Int,
-        rewardPoint: Int,
+        penaltyPoint: Double,
+        rewardPoint: Double,
         pointLogs: [PointLog]
     ) {
         self.gisuId = gisuId

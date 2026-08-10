@@ -165,6 +165,7 @@ struct StudyGroupMemberChip: View, Equatable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("StudyGroupMemberChip") {
     HStack(spacing: DefaultSpacing.spacing8) {
         StudyGroupMemberChip(
@@ -192,3 +193,4 @@ struct StudyGroupMemberChip: View, Equatable {
     }
     .padding()
 }
+#endif

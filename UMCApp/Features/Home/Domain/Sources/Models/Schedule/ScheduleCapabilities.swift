@@ -21,15 +21,15 @@ public struct ScheduleCapabilities: Equatable, Sendable {
     /// 출석 정책을 포함한 일정을 만들 수 있는지 여부 (운영진 `true` / 일반 챌린저 `false`)
     public let canCreateAttendanceRequiredSchedule: Bool
 
-    /// 직책별 최대 초대 가능 인원
-    public let maxParticipantCount: Int
+    /// 직책별 최대 초대 가능 인원. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    public let maxParticipantCount: String
 
     // MARK: - Init
 
     public init(
         canCreateSchedule: Bool,
         canCreateAttendanceRequiredSchedule: Bool,
-        maxParticipantCount: Int
+        maxParticipantCount: String
     ) {
         self.canCreateSchedule = canCreateSchedule
         self.canCreateAttendanceRequiredSchedule = canCreateAttendanceRequiredSchedule

@@ -95,6 +95,7 @@ struct LinkAttachmentCard: View, Equatable {
 }
 
 // MARK: - Preview
+#if DEBUG
 #Preview {
     @Previewable @State var noticeLinkItems: [NoticeLinkItem] = []
     
@@ -111,3 +112,4 @@ struct LinkAttachmentCard: View, Equatable {
     }
     .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
 }
+#endif

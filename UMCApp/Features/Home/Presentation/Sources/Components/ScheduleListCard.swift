@@ -77,6 +77,7 @@ struct ScheduleListCard: View, Equatable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     VStack {
         ScheduleListCard(
@@ -106,3 +107,4 @@ struct ScheduleListCard: View, Equatable {
     }
     .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
 }
+#endif

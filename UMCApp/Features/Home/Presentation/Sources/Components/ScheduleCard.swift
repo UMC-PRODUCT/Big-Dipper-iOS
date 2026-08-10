@@ -82,6 +82,7 @@ struct ScheduleCard: View, Equatable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     ScheduleCard(
         selectedDate: .constant(.now),
@@ -90,3 +91,4 @@ struct ScheduleCard: View, Equatable {
     )
     .padding()
 }
+#endif

@@ -35,6 +35,8 @@ struct HomeView: View {
     @State private var viewModel: HomeViewModel
     @State private var selectedDate: Date = .now
     @State private var currentMonth: Date = .now
+    @State private var isRetryingProfile = false
+    @State private var isRetryingRecentNotice = false
     private let onNoticeSelected: (NoticeDetail) -> Void
     private let onScheduleSelected: (String) -> Void
     private let onAlarmHistoryTapped: () -> Void
@@ -44,9 +46,7 @@ struct HomeView: View {
     // MARK: - Constants
 
     fileprivate enum Constants {
-        static let seasonPlaceholderHeight: CGFloat = 120
-        static let penaltyPlaceholderHeight: CGFloat = 240
-        static let recentNoticePlaceholderHeight: CGFloat = 280
+        static let schedulePlaceholderHeight: CGFloat = 120
     }
 
     // MARK: - Init
@@ -128,7 +128,7 @@ struct HomeView: View {
     private var seasonSection: some View {
         switch viewModel.seasonState {
         case .idle, .loading:
-            loadingPlaceholder(height: Constants.seasonPlaceholderHeight)
+            LoadingView(.home(.seasonLoading))
         case .loaded(let seasonTypes):
             seasonLoaded(seasonTypes)
         case .failed:
@@ -136,8 +136,8 @@ struct HomeView: View {
                 title: "홈 정보를 불러오지 못했어요",
                 systemImage: "exclamationmark.triangle",
                 description: "네트워크 상태를 확인한 뒤 다시 시도해주세요.",
-                isRetrying: false,
-                retryAction: { await viewModel.fetchProfile() }
+                isRetrying: isRetryingProfile,
+                retryAction: { await retryProfile() }
             )
         }
     }
@@ -146,6 +146,7 @@ struct HomeView: View {
         HStack(spacing: DefaultSpacing.spacing12) {
             ForEach(Array(seasonTypes.enumerated()), id: \.offset) { _, seasonType in
                 SeasonCard(seasonType: seasonType)
+                    .equatable()
             }
             Spacer(minLength: 0)
         }
@@ -158,7 +159,7 @@ struct HomeView: View {
     private var generationSection: some View {
         switch viewModel.generationState {
         case .idle, .loading:
-            loadingPlaceholder(height: Constants.penaltyPlaceholderHeight)
+            LoadingView(.home(.penaltyLoading))
         case .loaded(let generations):
             generationLoaded(generations)
         case .failed:
@@ -202,16 +203,29 @@ struct HomeView: View {
 
     // MARK: - Recent Notice Section
 
-    /// 최근 공지 섹션. 프로필 조회에 종속되므로 실패 안내는 `seasonSection`이 대표한다.
-    @ViewBuilder
+    /// 최근 공지 섹션.
+    ///
+    /// 헤더는 상태와 무관하게 항상 보여준다 — 실패 시 섹션이 통째로 사라지면 사용자는
+    /// 공지가 없는 것인지 못 불러온 것인지 구분할 수 없다.
     private var recentNoticeSection: some View {
-        switch viewModel.recentNoticeState {
-        case .idle, .loading:
-            loadingPlaceholder(height: Constants.recentNoticePlaceholderHeight)
-        case .loaded(let notices):
-            recentNoticeLoaded(notices)
-        case .failed:
-            EmptyView()
+        VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
+            Text("최근 공지")
+                .appFont(.title3, weight: .semibold, color: .grey900)
+
+            switch viewModel.recentNoticeState {
+            case .idle, .loading:
+                LoadingView(.home(.recentNoticeLoading))
+            case .loaded(let notices):
+                recentNoticeLoaded(notices)
+            case .failed:
+                RetryContentUnavailableView(
+                    title: "최근 공지를 불러오지 못했어요",
+                    systemImage: "exclamationmark.triangle",
+                    description: "네트워크 상태를 확인한 뒤 다시 시도해주세요.",
+                    isRetrying: isRetryingRecentNotice,
+                    retryAction: { await retryRecentNotices() }
+                )
+            }
         }
     }
 
@@ -228,6 +242,9 @@ struct HomeView: View {
                 .regular,
                 in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true)
             )
+        } else if !viewModel.areCategoriesReady(for: schedules) {
+            // 분류 전에는 전부 기본 아이콘으로 그려졌다가 뒤늦게 바뀌므로, 보이는 일정만 게이트한다.
+            loadingPlaceholder(height: Constants.schedulePlaceholderHeight)
         } else {
             ForEach(schedules) { schedule in
                 Button {
@@ -246,30 +263,25 @@ struct HomeView: View {
 
     @ViewBuilder
     private func recentNoticeLoaded(_ notices: [NoticeItemModel]) -> some View {
-        VStack(alignment: .leading, spacing: DefaultSpacing.spacing12) {
-            Text("최근 공지")
-                .appFont(.title3, weight: .semibold, color: .grey900)
-
-            if notices.isEmpty {
-                ContentUnavailableView(
-                    "최근 공지가 없습니다.",
-                    systemImage: "bell.slash",
-                    description: Text("아직 등록된 공지사항이 없습니다.")
-                )
-                .glassEffect(
-                    .regular,
-                    in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true)
-                )
-            } else {
-                VStack(spacing: DefaultSpacing.spacing12) {
-                    ForEach(notices) { notice in
-                        Button {
-                            onNoticeSelected(notice.toNoticeDetail())
-                        } label: {
-                            RecentNoticeCard(notice: notice)
-                        }
-                        .buttonStyle(.plain)
+        if notices.isEmpty {
+            ContentUnavailableView(
+                "최근 공지가 없습니다.",
+                systemImage: "bell.slash",
+                description: Text("아직 등록된 공지사항이 없습니다.")
+            )
+            .glassEffect(
+                .regular,
+                in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true)
+            )
+        } else {
+            VStack(spacing: DefaultSpacing.spacing12) {
+                ForEach(notices) { notice in
+                    Button {
+                        onNoticeSelected(notice.toNoticeDetail())
+                    } label: {
+                        RecentNoticeCard(notice: notice)
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -295,6 +307,20 @@ struct HomeView: View {
             year: calendar.component(.year, from: month),
             month: calendar.component(.month, from: month)
         )
+    }
+
+    private func retryProfile() async {
+        guard !isRetryingProfile else { return }
+        isRetryingProfile = true
+        defer { isRetryingProfile = false }
+        await viewModel.fetchProfile()
+    }
+
+    private func retryRecentNotices() async {
+        guard !isRetryingRecentNotice else { return }
+        isRetryingRecentNotice = true
+        defer { isRetryingRecentNotice = false }
+        await viewModel.retryRecentNotices()
     }
 
     /// 마지막 요청 이후 4주가 지났으면 앱스토어 리뷰를 요청한다.
@@ -409,6 +435,24 @@ private struct PreviewClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol {
     }
 }
 
+/// 네트워크 없이 정본 프로필을 제공하는 프리뷰 전용 UseCase (절대규칙 #5)
+private struct PreviewFetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol {
+    func execute() async throws -> Profile {
+        Profile(
+            memberId: "1",
+            name: "김유엠",
+            nickname: "umc",
+            generations: ["11", "12"],
+            latestGisuId: "10"
+        )
+    }
+}
+
+/// 실제 `UserDefaults`를 건드리지 않기 위한 프리뷰 전용 no-op 동기화 UseCase (절대규칙 #5)
+private struct PreviewSyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol {
+    func execute(profile: Profile) {}
+}
+
 /// SwiftData 저장소 없이 화면을 그리기 위한 프리뷰 전용 기수 매핑 저장소 (절대규칙 #5)
 private struct PreviewChallengerGenRepository: ChallengerGenRepositoryProtocol {
     func replaceMappings(_ pairs: [(gen: String, gisuId: String)]) throws {}
@@ -423,6 +467,12 @@ private struct PreviewChallengerGenRepository: ChallengerGenRepositoryProtocol {
     container.register(FetchSchedulesUseCaseProtocol.self) { PreviewFetchSchedulesUseCase() }
     container.register(ClassifyScheduleUseCaseProtocol.self) { PreviewClassifyScheduleUseCase() }
     container.register(ChallengerGenRepositoryProtocol.self) { PreviewChallengerGenRepository() }
+    container.register(FetchMemberProfileUseCaseProtocol.self) {
+        PreviewFetchMemberProfileUseCase()
+    }
+    container.register(SyncProfileStorageUseCaseProtocol.self) {
+        PreviewSyncProfileStorageUseCase()
+    }
     return NavigationStack {
         HomeView(container: container)
     }

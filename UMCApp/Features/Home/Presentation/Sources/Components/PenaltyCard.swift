@@ -1,7 +1,13 @@
 import Charts
 import CoreDesignSystem
+import Foundation
 import HomeDomain
 import SwiftUI
+
+/// 상벌점 표시 문자열. 정수 배점은 `2`, 소수 배점은 `0.5`로 표시한다.
+private func pointText(_ value: Double) -> String {
+    value.formatted(.number.precision(.fractionLength(0...1)))
+}
 
 /// 홈 화면 상벌점 카드
 ///
@@ -22,8 +28,8 @@ struct PenaltyCard: View, Equatable {
     @State private var isHorizontalDrag: Bool?
     /// 팝오버 필터 (nil이면 닫힘)
     @State private var popoverFilter: PointLogFilter?
-    /// chartAngleSelection 선택 값
-    @State private var selectedChartAngle: Int?
+    /// chartAngleSelection 선택 값 (각도 스케일이 `Double`이라 바인딩 타입도 맞춘다)
+    @State private var selectedChartAngle: Double?
 
     fileprivate enum PointLogFilter {
         case reward
@@ -136,7 +142,7 @@ struct PenaltyCard: View, Equatable {
 
                     if !hasData {
                         SectorMark(
-                            angle: .value("없음", 1),
+                            angle: .value("없음", 1.0),
                             innerRadius: .ratio(Constants.innerRadius)
                         )
                         .foregroundStyle(Color.grey200)
@@ -151,7 +157,7 @@ struct PenaltyCard: View, Equatable {
                 }
 
                 VStack(spacing: 2) {
-                    Text("\(generation.rewardPoint + generation.penaltyPoint)")
+                    Text(pointText(generation.rewardPoint + generation.penaltyPoint))
                         .appFont(.title2, weight: .semibold, color: .grey900)
                     Text("총점")
                         .appFont(.caption2, color: .grey500)
@@ -182,7 +188,7 @@ struct PenaltyCard: View, Equatable {
     }
 
     /// 범례 라벨
-    private func legendLabel(color: Color, label: String, value: Int) -> some View {
+    private func legendLabel(color: Color, label: String, value: Double) -> some View {
         HStack(spacing: DefaultSpacing.spacing8) {
             Circle()
                 .fill(color)
@@ -190,7 +196,7 @@ struct PenaltyCard: View, Equatable {
             Text(label)
                 .appFont(.subheadline, color: .grey600)
             Spacer()
-            Text("\(value)")
+            Text(pointText(value))
                 .appFont(.callout, weight: .semibold, color: .grey900)
         }
     }
@@ -280,7 +286,7 @@ fileprivate struct PointLogPopover: View {
 
                     Spacer()
 
-                    Text(log.isReward ? "+\(abs(log.point))" : "-\(abs(log.point))")
+                    Text((log.isReward ? "+" : "-") + pointText(abs(log.point)))
                         .appFont(.subheadline, color: log.isReward ? .indigo500 : .indigo300)
 
                     Text(log.date)
@@ -347,6 +353,7 @@ fileprivate struct GenTabBar: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     PenaltyCard(generations: [
         HomeGeneration(
@@ -379,3 +386,4 @@ fileprivate struct GenTabBar: View {
     ])
     .padding()
 }
+#endif

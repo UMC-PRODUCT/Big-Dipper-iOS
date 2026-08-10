@@ -98,7 +98,9 @@ public struct ArticleTextField: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview {
     @Previewable @State var text = ""
     ArticleTextField(placeholder: .title, text: $text)
 }
+#endif

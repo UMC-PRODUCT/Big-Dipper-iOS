@@ -53,6 +53,7 @@ public struct CardIconImage: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     HStack {
         CardIconImage(image: "calendar.badge", color: .indigo500, isLoading: .constant(false))
@@ -60,3 +61,4 @@ public struct CardIconImage: View {
     }
     .padding()
 }
+#endif

@@ -88,6 +88,7 @@ struct DatePill: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     HStack(spacing: DefaultSpacing.spacing12) {
         DatePill(date: .now, isSelected: true, hasSchedule: true, isToday: true) {}
@@ -96,3 +97,4 @@ struct DatePill: View {
     }
     .padding()
 }
+#endif

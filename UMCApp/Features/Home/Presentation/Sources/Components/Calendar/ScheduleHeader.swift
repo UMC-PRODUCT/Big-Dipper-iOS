@@ -154,6 +154,7 @@ fileprivate struct DateSheetPicker: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview(traits: .sizeThatFitsLayout) {
     @Previewable @State var month: Date = .now
     @Previewable @State var selectedDate: Date = .now
@@ -162,3 +163,4 @@ fileprivate struct DateSheetPicker: View {
     ScheduleHeader(month: $month, selectedDate: $selectedDate, scheduleMode: $scheduleMode)
         .padding()
 }
+#endif

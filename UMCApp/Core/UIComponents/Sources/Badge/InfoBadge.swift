@@ -84,6 +84,7 @@ public struct InfoBadge: View, Equatable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview {
     HStack(spacing: DefaultSpacing.spacing8) {
         InfoBadge("중앙대")
@@ -93,3 +94,4 @@ public struct InfoBadge: View, Equatable {
     }
     .padding()
 }
+#endif

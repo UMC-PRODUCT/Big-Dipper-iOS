@@ -524,6 +524,7 @@ public struct VoteResultRow: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("투표 가능 - 단일선택/익명", traits: .sizeThatFitsLayout) {
     NoticeVoteCard(
         vote: NoticeVote(
@@ -648,3 +649,4 @@ public struct VoteResultRow: View {
     )
     .padding()
 }
+#endif

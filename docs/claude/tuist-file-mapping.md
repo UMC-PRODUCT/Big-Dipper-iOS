@@ -400,16 +400,16 @@
 
 | 레거시 파일 | → Tuist 목적지 |
 |---|---|
-| `Data/DTO/AttendanceDetailQuery.swift` | HomeData |
-| `Data/DTO/AttendanceListQuery.swift` | HomeData |
-| `Data/DTO/ChallengerMemeberDTO.swift` | HomeData |
-| `Data/DTO/ChallengerSearchDTO.swift` | HomeData |
+| `Data/DTO/AttendanceDetailQuery.swift` | ActivityData (출석 도메인 소유 — `Data/Sources/DTOs/`) |
+| `Data/DTO/AttendanceListQuery.swift` | ActivityData (출석 도메인 소유 — `Data/Sources/DTOs/`) |
+| `Data/DTO/ChallengerMemeberDTO.swift` | ActivityData (`ChallengerProfileDTO`로 개명 — 포인트 히스토리 필드만 부분 디코딩) |
+| `Data/DTO/ChallengerSearchDTO.swift` | ActivityData (`ChallengerSearchQuery`/`ChallengerSearchCursorDTO`로 분리) |
 | `Data/DTO/GenerateScheduleRequetDTO.swift` | HomeData |
 | `Data/DTO/GisuDetailDTO.swift` | HomeData |
 | `Data/DTO/HomeScheduleDTO.swift` | HomeData |
 | `Data/DTO/MyProfileDTO.swift` | CoreNetwork (Member — MemberProfileResponseDTO로 통합, #961) |
 | `Data/DTO/MySchedulesQuery.swift` | HomeData |
-| `Data/DTO/NoticeListDTO.swift` | HomeData |
+| `Data/DTO/NoticeListDTO.swift` | NoticeData (`NoticeListQuery`로 개명 — 홈 최근 공지도 공지 모듈 쿼리를 재사용) |
 | `Data/DTO/RegisterFCMTokenRequestDTO.swift` | HomeData |
 | `Data/DTO/ScheduleCapabilitiesDTO.swift` | HomeData |
 | `Data/DTO/ScheduleDetailDTO.swift` | HomeData |
@@ -419,12 +419,12 @@
 | `Data/DTO/V2LocationDTO.swift` | HomeData |
 | `Data/GenerationMappingRecord.swift` | HomeData |
 | `Data/Repository/ChallengerGenRepository.swift` | HomeData |
-| `Data/Repository/ChallengerSearchRepository.swift` | HomeData |
+| `Data/Repository/ChallengerSearchRepository.swift` | ActivityData (`MemberRepository`로 통합) |
 | `Data/Repository/HomeRepository.swift` | HomeData |
 | `Data/Repository/MockHomeRepository.swift` | HomeData |
 | `Data/Repository/ScheduleCapabilitiesRepository.swift` | HomeData |
 | `Data/Repository/ScheduleRepository.swift` | HomeData |
-| `Data/Router/ChallengerSearchRouter.swift` | HomeData |
+| `Data/Router/ChallengerSearchRouter.swift` | ActivityData (`StudyRouter`의 챌린저 검색 케이스로 통합) |
 | `Data/Router/HomeRouter.swift` | HomeData |
 | `Data/Router/ScheduleV2Router.swift` | HomeData |
 | `Domain/Impl/Notice/NoticeClassifierRepositoryImpl.swift` | HomeDomain |
@@ -432,7 +432,7 @@
 | `Domain/Impl/Schedule/ScheduleClassifierRepositoryImpl.swift` | HomeDomain |
 | `Domain/Impl/Schedule/ScheduleClassifierUseCaseImpl.swift` | HomeDomain |
 | `Domain/Interface/ChallengerGenRepositoryProtocol.swift` | CoreDomain (Member — 생산자 Home/소비자 Notice 공용, #1083) |
-| `Domain/Interface/ChallengerSearchRepositoryProtocol.swift` | HomeDomain |
+| `Domain/Interface/ChallengerSearchRepositoryProtocol.swift` | ActivityDomain (`MemberRepositoryProtocol`로 통합) |
 | `Domain/Interface/HomeRepositoryProtocol.swift` | HomeDomain |
 | `Domain/Interface/Notice/NoticeClassifierRepository.swift` | HomeDomain |
 | `Domain/Interface/Notice/NoticeClassifierUseCase.swift` | HomeDomain |
@@ -440,21 +440,21 @@
 | `Domain/Interface/Schedule/ScheduleClassifierUseCase.swift` | HomeDomain |
 | `Domain/Interface/ScheduleCapabilitiesRepositoryProtocol.swift` | HomeDomain |
 | `Domain/Interface/ScheduleRepositoryProtocol.swift` | HomeDomain |
-| `Domain/Models/Home/ChallengerRole.swift` | HomeDomain |
-| `Domain/Models/Home/GenerationData.swift` | HomeDomain |
-| `Domain/Models/Home/RecentNoticeData.swift` | HomeDomain |
+| `Domain/Models/Home/ChallengerRole.swift` | **superseded → CoreDomain `ProfileRole`** — 한 파일에 3개 타입이 들어 있어 목적지가 갈린다. `ChallengerRole`은 CoreDomain `ProfileRole`로 대체, `GenerationOrganizationContext`는 NoticeDomain 으로, `HomeProfileResult` 만 HomeDomain 으로 이식됨 |
+| `Domain/Models/Home/GenerationData.swift` | HomeDomain (`HomeGeneration`으로 개명 — `UMCFoundation.Generation`과 이름 충돌 회피) |
+| `Domain/Models/Home/RecentNoticeData.swift` | **superseded → `NoticeDomain.NoticeItemModel`** — 홈 최근 공지도 공지 정본 모델을 그대로 사용한다. 홈 전용 사본을 두지 말 것 |
 | `Domain/Models/Home/ScheduleData.swift` | HomeDomain |
 | `Domain/Models/Home/ScheduleDetailData.swift` | HomeDomain |
 | `Domain/Models/NoticeHistory/NoticeHistoryData.swift` | HomeDomain |
 | `Domain/Models/Schedule/AttendancePolicy.swift` | HomeDomain |
-| `Domain/Models/Schedule/AttendancePolicyError.swift` | HomeDomain |
+| `Domain/Models/Schedule/AttendancePolicyError.swift` | ActivityDomain (`Models/Attendance/`) |
 | `Domain/Models/Schedule/ScheduleCapabilities.swift` | HomeDomain |
 | `Domain/Models/Schedule/ScheduleLocation.swift` | HomeDomain |
 | `Domain/Models/Schedule/ScheduleParticipant.swift` | HomeDomain |
 | `Domain/Models/ScheduleGeneration/CSVImportResult.swift` | HomeDomain |
 | `Domain/Models/ScheduleGeneration/PlaceSearchResult.swift` | HomeDomain |
 | `Domain/Models/ScheduleGeneration/RecentPlace.swift` | HomeDomain |
-| `Domain/Models/ScheduleGeneration/ScheduleRegistrationData.swift` | HomeDomain |
+| `Domain/Models/ScheduleGeneration/ScheduleRegistrationData.swift` | HomeDomain (`ScheduleCreationRequest`로 개명 — 장소·출석 정책은 조회 모델 재사용) |
 | `Domain/UseCases/DeleteScheduleUseCaseProtocol.swift` | HomeDomain |
 | `Domain/UseCases/FetchMyProfileUseCaseProtocol.swift` | HomeDomain (FetchHomeProfileUseCaseProtocol로 개명, CoreDomain 프로필 파이프라인 합성 — #961) |
 | `Domain/UseCases/FetchRecentNoticesUseCaseProtocol.swift` | HomeDomain |
@@ -472,12 +472,12 @@
 | `Domain/UseCases/Implementations/ForceDeleteScheduleUseCase.swift` | HomeDomain |
 | `Domain/UseCases/Implementations/GenerateScheduleUseCase.swift` | HomeDomain |
 | `Domain/UseCases/Implementations/RegisterFCMTokenUseCase.swift` | HomeDomain |
-| `Domain/UseCases/Implementations/SearchChallengersUseCase.swift` | HomeDomain |
+| `Domain/UseCases/Implementations/SearchChallengersUseCase.swift` | ActivityDomain |
 | `Domain/UseCases/Implementations/UpdateScheduleUseCase.swift` | HomeDomain |
 | `Domain/UseCases/RegisterFCMTokenUseCaseProtocol.swift` | HomeDomain |
-| `Domain/UseCases/SearchChallengersUseCaseProtocol.swift` | HomeDomain |
+| `Domain/UseCases/SearchChallengersUseCaseProtocol.swift` | ActivityDomain |
 | `Domain/UseCases/UpdateScheduleUseCaseProtocol.swift` | HomeDomain |
-| `Presentation/Components/Card/ChallengerSearchCard.swift` | HomePresentation |
+| `Presentation/Components/Card/ChallengerSearchCard.swift` | ActivityPresentation (`Components/Challenger/`) |
 | `Presentation/Components/Card/NoticeAlarmCard.swift` | HomePresentation |
 | `Presentation/Components/Card/PenaltyCard.swift` | HomePresentation |
 | `Presentation/Components/Card/RecentNoticeCard.swift` | HomePresentation |
@@ -485,40 +485,40 @@
 | `Presentation/Components/Card/ScheduleListCard.swift` | HomePresentation |
 | `Presentation/Components/Card/SeasonCard.swift` | HomePresentation |
 | `Presentation/Components/Map/SelectedPlaceAnnotation.swift` | HomePresentation |
-| `Presentation/Components/Row/DatePickerRow.swift` | HomePresentation |
-| `Presentation/Components/Row/DateTimeRow.swift` | HomePresentation |
-| `Presentation/Components/Row/TimePickerRow.swift` | HomePresentation |
+| `Presentation/Components/Row/DatePickerRow.swift` | CoreUIComponents (`Sources/Schedule/`) |
+| `Presentation/Components/Row/DateTimeRow.swift` | CoreUIComponents (`Sources/Schedule/`) |
+| `Presentation/Components/Row/TimePickerRow.swift` | CoreUIComponents (`Sources/Schedule/`) |
 | `Presentation/Components/Schedule/AttendancePolicyDisplaySection.swift` | HomePresentation |
-| `Presentation/Components/Schedule/AttendancePolicyTimeSection.swift` | HomePresentation |
+| `Presentation/Components/Schedule/AttendancePolicyTimeSection.swift` | CoreUIComponents (`Sources/Schedule/`) |
 | `Presentation/Components/Schedule/Calendar/CalendarGridCard.swift` | HomePresentation |
 | `Presentation/Components/Schedule/Calendar/CalendarHorizonCard.swift` | HomePresentation |
 | `Presentation/Components/Schedule/Calendar/DateCell.swift` | HomePresentation |
 | `Presentation/Components/Schedule/Calendar/DatePill.swift` | HomePresentation |
 | `Presentation/Components/Schedule/Calendar/ScheduleHeader.swift` | HomePresentation |
-| `Presentation/Components/Schedule/InPersonToggle.swift` | HomePresentation |
-| `Presentation/Enum/NoticeAlarmType.swift` | HomePresentation |
+| `Presentation/Components/Schedule/InPersonToggle.swift` | CoreUIComponents (`Sources/Schedule/`) |
+| `Presentation/Enum/NoticeAlarmType.swift` | HomeDomain (`Models/NoticeHistory/NoticeAlarmType.swift` — Presentation 아님) |
 | `Presentation/Enum/PenalyInfoType.swift` | HomePresentation |
-| `Presentation/Enum/RecentCategory.swift` | HomePresentation |
-| `Presentation/Enum/ScheduleCategory.swift` | HomePresentation |
-| `Presentation/Enum/ScheduleGenerationType.swift` | HomePresentation |
+| `Presentation/Enum/RecentCategory.swift` | **superseded → `NoticeDomain.NoticeCategory`** — 레거시 소비자는 함께 대체된 `NoticeListDTO`·`RecentNoticeData` 뿐 |
+| `Presentation/Enum/ScheduleCategory.swift` | **이식 제외(dead)** — 레거시 참조 0건(`HomeView`의 `isScheduleCategoryLoading` 은 이름만 겹치는 별개 상태) |
+| `Presentation/Enum/ScheduleGenerationType.swift` | **superseded → 각 View 의 `fileprivate enum Constants` + `PlaceSelectView(placeholder:)`** — 폼 placeholder 를 열거형 한 곳에 모으는 설계를 버렸다. 레거시 소비자(`ScheduleRegistrationView`·`PlaceSelectView`)는 UMCApp 에서 각자 상수를 갖는다 |
 | `Presentation/Enum/ScheduleMode.swift` | HomePresentation |
-| `Presentation/Enum/SeasonType.swift` | HomePresentation |
-| `Presentation/Provider/HomeUseCaseProvider.swift` | HomePresentation |
+| `Presentation/Enum/SeasonType.swift` | HomeDomain (`Models/SeasonType.swift` — Presentation 아님) |
+| `Presentation/Provider/HomeUseCaseProvider.swift` | **superseded → `UMCApp/Sources/DIContainer+Home.swift`** — 레거시 유일 소비자는 `Core/DIContainer/DIContainer.swift`. UseCase 조립은 앱 타깃 DIContainer 확장이 담당 |
 | `Presentation/ViewModels/HomeViewModel.swift` | HomePresentation |
 | `Presentation/ViewModels/InlineMapPickerState.swift` | HomePresentation |
 | `Presentation/ViewModels/ScheduleDetailViewModel.swift` | HomePresentation |
 | `Presentation/ViewModels/ScheduleDraft.swift` | HomePresentation |
 | `Presentation/ViewModels/ScheduleRegistrationViewModel+AI.swift` | HomePresentation |
 | `Presentation/ViewModels/ScheduleRegistrationViewModel.swift` | HomePresentation |
-| `Presentation/ViewModels/SearchChallengerViewModel.swift` | HomePresentation |
+| `Presentation/ViewModels/SearchChallengerViewModel.swift` | ActivityPresentation |
 | `Presentation/ViewModels/SearchPlaceViewModel.swift` | HomePresentation |
 | `Presentation/Views/HomeView.swift` | HomePresentation |
 | `Presentation/Views/NoticeAlarmView.swift` | HomePresentation |
-| `Presentation/Views/Registration/Challenger/ChallengerFormView.swift` | HomePresentation |
-| `Presentation/Views/Registration/Challenger/SearchChallengerView.swift` | HomePresentation |
-| `Presentation/Views/Registration/Challenger/SelectedChallengerView.swift` | HomePresentation |
+| `Presentation/Views/Registration/Challenger/ChallengerFormView.swift` | ActivityPresentation (`Components/Challenger/`) |
+| `Presentation/Views/Registration/Challenger/SearchChallengerView.swift` | ActivityPresentation (`Components/Challenger/`) |
+| `Presentation/Views/Registration/Challenger/SelectedChallengerView.swift` | ActivityPresentation (`Components/Challenger/`) |
 | `Presentation/Views/Registration/InlineMapPlacePicker.swift` | HomePresentation |
-| `Presentation/Views/Registration/ScheduleDetailView.swift` | HomePresentation |
+| `Presentation/Views/Registration/ScheduleDetailView.swift` | HomePresentation (`Views/ScheduleDetailView.swift` — Registration 하위 아님) |
 | `Presentation/Views/Registration/ScheduleRegistrationView.swift` | HomePresentation |
 | `Presentation/Views/Registration/SearchPlaceResultRow.swift` | HomePresentation |
 | `Presentation/Views/Registration/SearchPlaceView.swift` | HomePresentation |
