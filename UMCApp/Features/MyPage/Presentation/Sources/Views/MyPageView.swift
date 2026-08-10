@@ -83,6 +83,8 @@ struct MyPageView: View {
                 onLogout: { endSession("logout", perform: viewModel.logout) },
                 onDeleteAccount: { endSession("deleteAccount", perform: viewModel.deleteAccount) }
             )
+
+            UMCChannelSection()
         }
         .navigation(naviTitle: NavigationTitle.MyPage.root, displayMode: .inline)
         .umcDefaultBackground()

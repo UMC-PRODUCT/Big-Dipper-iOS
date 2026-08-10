@@ -121,9 +121,6 @@ struct ActivityView: View {
                     itemLabel: \.title,
                     itemIcon: \.icon
                 )
-                #if DEBUG
-                debugModeToggleItem
-                #endif
             }
             .task {
                 await viewModel.load()
@@ -260,25 +257,4 @@ struct ActivityView: View {
         }
     }
 
-    #if DEBUG
-    /// 챌린저 ↔ 운영진 모드 전환 (DEBUG 전용)
-    ///
-    /// 운영 빌드의 모드 토글은 탭바 하단 액세서리가 담당하며 아직 이식 전이다. 그때까지
-    /// 운영진 섹션이 도달 불가능해지지 않도록 DEBUG 빌드에만 임시 진입점을 둔다.
-    /// // TODO: 탭바 액세서리 모드 토글 결선 후 제거 - [26.08.03] 이재원
-    private var debugModeToggleItem: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                userSession.toggleAdminMode()
-            } label: {
-                Label(
-                    mode == .admin ? "운영진" : "챌린저",
-                    systemImage: mode == .admin
-                        ? "person.badge.shield.checkmark"
-                        : "person"
-                )
-            }
-        }
-    }
-    #endif
 }
