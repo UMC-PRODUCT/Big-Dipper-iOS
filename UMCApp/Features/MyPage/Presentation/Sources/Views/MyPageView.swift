@@ -93,6 +93,12 @@ struct MyPageView: View {
         .task {
             await viewModel.fetchProfile()
         }
+        // 프로필 상세에서 이미지·링크를 수정하고 돌아오면 카드가 옛 스냅샷으로 남는다.
+        // 수정 API가 세션 캐시를 갱신해 두므로 여기서는 추가 왕복 없이 최신 값을 다시 읽는다.
+        .onChange(of: pathStore.depth(of: .mypage)) { previousDepth, currentDepth in
+            guard currentDepth < previousDepth else { return }
+            Task { await viewModel.fetchProfile() }
+        }
     }
 
     // MARK: - View Component
@@ -105,7 +111,15 @@ struct MyPageView: View {
                 .frame(maxWidth: .infinity)
 
         case .loaded(let profile):
-            ProfileCardSection(profileData: profile)
+            ProfileCardSection(
+                profileData: profile,
+                onTap: {
+                    pathStore.push(
+                        MyPageDestination.profile(profileData: profile),
+                        on: .mypage
+                    )
+                }
+            )
 
         case .failed(let error):
             RetryContentUnavailableView(

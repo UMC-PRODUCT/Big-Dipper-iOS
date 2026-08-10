@@ -37,6 +37,18 @@ public extension SocialLinkType {
         }
     }
 
+    /// 링크 입력 필드에 노출할 예시 URL
+    var placeholder: String {
+        switch self {
+        case .github:
+            return "https://github.com/"
+        case .linkedin:
+            return "https://linkedin.com/in/yourprofile"
+        case .blog:
+            return "https://yourblog.com"
+        }
+    }
+
     /// 아이콘 배경에 사용하는 테마 색상
     var color: Color {
         switch self {

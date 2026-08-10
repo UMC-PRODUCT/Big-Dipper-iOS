@@ -12,14 +12,12 @@ import CoreUIComponents
 
 /// MyPage 상단에 표시되는 사용자 프로필 카드 컴포넌트
 ///
-/// 프로필 이미지, 이름 / 닉네임, 학교 / 기수 / 파트 정보를 보여줍니다.
-///
-/// - Note: 프로필 상세(``MyPageProfileView``)는 아직 본문이 비어 있어 이동 진입점을 열지 않는다.
-///   상세 화면이 이식되면 이 카드를 탭 가능한 진입점으로 되돌린다.
+/// 프로필 이미지, 이름 / 닉네임, 학교 / 기수 / 파트 정보를 보여주며 프로필 상세로 이동합니다.
 struct ProfileCardSection: View {
     // MARK: - property
 
     let profileData: ProfileData
+    private let onTap: () -> Void
 
     private enum Constants {
         static let profileImageSize: CGSize = .init(width: 64, height: 64)
@@ -27,19 +25,27 @@ struct ProfileCardSection: View {
 
     // MARK: - Function
 
-    init(profileData: ProfileData) {
+    /// - Parameter onTap: 프로필 상세로의 이동. 섹션은 `PathStore`를 알지 않고 탭 루트가 push한다.
+    init(profileData: ProfileData, onTap: @escaping () -> Void) {
         self.profileData = profileData
+        self.onTap = onTap
     }
 
     var body: some View {
-        HStack(spacing: DefaultSpacing.spacing12, content: {
-            profileImage
-            profileInfo
-            Spacer()
+        Button(action: onTap, label: {
+            HStack(spacing: DefaultSpacing.spacing12, content: {
+                profileImage
+                profileInfo
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .appFont(.footnote, color: .grey500)
+            })
+            .contentShape(.rect)
         })
+        .buttonStyle(.plain)
     }
 
-    
+
     /// 프로필 이미지 뷰(무지개 태두리 효과 포함)
     private var profileImage: some View {
         RemoteImage(urlString: profileData.challengerInfo.profileImage ?? "", size: Constants.profileImageSize)
