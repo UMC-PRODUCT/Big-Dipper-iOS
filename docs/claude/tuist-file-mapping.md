@@ -82,12 +82,12 @@
 | `Data/DTOs/StudyGroupScheduleCreateRequestDTO.swift` | ActivityData |
 | `Data/DTOs/StudyGroupUpdateRequestDTO.swift` | ActivityData |
 | `Data/DTOs/V2AttendanceParticipantDTO.swift` | ActivityData |
-| `Data/Provider/ActivityRepositoryProvider.swift` | ActivityData |
-| `Data/Repositories/ActivityRepository.swift` | ActivityData |
+| `Data/Provider/ActivityRepositoryProvider.swift` | **superseded → `UMCApp/Sources/DIContainer+Activity.swift`** — Repository 조립은 앱 타깃 DIContainer 확장이 담당 |
+| `Data/Repositories/ActivityRepository.swift` | **분해 → `StudyRepository`·`MemberRepository`·`AttendanceRepository`** (ActivityData) — 레거시 단일 Repository 를 도메인별로 쪼갬 |
 | `Data/Repositories/AttendanceRepository.swift` | ActivityData |
 | `Data/Repositories/MemberRepository.swift` | ActivityData |
-| `Data/Repositories/Mock/MockActivityRepository.swift` | ActivityData |
-| `Data/Repositories/Mock/MockAttendanceRepository.swift` | ActivityData |
+| `Data/Repositories/Mock/MockActivityRepository.swift` | **이식 제외** — UMCApp 은 목을 프로덕션 타깃에 두지 않고 각 테스트 타깃 안에 둔다(`Presentation/Tests/*ViewModelTests.swift`) |
+| `Data/Repositories/Mock/MockAttendanceRepository.swift` | **이식 제외** — 위 `MockActivityRepository` 와 동일. 목은 테스트 타깃 소유 |
 | `Data/Repositories/Mock/MockMemberRepository.swift` | ActivityData |
 | `Data/Repositories/Mock/MockStudyRepository.swift` | ActivityData |
 | `Data/Repositories/StudyRepository.swift` | ActivityData |
@@ -95,21 +95,21 @@
 | `Domain/Enum/ActivityConstants.swift` | ActivityDomain |
 | `Domain/Enum/ActivitySection.swift` | ActivityDomain |
 | `Domain/Enum/Attendance/AttendanceStatus.swift` | ActivityDomain |
-| `Domain/Enum/Attendance/AttendanceStatusV2.swift` | ActivityDomain |
+| `Domain/Enum/Attendance/AttendanceStatusV2.swift` | **superseded → `ActivityDomain.AttendanceStatus`** — 레거시는 구·신 두 enum 을 병존시켰으나 UMCApp 은 하나로 통합. `V2` 접미사를 남기지 말 것 |
 | `Domain/Enum/Attendance/AttendanceTimeWindow.swift` | ActivityDomain |
 | `Domain/Enum/Attendance/MyAttendanceItemStatus.swift` | ActivityDomain |
 | `Domain/Enum/Session/SessionStatus.swift` | ActivityDomain |
 | `Domain/Enum/Study/MissionStatus.swift` | ActivityDomain |
 | `Domain/Enum/Study/MissionSubmissionType.swift` | ActivityDomain |
 | `Domain/Enum/Study/MissionType.swift` | ActivityDomain |
-| `Domain/Interfaces/ActivityRepositoryProtocol.swift` | ActivityDomain |
+| `Domain/Interfaces/ActivityRepositoryProtocol.swift` | **분해 → `StudyRepositoryProtocol`·`MemberRepositoryProtocol`·`ChallengerAttendanceRepositoryProtocol`·`OperatorAttendanceRepositoryProtocol`** |
 | `Domain/Interfaces/ChallengerAttendanceRepositoryProtocol.swift` | ActivityDomain |
 | `Domain/Interfaces/MemberRepositoryProtocol.swift` | ActivityDomain |
 | `Domain/Interfaces/OperatorAttendanceRepositoryProtocol.swift` | ActivityDomain |
 | `Domain/Interfaces/StudyRepositoryProtocol.swift` | ActivityDomain |
 | `Domain/Models/Attendance/Attendance.swift` | ActivityDomain |
 | `Domain/Models/Attendance/AttendanceDecisionResult.swift` | ActivityDomain |
-| `Domain/Models/Attendance/AttendanceGeofenceConstants.swift` | ActivityDomain |
+| `Domain/Models/Attendance/AttendanceGeofenceConstants.swift` | **분해** — 반경은 `UMCFoundation.GeofenceCalculator`(호출자가 radius 주입), 임계 분은 `ActivityDomain.AttendancePolicy.onTimeThresholdMinutes`/`lateThresholdMinutes` |
 | `Domain/Models/Attendance/AttendanceType.swift` | ActivityDomain |
 | `Domain/Models/Attendance/LocationVerification.swift` | ActivityDomain |
 | `Domain/Models/Attendance/MyAttendanceItemModel.swift` | ActivityDomain |
@@ -135,15 +135,15 @@
 | `Domain/Models/Study/WeeklyCurriculumOption.swift` | ActivityDomain |
 | `Domain/Models/StudyManagement/StudyManagementItem.swift` | ActivityDomain · **dormant** — 이식 완료됐으나 소비자 0건. `#586` 으로 제출 현황 UI 가 꺼지며 소비자가 사라졌고 `#999` 에서 재활성화 예정(서버 API 대기). 삭제 금지 |
 | `Domain/UseCases/ChallengerAttendanceUseCaseProtocol.swift` | ActivityDomain |
-| `Domain/UseCases/FetchCurriculumUseCaseProtocol.swift` | ActivityDomain |
+| `Domain/UseCases/FetchCurriculumUseCaseProtocol.swift` | ActivityDomain (`FetchCurriculumOverviewUseCaseProtocol` 로 개명) |
 | `Domain/UseCases/FetchMembersUseCaseProtocol.swift` | ActivityDomain |
-| `Domain/UseCases/FetchSessionsUseCaseProtocol.swift` | ActivityDomain |
+| `Domain/UseCases/FetchSessionsUseCaseProtocol.swift` | **이식 제외 — #994 가 일정 조회로 흡수.** `Session` 은 일정에서 파생한다(`ActivityViewModel.swift:17` 주석) |
 | `Domain/UseCases/FetchStudyMembersUseCaseProtocol.swift` | ActivityDomain |
 | `Domain/UseCases/FetchUserIdUseCaseProtocol.swift` | ActivityDomain |
 | `Domain/UseCases/Implementations/ChallengerAttendanceUseCase.swift` | ActivityDomain |
-| `Domain/UseCases/Implementations/FetchCurriculumUseCase.swift` | ActivityDomain |
+| `Domain/UseCases/Implementations/FetchCurriculumUseCase.swift` | ActivityDomain (`FetchCurriculumOverviewUseCase` 로 개명) |
 | `Domain/UseCases/Implementations/FetchMembersUseCase.swift` | ActivityDomain |
-| `Domain/UseCases/Implementations/FetchSessionsUseCase.swift` | ActivityDomain |
+| `Domain/UseCases/Implementations/FetchSessionsUseCase.swift` | **이식 제외 — #994 가 일정 조회로 흡수** (위 프로토콜과 한 쌍) |
 | `Domain/UseCases/Implementations/FetchStudyMembersUseCase.swift` | ActivityDomain |
 | `Domain/UseCases/Implementations/FetchUserIdUseCase.swift` | ActivityDomain |
 | `Domain/UseCases/Implementations/OperatorAttendanceUseCase.swift` | ActivityDomain |
@@ -167,9 +167,9 @@
 | `Presentation/Components/Member/CoreMemberManagementList.swift` | **superseded → `CoreMemberManagementRow`** — 이식 누락이 아니라 의도적 대체. `#897` 이 리스트 컨테이너를 행 단위 `CoreMemberManagementRow` 로 재설계해 이식했고, 레거시 소비자 2곳(`ChallengerMemberListView`·`OperatorMemberManagementView`)은 UMCApp 에서 해당 Row 조립으로 대체됨. 이 파일 자체는 이식하지 말 것 |
 | `Presentation/Components/Member/MemberManagementCard.swift` | ActivityPresentation |
 | `Presentation/Components/Member/PointGrantFormSheet.swift` | ActivityPresentation |
-| `Presentation/Components/Operation/Attendance/OperatorLocationChangeSheetView.swift` | ActivityPresentation |
-| `Presentation/Components/Operation/Attendance/OperatorSessionStatusIcon.swift` | ActivityPresentation |
-| `Presentation/Components/Operation/Attendance/OperatorStatusSectionStyle.swift` | ActivityPresentation |
+| `Presentation/Components/Operation/Attendance/OperatorLocationChangeSheetView.swift` | ActivityPresentation (`OperatorLocationChangeSheet` 로 개명 — `View` 접미사 제거) |
+| `Presentation/Components/Operation/Attendance/OperatorSessionStatusIcon.swift` | **이식 제외(dead)** — 레거시 참조 0건. 상태 아이콘은 `OperatorSessionStatus+UI` 확장이 담당 |
+| `Presentation/Components/Operation/Attendance/OperatorStatusSectionStyle.swift` | **이식 제외(dead)** — 레거시 참조 0건 |
 | `Presentation/Components/Operation/Study/OperatorStudyGroupEditSheet.swift` | ActivityPresentation |
 | `Presentation/Components/Operation/Study/StudyGroupCard.swift` | ActivityPresentation |
 | `Presentation/Components/Operation/Study/StudyGroupLeaderRow.swift` | ActivityPresentation |
@@ -177,7 +177,7 @@
 | `Presentation/Components/StudyManagementCard.swift` | ActivityPresentation · **보류 — #999 선행** — `CoreStudyManagementList` 와 한 쌍. 레거시 외부 소비자 0건이라 단독 이식 금지. 운영 스터디 목록은 `StudyGroupCard` 가, 멤버 관리는 `CoreMemberManagementRow` 가 이미 담당 |
 | `Presentation/Enum/AttendancePeriodPreset.swift` | ActivityPresentation |
 | `Presentation/Extensions/OperatorSessionStatus+UI.swift` | ActivityPresentation |
-| `Presentation/Provider/ActivityUseCaseProvider.swift` | ActivityPresentation |
+| `Presentation/Provider/ActivityUseCaseProvider.swift` | **superseded → `UMCApp/Sources/DIContainer+Activity.swift`** |
 | `Presentation/ViewModels/ActivityViewModel.swift` | ActivityPresentation |
 | `Presentation/ViewModels/Challenger/ChallengerAttendanceViewModel.swift` | ActivityPresentation |
 | `Presentation/ViewModels/Map/BaseMapViewModel.swift` | ActivityPresentation |
@@ -193,7 +193,7 @@
 | `Presentation/Views/Challenger/ChallengerMemberListView.swift` | ActivityPresentation |
 | `Presentation/Views/Challenger/ChallengerStudyView.swift` | ActivityPresentation |
 | `Presentation/Views/Operation/AttendanceDetailView.swift` | ActivityPresentation |
-| `Presentation/Views/Operation/AttendanceListView.swift` | ActivityPresentation |
+| `Presentation/Views/Operation/AttendanceListView.swift` | ActivityPresentation (`OperatorAttendanceView` 로 개명) |
 | `Presentation/Views/Operation/ChallengerMemberDetailSheetView.swift` | ActivityPresentation |
 | `Presentation/Views/Operation/OperatorMemberDetailSheetView.swift` | ActivityPresentation |
 | `Presentation/Views/Operation/OperatorMemberManagementView.swift` | ActivityPresentation |
@@ -214,7 +214,7 @@
 | `Data/DTOs/EmailRegisterRequestDTO.swift` | AuthData |
 | `Data/DTOs/EmailVerificationResponseDTO.swift` | AuthData |
 | `Data/DTOs/LoginAppleRequestDTO.swift` | AuthData |
-| `Data/DTOs/LoginByIdPwResponseDTO.swift` | AuthData |
+| `Data/DTOs/LoginByIdPwResponseDTO.swift` | AuthData (`EmailLoginResponseDTO` 로 개명 — 아이디/비번이 아니라 이메일 로그인) |
 | `Data/DTOs/LoginGoogleRequestDTO.swift` | AuthData |
 | `Data/DTOs/LoginKakaoRequestDTO.swift` | AuthData |
 | `Data/DTOs/MemberOAuthDTO.swift` | AuthData |
@@ -224,16 +224,16 @@
 | `Data/DTOs/RegisterExistingChallengerRequestDTO.swift` | AuthData |
 | `Data/DTOs/RegisterRequestDTO.swift` | AuthData |
 | `Data/DTOs/RegisterResponseDTO.swift` | AuthData |
-| `Data/DTOs/RenewTokenRequestDTO.swift` | AuthData |
+| `Data/DTOs/RenewTokenRequestDTO.swift` | **superseded → `CoreNetwork` 토큰 갱신 파이프라인**(`TokenRefreshServiceImpl`·`TokenPair`) — 재발급은 Feature DTO 가 아니라 네트워크 계층이 처리 |
 | `Data/DTOs/ResendEmailVerificationRequestDTO.swift` | AuthData |
 | `Data/DTOs/ResetPasswordRequestDTO.swift` | AuthData |
 | `Data/DTOs/SchoolDTO.swift` | AuthData |
 | `Data/DTOs/SendEmailVerificationRequestDTO.swift` | AuthData |
 | `Data/DTOs/TermsDTO.swift` | AuthData |
-| `Data/DTOs/TokenRenewResponseDTO.swift` | AuthData |
+| `Data/DTOs/TokenRenewResponseDTO.swift` | **superseded → `CoreNetwork` 토큰 갱신 파이프라인** (위 Request 와 한 쌍) |
 | `Data/DTOs/VerifyEmailCodeRequestDTO.swift` | AuthData |
 | `Data/DTOs/VerifyEmailCodeResponseDTO.swift` | AuthData |
-| `Data/Provider/AuthRepositoryProvider.swift` | AuthData |
+| `Data/Provider/AuthRepositoryProvider.swift` | **superseded → `UMCApp/Sources/DIContainer+Auth.swift`** |
 | `Data/Repositories/AuthRepository.swift` | AuthData |
 | `Data/Repositories/Mock/MockAuthRepository.swift` | AuthData |
 | `Data/Router/AuthRouter.swift` | AuthData |
@@ -288,21 +288,21 @@
 | `Presentation/Components/SignUpSchoolSection.swift` | AuthPresentation |
 | `Presentation/Components/SignUpTermsSection.swift` | AuthPresentation |
 | `Presentation/Components/TitleLabel.swift` | AuthPresentation |
-| `Presentation/Components/UnderlineTextField.swift` | AuthPresentation |
-| `Presentation/Enum/SignUpByIdPwField.swift` | AuthPresentation |
-| `Presentation/Enum/SignUpFieldType.swift` | AuthPresentation |
+| `Presentation/Components/UnderlineTextField.swift` | **이식 제외** — #1119 에서 되살리지 않기로 결정. 입력 필드는 `EmailLoginView`·`ChangePasswordView` 가 glass capsule 로 조립 |
+| `Presentation/Enum/SignUpByIdPwField.swift` | AuthPresentation (`SignUpFocusField` 로 개명) |
+| `Presentation/Enum/SignUpFieldType.swift` | **superseded → `SignUpFocusField` + `FormTextField`/`FormEmailField`/`FormPickerField`** — 필드 종류를 열거형 한 곳에 모으는 대신 컴포넌트로 분리 |
 | `Presentation/Models/PostRegisterLoginContext.swift` | CoreFoundation (AppFlow) — `AppFlow.showSignUp`가 Core에서 이 타입을 요구해 이관(#944 Q6, `SocialType`과 동일 사유) |
-| `Presentation/Provider/AuthUseCaseProvider.swift` | AuthPresentation |
+| `Presentation/Provider/AuthUseCaseProvider.swift` | **superseded → `UMCApp/Sources/DIContainer+Auth.swift`** |
 | `Presentation/ViewModels/ChangePasswordViewModel.swift` | AuthPresentation |
 | `Presentation/ViewModels/FailedVerificationUMCViewModel.swift` | AuthPresentation |
-| `Presentation/ViewModels/LoginByIdPwViewModel.swift` | AuthPresentation |
+| `Presentation/ViewModels/LoginByIdPwViewModel.swift` | AuthPresentation (`EmailLoginViewModel` 로 개명). 내부 `IdPwLoginDestination` 은 `PathStore` 라우팅으로 대체돼 이식 제외 |
 | `Presentation/ViewModels/LoginViewModel.swift` | AuthPresentation |
 | `Presentation/ViewModels/ResetPasswordViewModel.swift` | AuthPresentation |
 | `Presentation/ViewModels/SignUpByIdPwViewModel.swift` | AuthPresentation |
 | `Presentation/ViewModels/SignUpViewModel.swift` | AuthPresentation |
 | `Presentation/Views/ChangePasswordView.swift` | AuthPresentation |
 | `Presentation/Views/FailedVerificationUMC.swift` | AuthPresentation |
-| `Presentation/Views/LoginByIdPwView.swift` | AuthPresentation |
+| `Presentation/Views/LoginByIdPwView.swift` | AuthPresentation (`EmailLoginView` 로 개명) |
 | `Presentation/Views/LoginView.swift` | AuthPresentation |
 | `Presentation/Views/ResetPasswordView.swift` | AuthPresentation |
 | `Presentation/Views/SignUpByIdPwView.swift` | AuthPresentation |
@@ -415,7 +415,7 @@
 | `Data/DTO/ScheduleDetailDTO.swift` | HomeData |
 | `Data/DTO/ScheduleParticipantDTO.swift` | HomeData |
 | `Data/DTO/UpdateScheduleRequestDTO.swift` | HomeData |
-| `Data/DTO/V2AttendancePolicyDTO.swift` | HomeData |
+| `Data/DTO/V2AttendancePolicyDTO.swift` | HomeData (`ScheduleAttendancePolicyDTO` 로 개명 — `V2` 접미사 제거) |
 | `Data/DTO/V2LocationDTO.swift` | HomeData |
 | `Data/GenerationMappingRecord.swift` | HomeData |
 | `Data/Repository/ChallengerGenRepository.swift` | HomeData |
@@ -427,15 +427,15 @@
 | `Data/Router/ChallengerSearchRouter.swift` | ActivityData (`StudyRouter`의 챌린저 검색 케이스로 통합) |
 | `Data/Router/HomeRouter.swift` | HomeData |
 | `Data/Router/ScheduleV2Router.swift` | HomeData |
-| `Domain/Impl/Notice/NoticeClassifierRepositoryImpl.swift` | HomeDomain |
-| `Domain/Impl/Notice/NoticeClassifierUseCaseImpl.swift` | HomeDomain |
-| `Domain/Impl/Schedule/ScheduleClassifierRepositoryImpl.swift` | HomeDomain |
-| `Domain/Impl/Schedule/ScheduleClassifierUseCaseImpl.swift` | HomeDomain |
+| `Domain/Impl/Notice/NoticeClassifierRepositoryImpl.swift` | **HomeData** (`NoticeClassifierRepository` 로 개명) — 구현체는 Domain 이 아니라 Data 레이어 소유 |
+| `Domain/Impl/Notice/NoticeClassifierUseCaseImpl.swift` | HomeDomain (`ClassifyNoticeUseCase` 로 개명 — `Impl` 접미사 대신 동사형) |
+| `Domain/Impl/Schedule/ScheduleClassifierRepositoryImpl.swift` | **HomeData** (`ScheduleClassifierRepository` 로 개명) |
+| `Domain/Impl/Schedule/ScheduleClassifierUseCaseImpl.swift` | HomeDomain (`ClassifyScheduleUseCase` 로 개명) |
 | `Domain/Interface/ChallengerGenRepositoryProtocol.swift` | CoreDomain (Member — 생산자 Home/소비자 Notice 공용, #1083) |
 | `Domain/Interface/ChallengerSearchRepositoryProtocol.swift` | ActivityDomain (`MemberRepositoryProtocol`로 통합) |
 | `Domain/Interface/HomeRepositoryProtocol.swift` | HomeDomain |
 | `Domain/Interface/Notice/NoticeClassifierRepository.swift` | HomeDomain |
-| `Domain/Interface/Notice/NoticeClassifierUseCase.swift` | HomeDomain |
+| `Domain/Interface/Notice/NoticeClassifierUseCase.swift` | HomeDomain (`ClassifyNoticeUseCaseProtocol` 로 개명) |
 | `Domain/Interface/Schedule/ScheduleClassifierRepository.swift` | HomeDomain |
 | `Domain/Interface/Schedule/ScheduleClassifierUseCase.swift` | HomeDomain |
 | `Domain/Interface/ScheduleCapabilitiesRepositoryProtocol.swift` | HomeDomain |
@@ -443,7 +443,7 @@
 | `Domain/Models/Home/ChallengerRole.swift` | **superseded → CoreDomain `ProfileRole`** — 한 파일에 3개 타입이 들어 있어 목적지가 갈린다. `ChallengerRole`은 CoreDomain `ProfileRole`로 대체, `GenerationOrganizationContext`는 NoticeDomain 으로, `HomeProfileResult` 만 HomeDomain 으로 이식됨 |
 | `Domain/Models/Home/GenerationData.swift` | HomeDomain (`HomeGeneration`으로 개명 — `UMCFoundation.Generation`과 이름 충돌 회피) |
 | `Domain/Models/Home/RecentNoticeData.swift` | **superseded → `NoticeDomain.NoticeItemModel`** — 홈 최근 공지도 공지 정본 모델을 그대로 사용한다. 홈 전용 사본을 두지 말 것 |
-| `Domain/Models/Home/ScheduleData.swift` | HomeDomain |
+| `Domain/Models/Home/ScheduleData.swift` | HomeDomain. 단 안의 `ScheduleDDayDisplayable` 프로토콜은 **이식 제외** — 유일 채택자였던 `ScheduleDetailData` 가 `dDay`/`dDayText` 를 직접 계산한다 |
 | `Domain/Models/Home/ScheduleDetailData.swift` | HomeDomain |
 | `Domain/Models/NoticeHistory/NoticeHistoryData.swift` | HomeDomain |
 | `Domain/Models/Schedule/AttendancePolicy.swift` | HomeDomain |
@@ -451,7 +451,7 @@
 | `Domain/Models/Schedule/ScheduleCapabilities.swift` | HomeDomain |
 | `Domain/Models/Schedule/ScheduleLocation.swift` | HomeDomain |
 | `Domain/Models/Schedule/ScheduleParticipant.swift` | HomeDomain |
-| `Domain/Models/ScheduleGeneration/CSVImportResult.swift` | HomeDomain |
+| `Domain/Models/ScheduleGeneration/CSVImportResult.swift` | **이식 제외(dead)** — 레거시 참조 0건 |
 | `Domain/Models/ScheduleGeneration/PlaceSearchResult.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
 | `Domain/Models/ScheduleGeneration/RecentPlace.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
 | `Domain/Models/ScheduleGeneration/ScheduleRegistrationData.swift` | HomeDomain (`ScheduleCreationRequest`로 개명 — 장소·출석 정책은 조회 모델 재사용) |
@@ -596,17 +596,17 @@
 | `Presentation/Components/Section/MyPageProfileSection/SchoolSection.swift` | MyPagePresentation |
 | `Presentation/Components/Section/MypageSection/AppBundleSection.swift` | MyPagePresentation |
 | `Presentation/Components/Section/MypageSection/AuthSection.swift` | MyPagePresentation |
-| `Presentation/Components/Section/MypageSection/FollowsSection.swift` | MyPagePresentation |
-| `Presentation/Components/Section/MypageSection/HelpSection.swift` | MyPagePresentation |
+| `Presentation/Components/Section/MypageSection/FollowsSection.swift` | MyPagePresentation (`UMCChannelSection` 으로 개명 — 팔로우 기능이 아니라 UMC 공식 채널 링크). 딥링크 폴백은 `UIApplication.canOpenURL` 대신 `openURL(_:completion:)` 사용 → `LSApplicationQueriesSchemes` 등록 불필요 |
+| `Presentation/Components/Section/MypageSection/HelpSection.swift` | **이식 제외(dead)** — 레거시 호출처 0건(`HelpSection()` 을 그리는 화면이 없음) |
 | `Presentation/Components/Section/MypageSection/LawSection.swift` | MyPagePresentation |
-| `Presentation/Components/Section/MypageSection/LinkSection.swift` | MyPagePresentation |
+| `Presentation/Components/Section/MypageSection/LinkSection.swift` | MyPagePresentation (`ProfileLinkSection` 으로 개명) |
 | `Presentation/Components/Section/MypageSection/MyActiveLogSection.swift` | MyPagePresentation |
 | `Presentation/Components/Section/MypageSection/ProfileCardSection.swift` | MyPagePresentation |
 | `Presentation/Components/Section/MypageSection/SettingSection.swift` | MyPagePresentation |
-| `Presentation/Components/Section/MypageSection/SocialSection.swift` | MyPagePresentation |
+| `Presentation/Components/Section/MypageSection/SocialSection.swift` | MyPagePresentation (`SocialConnectSection` 으로 개명) |
 | `Presentation/Enum/AuthType.swift` | MyPagePresentation |
-| `Presentation/Enum/FollowType.swift` | MyPagePresentation |
-| `Presentation/Enum/HelpType.swift` | MyPagePresentation |
+| `Presentation/Enum/FollowType.swift` | MyPagePresentation (`UMCChannelType` 으로 개명). 아이콘은 `CoreUIComponents` 번들 자산 접근자 `Image.umcInstagram`/`.umcChannelLogo` 로 노출 |
+| `Presentation/Enum/HelpType.swift` | **이식 제외(dead)** — 유일 소비자인 `HelpSection` 이 dead |
 | `Presentation/Enum/LawsType.swift` | MyPagePresentation |
 | `Presentation/Enum/MyActiveLogsType.swift` | MyPagePresentation |
 | `Presentation/Enum/MyPageSectionType.swift` | MyPagePresentation |
@@ -754,9 +754,9 @@
 
 | 레거시 파일 | → Tuist 목적지 |
 |---|---|
-| `Presentation/Enum/TabCase.swift` | App(UMCApp) — 루트 탭 셸 #910 |
-| `Presentation/Views/UmcBottonAccessoryView.swift` | App(UMCApp) — 루트 탭 셸 #910 |
-| `Presentation/Views/UmcTab.swift` | App(UMCApp) — 루트 탭 셸 #910 |
+| `Presentation/Enum/TabCase.swift` | App(UMCApp) — 루트 탭 셸 #910 (`NavigationTab` 으로 개명) |
+| `Presentation/Views/UmcBottonAccessoryView.swift` | App(UMCApp) — `RootTabView.tabViewBottomAccessory` **부분 이식**. Activity 모드 토글(`AdminModeToggle`)만 남기고, Home 일정 생성·Notice 공지 작성은 각 화면 툴바(`ToolBarCollection.AddBtn`)로 **대체**. Community 액세서리는 Community 탭 실연결(#591)에서 처리 |
+| `Presentation/Views/UmcTab.swift` | App(UMCApp) — 루트 탭 셸 #910 (`RootTabView` 로 개명) |
 
 ### App
 

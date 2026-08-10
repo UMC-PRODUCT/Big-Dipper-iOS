@@ -25,4 +25,6 @@ public enum MyPageSectionType: String, CaseIterable {
     case socialConnect = "소셜계정 연동"
     /// 회원 정보 처리
     case auth = "회원 관리"
+    /// UMC 공식 Instagram·웹사이트 등 외부 채널
+    case umcChannels = "UMC 외부 채널"
 }

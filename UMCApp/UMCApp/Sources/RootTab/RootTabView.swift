@@ -10,6 +10,8 @@ import SwiftUI
 import ActivityPresentation
 import CommunityPresentation
 import CoreDesignSystem
+import CoreDI
+import CoreDomain
 import CoreRouting
 import HomePresentation
 import MyPagePresentation
@@ -32,6 +34,8 @@ struct RootTabView: View {
 
     @State private var pathStore = PathStore()
 
+    @Environment(\.di) private var di
+
     // MARK: - Body
 
     var body: some View {
@@ -45,10 +49,27 @@ struct RootTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .tabViewBottomAccessory { bottomAccessory }
         .environment(pathStore)
     }
 
     // MARK: - Function
+
+    /// 탭바 하단 액세서리.
+    ///
+    /// 레거시는 탭마다 액세서리를 뒀지만, Home 일정 등록·Notice 공지 작성은 각 화면 툴바
+    /// (`ToolBarCollection.AddBtn`)로 옮겨졌다. 남은 것은 운영진 ↔ 챌린저 모드 토글뿐이라
+    /// Activity 탭 루트에서 권한이 있을 때만 노출한다.
+    @ViewBuilder
+    private var bottomAccessory: some View {
+        let userSession = di.resolve(UserSessionManager.self)
+
+        if pathStore.selectedTab == .activity,
+           pathStore.isAtRoot(.activity),
+           userSession.canToggleAdminMode {
+            AdminModeToggle(userSession: userSession)
+        }
+    }
 
     private func tabLabel(_ tab: NavigationTab) -> some View {
         VStack(alignment: .center, spacing: DefaultSpacing.spacing8) {
@@ -135,5 +156,47 @@ struct RootTabView: View {
             get: { pathStore[tab] },
             set: { pathStore[tab] = $0 }
         )
+    }
+}
+
+// MARK: - AdminModeToggle
+
+/// 운영진 ↔ 챌린저 모드 전환 토글.
+///
+/// 액세서리는 축소(`inline`)·확장(`expanded`) 두 배치를 오가므로, 확장일 때만 현재 역할
+/// 배지와 좌우 여백을 더한다. 배치 값은 액세서리 콘텐츠 안에서만 유효해 별도 뷰로 뒀다.
+private struct AdminModeToggle: View {
+
+    // MARK: - Property
+
+    let userSession: UserSessionManager
+
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    // MARK: - Body
+
+    var body: some View {
+        Button {
+            // withAnimation 으로 감싸면 ActivityView 의 무거운 콘텐츠 교체(출석 체크 ↔ 출석 현황)까지
+            // 함께 애니메이션돼 두 화면이 겹쳐 보이는 잔상·경계선이 생긴다. 모드 전환은 즉시 처리한다.
+            userSession.toggleAdminMode()
+        } label: {
+            HStack(spacing: DefaultSpacing.spacing8) {
+                Image(systemName: userSession.isAdminModeEnabled ? "gearshape.fill" : "gearshape")
+                    .foregroundStyle(userSession.isAdminModeEnabled ? Color.indigo500 : .grey600)
+
+                Text(userSession.isAdminModeEnabled ? "운영진 모드" : "챌린저 모드")
+                    .appFont(.subheadline)
+                    .foregroundStyle(Color.grey900)
+
+                if placement == .expanded {
+                    Spacer()
+
+                    Text(userSession.currentRole.displayName)
+                        .appFont(.subheadline, color: .indigo500)
+                }
+            }
+            .padding(.horizontal, placement == .expanded ? DefaultConstant.defaultSafeHorizon : 0)
+        }
     }
 }
