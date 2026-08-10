@@ -7,6 +7,7 @@
 
 import AuthDomain
 import CoreDI
+import CoreDomain
 import CoreNetwork
 import Foundation
 import MyPageDomain
@@ -121,7 +122,43 @@ public final class MyPageViewModel {
         }
     }
 
+    /// 로그아웃을 수행합니다.
+    ///
+    /// 화면 전환(`AppFlow`)은 절대규칙 #1에 따라 View가 담당하므로, 여기서는 세션 정리까지만
+    /// 책임지고 실패는 그대로 던져 호출자가 `ErrorHandler`로 넘기게 한다.
+    @MainActor
+    public func logout() async throws {
+        UserDefaults.standard.set(false, forKey: AppStorageKey.canAutoLogin)
+        try await tearDownSession()
+    }
+
+    /// 회원 탈퇴 후 세션을 정리합니다.
+    @MainActor
+    public func deleteAccount() async throws {
+        try await myPageProvider.deleteMemberUseCase.execute()
+        UserDefaults.standard.set(false, forKey: AppStorageKey.canAutoLogin)
+        try await tearDownSession()
+    }
+
     // MARK: - Private Function
+
+    /// 토큰·세션 역할·프로필 캐시·DI 캐시를 차례로 비웁니다.
+    ///
+    /// `resetCache()`보다 먼저 참조를 확보하는 이유는 `AppRootView.handleAuthSessionExpired`와
+    /// 같다 — 캐시를 비운 뒤 resolve하면 새 인스턴스가 만들어져 정리 대상이 어긋난다.
+    @MainActor
+    private func tearDownSession() async throws {
+        let networkClient = container.resolve(NetworkClient.self)
+        let memberProfileRepository = container.resolveIfRegistered(
+            MemberProfileRepositoryProtocol.self
+        )
+        let userSessionManager = container.resolve(UserSessionManager.self)
+
+        try await networkClient.logout()
+        userSessionManager.reset()
+        await memberProfileRepository?.invalidateCache()
+        container.resetCache()
+    }
 
     /// `/member-oauth/me`를 조회해 연동 소셜 목록을 동기화합니다.
     ///

@@ -125,7 +125,6 @@ struct RootTabView: View {
             // TODO: CommunityPresentation의 실제 CommunityView 연결 (Community 탭 실연결 후속 이슈)
             CommunityFeatureView()
         case .mypage:
-            // TODO: MyPagePresentation의 실제 MyPageView 연결 (MyPage 탭 실연결 후속 이슈)
             MyPageFeatureView()
         }
     }

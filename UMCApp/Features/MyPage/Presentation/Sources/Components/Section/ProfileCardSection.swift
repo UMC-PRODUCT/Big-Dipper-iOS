@@ -7,29 +7,23 @@
 
 import SwiftUI
 import MyPageDomain
-import CoreDI
 import CoreDesignSystem
 import CoreUIComponents
 
 /// MyPage 상단에 표시되는 사용자 프로필 카드 컴포넌트
 ///
-/// 프로필 이미지, 이름 / 닉네임, 학교 / 기수 / 파트 정보를 보여주며, 탭하면 상세 프로필 페이지로 이동합니다.
+/// 프로필 이미지, 이름 / 닉네임, 학교 / 기수 / 파트 정보를 보여줍니다.
+///
+/// - Note: 프로필 상세(``MyPageProfileView``)는 아직 본문이 비어 있어 이동 진입점을 열지 않는다.
+///   상세 화면이 이식되면 이 카드를 탭 가능한 진입점으로 되돌린다.
 struct ProfileCardSection: View {
     // MARK: - property
-    
+
     let profileData: ProfileData
-    @Environment(\.di) var di
-    
+
     private enum Constants {
-        static let chevronSize: CGFloat = 9
         static let profileImageSize: CGSize = .init(width: 64, height: 64)
-        static let chevron: String = "chevron.right"
     }
-    
-    // TODO(#816): PathStore 네비게이션 배선 — DIContainer에서 PathStore를 resolve해 사용
-//    private var pathStore: PathStore {
-//        di.resolve(PathStore.self)
-//    }
 
     // MARK: - Function
 
@@ -38,18 +32,13 @@ struct ProfileCardSection: View {
     }
 
     var body: some View {
-        Button(action: {
-            // TODO(#816): pathStore로 myPage(.myInfo(profileData: self.profileData)) 이동 배선
-        }, label: {
-            HStack(spacing: DefaultSpacing.spacing12, content: {
-                profileImage
-                profileInfo
-                Spacer()
-                SectionRightImage(rightImage: Constants.chevron)
-            })
+        HStack(spacing: DefaultSpacing.spacing12, content: {
+            profileImage
+            profileInfo
+            Spacer()
         })
     }
-    
+
     
     /// 프로필 이미지 뷰(무지개 태두리 효과 포함)
     private var profileImage: some View {
