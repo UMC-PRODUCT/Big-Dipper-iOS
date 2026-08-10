@@ -167,7 +167,11 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
         
         let currentSocialConnections = profileData.socialConnections
         try await useCaseProvider.addChallengerRecordUseCase.execute(code: code)
-        profileData = try await useCaseProvider.fetchMyPageProfileUseCase.execute()
+        // 기록 추가는 세션 프로필 캐시를 무효화하지 않으므로, 캐시 경로로 읽으면 방금 추가한
+        // 이력이 빠진 스냅샷이 돌아온다.
+        profileData = try await useCaseProvider.fetchMyPageProfileUseCase.execute(
+            forceRefresh: true
+        )
         profileData.socialConnections = currentSocialConnections
         initialProfileLinkState = Self.makeProfileLinkState(from: profileData.profileLink)
         showRecentActivityLogAddedState()
