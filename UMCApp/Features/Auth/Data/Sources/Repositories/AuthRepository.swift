@@ -138,7 +138,60 @@ public struct AuthRepository: AuthRepositoryProtocol, @unchecked Sendable {
         }
     }
 
+    public func fetchMyOAuth() async throws -> [MemberOAuth] {
+        try await requestMemberOAuthList(AuthRouter.fetchMyOAuth)
+    }
+
+    public func addMemberOAuth(oAuthVerificationToken: String) async throws -> [MemberOAuth] {
+        try await requestMemberOAuthList(
+            AuthRouter.addMemberOAuth(
+                body: AddMemberOAuthRequestDTO(oAuthVerificationToken: oAuthVerificationToken)
+            )
+        )
+    }
+
+    public func deleteMemberOAuth(
+        memberOAuthId: String,
+        googleAccessToken: String?,
+        kakaoAccessToken: String?
+    ) async throws {
+        let response = try await adapter.request(
+            AuthRouter.deleteMemberOAuth(
+                memberOAuthId: memberOAuthId,
+                body: DeleteMemberOAuthRequestDTO(
+                    googleAccessToken: googleAccessToken,
+                    kakaoAccessToken: kakaoAccessToken
+                )
+            )
+        )
+
+        do {
+            let apiResponse = try JSONDecoder().decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let decodingError as DecodingError {
+            throw RepositoryError.decodingError(detail: "\(decodingError)")
+        }
+    }
+
     // MARK: - Private Function
+
+    /// OAuth 연동 목록을 반환하는 엔드포인트(조회/추가) 공통 디코딩 경로.
+    private func requestMemberOAuthList(_ target: AuthRouter) async throws -> [MemberOAuth] {
+        let response = try await adapter.request(target)
+
+        do {
+            let apiResponse = try JSONDecoder().decode(
+                APIResponse<[MemberOAuthDTO]>.self,
+                from: response.data
+            )
+            return try apiResponse.unwrap().map { $0.toDomain() }
+        } catch let decodingError as DecodingError {
+            throw RepositoryError.decodingError(detail: "\(decodingError)")
+        }
+    }
 
     /// OAuth 로그인 응답을 디코딩하고, 기존 회원이면 토큰을 저장한 뒤 결과를 반환한다.
     private func performOAuthLogin(_ target: AuthRouter) async throws -> OAuthLoginResult {

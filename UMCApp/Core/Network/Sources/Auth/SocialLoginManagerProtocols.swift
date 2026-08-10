@@ -11,6 +11,12 @@
 public protocol KakaoLoginManaging {
     /// 카카오 로그인을 수행하고 액세스 토큰과 이메일을 반환한다.
     func login() async throws -> (accessToken: String, email: String)
+
+    /// 액세스 토큰만 발급받는다.
+    ///
+    /// 연동 해제 검증(`DELETE /api/v1/member-oauth/{id}`)에는 이메일이 필요 없고, 이메일을
+    /// 공유하지 않는 카카오 계정에서는 `login()`이 실패하므로 토큰만 받는 경로를 따로 둔다.
+    func fetchAccessToken() async throws -> String
 }
 
 extension KakaoLoginManager: KakaoLoginManaging {}
@@ -39,6 +45,9 @@ extension AppleLoginManager: AppleLoginManaging {}
 public protocol GoogleLoginManaging {
     /// 구글 로그인을 수행하고 서버 전송용 OAuth accessToken과 계정 이메일을 반환한다.
     func login() async throws -> (accessToken: String, email: String?)
+
+    /// 서버 전송용 OAuth accessToken만 발급받는다. (연동 추가/해제 검증용)
+    func fetchAccessToken() async throws -> String
 }
 
 extension GoogleLoginManager: GoogleLoginManaging {}

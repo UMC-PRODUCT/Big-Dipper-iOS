@@ -5,19 +5,17 @@
 //  Created by One on 5/24/26.
 //
 
-import Foundation
-import UMCFoundation
+import AuthDomain
 import CoreDI
+import CoreNetwork
+import Foundation
 import MyPageDomain
+import UMCFoundation
 
 /// MyPage 화면의 상태 및 비즈니스 로직을 관리하는 ViewModel.
 ///
 /// `@Observable`을 사용하여 SwiftUI View와 양방향 데이터 바인딩을 수행합니다.
 /// 사용자 프로필 데이터와 Alert 상태를 관리합니다.
-///
-/// - Note: 본 PR은 `fetchProfile`만 이식한 최소 set입니다. `connectSocial` 및
-///   `/member-oauth/me` 기반 소셜 연동 동기화는 후속 이슈(Auth UseCase /
-///   KakaoLoginManager / AppleLoginManager 이식 후)에서 복원됩니다.
 @Observable
 public final class MyPageViewModel {
 
@@ -31,19 +29,35 @@ public final class MyPageViewModel {
 
     private let container: DIContainer
     private let myPageProvider: MyPageUseCaseProviding
+    private let fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol
+    private let addMemberOAuthUseCase: AddMemberOAuthUseCaseProtocol
+    private let loginUseCase: LoginUseCaseProtocol
+    private let kakaoLoginManager: KakaoLoginManaging
+    private let appleLoginManager: AppleLoginManaging
+    private let googleLoginManager: GoogleLoginManaging
 
     // MARK: - Init
 
-    public init(container: DIContainer) {
+    public init(
+        container: DIContainer,
+        kakaoLoginManager: KakaoLoginManaging = KakaoLoginManager(),
+        appleLoginManager: AppleLoginManaging = AppleLoginManager(),
+        googleLoginManager: GoogleLoginManaging = GoogleLoginManager()
+    ) {
         self.container = container
         self.myPageProvider = container.resolve(MyPageUseCaseProviding.self)
+        self.fetchMyOAuthUseCase = container.resolve(FetchMyOAuthUseCaseProtocol.self)
+        self.addMemberOAuthUseCase = container.resolve(AddMemberOAuthUseCaseProtocol.self)
+        self.loginUseCase = container.resolve(LoginUseCaseProtocol.self)
+        self.kakaoLoginManager = kakaoLoginManager
+        self.appleLoginManager = appleLoginManager
+        self.googleLoginManager = googleLoginManager
     }
 
     #if DEBUG
     /// 프리뷰 전용 — 미리 로드된 프로필 상태로 시작합니다.
-    public init(container: DIContainer, previewProfileData: ProfileData) {
-        self.container = container
-        self.myPageProvider = container.resolve(MyPageUseCaseProviding.self)
+    public convenience init(container: DIContainer, previewProfileData: ProfileData) {
+        self.init(container: container)
         self.profileData = .loaded(previewProfileData)
     }
     #endif
@@ -57,11 +71,7 @@ public final class MyPageViewModel {
     /// - `AppError` → `.failed(error)`
     /// - 그 외 → `.failed(.unknown(message:))`
     ///
-    /// - Important: 본 PR은 `/member-oauth/me` 동기화를 호출하지 않으므로
-    ///   `socialConnections`는 항상 빈 배열로 세팅됩니다. 소셜 연동 표시는
-    ///   Auth UseCase 이식 후속 PR에서 복원합니다.
     /// - Parameter forceRefresh: `true`이면 세션 프로필 캐시를 우회해 서버 최신으로 갱신한다.
-    ///   (#816 화면 조립 시 당겨서 새로고침 경로로 연결 예정)
     @MainActor
     public func fetchProfile(forceRefresh: Bool = false) async {
         if profileData.isLoading { return }
@@ -73,8 +83,8 @@ public final class MyPageViewModel {
             var profile = try await myPageProvider.fetchMyPageProfileUseCase.execute(
                 forceRefresh: forceRefresh
             )
-            // TODO: Auth UseCase 이식 후속 PR에서 syncConnectedSocials() 호출로 교체
-            profile.socialConnections = []
+            // 소셜 연동 노출 기준은 `/member-oauth/me` 응답만 사용한다.
+            profile.socialConnections = await syncConnectedSocials() ?? []
             profileData = .loaded(profile)
         } catch is CancellationError {
             profileData = previousState
@@ -85,6 +95,108 @@ public final class MyPageViewModel {
             profileData = previousState
         } catch {
             profileData = .failed(.unknown(message: error.localizedDescription))
+        }
+    }
+
+    /// 소셜 계정 연동을 수행합니다.
+    ///
+    /// 소셜 로그인으로 OAuth 검증 토큰을 얻은 뒤 연동 추가 API를 호출하고,
+    /// 응답으로 받은 전체 연동 목록을 프로필 상태에 반영합니다.
+    ///
+    /// - Parameter social: 연동할 소셜 타입
+    /// - Throws: 소셜 로그인 실패 또는 서버 연동 에러
+    @MainActor
+    public func connectSocial(_ social: SocialType) async throws {
+        let verificationToken = try await fetchOAuthVerificationToken(social: social)
+        let linked = try await addMemberOAuthUseCase.execute(
+            oAuthVerificationToken: verificationToken
+        )
+
+        let connected = linked.compactMap(SocialConnection.init(memberOAuth:))
+        SocialType.saveConnected(connected.map(\.socialType))
+
+        if case .loaded(var profile) = profileData {
+            profile.socialConnections = connected
+            profileData = .loaded(profile)
+        }
+    }
+
+    // MARK: - Private Function
+
+    /// `/member-oauth/me`를 조회해 연동 소셜 목록을 동기화합니다.
+    ///
+    /// 조회 실패는 프로필 조회 전체를 실패시키지 않고 `nil`을 반환합니다.
+    @MainActor
+    private func syncConnectedSocials() async -> [SocialConnection]? {
+        do {
+            let oauths = try await fetchMyOAuthUseCase.execute()
+            let connections = oauths.compactMap(SocialConnection.init(memberOAuth:))
+            SocialType.saveConnected(connections.map(\.socialType))
+            return connections
+        } catch {
+            return nil
+        }
+    }
+
+    /// 소셜 타입별 OAuth 로그인을 수행하여 검증 토큰을 반환합니다.
+    @MainActor
+    private func fetchOAuthVerificationToken(social: SocialType) async throws -> String {
+        let result: OAuthLoginResult
+
+        switch social {
+        case .kakao:
+            let (accessToken, email) = try await kakaoLoginManager.login()
+            result = try await loginUseCase.executeKakao(accessToken: accessToken, email: email)
+        case .apple:
+            let authorizationCode = try await fetchAppleAuthorizationCode()
+            result = try await loginUseCase.executeApple(
+                authorizationCode: authorizationCode,
+                email: nil,
+                fullName: nil
+            )
+        case .google:
+            let accessToken = try await googleLoginManager.fetchAccessToken()
+            result = try await loginUseCase.executeGoogle(accessToken: accessToken)
+        }
+
+        return try extractVerificationToken(from: result, providerName: social.rawValue)
+    }
+
+    /// `AppleLoginManager`의 콜백을 async/await로 브릿징하여 authorization code를 반환합니다.
+    @MainActor
+    private func fetchAppleAuthorizationCode() async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            appleLoginManager.onAuthorizationCompleted = { code, _, _ in
+                continuation.resume(returning: code)
+            }
+            appleLoginManager.onAuthorizationFailed = { error in
+                continuation.resume(throwing: error)
+            }
+            appleLoginManager.signWithApple()
+        }
+    }
+
+    /// `OAuthLoginResult`에서 연동용 검증 토큰을 추출합니다.
+    ///
+    /// - Note: 검증 토큰은 신규 회원(`newMember`) 응답에만 존재합니다. 기존 회원은 이미 다른
+    ///   계정에 연결된 소셜이므로 연동 불가로 에러를 던집니다.
+    private func extractVerificationToken(
+        from result: OAuthLoginResult,
+        providerName: String
+    ) throws -> String {
+        switch result {
+        case .newMember(let token) where !token.isEmpty:
+            return token
+        case .newMember:
+            throw AuthError.socialLoginFailed(
+                provider: providerName,
+                reason: "OAuth 검증 토큰이 비어있습니다."
+            )
+        case .existingMember:
+            throw AuthError.socialLoginFailed(
+                provider: providerName,
+                reason: "이미 연동된 계정이거나 연동 가능한 검증 토큰이 없습니다."
+            )
         }
     }
 }

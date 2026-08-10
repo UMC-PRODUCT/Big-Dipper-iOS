@@ -49,6 +49,18 @@ extension DIContainer {
             LoginByEmailUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
         }
 
+        // MARK: - 소셜 연동(MemberOAuth) UseCase (#1029)
+
+        register(FetchMyOAuthUseCaseProtocol.self) {
+            FetchMyOAuthUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
+        }
+        register(AddMemberOAuthUseCaseProtocol.self) {
+            AddMemberOAuthUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
+        }
+        register(DeleteMemberOAuthUseCaseProtocol.self) {
+            DeleteMemberOAuthUseCase(repository: self.resolve(AuthRepositoryProtocol.self))
+        }
+
         // MARK: - 회원가입(SignUp) 관련 UseCase (#944)
 
         register(FetchSignUpDataUseCaseProtocol.self) {

@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 import UMCFoundation
+import AuthDomain
 import CoreDI
 import MyPageDomain
 
@@ -26,15 +27,12 @@ public struct MyPageProfileView: View {
     @State private var alertPrompt: AlertPrompt?
     
     public init(container: DIContainer, profileData: ProfileData) {
-        let provider = container.resolve(MyPageUseCaseProviding.self)
-        // MARK: - Todo -> Auth 완성되면 진행 필요
-//        let authProvider = container.resolve(AuthUseCaseProviding.self)
         self._viewModel = .init(
             initialValue: .init(
                 profileData: profileData,
-                useCaseProvider: provider,
-                // MARK: - Todo -> Auth 완성되면 진행 필요
-//                authUseCaseProvider: authProvider
+                useCaseProvider: container.resolve(MyPageUseCaseProviding.self),
+                fetchMyOAuthUseCase: container.resolve(FetchMyOAuthUseCaseProtocol.self),
+                deleteMemberOAuthUseCase: container.resolve(DeleteMemberOAuthUseCaseProtocol.self)
             )
         )
     }

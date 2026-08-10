@@ -388,6 +388,12 @@ private final class MockKakaoLoginManager: KakaoLoginManaging, @unchecked Sendab
         if let error { throw error }
         return (accessToken, email)
     }
+
+    func fetchAccessToken() async throws -> String {
+        callCount += 1
+        if let error { throw error }
+        return accessToken
+    }
 }
 
 /// 로딩 중 중복 호출 방지를 검증하기 위해 인위적인 지연을 주는 Kakao 매니저.
@@ -412,6 +418,10 @@ private final class SlowKakaoLoginManager: KakaoLoginManaging, @unchecked Sendab
         try await Task.sleep(nanoseconds: delayNanoseconds)
         return ("kakao-token", "kakao@umc.dev")
     }
+
+    func fetchAccessToken() async throws -> String {
+        try await login().accessToken
+    }
 }
 
 private final class MockGoogleLoginManager: GoogleLoginManaging, @unchecked Sendable {
@@ -424,6 +434,12 @@ private final class MockGoogleLoginManager: GoogleLoginManaging, @unchecked Send
         callCount += 1
         if let error { throw error }
         return (accessToken, email)
+    }
+
+    func fetchAccessToken() async throws -> String {
+        callCount += 1
+        if let error { throw error }
+        return accessToken
     }
 }
 

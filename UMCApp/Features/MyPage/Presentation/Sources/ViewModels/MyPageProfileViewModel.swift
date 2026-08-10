@@ -8,6 +8,8 @@
 import UMCFoundation
 import SwiftUI
 import PhotosUI
+import AuthDomain
+import CoreNetwork
 import CorePhoto
 import MyPageDomain
 
@@ -21,11 +23,11 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     /// 프로필 정보
     public var profileData: ProfileData
     private let useCaseProvider: MyPageUseCaseProviding
-    // FIXME: - Auth 모듈 수정 후 고치기
-//    private let authUseCaseProvider: AuthUseCaseProviding
-//    private let kakaoLoginManager = KakaoLoginManager()
-//    private let googleLoginManager = GoogleLoginManager()
-    
+    private let fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol
+    private let deleteMemberOAuthUseCase: DeleteMemberOAuthUseCaseProtocol
+    private let kakaoLoginManager: KakaoLoginManaging
+    private let googleLoginManager: GoogleLoginManaging
+
     /// PhotosPicker에서 선택된 아이템(PHPickerResult)
     public var selectedPhotoItem: PhotosPickerItem?
     
@@ -84,14 +86,17 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     public init(
         profileData: ProfileData,
         useCaseProvider: MyPageUseCaseProviding,
-        /*
-        // FIXME: - Auth 모듈 수정 후 고치기
-        authUseCaseProvider: AuthUseCaseProviding
-         */
+        fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol,
+        deleteMemberOAuthUseCase: DeleteMemberOAuthUseCaseProtocol,
+        kakaoLoginManager: KakaoLoginManaging = KakaoLoginManager(),
+        googleLoginManager: GoogleLoginManaging = GoogleLoginManager()
     ) {
         self.profileData = profileData
         self.useCaseProvider = useCaseProvider
-//        self.authUseCaseProvider = authUseCaseProvider
+        self.fetchMyOAuthUseCase = fetchMyOAuthUseCase
+        self.deleteMemberOAuthUseCase = deleteMemberOAuthUseCase
+        self.kakaoLoginManager = kakaoLoginManager
+        self.googleLoginManager = googleLoginManager
         self.initialProfileLinkState = Self.makeProfileLinkState(from: profileData.profileLink)
     }
     
@@ -169,21 +174,29 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
     }
     
     /// 특정 소셜 연동을 해제하고 최신 연동 목록으로 갱신합니다.
-    // FIXME: - Auth 모듈 수정 후 고치기
-    /*
     @MainActor
     public func disconnectSocial(_ connection: SocialConnection) async throws {
         guard disconnectingSocialType == nil else {
             return
         }
-        
+
         disconnectingSocialType = connection.socialType
         defer { disconnectingSocialType = nil }
-        
-//        let verification = try await
+
+        let verification = try await makeDeleteVerification(for: connection.socialType)
+
+        try await deleteMemberOAuthUseCase.execute(
+            memberOAuthId: connection.memberOAuthId,
+            googleAccessToken: verification.googleAccessToken,
+            kakaoAccessToken: verification.kakaoAccessToken
+        )
+
+        let oauths = try await fetchMyOAuthUseCase.execute()
+        let updatedConnections = oauths.compactMap(SocialConnection.init(memberOAuth:))
+        profileData.socialConnections = updatedConnections
+        SocialType.saveConnected(updatedConnections.map(\.socialType))
     }
-     */
-    
+
     /// 프로필 링크 배열을 `[SocialLinkType: String]` 스냅샷으로 변환합니다.
     ///
     /// 변경 감지(diff) 비교에 사용되며, URL 공백을 제거하고
@@ -215,23 +228,20 @@ public final class MyPageProfileViewModel: SinglePhotoPickerManageable {
         }
     }
     
-    /// 소셜 로그인들의 연동 해제한 것을 확인합니다.
-    // MARK: - Todo -> Auth완성되면 진행필요
-    /*
+    /// 연동 해제 요청에 필요한 소셜별 검증 토큰을 발급받습니다.
+    ///
+    /// Apple은 서버가 별도 검증 토큰을 요구하지 않아 두 토큰 모두 `nil`입니다.
+    @MainActor
     private func makeDeleteVerification(
         for socialType: SocialType
     ) async throws -> (googleAccessToken: String?, kakaoAccessToken: String?) {
         switch socialType {
         case .kakao:
+            return (nil, try await kakaoLoginManager.fetchAccessToken())
         case .apple:
+            return (nil, nil)
         case .google:
+            return (try await googleLoginManager.fetchAccessToken(), nil)
         }
     }
-    */
-    
-    // MARK: - Todo -> Auth완성되면 구현 필요
-    /*
-    private static func makeSocialConnection() -> SocialConnection? {
-    }
-     */
 }
