@@ -512,6 +512,36 @@ extension AuthRepository: AuthRegistrationRepositoryProtocol {
             throw RepositoryError.decodingError(detail: "\(decodingError)")
         }
     }
+
+    // MARK: - Change Password
+
+    public func changePassword(currentPassword: String, newPassword: String) async throws {
+        let response: Response
+        do {
+            response = try await adapter.request(
+                AuthRouter.changePassword(
+                    body: ChangePasswordRequestDTO(
+                        currentPassword: currentPassword,
+                        newPassword: newPassword
+                    )
+                )
+            )
+        } catch let networkError as NetworkError {
+            // 현재 비밀번호 불일치가 비-2xx로 오므로, 화면이 인라인 메시지로 쓸 수 있게
+            // `loginByEmail`과 동일하게 서버 코드/메시지를 살려 정규화한다.
+            throw Self.parseServerError(from: networkError) ?? networkError
+        }
+
+        do {
+            let apiResponse = try JSONDecoder().decode(
+                APIResponse<EmptyResult>.self,
+                from: response.data
+            )
+            try apiResponse.validateSuccess()
+        } catch let decodingError as DecodingError {
+            throw RepositoryError.decodingError(detail: "\(decodingError)")
+        }
+    }
 }
 
 // MARK: - Helpers (Email Verification Error Mapping)

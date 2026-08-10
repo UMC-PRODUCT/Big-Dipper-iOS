@@ -50,6 +50,8 @@ public enum AuthRouter: BaseTargetType {
     case registerExistingChallenger(body: RegisterExistingChallengerRequestDTO)
     /// 비밀번호 재설정
     case resetPassword(body: ResetPasswordRequestDTO)
+    /// 로그인 상태에서의 비밀번호 변경
+    case changePassword(body: ChangePasswordRequestDTO)
     /// 내 OAuth 연동 정보 조회
     case fetchMyOAuth
     /// 로그인 OAuth 수단 추가 연동
@@ -91,6 +93,8 @@ public enum AuthRouter: BaseTargetType {
             return "/api/v1/challenger-record/member"
         case .resetPassword:
             return "/api/v1/auth/password/reset"
+        case .changePassword:
+            return "/api/v1/auth/password"
         case .fetchMyOAuth:
             return "/api/v1/member-oauth/me"
         case .addMemberOAuth:
@@ -111,7 +115,7 @@ public enum AuthRouter: BaseTargetType {
              .register, .registerByEmail, .registerCredential, .registerExistingChallenger,
              .addMemberOAuth:
             return .post
-        case .resetPassword:
+        case .resetPassword, .changePassword:
             return .patch
         case .deleteMemberOAuth:
             return .delete
@@ -154,6 +158,8 @@ public enum AuthRouter: BaseTargetType {
         case .registerExistingChallenger(let body):
             return .requestJSONEncodable(body)
         case .resetPassword(let body):
+            return .requestJSONEncodable(body)
+        case .changePassword(let body):
             return .requestJSONEncodable(body)
         case .fetchMyOAuth:
             return .requestPlain

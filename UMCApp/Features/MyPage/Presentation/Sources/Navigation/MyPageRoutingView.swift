@@ -5,8 +5,10 @@
 //  Created by euijjang97 on 8/10/26.
 //
 
+import AuthPresentation
 import CoreDI
 import SwiftUI
+import UMCFoundation
 
 /// ``MyPageDestination``을 실제 화면으로 바꾸는 라우팅 뷰.
 ///
@@ -18,6 +20,8 @@ struct MyPageRoutingView: View {
 
     private let destination: MyPageDestination
     private let container: DIContainer
+
+    @Environment(ErrorHandler.self) private var errorHandler
 
     // MARK: - Init
 
@@ -32,6 +36,9 @@ struct MyPageRoutingView: View {
         switch destination {
         case .myActivePosts(let logType):
             MyActivePostsView(container: container, logType: logType)
+
+        case .changePassword:
+            ChangePasswordView(container: container, errorHandler: errorHandler)
         }
     }
 }

@@ -60,6 +60,15 @@ public protocol AuthRepositoryProtocol {
     /// - Returns: 연동 완료 후 전체 OAuth 목록
     func addMemberOAuth(oAuthVerificationToken: String) async throws -> [MemberOAuth]
 
+    /// 로그인 상태에서 비밀번호를 변경한다.
+    ///
+    /// 이메일 인증 토큰으로 재설정하는 `AuthRegistrationRepositoryProtocol.resetPassword`와 달리
+    /// 현재 세션의 액세스 토큰으로 본인을 식별하므로 세션 계약인 이쪽에 둔다.
+    /// - Parameters:
+    ///   - currentPassword: 현재 비밀번호(평문)
+    ///   - newPassword: 새로 설정할 평문 비밀번호
+    func changePassword(currentPassword: String, newPassword: String) async throws
+
     /// OAuth 수단 연동을 해제한다.
     /// - Parameters:
     ///   - memberOAuthId: 해제할 OAuth 연동 ID
