@@ -64,9 +64,11 @@ struct RootTabView: View {
     private var bottomAccessory: some View {
         let userSession = di.resolve(UserSessionManager.self)
 
-        if pathStore.selectedTab == .activity,
-           pathStore.isAtRoot(.activity),
-           userSession.canToggleAdminMode {
+        if AdminModeToggle.shouldShow(
+            selectedTab: pathStore.selectedTab,
+            isAtRoot: pathStore.isAtRoot(.activity),
+            canToggleAdminMode: userSession.canToggleAdminMode
+        ) {
             AdminModeToggle(userSession: userSession)
         }
     }
@@ -165,13 +167,28 @@ struct RootTabView: View {
 ///
 /// 액세서리는 축소(`inline`)·확장(`expanded`) 두 배치를 오가므로, 확장일 때만 현재 역할
 /// 배지와 좌우 여백을 더한다. 배치 값은 액세서리 콘텐츠 안에서만 유효해 별도 뷰로 뒀다.
-private struct AdminModeToggle: View {
+struct AdminModeToggle: View {
 
     // MARK: - Property
 
     let userSession: UserSessionManager
 
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    // MARK: - Gating
+
+    /// 토글 노출 조건.
+    ///
+    /// 액세서리는 탭 셸이 소유해 모든 탭에 걸쳐 있으므로 Activity 탭에서만 노출한다.
+    /// 스택이 쌓인 하위 화면에서는 모드를 바꿔도 보고 있는 화면이 그대로라 루트에서만 허용하고,
+    /// 운영진 권한이 없으면 전환 자체가 무의미해 숨긴다.
+    static func shouldShow(
+        selectedTab: NavigationTab,
+        isAtRoot: Bool,
+        canToggleAdminMode: Bool
+    ) -> Bool {
+        selectedTab == .activity && isAtRoot && canToggleAdminMode
+    }
 
     // MARK: - Body
 
