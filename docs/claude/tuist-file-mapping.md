@@ -452,8 +452,8 @@
 | `Domain/Models/Schedule/ScheduleLocation.swift` | HomeDomain |
 | `Domain/Models/Schedule/ScheduleParticipant.swift` | HomeDomain |
 | `Domain/Models/ScheduleGeneration/CSVImportResult.swift` | HomeDomain |
-| `Domain/Models/ScheduleGeneration/PlaceSearchResult.swift` | HomeDomain |
-| `Domain/Models/ScheduleGeneration/RecentPlace.swift` | HomeDomain |
+| `Domain/Models/ScheduleGeneration/PlaceSearchResult.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
+| `Domain/Models/ScheduleGeneration/RecentPlace.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
 | `Domain/Models/ScheduleGeneration/ScheduleRegistrationData.swift` | HomeDomain (`ScheduleCreationRequest`로 개명 — 장소·출석 정책은 조회 모델 재사용) |
 | `Domain/UseCases/DeleteScheduleUseCaseProtocol.swift` | HomeDomain |
 | `Domain/UseCases/FetchMyProfileUseCaseProtocol.swift` | HomeDomain (FetchHomeProfileUseCaseProtocol로 개명, CoreDomain 프로필 파이프라인 합성 — #961) |
@@ -484,7 +484,7 @@
 | `Presentation/Components/Card/ScheduleCard.swift` | HomePresentation |
 | `Presentation/Components/Card/ScheduleListCard.swift` | HomePresentation |
 | `Presentation/Components/Card/SeasonCard.swift` | HomePresentation |
-| `Presentation/Components/Map/SelectedPlaceAnnotation.swift` | HomePresentation |
+| `Presentation/Components/Map/SelectedPlaceAnnotation.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
 | `Presentation/Components/Row/DatePickerRow.swift` | CoreUIComponents (`Sources/Schedule/`) |
 | `Presentation/Components/Row/DateTimeRow.swift` | CoreUIComponents (`Sources/Schedule/`) |
 | `Presentation/Components/Row/TimePickerRow.swift` | CoreUIComponents (`Sources/Schedule/`) |
@@ -497,7 +497,7 @@
 | `Presentation/Components/Schedule/Calendar/ScheduleHeader.swift` | HomePresentation |
 | `Presentation/Components/Schedule/InPersonToggle.swift` | CoreUIComponents (`Sources/Schedule/`) |
 | `Presentation/Enum/NoticeAlarmType.swift` | HomeDomain (`Models/NoticeHistory/NoticeAlarmType.swift` — Presentation 아님) |
-| `Presentation/Enum/PenalyInfoType.swift` | HomePresentation |
+| `Presentation/Enum/PenalyInfoType.swift` | **타입별로 갈림** — ① `PointLogItem` → **superseded → `HomeDomain.PointLog`** (`id` 를 `UUID()` → 서버 발급 `String` 으로, `point` 를 `Int` → `Double` 로 확장해 서버의 `-0.5` 소수 배점 보존). 소비처 `PenaltyCard` 는 `fileprivate enum PointLogFilter` 까지 레거시 그대로 이식됨 ② `PenaltyInfoItem` → **이식 제외(dead)** — `GenerationData.penaltyLogs`(레거시 주석 "하위호환")에 담기기만 하고 읽는 곳 0건 ③ `InfoType` → **이식 제외(dead)** — 레거시 참조 0건 |
 | `Presentation/Enum/RecentCategory.swift` | **superseded → `NoticeDomain.NoticeCategory`** — 레거시 소비자는 함께 대체된 `NoticeListDTO`·`RecentNoticeData` 뿐 |
 | `Presentation/Enum/ScheduleCategory.swift` | **이식 제외(dead)** — 레거시 참조 0건(`HomeView`의 `isScheduleCategoryLoading` 은 이름만 겹치는 별개 상태) |
 | `Presentation/Enum/ScheduleGenerationType.swift` | **superseded → 각 View 의 `fileprivate enum Constants` + `PlaceSelectView(placeholder:)`** — 폼 placeholder 를 열거형 한 곳에 모으는 설계를 버렸다. 레거시 소비자(`ScheduleRegistrationView`·`PlaceSelectView`)는 UMCApp 에서 각자 상수를 갖는다 |
@@ -505,24 +505,39 @@
 | `Presentation/Enum/SeasonType.swift` | HomeDomain (`Models/SeasonType.swift` — Presentation 아님) |
 | `Presentation/Provider/HomeUseCaseProvider.swift` | **superseded → `UMCApp/Sources/DIContainer+Home.swift`** — 레거시 유일 소비자는 `Core/DIContainer/DIContainer.swift`. UseCase 조립은 앱 타깃 DIContainer 확장이 담당 |
 | `Presentation/ViewModels/HomeViewModel.swift` | HomePresentation |
-| `Presentation/ViewModels/InlineMapPickerState.swift` | HomePresentation |
+| `Presentation/ViewModels/InlineMapPickerState.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
 | `Presentation/ViewModels/ScheduleDetailViewModel.swift` | HomePresentation |
 | `Presentation/ViewModels/ScheduleDraft.swift` | HomePresentation |
 | `Presentation/ViewModels/ScheduleRegistrationViewModel+AI.swift` | HomePresentation |
 | `Presentation/ViewModels/ScheduleRegistrationViewModel.swift` | HomePresentation |
 | `Presentation/ViewModels/SearchChallengerViewModel.swift` | ActivityPresentation |
-| `Presentation/ViewModels/SearchPlaceViewModel.swift` | HomePresentation |
+| `Presentation/ViewModels/SearchPlaceViewModel.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
 | `Presentation/Views/HomeView.swift` | HomePresentation |
 | `Presentation/Views/NoticeAlarmView.swift` | HomePresentation |
 | `Presentation/Views/Registration/Challenger/ChallengerFormView.swift` | ActivityPresentation (`Components/Challenger/`) |
 | `Presentation/Views/Registration/Challenger/SearchChallengerView.swift` | ActivityPresentation (`Components/Challenger/`) |
 | `Presentation/Views/Registration/Challenger/SelectedChallengerView.swift` | ActivityPresentation (`Components/Challenger/`) |
-| `Presentation/Views/Registration/InlineMapPlacePicker.swift` | HomePresentation |
+| `Presentation/Views/Registration/InlineMapPlacePicker.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
 | `Presentation/Views/Registration/ScheduleDetailView.swift` | HomePresentation (`Views/ScheduleDetailView.swift` — Registration 하위 아님) |
 | `Presentation/Views/Registration/ScheduleRegistrationView.swift` | HomePresentation |
-| `Presentation/Views/Registration/SearchPlaceResultRow.swift` | HomePresentation |
-| `Presentation/Views/Registration/SearchPlaceView.swift` | HomePresentation |
+| `Presentation/Views/Registration/SearchPlaceResultRow.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
+| `Presentation/Views/Registration/SearchPlaceView.swift` | **이식 제외(dead)** — 텍스트 장소 검색 체인. 아래 ⓟ 주석 참조 |
 | `Presentation/Views/Registration/TagListView.swift` | HomePresentation |
+
+> **ⓟ 텍스트 장소 검색 체인 (8파일) — 이식 제외(dead)**
+>
+> `SearchPlaceView` · `SearchPlaceViewModel` · `SearchPlaceResultRow` · `InlineMapPlacePicker` ·
+> `InlineMapPickerState` · `SelectedPlaceAnnotation` · `PlaceSearchResult` · `RecentPlace`
+>
+> 레거시가 지도 피커로 전환하면서 연결이 끊긴 잔해다. **8파일 모두 AppProduct 내 참조 0건**이고,
+> 레거시 `ScheduleRegistrationView.swift:135` 는 이미 `PlaceSelectView(place:)` 를 쓴다 —
+> 이 컴포넌트가 `CoreUIComponents/Sources/PlaceSelectView/` 로 이식된 현재 구현이므로
+> **"레거시에서 쓰던 방식"은 이미 UMCApp 에 그대로 있다.** 이식하면 레거시에서도 한 번도 돌지 않은
+> 코드를 되살리는 셈이라 대상에서 제외한다.
+>
+> 다만 그 결과로 **지도 피커에 텍스트 검색이 없다** (POI 길게누르기 + 리버스 지오코딩만 가능).
+> 이는 이관 누락이 아니라 신규 기능이며 #1122 에서 다룬다. `AppStorageKey.recentSearchPlaces`
+> 키가 UMCApp 에 정의만 되고 미사용으로 남아 있는 것도 같은 이유다.
 
 ### Features/Maintenance
 
