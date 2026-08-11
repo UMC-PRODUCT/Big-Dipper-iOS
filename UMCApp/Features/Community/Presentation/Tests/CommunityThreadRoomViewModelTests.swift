@@ -275,6 +275,30 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.messages.map(\.id) == ["2", "3"])
     }
 
+    @Test("과거를 올려본 뒤 다시 load() 해도 시간순이 뒤집히지 않는다")
+    func reloadAfterLoadOlderKeepsChronologicalOrder() async {
+        let useCase = StubRoomUseCase()
+        useCase.pages[nil] = ThreadMessagePage(
+            messages: [makeMessage(id: "3", createdAt: 300)],
+            hasMore: true,
+            nextBefore: "3"
+        )
+        useCase.pages["3"] = ThreadMessagePage(
+            messages: [makeMessage(id: "2", createdAt: 200), makeMessage(id: "1", createdAt: 100)],
+            hasMore: false,
+            nextBefore: nil
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+        await viewModel.loadOlderIfNeeded(currentItem: makeMessage(id: "3", createdAt: 300))
+        #expect(viewModel.messages.map(\.id) == ["1", "2", "3"])
+
+        // load() 는 "최신 페이지로 리셋" 이다 — 커서도 되돌아가므로 과거 이력은 다시 올려 받는다.
+        await viewModel.load()
+
+        #expect(viewModel.messages.map(\.id) == ["3"])
+    }
+
     @Test("진입하면 가장 최신 메시지로 읽음 워터마크를 보낸다", .timeLimit(.minutes(1)))
     func sendsReadWatermarkOnEntry() async {
         let useCase = StubRoomUseCase()
@@ -336,6 +360,28 @@ struct CommunityThreadRoomViewModelTests {
             threadId: "1",
             message: makeMessage(id: "77", content: "안녕", clientMessageId: clientMessageId),
             clientMessageId: clientMessageId
+        ))
+
+        #expect(viewModel.messages.count == 1)
+        #expect(viewModel.messages.first?.id == "77")
+        #expect(viewModel.messages.first?.deliveryState == .sent)
+    }
+
+    @Test("서버가 clientMessageId 를 대문자로 되돌려 줘도 같은 항목을 교체한다")
+    func replacesOptimisticMessageOnUppercaseEcho() async throws {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.draft = "안녕"
+        await viewModel.send()
+        let sentId = try #require(useCase.sentClientMessageIds.first)
+
+        let echoed = sentId.uppercased()
+        viewModel.apply(.messageCreated(
+            threadId: "1",
+            message: makeMessage(id: "77", content: "안녕", clientMessageId: echoed),
+            clientMessageId: echoed
         ))
 
         #expect(viewModel.messages.count == 1)

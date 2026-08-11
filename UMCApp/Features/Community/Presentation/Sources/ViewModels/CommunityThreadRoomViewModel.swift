@@ -108,6 +108,8 @@ public final class CommunityThreadRoomViewModel {
         defer { isLoading = false }
 
         header = .loading
+        // 요청 전 스냅샷. 이 뒤에 새로 생긴 항목만 "기다리는 동안 도착한 것" 이다.
+        let priorIds = Set(messages.map(\.id))
 
         async let threadRequest = useCase.loadThread(threadId: threadId)
         async let pageRequest = useCase.loadMessages(threadId: threadId, before: nil)
@@ -116,8 +118,13 @@ public final class CommunityThreadRoomViewModel {
             let (thread, page) = try await (threadRequest, pageRequest)
             // 응답을 기다리는 동안 실시간으로 도착한 메시지와 전송 중인 낙관적 버블은 서버
             // 스냅샷에 없다. 통째로 덮으면 되찾을 경로가 없어 대화록에 구멍이 남는다.
+            // 반대로 `loadOlder` 로 쌓인 과거 이력까지 살리면 최신 페이지 뒤에 붙어 시간순이
+            // 뒤집힌다 — `load()` 는 커서까지 되돌리는 "최신 페이지로 리셋" 이라 버리는 게 맞다.
             let known = Set(page.messages.map(\.id))
-            messages = page.messages.reversed() + messages.filter { !known.contains($0.id) }
+            let arrivedDuringRequest = messages.filter {
+                !known.contains($0.id) && !priorIds.contains($0.id)
+            }
+            messages = page.messages.reversed() + arrivedDuringRequest
             hasMore = page.hasMore
             nextBefore = page.nextBefore
             header = .loaded(thread)
