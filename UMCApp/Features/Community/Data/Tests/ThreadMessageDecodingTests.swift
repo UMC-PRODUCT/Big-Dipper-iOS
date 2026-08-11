@@ -29,6 +29,10 @@ struct ThreadMessageDecodingTests {
         let message = try decode(ThreadMessageDTO.self, json).toDomain
 
         #expect(message.id == "1024")
+        #expect(message.threadId == "12")
+        #expect(message.senderId == "5")
+        #expect(message.senderName == "정의진")
+        #expect(message.content == "안녕하세요")
         #expect(message.type == .text)
         #expect(message.deliveryState == .sent)
         #expect(message.isDeleted == false)
@@ -51,6 +55,9 @@ struct ThreadMessageDecodingTests {
 
         #expect(message.id == "1024")
         #expect(message.threadId == "12")
+        #expect(message.senderId == "5")
+        #expect(message.senderName == "정의진")
+        #expect(message.content == "안녕하세요")
         #expect(message.clientMessageId == "5f8b1c2e-1111-4222-8333-444455556666")
     }
 
@@ -154,6 +161,55 @@ struct ThreadMessageDecodingTests {
         """
 
         #expect(try decode(ThreadMessageDTO.self, json).toDomain.type == .system)
+    }
+
+    @Test("messages 원소 하나가 깨져도 나머지 메시지와 페이지는 살아남는다")
+    func dropsOnlyBrokenMessageInPage() throws {
+        let json = """
+        {
+          "messages": [
+            {"messageId": "3", "threadId": "1", "senderId": "1", "senderName": "정의진",
+             "content": "첫 번째", "type": "TEXT", "createdAt": "2026-08-11T10:00:00Z"},
+            {"threadId": "1", "senderId": "1", "senderName": "정의진",
+             "content": "messageId 가 없어 버려진다", "type": "TEXT",
+             "createdAt": "2026-08-11T10:01:00Z"},
+            {"messageId": "1", "threadId": "1", "senderId": "1", "senderName": "정의진",
+             "content": "세 번째", "type": "TEXT", "createdAt": "2026-08-11T10:02:00Z"}
+          ],
+          "hasMore": true, "nextBefore": "1"
+        }
+        """
+
+        let page = try decode(ThreadMessagePageDTO.self, json).toDomain
+
+        #expect(page.messages.count == 2)
+        #expect(page.messages.map(\.id) == ["3", "1"])
+        #expect(page.messages.map(\.content) == ["첫 번째", "세 번째"])
+        #expect(page.hasMore)
+        #expect(page.nextBefore == "1")
+    }
+
+    @Test("하위 배열의 깨진 원소만 버리고 메시지 자체는 살린다")
+    func dropsOnlyBrokenNestedElements() throws {
+        let json = """
+        {
+          "messageId": "9", "threadId": "1", "senderId": "2", "senderName": "이재원",
+          "content": "사진", "type": "IMAGE",
+          "files": [{"fileName": "잃어버린.png", "fileSize": 1},
+                    {"fileId": "f2", "fileName": "b.png", "fileSize": 2048,
+                     "fileUrl": "https://cdn/b"}],
+          "mentions": [{"name": "memberId 없음"}, {"memberId": 7, "name": "정의진"}],
+          "reactions": ["👍", {"emoji": "🎉", "count": 2, "reactedByMe": false}],
+          "createdAt": "2026-08-11T10:00:00Z"
+        }
+        """
+
+        let message = try decode(ThreadMessageDTO.self, json).toDomain
+
+        #expect(message.id == "9")
+        #expect(message.files.map(\.id) == ["f2"])
+        #expect(message.mentions.map(\.memberId) == ["7"])
+        #expect(message.reactions.map(\.emoji) == ["🎉"])
     }
 
     @Test("수량·컬렉션이 누락되거나 null 이어도 던지지 않고 기본값으로 채운다")

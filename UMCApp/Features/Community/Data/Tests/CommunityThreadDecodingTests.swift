@@ -125,6 +125,34 @@ struct CommunityThreadDecodingTests {
         #expect(thread.myRole == nil)
     }
 
+    @Test("pinned·threads 원소 하나가 깨져도 나머지 스레드는 살아남는다")
+    func dropsOnlyBrokenThreadInList() throws {
+        let json = """
+        {
+          "pinned": [
+            {"title": "threadId 가 없어 버려진다", "category": "STUDY",
+             "createdAt": "2026-08-01T00:00:00Z", "updatedAt": "2026-08-01T00:00:00Z"},
+            {"threadId": "7", "title": "고정 스터디", "category": "STUDY",
+             "createdAt": "2026-08-01T00:00:00Z", "updatedAt": "2026-08-01T00:00:00Z"}
+          ],
+          "threads": [
+            {"threadId": "12", "title": "iOS 스터디", "category": "STUDY",
+             "createdAt": "2026-08-01T00:00:00Z", "updatedAt": "2026-08-01T00:00:00Z"},
+            "깨진 원소",
+            {"threadId": "13", "title": "자유", "category": "FREE",
+             "createdAt": "2026-08-01T00:00:00Z", "updatedAt": "2026-08-01T00:00:00Z"}
+          ],
+          "nextOffset": "20", "total": "37"
+        }
+        """
+
+        let page = try decode(CommunityThreadListDTO.self, json).toDomain
+
+        #expect(page.pinned.map(\.id) == ["7"])
+        #expect(page.threads.map(\.id) == ["12", "13"])
+        #expect(page.total == "37")
+    }
+
     @Test("수량 필드가 누락되거나 null 이어도 던지지 않고 0 으로 채운다")
     func defaultsMissingCountsToZero() throws {
         let missingKeys = """

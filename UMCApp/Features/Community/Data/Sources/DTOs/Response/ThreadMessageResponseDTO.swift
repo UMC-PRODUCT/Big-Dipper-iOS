@@ -200,22 +200,19 @@ public struct ThreadMessageDTO: Codable {
         self.senderName = container.decodeFlexibleStringOrEmpty(forKey: .senderName)
         self.content = container.decodeFlexibleStringOrEmpty(forKey: .content)
         self.type = container.decodeFlexibleStringOrEmpty(forKey: .type)
-        self.files = try container.decodeIfPresent(
-            [ThreadMessageFileDTO].self,
-            forKey: .files
-        ) ?? []
-        self.mentions = try container.decodeIfPresent(
-            [ThreadMessageMentionDTO].self,
+        self.files = try container.decodeLossyArray(ThreadMessageFileDTO.self, forKey: .files)
+        self.mentions = try container.decodeLossyArray(
+            ThreadMessageMentionDTO.self,
             forKey: .mentions
-        ) ?? []
+        )
         self.replyTo = try container.decodeIfPresent(
             ThreadMessageReplyDTO.self,
             forKey: .replyTo
         )
-        self.reactions = try container.decodeIfPresent(
-            [ThreadMessageReactionDTO].self,
+        self.reactions = try container.decodeLossyArray(
+            ThreadMessageReactionDTO.self,
             forKey: .reactions
-        ) ?? []
+        )
         self.clientMessageId = container.decodeFlexibleStringOrNil(forKey: .clientMessageId)
         self.createdAt = container.decodeFlexibleStringOrEmpty(forKey: .createdAt)
         self.editedAt = container.decodeFlexibleStringOrNil(forKey: .editedAt)
@@ -283,10 +280,7 @@ public struct ThreadMessagePageDTO: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.messages = try container.decodeIfPresent(
-            [ThreadMessageDTO].self,
-            forKey: .messages
-        ) ?? []
+        self.messages = try container.decodeLossyArray(ThreadMessageDTO.self, forKey: .messages)
         self.hasMore = try container.decodeBoolFlexibleIfPresent(forKey: .hasMore) ?? false
         self.nextBefore = container.decodeFlexibleStringOrNil(forKey: .nextBefore)
     }

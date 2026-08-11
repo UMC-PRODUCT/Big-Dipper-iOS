@@ -182,14 +182,8 @@ public struct CommunityThreadListDTO: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.pinned = try container.decodeIfPresent(
-            [CommunityThreadDTO].self,
-            forKey: .pinned
-        ) ?? []
-        self.threads = try container.decodeIfPresent(
-            [CommunityThreadDTO].self,
-            forKey: .threads
-        ) ?? []
+        self.pinned = try container.decodeLossyArray(CommunityThreadDTO.self, forKey: .pinned)
+        self.threads = try container.decodeLossyArray(CommunityThreadDTO.self, forKey: .threads)
         self.nextOffset = container.decodeFlexibleStringOrNil(forKey: .nextOffset)
         self.total = container.decodeFlexibleStringOrNil(forKey: .total) ?? "0"
     }
