@@ -70,6 +70,45 @@ struct StompFrameTests {
         #expect(try StompFrame.decode(Data()) == nil)
     }
 
+    @Test("NUL 종료자가 없는 버퍼는 잘린 프레임으로 보고 malformed 로 실패한다")
+    func rejectsFrameWithoutNullTerminator() {
+        #expect(throws: StompFrameError.malformed) {
+            try StompFrame.decode(Data("MESSAGE\nfoo:bar\n\nbody".utf8))
+        }
+    }
+
+    @Test("본문 끝의 개행은 인코딩·디코딩 왕복 후에도 보존된다")
+    func preservesTrailingNewlineInBody() throws {
+        let frame = StompFrame(
+            command: .send,
+            headers: ["destination": "/app/threads/1/messages"],
+            body: Data("line1\nline2\n".utf8)
+        )
+
+        let decoded = try #require(try StompFrame.decode(frame.encoded()))
+
+        #expect(decoded.bodyString == "line1\nline2\n")
+    }
+
+    @Test("NUL 로 종료된 빈 본문 프레임은 heartbeat 가 아니라 빈 본문으로 디코딩된다")
+    func decodesEmptyBodyFrame() throws {
+        let frame = try #require(try StompFrame.decode(Data("MESSAGE\n\n\u{00}".utf8)))
+
+        #expect(frame.command == .message)
+        #expect(frame.body.isEmpty)
+    }
+
+    @Test("CONNECT 프레임의 헤더는 이스케이프·언이스케이프를 면제받는다")
+    func skipsEscapingForConnectFrame() throws {
+        let frame = StompFrame(command: .connect, headers: ["host": "a:b\\c"], body: Data())
+
+        let encoded = try #require(String(data: frame.encoded(), encoding: .utf8))
+        #expect(encoded == "CONNECT\nhost:a:b\\c\n\n\u{00}")
+
+        let decoded = try #require(try StompFrame.decode(Data(encoded.utf8)))
+        #expect(decoded.headers["host"] == "a:b\\c")
+    }
+
     @Test("알 수 없는 커맨드는 unknownCommand 로 실패한다")
     func rejectsUnknownCommand() {
         #expect(throws: StompFrameError.self) {

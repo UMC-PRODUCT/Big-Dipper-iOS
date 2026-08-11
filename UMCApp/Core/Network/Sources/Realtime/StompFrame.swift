@@ -26,7 +26,9 @@ public enum StompFrameError: Error, Equatable {
 /// STOMP 1.2 프레임의 값 표현.
 ///
 /// 이 타입은 바이트 ↔ 값 변환만 담당한다. destination 문자열이나 이벤트 의미 같은
-/// 도메인 지식은 상위(`CommunityData`)가 갖는다.
+/// 도메인 지식은 상위 레이어가 갖는다.
+///
+/// `Sendable` 은 수신 루프(actor) 경계를 넘겨 전달하기 위한 것이다.
 public struct StompFrame: Equatable, Sendable {
 
     // MARK: - Property
@@ -53,10 +55,12 @@ public struct StompFrame: Equatable, Sendable {
 
     /// `COMMAND\n헤더...\n\n<body>\0` 형태로 직렬화한다.
     public func encoded() -> Data {
+        let transform = Self.escapesHeaders(command) ? Self.escape : { $0 }
+
         // 헤더 순서가 흔들리면 테스트와 서버 로그를 대조하기 어렵다. 키 정렬로 고정한다.
         let headerLines = headers
             .sorted { $0.key < $1.key }
-            .map { "\(Self.escape($0.key)):\(Self.escape($0.value))" }
+            .map { "\(transform($0.key)):\(transform($0.value))" }
             .joined(separator: "\n")
 
         var text = command.rawValue + "\n"
@@ -72,13 +76,19 @@ public struct StompFrame: Equatable, Sendable {
     }
 
     /// 수신 바이트를 프레임으로 복원한다. heartbeat(EOL 단독)이면 `nil`.
+    ///
+    /// 프레임 경계는 NULL 종료자가 정의한다. 종료자가 없으면 잘린 버퍼로 보고 `.malformed`.
     public static func decode(_ data: Data) throws -> StompFrame? {
-        // 종료 NULL 과 뒤따르는 heartbeat EOL 을 걷어낸다.
+        // heartbeat 는 버퍼 전체가 EOL 인 경우다. 우측 트림으로 판정하면 본문 끝 개행을 먹는다.
+        guard data.contains(where: { $0 != 0x0A && $0 != 0x0D }) else { return nil }
+
+        // 종료자 뒤에 서버가 덧붙인 EOL 만 걷어낸 뒤, NULL 종료자를 명시적으로 소비한다.
         var payload = data
-        while let last = payload.last, last == 0x00 || last == 0x0A || last == 0x0D {
+        while let last = payload.last, last == 0x0A || last == 0x0D {
             payload.removeLast()
         }
-        guard !payload.isEmpty else { return nil }
+        guard payload.last == 0x00 else { throw StompFrameError.malformed }
+        payload.removeLast()
 
         guard let text = String(data: payload, encoding: .utf8) else {
             throw StompFrameError.malformed
@@ -87,6 +97,7 @@ public struct StompFrame: Equatable, Sendable {
         // 헤더 블록과 본문은 빈 줄로 나뉜다. 본문 자체에 빈 줄이 있을 수 있으므로 첫 경계만 자른다.
         let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
         let parts = normalized.components(separatedBy: "\n\n")
+        // components(separatedBy:) 는 항상 1개 이상을 반환하므로 이 분기는 도달하지 않는다.
         guard let head = parts.first else { throw StompFrameError.malformed }
 
         let bodyText = parts.dropFirst().joined(separator: "\n\n")
@@ -100,11 +111,13 @@ public struct StompFrame: Equatable, Sendable {
         }
         lines.removeFirst()
 
+        let restore = escapesHeaders(command) ? unescape : { $0 }
+
         var headers: [String: String] = [:]
         for line in lines where !line.isEmpty {
             guard let separator = line.firstIndex(of: ":") else { continue }
-            let key = unescape(String(line[line.startIndex..<separator]))
-            let value = unescape(String(line[line.index(after: separator)...]))
+            let key = restore(String(line[line.startIndex..<separator]))
+            let value = restore(String(line[line.index(after: separator)...]))
             // STOMP 1.2: 같은 키가 반복되면 첫 값이 유효하다.
             if headers[key] == nil { headers[key] = value }
         }
@@ -113,6 +126,11 @@ public struct StompFrame: Equatable, Sendable {
     }
 
     // MARK: - Header Escaping
+
+    /// STOMP 1.2 는 1.0 호환을 위해 CONNECT/CONNECTED 헤더의 이스케이프를 면제한다.
+    private static func escapesHeaders(_ command: StompCommand) -> Bool {
+        command != .connect && command != .connected
+    }
 
     private static func escape(_ value: String) -> String {
         value
