@@ -6,6 +6,7 @@
 import Foundation
 import Testing
 import CommunityDomain
+import UMCFoundation
 @testable import CommunityData
 
 @Suite("STOMP envelope → 도메인 이벤트 매핑")
@@ -13,6 +14,28 @@ struct RealtimeEventMappingTests {
 
     private func event(_ json: String) throws -> CommunityThreadRealtimeEvent {
         try JSONDecoder().decode(RealtimeEnvelopeDTO.self, from: Data(json.utf8)).event
+    }
+
+    private func envelope(type: String, payload: String) -> String {
+        """
+        {
+          "eventId": "e-\(type)", "type": "\(type)", "threadId": "12",
+          "occurredAt": "2026-08-11T10:00:00Z",
+          "payload": \(payload)
+        }
+        """
+    }
+
+    private func messageJSON(id: String, content: String, deletedAt: String? = nil) -> String {
+        let tombstone = deletedAt.map { "\"deletedAt\": \"\($0)\"," } ?? ""
+        return """
+        {
+          "messageId": \(id), "threadId": 12, "senderId": 5, "senderName": "정의진",
+          "content": "\(content)", "type": "TEXT", "status": "SENT",
+          "files": [], "mentions": [], "reactions": [], \(tombstone)
+          "createdAt": "2026-08-11T10:00:00Z"
+        }
+        """
     }
 
     @Test("message.created 는 메시지와 clientMessageId 를 함께 싣는다")
@@ -128,6 +151,144 @@ struct RealtimeEventMappingTests {
         }
         #expect(memberId == "5")
         #expect(memberCount == "7")
+    }
+
+    @Test("command.acknowledged 는 커맨드 식별자와 멱등 처리 여부를 싣는다")
+    func mapsCommandAcknowledged() throws {
+        let json = envelope(type: "command.acknowledged", payload: """
+        {
+          "commandId": "c-1", "messageId": 1024,
+          "clientMessageId": "aaaa-bbbb", "deduplicated": true
+        }
+        """)
+
+        guard case .commandAcknowledged(
+            let threadId,
+            let commandId,
+            let messageId,
+            let clientMessageId,
+            let deduplicated
+        ) = try event(json) else {
+            Issue.record("commandAcknowledged 가 아니다")
+            return
+        }
+        #expect(threadId == "12")
+        #expect(commandId == "c-1")
+        #expect(messageId == "1024")
+        #expect(clientMessageId == "aaaa-bbbb")
+        #expect(deduplicated)
+    }
+
+    @Test("message.updated 는 수정된 본문을 그대로 싣는다")
+    func mapsMessageUpdated() throws {
+        let json = envelope(type: "message.updated", payload: """
+        {"message": \(messageJSON(id: "1024", content: "수정됨"))}
+        """)
+
+        guard case .messageUpdated(let threadId, let message) = try event(json) else {
+            Issue.record("messageUpdated 가 아니다")
+            return
+        }
+        #expect(threadId == "12")
+        #expect(message.id == "1024")
+        #expect(message.content == "수정됨")
+    }
+
+    @Test("message.deleted 는 톰스톤 메시지를 싣는다 — message.updated 와 섞이지 않는다")
+    func mapsMessageDeleted() throws {
+        let json = envelope(type: "message.deleted", payload: """
+        {"message": \(messageJSON(
+            id: "1024",
+            content: "삭제된 메시지",
+            deletedAt: "2026-08-11T11:00:00Z"
+        ))}
+        """)
+
+        guard case .messageDeleted(let threadId, let message) = try event(json) else {
+            Issue.record("messageDeleted 가 아니다")
+            return
+        }
+        #expect(threadId == "12")
+        #expect(message.id == "1024")
+        #expect(message.deletedAt == ServerDateTimeConverter.parseUTCDateTime(
+            "2026-08-11T11:00:00Z"
+        ))
+    }
+
+    @Test("reaction.changed 는 대상 메시지와 갱신된 리액션 전체를 싣는다")
+    func mapsReactionChanged() throws {
+        let json = envelope(type: "reaction.changed", payload: """
+        {
+          "messageId": 1024,
+          "reactions": [{"emoji": "👍", "count": 3, "reactedByMe": true}]
+        }
+        """)
+
+        guard case .reactionChanged(let threadId, let messageId, let reactions)
+            = try event(json) else {
+            Issue.record("reactionChanged 가 아니다")
+            return
+        }
+        #expect(threadId == "12")
+        #expect(messageId == "1024")
+        #expect(reactions.count == 1)
+        #expect(reactions.first?.emoji == "👍")
+        #expect(reactions.first?.count == "3")
+        #expect(reactions.first?.reactedByMe == true)
+    }
+
+    @Test("thread.invited 는 초대된 스레드 전체를 싣는다")
+    func mapsThreadInvited() throws {
+        let json = envelope(type: "thread.invited", payload: """
+        {
+          "thread": {
+            "threadId": 12, "title": "새 스터디", "description": "설명",
+            "category": "STUDY", "icon": "📚",
+            "memberCount": 3, "maxMembers": 20,
+            "createdBy": 5, "createdAt": "2026-08-11T10:00:00Z",
+            "updatedAt": "2026-08-11T10:00:00Z"
+          }
+        }
+        """)
+
+        guard case .threadInvited(let thread) = try event(json) else {
+            Issue.record("threadInvited 가 아니다")
+            return
+        }
+        #expect(thread.id == "12")
+        #expect(thread.title == "새 스터디")
+        #expect(thread.category == .study)
+        #expect(thread.memberCount == "3")
+    }
+
+    @Test("thread.deleted 는 삭제 시각을 싣는다 — thread.invited 와 섞이지 않는다")
+    func mapsThreadDeleted() throws {
+        let json = envelope(type: "thread.deleted", payload: """
+        {"threadId": 12, "deletedAt": "2026-08-11T11:00:00Z"}
+        """)
+
+        guard case .threadDeleted(let threadId, let deletedAt) = try event(json) else {
+            Issue.record("threadDeleted 가 아니다")
+            return
+        }
+        #expect(threadId == "12")
+        #expect(deletedAt == ServerDateTimeConverter.parseUTCDateTime("2026-08-11T11:00:00Z"))
+    }
+
+    @Test("member.kicked 는 강퇴된 멤버를 싣는다 — member.left 와 섞이지 않는다")
+    func mapsMemberKicked() throws {
+        let json = envelope(type: "member.kicked", payload: """
+        {"memberId": 9, "memberCount": 6}
+        """)
+
+        guard case .memberKicked(let threadId, let memberId, let memberCount)
+            = try event(json) else {
+            Issue.record("memberKicked 가 아니다")
+            return
+        }
+        #expect(threadId == "12")
+        #expect(memberId == "9")
+        #expect(memberCount == "6")
     }
 
     @Test("모르는 타입은 unknown 으로 흡수하고 던지지 않는다")
