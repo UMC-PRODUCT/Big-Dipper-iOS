@@ -101,11 +101,12 @@ struct RootTabView: View {
 
     /// 탭별 루트 화면. 실연결된 탭은 Feature 화면을, 아직인 탭은 placeholder를 표시한다.
     ///
-    /// Home/Notice/Activity가 실연결 상태다. Activity는 자기 목적지(`ActivityDestination`) 등록까지
-    /// `ActivityFeatureView`가 맡으므로, App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다.
-    /// 반면 Home/Notice는 목적지가 App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
+    /// Home/Notice/Activity/Community가 실연결 상태다. Activity와 Community는 자기 목적지
+    /// (`ActivityDestination`/`CommunityDestination`) 등록까지 각 Feature 루트가 맡으므로,
+    /// App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다. 반면 Home/Notice는 목적지가
+    /// App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
     ///
-    /// - Note: Community/MyPage도 이식된 모듈이 있지만, 탭 실연결은 각 후속 이슈에서 진행한다.
+    /// - Note: MyPage도 이식된 모듈이 있지만, 탭 실연결은 후속 이슈에서 진행한다.
     @ViewBuilder
     private func tabContent(_ tab: NavigationTab) -> some View {
         switch tab {
@@ -145,7 +146,6 @@ struct RootTabView: View {
         case .activity:
             ActivityFeatureView()
         case .community:
-            // TODO: CommunityPresentation의 실제 CommunityView 연결 (Community 탭 실연결 후속 이슈)
             CommunityFeatureView()
         case .mypage:
             MyPageFeatureView()

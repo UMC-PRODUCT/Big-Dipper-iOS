@@ -8,6 +8,8 @@
 #if DEBUG
 import ActivityDomain
 import AuthDomain
+import CommunityData
+import CommunityDomain
 import CoreDI
 import CoreDomain
 import HomeDomain
@@ -52,6 +54,10 @@ extension DIContainer {
         }
         register(OperatorAttendanceRepositoryProtocol.self) {
             StubAttendanceRepository()
+        }
+        // 실시간(STOMP)은 그대로 둔다 — 교체하면 재연결·백필 경로를 stub 모드에서 못 밟는다.
+        register(CommunityThreadRepositoryProtocol.self) {
+            MockCommunityThreadRepository()
         }
 
         Logger(subsystem: "UMCApp", category: "StubSession")

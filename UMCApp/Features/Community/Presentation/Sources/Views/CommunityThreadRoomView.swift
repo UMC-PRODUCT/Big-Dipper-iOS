@@ -70,8 +70,12 @@ struct CommunityThreadRoomView: View {
         .animation(.default, value: viewModel.sendCooldownNotice)
         .umcDefaultBackground()
         .navigationBarTitleDisplayMode(.inline)
+        // 헤더가 오기 전에는 principal 아이템 자체를 만들지 않는다. 내용이 빈 principal 은
+        // titleView 를 차지한 채로 비어 있어서, 라우팅이 걸어 둔 `navigationTitle` 까지 가린다.
         .toolbar {
-            ToolbarItem(placement: .principal) { navigationHeader }
+            if let thread = viewModel.header.value {
+                ToolbarItem(placement: .principal) { navigationHeader(thread) }
+            }
         }
         .task { await viewModel.load() }
         .task { await viewModel.observeRealtime() }
@@ -91,19 +95,16 @@ struct CommunityThreadRoomView: View {
 
     // MARK: - View Component
 
-    @ViewBuilder
-    private var navigationHeader: some View {
-        if let thread = viewModel.header.value {
-            VStack(spacing: Constants.headerLineSpacing) {
-                Text(thread.title)
-                    .appFont(.subheadline, weight: .semibold)
-                    .foregroundStyle(Color.grey900)
+    private func navigationHeader(_ thread: CommunityThread) -> some View {
+        VStack(spacing: Constants.headerLineSpacing) {
+            Text(thread.title)
+                .appFont(.subheadline, weight: .semibold)
+                .foregroundStyle(Color.grey900)
 
-                Text("\(thread.category.displayName) · \(thread.memberCountText)")
-                    .appFont(.caption2, color: .grey500)
-            }
-            .accessibilityElement(children: .combine)
+            Text("\(thread.category.displayName) · \(thread.memberCountText)")
+                .appFont(.caption2, color: .grey500)
         }
+        .accessibilityElement(children: .combine)
     }
 
     /// 헤더와 히스토리 첫 페이지는 한 몸이라 상태도 하나다 (Task 16). 실패는 인라인 재시도로
