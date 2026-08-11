@@ -20,12 +20,18 @@ public struct CommunityThreadRepository: CommunityThreadRepositoryProtocol, @unc
 
     // MARK: - Property
 
-    private let adapter: MoyaNetworkAdapter
+    private let networkRequesting: any CommunityThreadNetworkRequesting
 
     // MARK: - Init
 
+    /// 운영(DI) 진입점.
     public init(adapter: MoyaNetworkAdapter) {
-        self.adapter = adapter
+        self.init(networkRequesting: adapter)
+    }
+
+    /// 네트워크 추상화를 직접 주입하는 지정 이니셜라이저 (모듈 내부 · 테스트 전용).
+    init(networkRequesting: any CommunityThreadNetworkRequesting) {
+        self.networkRequesting = networkRequesting
     }
 
     // MARK: - Function
@@ -95,7 +101,7 @@ public struct CommunityThreadRepository: CommunityThreadRepositoryProtocol, @unc
         _ type: T.Type,
         from target: CommunityThreadRouter
     ) async throws -> T {
-        let response = try await adapter.request(target)
+        let response = try await networkRequesting.request(target)
         do {
             return try JSONDecoder().decode(APIResponse<T>.self, from: response.data).unwrap()
         } catch let decodingError as DecodingError {
