@@ -11,6 +11,7 @@ let project = featureProject(
     includesDataTests: true,
     dataTestDependencies: [
         .target(name: "CommunityDomain"),
+        .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ],
     includesPresentationTests: true,
