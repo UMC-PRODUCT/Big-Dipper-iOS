@@ -101,8 +101,7 @@ public final class CommunityThreadRoomViewModel {
         // 표시는 나와야 한다 — 수신 버블로 밀리면 재전송 버튼이 사라져 복구 경로가 없어진다.
         // (에코가 오면 좌측으로 옮겨 가는 미관 문제는 감수한다.)
         if message.deliveryState != .sent { return true }
-        guard let currentMemberId, !currentMemberId.isEmpty else { return false }
-        return message.senderId == currentMemberId
+        return isMe(message.senderId)
     }
 
     /// 헤더와 최신 페이지를 병렬로 읽는다. 둘은 서로를 기다릴 이유가 없다.
@@ -239,7 +238,13 @@ public final class CommunityThreadRoomViewModel {
             thread.memberCount = update.memberCount
             header = .loaded(thread)
 
-        case .memberLeft(_, _, let memberCount):
+        case .memberLeft(_, let memberId, let memberCount):
+            // 나간 게 나라면 다른 기기·웹에서 벌어진 일이다. 강퇴와 달리 대상이 명시돼 있어
+            // REST 확정 없이 바로 닫는다 — 남이 나간 경우는 카운트만 바뀐다.
+            guard !isMe(memberId) else {
+                eject(message: Constants.leftMessage)
+                return
+            }
             updateMemberCount(memberCount)
 
         case .memberKicked(_, _, let memberCount):
@@ -273,6 +278,13 @@ public final class CommunityThreadRoomViewModel {
     }
 
     // MARK: - Private Function
+
+    /// 이벤트가 지목한 멤버가 나인지. 세션에 memberId 가 없으면 가릴 수 없으므로 남으로 본다 —
+    /// 잘못 "나" 로 판정하면 남이 나간 것만으로 방이 닫힌다.
+    private func isMe(_ memberId: String) -> Bool {
+        guard let currentMemberId, !currentMemberId.isEmpty else { return false }
+        return memberId == currentMemberId
+    }
 
     private func loadOlder() async {
         guard hasMore, let before = nextBefore, !isLoadingOlder else { return }
@@ -481,4 +493,5 @@ fileprivate enum Constants {
     /// 서버가 남은 시간을 주지 않아 고정값으로 푼다.
     static let sendCooldown: Duration = .seconds(5)
     static let ejectedMessage = "이 스레드에서 내보내졌어요."
+    static let leftMessage = "다른 기기에서 이 스레드를 나갔어요."
 }

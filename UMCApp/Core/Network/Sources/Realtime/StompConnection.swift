@@ -4,6 +4,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "dev.umc.core.network", category: "STOMP")
 
 /// STOMP 연결이 상위로 흘려보내는 사건.
 ///
@@ -151,7 +154,9 @@ public actor StompConnection {
             headers: [
                 "accept-version": "1.2",
                 "host": url.host ?? "",
-                "heart-beat": "10000,10000",
+                // cx=0: 송신 타이머가 없으므로 "보낼 수 없음" 을 알린다. cx>0 을 광고하면 브로커가
+                // 그 주기로 우리 heartbeat 를 기다리다 세션을 끊는다. sy=10000 수신분만 받는다.
+                "heart-beat": "0,10000",
                 "Authorization": "Bearer \(accessToken)"
             ]
         )
@@ -236,8 +241,14 @@ public actor StompConnection {
         }
 
         for segment in Self.splitFrames(data) {
-            guard let frame = try? StompFrame.decode(segment) else { continue }
-            await process(frame)
+            do {
+                // heartbeat 는 nil 로 온다 — 버릴 프레임이지 실패가 아니다.
+                guard let frame = try StompFrame.decode(segment) else { continue }
+                await process(frame)
+            } catch {
+                // 재조립은 하지 않는다. 다만 무음으로 증발하면 사라진 메시지를 추적할 길이 없다.
+                logger.error("STOMP 프레임 디코딩 실패: \(String(describing: error))")
+            }
         }
     }
 

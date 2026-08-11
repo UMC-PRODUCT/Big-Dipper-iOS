@@ -118,6 +118,9 @@ struct CommunityThreadListView: View {
     /// 행 + 스와이프. 개설자 전용 `편집` 은 스레드 수정 화면이 후속 PR 이라 넣지 않는다.
     private func row(_ thread: CommunityThread) -> some View {
         Button {
+            // 리스트 뷰는 방에서 pop 해도 계층을 떠난 적이 없어 `.task` 가 다시 돌지 않는다.
+            // 여기서 내리지 않으면 읽고 온 배지가 다음 수동 새로고침까지 남는다.
+            viewModel.markThreadRead(threadId: thread.id)
             onThreadSelected(thread)
         } label: {
             ThreadListRow(thread: thread)

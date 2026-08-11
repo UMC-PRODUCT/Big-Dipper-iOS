@@ -131,7 +131,9 @@ struct CommunityThreadRepositoryTests {
         #expect(network.lastPath == "/api/v1/community/threads")
         #expect(network.lastMethod == .get)
         guard case .getThreads(let query) = network.lastTarget else {
-            Issue.record("lastTarget 이 getThreads 가 아닙니다: \(String(describing: network.lastTarget))")
+            Issue.record(
+                "lastTarget 이 getThreads 가 아닙니다: \(String(describing: network.lastTarget))"
+            )
             return
         }
         #expect(query.filter == "STUDY")
@@ -149,7 +151,9 @@ struct CommunityThreadRepositoryTests {
         #expect(network.lastPath == "/api/v1/community/threads/12")
         #expect(network.lastMethod == .get)
         guard case .getThread(let threadId) = network.lastTarget else {
-            Issue.record("lastTarget 이 getThread 가 아닙니다: \(String(describing: network.lastTarget))")
+            Issue.record(
+                "lastTarget 이 getThread 가 아닙니다: \(String(describing: network.lastTarget))"
+            )
             return
         }
         #expect(threadId == "12")
@@ -164,7 +168,9 @@ struct CommunityThreadRepositoryTests {
         #expect(network.lastPath == "/api/v1/community/threads/12/messages")
         #expect(network.lastMethod == .get)
         guard case .getMessages(let threadId, let query) = network.lastTarget else {
-            Issue.record("lastTarget 이 getMessages 가 아닙니다: \(String(describing: network.lastTarget))")
+            Issue.record(
+                "lastTarget 이 getMessages 가 아닙니다: \(String(describing: network.lastTarget))"
+            )
             return
         }
         #expect(threadId == "12")
@@ -295,7 +301,8 @@ struct CommunityThreadRepositoryTests {
 
     @Test("네트워크 계층 에러는 변환 없이 그대로 올린다")
     func propagatesNetworkError() async {
-        let (repository, _) = makeRepository(.failure(StubCommunityThreadNetwork.StubError.offline))
+        let offline = StubCommunityThreadNetwork.StubError.offline
+        let (repository, _) = makeRepository(.failure(offline))
 
         await #expect(throws: StubCommunityThreadNetwork.StubError.offline) {
             _ = try await repository.fetchMessages(threadId: "12", before: nil, limit: 30)

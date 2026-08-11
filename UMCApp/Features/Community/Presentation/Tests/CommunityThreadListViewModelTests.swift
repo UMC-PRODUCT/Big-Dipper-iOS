@@ -55,10 +55,40 @@ private final class StubListUseCase: CommunityThreadListUseCaseProtocol {
     }
 }
 
+/// 실시간 결선만 확인하기 위한 최소 대역 — 미리 심어 둔 신호를 흘리고 스트림을 닫는다.
+@MainActor
+private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
+
+    var pendingSignals: [CommunityRealtimeSignal] = []
+
+    func loadThread(threadId: String) async throws -> CommunityThread {
+        makeThread(id: threadId)
+    }
+
+    func loadMessages(threadId: String, before: String?) async throws -> ThreadMessagePage {
+        ThreadMessagePage(messages: [], hasMore: false, nextBefore: nil)
+    }
+
+    func send(threadId: String, clientMessageId: String, content: String) async throws {}
+
+    func markRead(threadId: String, lastReadMessageId: String) async throws {}
+
+    func startRealtime() async {}
+
+    func signals() async -> AsyncStream<CommunityRealtimeSignal> {
+        let signals = pendingSignals
+        return AsyncStream { continuation in
+            signals.forEach { continuation.yield($0) }
+            continuation.finish()
+        }
+    }
+}
+
 private func makeThread(
     id: String,
     isPinned: Bool = false,
-    unreadCount: String = "0"
+    unreadCount: String = "0",
+    memberCount: String = "3"
 ) -> CommunityThread {
     CommunityThread(
         id: id,
@@ -66,7 +96,7 @@ private func makeThread(
         description: "",
         category: .free,
         icon: "",
-        memberCount: "3",
+        memberCount: memberCount,
         unreadCount: unreadCount,
         maxMembers: "20",
         isPinned: isPinned,
@@ -82,11 +112,15 @@ private func makeThread(
     )
 }
 
-private func makeMessage(threadId: String, content: String) -> ThreadMessage {
+private func makeMessage(
+    threadId: String,
+    content: String,
+    senderId: String = "9"
+) -> ThreadMessage {
     ThreadMessage(
         id: "10",
         threadId: threadId,
-        senderId: "9",
+        senderId: senderId,
         senderName: "정의진",
         content: content,
         type: .text,
@@ -108,14 +142,19 @@ private func makeMessage(threadId: String, content: String) -> ThreadMessage {
 @MainActor
 struct CommunityThreadListViewModelTests {
 
+    /// `currentMemberId` 는 항상 주입한다 — 기본값은 실제 `UserDefaults` 를 읽어 테스트가
+    /// 로컬 로그인 상태에 끌려간다. 이 스위트에서 나는 `"1"`, 남은 `"9"` 다.
     private func makeViewModel(
         _ useCase: StubListUseCase,
-        errorHandler: ErrorHandler = ErrorHandler()
+        roomUseCase: StubRoomUseCase? = nil,
+        errorHandler: ErrorHandler = ErrorHandler(),
+        currentMemberId: String? = "1"
     ) -> CommunityThreadListViewModel {
         CommunityThreadListViewModel(
             listUseCase: useCase,
-            roomUseCase: nil,
-            errorHandler: errorHandler
+            roomUseCase: roomUseCase,
+            errorHandler: errorHandler,
+            currentMemberId: currentMemberId
         )
     }
 
@@ -294,6 +333,45 @@ struct CommunityThreadListViewModelTests {
         #expect(row.unreadCount == "1")
     }
 
+    @Test("내가 보낸 메시지는 미리보기만 바꾸고 안읽음 배지는 올리지 않는다")
+    func skipsUnreadForOwnMessage() async throws {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [], threads: [makeThread(id: "1")], nextOffset: nil, total: "1"
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        // 내가 보낸 메시지도 유저 단위 팬아웃으로 되돌아온다.
+        let mine = makeMessage(threadId: "1", content: "내 메시지", senderId: "1")
+        viewModel.apply(.messageCreated(threadId: "1", message: mine, clientMessageId: nil))
+
+        let row = try #require(viewModel.state.value?.first)
+        #expect(row.lastMessage?.preview == "내 메시지")
+        #expect(row.unreadCount == "0")
+    }
+
+    @Test("채팅방에 들어가면 그 행의 안읽음 배지를 로컬로 0 으로 내린다")
+    func clearsUnreadOnThreadOpen() async throws {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [],
+            threads: [
+                makeThread(id: "1", unreadCount: "5"),
+                makeThread(id: "2", unreadCount: "3")
+            ],
+            nextOffset: nil,
+            total: "2"
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.markThreadRead(threadId: "1")
+
+        let rows = try #require(viewModel.state.value)
+        #expect(rows.map(\.unreadCount) == ["0", "3"])
+    }
+
     @Test("목록에 없는 스레드의 이벤트는 아무것도 바꾸지 않는다")
     func ignoresEventForUnknownThread() async {
         let useCase = StubListUseCase()
@@ -351,6 +429,86 @@ struct CommunityThreadListViewModelTests {
 
         await waitUntil { useCase.requestedOffsets.count == 2 }
         #expect(useCase.requestedOffsets == [0, 0])
+    }
+
+    @Test("목록에 없는 스레드의 강퇴 이벤트는 재조회를 부르지 않는다", .timeLimit(.minutes(1)))
+    func skipsRefetchForUnknownThreadKick() async {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [], threads: [makeThread(id: "1")], nextOffset: nil, total: "1"
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.apply(.memberKicked(threadId: "999", memberId: "9", memberCount: "2"))
+
+        // 부정 단언이라 기다릴 조건이 없다. 언스트럭처드 재조회 Task 가 돌 틈만 준다.
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(useCase.requestedOffsets == [0])
+    }
+
+    @Test("내가 다른 기기에서 나간 이벤트는 행을 지운다")
+    func removesRowWhenILeaveFromAnotherDevice() async {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [makeThread(id: "1", isPinned: true)],
+            threads: [makeThread(id: "2")],
+            nextOffset: nil,
+            total: "2"
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.apply(.memberLeft(threadId: "1", memberId: "1", memberCount: "2"))
+        viewModel.apply(.memberLeft(threadId: "2", memberId: "1", memberCount: "2"))
+
+        #expect(viewModel.pinned.isEmpty)
+        #expect(viewModel.state.value?.isEmpty == true)
+    }
+
+    @Test("남이 나간 이벤트는 멤버 수만 줄이고 행은 남긴다")
+    func keepsRowWhenSomeoneElseLeaves() async throws {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [],
+            threads: [makeThread(id: "1", memberCount: "3")],
+            nextOffset: nil,
+            total: "1"
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.apply(.memberLeft(threadId: "1", memberId: "9", memberCount: "2"))
+
+        let row = try #require(viewModel.state.value?.first)
+        #expect(row.id == "1")
+        #expect(row.memberCount == "2")
+    }
+
+    @Test("재연결 재조회는 실패해도 전역 Alert 을 띄우지 않는다", .timeLimit(.minutes(1)))
+    func staysSilentWhenReconnectRefreshFails() async {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [], threads: [makeThread(id: "1")], nextOffset: nil, total: "1"
+        )
+        let roomUseCase = StubRoomUseCase()
+        roomUseCase.pendingSignals = [.reconnected]
+        let errorHandler = ErrorHandler()
+        let viewModel = makeViewModel(
+            useCase,
+            roomUseCase: roomUseCase,
+            errorHandler: errorHandler
+        )
+        await viewModel.load()
+
+        useCase.shouldFailLoad = true
+        await viewModel.observeRealtime()
+
+        // 재조회는 실제로 돈다 — 조용할 뿐이다. 사용자가 당긴 새로고침 실패는
+        // `failedRefreshKeepsList` 가 Alert 을 요구한다.
+        #expect(useCase.requestedOffsets == [0, 0])
+        #expect(errorHandler.currentError == nil)
+        #expect(viewModel.state.value?.map(\.id) == ["1"])
     }
 
     @Test("종료성 이벤트는 행을 지운다")

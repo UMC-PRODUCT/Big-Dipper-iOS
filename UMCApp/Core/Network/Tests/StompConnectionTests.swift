@@ -103,7 +103,9 @@ struct StompConnectionBehaviorTests {
         let sent = try #require(socket.sentTexts.first)
         #expect(sent.hasPrefix("CONNECT\n"))
         #expect(sent.contains("accept-version:1.2"))
-        #expect(sent.contains("heart-beat:10000,10000"))
+        // cx 를 0 이 아닌 값으로 광고하면 브로커가 그 주기로 우리 heartbeat 를 기다리다
+        // 세션을 끊는다 — 송신 타이머가 없는 한 cx 는 0 이어야 한다.
+        #expect(sent.contains("heart-beat:0,10000"))
         #expect(sent.contains("host:dev.api.umc.it.kr"))
         #expect(sent.contains("Authorization:Bearer token-1"))
 
@@ -185,6 +187,29 @@ struct StompConnectionBehaviorTests {
             bodies.append(frame.bodyString)
         }
         #expect(bodies == ["first", "second"])
+
+        await connection.disconnect()
+    }
+
+    @Test("디코딩 실패 프레임은 수신 루프를 멈추지 않는다", .timeLimit(.minutes(1)))
+    func survivesUndecodableFrame() async throws {
+        let socket = FakeWebSocket()
+        let connection = try makeConnection(socket: socket)
+        var events = await connection.events().makeAsyncIterator()
+
+        await connection.connect()
+        socket.deliver(Self.connectedFrame)
+        _ = await events.next()
+
+        // 종료자 없이 잘린 프레임 — decode 가 malformed 를 던진다.
+        socket.deliver("MESSAGE\nid:1\n\ntruncated")
+        socket.deliver("MESSAGE\nid:2\n\nok\u{00}")
+
+        guard case .message(let frame) = await events.next() else {
+            Issue.record("잘린 프레임 뒤의 정상 프레임이 흘러오지 않음")
+            return
+        }
+        #expect(frame.bodyString == "ok")
 
         await connection.disconnect()
     }

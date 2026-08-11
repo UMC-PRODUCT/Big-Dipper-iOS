@@ -564,6 +564,38 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.shouldDismiss)
     }
 
+    @Test("다른 기기에서 내가 나가면 REST 확정 없이 방을 닫는다", .timeLimit(.minutes(1)))
+    func ejectsWhenILeaveFromAnotherDevice() async throws {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        // 강퇴와 달리 대상이 명시돼 있다 — 재조회 없이 바로 닫힌다.
+        viewModel.apply(.memberLeft(threadId: "1", memberId: "9", memberCount: "2"))
+
+        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
+        #expect(useCase.loadThreadCount == 1)
+
+        confirm()
+        await waitUntil { viewModel.shouldDismiss }
+
+        #expect(viewModel.shouldDismiss)
+    }
+
+    @Test("남이 나가면 멤버 수만 줄고 방에는 그대로 남는다")
+    func staysWhenSomeoneElseLeaves() async {
+        let useCase = StubRoomUseCase()
+        useCase.thread = makeThread(memberCount: "3")
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.apply(.memberLeft(threadId: "1", memberId: "7", memberCount: "2"))
+
+        #expect(viewModel.alertPrompt == nil)
+        #expect(viewModel.shouldDismiss == false)
+        #expect(viewModel.header.value?.memberCount == "2")
+    }
+
     @Test("남이 강퇴당한 이벤트로 내가 방에서 튕기지 않는다", .timeLimit(.minutes(1)))
     func staysWhenSomeoneElseIsKicked() async {
         let useCase = StubRoomUseCase()

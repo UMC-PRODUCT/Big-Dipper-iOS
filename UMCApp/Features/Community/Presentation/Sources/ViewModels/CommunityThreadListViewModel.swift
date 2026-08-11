@@ -52,21 +52,26 @@ public final class CommunityThreadListViewModel {
     private let listUseCase: CommunityThreadListUseCaseProtocol
     private let roomUseCase: CommunityThreadRoomUseCaseProtocol?
     private let errorHandler: ErrorHandler
+    private let currentMemberId: String?
 
     @ObservationIgnored private var nextOffset: Int?
     @ObservationIgnored private var reloadTask: Task<Void, Never>?
 
     // MARK: - Init
 
-    /// - Parameter roomUseCase: 실시간 신호 구독용. 테스트에서는 `nil` 을 넣어 STOMP 를 뺀다.
+    /// - Parameters:
+    ///   - roomUseCase: 실시간 신호 구독용. 테스트에서는 `nil` 을 넣어 STOMP 를 뺀다.
+    ///   - currentMemberId: 팬아웃으로 도착한 이벤트가 나를 겨눈 것인지 가르는 유일한 열쇠.
     public init(
         listUseCase: CommunityThreadListUseCaseProtocol,
         roomUseCase: CommunityThreadRoomUseCaseProtocol?,
-        errorHandler: ErrorHandler
+        errorHandler: ErrorHandler,
+        currentMemberId: String? = AppStorageKey.memberIdString()
     ) {
         self.listUseCase = listUseCase
         self.roomUseCase = roomUseCase
         self.errorHandler = errorHandler
+        self.currentMemberId = currentMemberId
     }
 
     // MARK: - Computed Property
@@ -106,7 +111,10 @@ public final class CommunityThreadListViewModel {
     }
 
     /// 당겨서 새로고침. 목록이 잠깐 비는 걸 막으려고 `.loading` 으로 되돌리지 않는다.
-    public func refresh() async {
+    ///
+    /// - Parameter silent: 실패해도 전역 Alert 을 띄우지 않는다. 재연결처럼 사용자가 시작하지
+    ///   않은 재조회에만 쓴다 — 지하철에서 재연결이 세 번 튀면 Alert 도 세 번 뜬다 (스펙 §7).
+    public func refresh(silent: Bool = false) async {
         let requestedFilter = filter
         let requestedQuery = trimmedQuery
 
@@ -121,8 +129,20 @@ public final class CommunityThreadListViewModel {
             state = .loaded(page.threads)
             nextOffset = page.nextOffset.flatMap(Int.init)
         } catch {
-            guard !(error is CancellationError) else { return }
+            guard !(error is CancellationError), !silent else { return }
             errorHandler.handle(error, context: errorContext("refreshThreads"))
+        }
+    }
+
+    /// 채팅방에 들어간 순간 그 행의 미읽음 배지를 로컬로 내린다.
+    ///
+    /// 서버가 `read.updated` 를 본인에게도 echo 하는지 미확정이라 이벤트로는 0 을 만들 수 없다.
+    /// 방 VM 이 보낸 워터마크가 서버에 닿으면 다음 REST 조회가 이 값을 정정한다 (스펙 §10).
+    public func markThreadRead(threadId: String) {
+        updateRow(threadId: threadId) { thread in
+            var updated = thread
+            updated.unreadCount = "0"
+            return updated
         }
     }
 
@@ -215,7 +235,7 @@ public final class CommunityThreadListViewModel {
                 apply(event)
             case .reconnected:
                 // 끊긴 동안의 이벤트는 재생되지 않는다. 목록 전체를 다시 읽는 게 유일한 정답이다.
-                await refresh()
+                await refresh(silent: true)
             case .commandFailed:
                 break
             }
@@ -226,6 +246,9 @@ public final class CommunityThreadListViewModel {
     func apply(_ event: CommunityThreadRealtimeEvent) {
         switch event {
         case .messageCreated(let threadId, let message, _):
+            // 내가 보낸 메시지도 팬아웃으로 되돌아온다. 그것까지 세면 지금 보고 있는 방의
+            // 배지가 내 손으로 올라간다.
+            let countsAsUnread = !isMe(message.senderId)
             updateRow(threadId: threadId) { thread in
                 var updated = thread
                 updated.lastMessage = ThreadLastMessage(
@@ -233,15 +256,16 @@ public final class CommunityThreadListViewModel {
                     senderName: message.senderName,
                     createdAt: message.createdAt
                 )
-                updated.unreadCount = String((Int(thread.unreadCount) ?? 0) + 1)
+                if countsAsUnread {
+                    updated.unreadCount = String((Int(thread.unreadCount) ?? 0) + 1)
+                }
                 return updated
             }
 
         case .readUpdated:
-            // 남의 읽음 영수증도 내 큐로 온다. memberId 를 가리지 못한 채 0 으로 내리면
-            // 안 읽은 배지가 조용히 사라진다. 0 처리는 채팅방 진입 시 로컬로 하고
-            // 정정은 REST 조회에 맡긴다 (설계 스펙 10장 "unreadCount 갱신 주체" 잠정 정책).
-            // TODO: currentMemberId 주입되면 내 영수증일 때만 0 처리 - [26.08.12] 정의진
+            // 남의 읽음 영수증도 내 큐로 온다. 서버가 본인에게도 echo 하는지 미확정이라
+            // memberId 게이팅을 믿을 수 없다. 0 처리는 방 진입 시 `markThreadRead` 가 로컬로
+            // 하고, 정정은 REST 조회에 맡긴다 (설계 스펙 10장 "unreadCount 갱신 주체").
             break
 
         case .threadUpdated(let update):
@@ -267,15 +291,21 @@ public final class CommunityThreadListViewModel {
             // 팬아웃 대상이 나인지 남은 멤버인지 이벤트만으로 못 가른다. 무조건 지우면 남이
             // 강퇴당했을 때 모두의 목록에서 스레드가 사라진다. 카운트만 반영하고 최종 상태는
             // REST 로 확정한다 (강퇴는 드물어 재조회 비용이 무시할 만하다).
-            // TODO: currentMemberId 주입되면 memberId 비교로 대체 - [26.08.12] 정의진
+            guard hasRow(threadId: threadId) else { return }
             updateRow(threadId: threadId) { thread in
                 var updated = thread
                 updated.memberCount = memberCount
                 return updated
             }
-            Task { [weak self] in await self?.refresh() }
+            Task { [weak self] in await self?.refresh(silent: true) }
 
-        case .memberLeft(let threadId, _, let memberCount):
+        case .memberLeft(let threadId, let memberId, let memberCount):
+            // 나간 게 나라면 다른 기기·웹에서 벌어진 일이다. 강퇴와 달리 팬아웃 모호성이 없어
+            // 재조회 없이 바로 지운다 (스펙 §6.1 "member.left → 행 제거").
+            guard !isMe(memberId) else {
+                removeRow(threadId: threadId)
+                return
+            }
             updateRow(threadId: threadId) { thread in
                 var updated = thread
                 updated.memberCount = memberCount
@@ -299,6 +329,18 @@ public final class CommunityThreadListViewModel {
         _ requestedQuery: String?
     ) -> Bool {
         requestedFilter != filter || requestedQuery != trimmedQuery
+    }
+
+    /// 이벤트가 지목한 멤버가 나인지. 세션에 memberId 가 없으면 가릴 수 없으므로 남으로 본다 —
+    /// 잘못 "나" 로 판정하면 남의 이벤트로 내 행이 사라진다.
+    private func isMe(_ memberId: String) -> Bool {
+        guard let currentMemberId, !currentMemberId.isEmpty else { return false }
+        return memberId == currentMemberId
+    }
+
+    private func hasRow(threadId: String) -> Bool {
+        pinned.contains(where: { $0.id == threadId })
+            || state.value?.contains(where: { $0.id == threadId }) == true
     }
 
     private func errorContext(_ action: String) -> ErrorContext {
