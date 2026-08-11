@@ -37,24 +37,32 @@ public actor CommunityThreadRealtimeClient: CommunityThreadRealtimeProtocol {
     // MARK: - CommunityThreadRealtimeProtocol
 
     public func start() async {
+        // 대입은 첫 중단점보다 **앞**이어야 한다. 사이에 await 가 하나라도 있으면 두 번째 호출이
+        // 같은 가드를 통과해 `events()` 를 다시 열고, 단일 소비자용인 앞 스트림을 죽인다.
         guard pumpTask == nil else { return }
 
-        // `events()` 는 단일 소비자 전용이고 이 앱의 유일한 호출 지점이다. connect() 보다
-        // 먼저 열어 두지 않으면 CONNECTED 가 구독 없는 스트림으로 흘러 최초 구독을 통째로 놓친다.
-        let events = await connection.events()
-
         pumpTask = Task { [weak self] in
+            guard let self else { return }
+
+            // 같은 Task 안에서 순차로 await 하므로 스트림 등록이 connect() 보다 먼저임이 확정된다.
+            // 순서가 뒤집히면 CONNECTED 가 구독 없는 스트림으로 흘러 최초 SUBSCRIBE 를 놓친다.
+            let events = await connection.events()
+            guard !Task.isCancelled else { return }
+
+            await connection.connect()
             for await event in events {
-                await self?.handle(event)
+                await self.handle(event)
             }
         }
-
-        await connection.connect()
     }
 
     public func stop() async {
-        pumpTask?.cancel()
+        let pump = pumpTask
         pumpTask = nil
+        pump?.cancel()
+        // 취소 직전에 펌프가 connect() 로 진입했을 수 있다. 먼저 끝내지 않으면 뒤늦은 connect() 가
+        // disconnect() 뒤에 소켓을 되살려 아무도 취소하지 않는 재연결 루프가 남는다.
+        await pump?.value
         await connection.disconnect()
 
         for continuation in continuations.values {
@@ -98,14 +106,12 @@ public actor CommunityThreadRealtimeClient: CommunityThreadRealtimeProtocol {
 
     /// SEND 프레임 발행.
     ///
-    /// `x-command-id` 는 서버가 요구하는 네이티브 헤더로, 명령 단위 멱등 키다.
+    /// `x-command-id` 는 서버가 요구하는 네이티브 헤더로 매 호출 새 값이 나간다.
+    /// 재시도 멱등은 이 헤더가 아니라 호출자가 유지하는 `clientMessageId` 가 담당한다.
     private func send(destination: String, body: some Encodable) async throws {
         try await connection.send(
             destination: destination,
-            headers: [
-                "content-type": "application/json",
-                "x-command-id": ThreadCommandID.generate()
-            ],
+            headers: ["x-command-id": ThreadCommandID.generate()],
             body: try JSONEncoder().encode(body)
         )
     }
@@ -130,7 +136,7 @@ public actor CommunityThreadRealtimeClient: CommunityThreadRealtimeProtocol {
 
         case .error(let frame):
             // STOMP ERROR 프레임은 세션을 끝낸다. 재연결은 StompConnection 이 이어서 한다.
-            emitCommandFailure(from: frame.body)
+            emitCommandFailure(from: frame)
 
         case .disconnected:
             break
@@ -141,8 +147,10 @@ public actor CommunityThreadRealtimeClient: CommunityThreadRealtimeProtocol {
     private func handleMessage(_ frame: StompFrame) {
         let destination = frame.headers["destination"] ?? ""
 
-        if destination.hasSuffix("/errors") {
-            emitCommandFailure(from: frame.body)
+        // Spring 심플 브로커는 `/user/queue/errors` 로 복원해 주지만, RabbitMQ/ActiveMQ 릴레이는
+        // `/queue/errors-user{sessionId}` 로 내려보낸다. suffix 로 잡으면 릴레이에서 전부 샌다.
+        if destination.contains("/errors") {
+            emitCommandFailure(from: frame)
             return
         }
 
@@ -157,11 +165,21 @@ public actor CommunityThreadRealtimeClient: CommunityThreadRealtimeProtocol {
         }
     }
 
-    private func emitCommandFailure(from body: Data) {
+    private func emitCommandFailure(from frame: StompFrame) {
         do {
-            emit(.commandFailed(try decoder.decode(RealtimeErrorDTO.self, from: body).toDomain))
+            let failure = try decoder.decode(RealtimeErrorDTO.self, from: frame.body)
+            emit(.commandFailed(failure.toDomain))
         } catch {
-            logger.error("에러 프레임을 버립니다 \(String(describing: error), privacy: .public)")
+            // ERROR 프레임 본문은 평문인 경우가 많아 디코딩이 자주 실패한다. 인증 실패처럼
+            // 재연결이 계속 깨지는 상황을 추적할 단서가 원문뿐이라 그대로 남긴다 — 토큰은 안 실린다.
+            logger.error(
+                """
+                에러 프레임을 버립니다 \
+                message=\(frame.headers["message"] ?? "-", privacy: .public) \
+                body=\(frame.bodyString ?? "<non-utf8>", privacy: .public) \
+                reason=\(String(describing: error), privacy: .public)
+                """
+            )
         }
     }
 
