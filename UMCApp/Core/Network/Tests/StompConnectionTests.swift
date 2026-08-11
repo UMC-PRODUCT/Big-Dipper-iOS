@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Synchronization
 import Testing
 @testable import CoreNetwork
 
@@ -86,14 +87,10 @@ struct StompConnectionBehaviorTests {
 
     private func makeConnection(
         socket: FakeWebSocket,
-        accessToken: String? = "token-1"
+        tokenStore: TokenStore = MockTokenStore(accessToken: "token-1")
     ) throws -> StompConnection {
         let url = try #require(URL(string: "wss://dev.api.umc.it.kr/ws/websocket"))
-        return StompConnection(
-            url: url,
-            tokenStore: MockTokenStore(accessToken: accessToken),
-            makeSocket: { _ in socket }
-        )
+        return StompConnection(url: url, tokenStore: tokenStore, makeSocket: { _ in socket })
     }
 
     @Test("connect 는 accept-version·heart-beat·Authorization 을 담은 CONNECT 를 보낸다")
@@ -103,18 +100,20 @@ struct StompConnectionBehaviorTests {
 
         await connection.connect()
 
-        let sent = try #require(await socket.sentTexts.first)
+        let sent = try #require(socket.sentTexts.first)
         #expect(sent.hasPrefix("CONNECT\n"))
         #expect(sent.contains("accept-version:1.2"))
         #expect(sent.contains("heart-beat:10000,10000"))
         #expect(sent.contains("host:dev.api.umc.it.kr"))
         #expect(sent.contains("Authorization:Bearer token-1"))
+
+        await connection.disconnect()
     }
 
     @Test("토큰이 없으면 소켓을 열지 않고 missingToken 으로 끊긴 것을 알린다")
     func reportsMissingToken() async throws {
         let socket = FakeWebSocket()
-        let connection = try makeConnection(socket: socket, accessToken: nil)
+        let connection = try makeConnection(socket: socket, tokenStore: MockTokenStore())
         var events = await connection.events().makeAsyncIterator()
 
         await connection.connect()
@@ -125,9 +124,24 @@ struct StompConnectionBehaviorTests {
             return
         }
         #expect(error as? StompConnectionError == .missingToken)
-        #expect(await socket.sentTexts.isEmpty)
+        #expect(socket.sentTexts.isEmpty)
 
         await connection.disconnect()
+    }
+
+    @Test("토큰 조회 중 disconnect 가 끼어들면 소켓을 열지 않는다")
+    func abortsHandshakeInterruptedByDisconnect() async throws {
+        let socket = FakeWebSocket()
+        let tokenStore = GatedTokenStore()
+        let connection = try makeConnection(socket: socket, tokenStore: tokenStore)
+
+        let connecting = Task { await connection.connect() }
+        await tokenStore.waitUntilSuspended()
+        await connection.disconnect()
+        await tokenStore.release()
+        await connecting.value
+
+        #expect(socket.sentTexts.isEmpty)
     }
 
     @Test("CONNECTED 를 받으면 connected, 두 번째부터는 reconnected 를 흘려보낸다")
@@ -137,9 +151,9 @@ struct StompConnectionBehaviorTests {
         var events = await connection.events().makeAsyncIterator()
 
         await connection.connect()
-        await socket.deliver(Self.connectedFrame)
+        socket.deliver(Self.connectedFrame)
         let first = await events.next()
-        await socket.deliver(Self.connectedFrame)
+        socket.deliver(Self.connectedFrame)
         let second = await events.next()
 
         guard case .connected = first else {
@@ -161,9 +175,9 @@ struct StompConnectionBehaviorTests {
         var events = await connection.events().makeAsyncIterator()
 
         await connection.connect()
-        await socket.deliver(Self.connectedFrame)
+        socket.deliver(Self.connectedFrame)
         _ = await events.next()
-        await socket.deliver("MESSAGE\nid:1\n\nfirst\u{00}\nMESSAGE\nid:2\n\nsecond\u{00}")
+        socket.deliver("MESSAGE\nid:1\n\nfirst\u{00}\nMESSAGE\nid:2\n\nsecond\u{00}")
 
         var bodies: [String?] = []
         for _ in 0..<2 {
@@ -183,10 +197,10 @@ struct StompConnectionBehaviorTests {
 
         await connection.connect()
         await connection.subscribe(destination: "/topic/a")
-        await socket.deliver(Self.connectedFrame)
+        socket.deliver(Self.connectedFrame)
         _ = await events.next()
 
-        let subscribeFrames = await socket.sentTexts.filter { $0.hasPrefix("SUBSCRIBE\n") }
+        let subscribeFrames = socket.sentTexts.filter { $0.hasPrefix("SUBSCRIBE\n") }
         #expect(subscribeFrames.count == 1)
         #expect(subscribeFrames.first?.contains("destination:/topic/a") == true)
         #expect(subscribeFrames.first?.contains("id:sub-0") == true)
@@ -211,7 +225,7 @@ struct StompConnectionBehaviorTests {
         var events = await connection.events().makeAsyncIterator()
 
         await connection.connect()
-        await socket.deliver(Self.connectedFrame)
+        socket.deliver(Self.connectedFrame)
         _ = await events.next()
         try await connection.send(
             destination: "/app/a",
@@ -219,7 +233,7 @@ struct StompConnectionBehaviorTests {
             body: Data(#"{"a":1}"#.utf8)
         )
 
-        let sent = try #require(await socket.sentTexts.last)
+        let sent = try #require(socket.sentTexts.last)
         #expect(sent.hasPrefix("SEND\n"))
         #expect(sent.contains("destination:/app/a"))
         #expect(sent.contains("content-length:7"))
@@ -229,40 +243,138 @@ struct StompConnectionBehaviorTests {
 
         await connection.disconnect()
     }
+
+    @Test("disconnect 후에는 수신 루프가 멈춰 프레임을 더 소비하지 않는다")
+    func stopsReceiveLoopOnDisconnect() async throws {
+        let socket = FakeWebSocket()
+        let connection = try makeConnection(socket: socket)
+        var events = await connection.events().makeAsyncIterator()
+
+        await connection.connect()
+        socket.deliver(Self.connectedFrame)
+        _ = await events.next()
+
+        await connection.disconnect()
+        socket.deliver("MESSAGE\nid:1\n\nafter\u{00}")
+
+        // 취소된 소켓의 receive() 는 즉시 던진다. 남은 프레임이 그대로면 루프가 끝난 것이다.
+        #expect(socket.isCancelled)
+        #expect(socket.pendingInboxCount == 1)
+    }
+
+    @Test("events 를 다시 부르면 이전 스트림은 매달리지 않고 종료된다")
+    func finishesPreviousEventStream() async throws {
+        let socket = FakeWebSocket()
+        let connection = try makeConnection(socket: socket)
+
+        let abandoned = await connection.events()
+        _ = await connection.events()
+
+        var events = abandoned.makeAsyncIterator()
+        #expect(await events.next() == nil)
+    }
 }
 
 // MARK: - Test Double
 
 /// 실제 소켓 왕복 없이 프레임을 주입·수집하는 가짜 전송로.
-actor FakeWebSocket: WebSocketConnecting {
+///
+/// `cancel` 이 대기 중인 `receive()` 를 **동기적으로** 깨워야 실제 소켓 취소와 같은 순서가 재현되므로,
+/// actor 대신 `Mutex` 로 상태를 지킨다.
+final class FakeWebSocket: WebSocketConnecting {
 
-    private var inbox: [URLSessionWebSocketTask.Message] = []
-    private var waiting: CheckedContinuation<URLSessionWebSocketTask.Message, any Error>?
-    private var sent: [String] = []
+    private typealias MessageContinuation =
+        CheckedContinuation<URLSessionWebSocketTask.Message, any Error>
 
-    var sentTexts: [String] { sent }
+    private struct State {
+        var inbox: [URLSessionWebSocketTask.Message] = []
+        var sent: [String] = []
+        var waiting: MessageContinuation?
+        var isCancelled = false
+    }
 
-    nonisolated func resume() {}
+    private let state = Mutex(State())
 
-    nonisolated func cancel(with closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {}
+    var sentTexts: [String] { state.withLock { $0.sent } }
+    var pendingInboxCount: Int { state.withLock { $0.inbox.count } }
+    var isCancelled: Bool { state.withLock { $0.isCancelled } }
+
+    func resume() {}
+
+    func cancel(with closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        let waiting = state.withLock { current -> MessageContinuation? in
+            current.isCancelled = true
+            let waiting = current.waiting
+            current.waiting = nil
+            return waiting
+        }
+        waiting?.resume(throwing: CancellationError())
+    }
 
     func send(_ message: URLSessionWebSocketTask.Message) async throws {
         guard case .string(let text) = message else { return }
-        sent.append(text)
+        state.withLock { $0.sent.append(text) }
     }
 
     func receive() async throws -> URLSessionWebSocketTask.Message {
-        if !inbox.isEmpty { return inbox.removeFirst() }
-        return try await withCheckedThrowingContinuation { waiting = $0 }
+        try await withCheckedThrowingContinuation { continuation in
+            state.withLock { current in
+                if current.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else if current.inbox.isEmpty {
+                    current.waiting = continuation
+                } else {
+                    continuation.resume(returning: current.inbox.removeFirst())
+                }
+            }
+        }
     }
 
     /// 서버가 프레임을 밀어 넣은 상황을 재현한다. 수신 루프가 아직 대기 전이면 버퍼에 쌓는다.
     func deliver(_ text: String) {
-        guard let continuation = waiting else {
-            inbox.append(.string(text))
-            return
+        let waiting = state.withLock { current -> MessageContinuation? in
+            guard let waiting = current.waiting else {
+                current.inbox.append(.string(text))
+                return nil
+            }
+            current.waiting = nil
+            return waiting
         }
-        waiting = nil
-        continuation.resume(returning: .string(text))
+        waiting?.resume(returning: .string(text))
+    }
+}
+
+/// 토큰 조회를 붙잡아 두는 저장소 — handshake 도중에 멈춘 `connect()` 를 재현한다.
+actor GatedTokenStore: TokenStore {
+
+    private var gate: CheckedContinuation<Void, Never>?
+    private var suspensionWaiter: CheckedContinuation<Void, Never>?
+    private var isSuspended = false
+
+    func getAccessToken() async -> String? {
+        await withCheckedContinuation { continuation in
+            gate = continuation
+            isSuspended = true
+            suspensionWaiter?.resume()
+            suspensionWaiter = nil
+        }
+        return "token-1"
+    }
+
+    func getRefreshToken() async -> String? { nil }
+
+    func save(accessToken: String, refreshToken: String) async throws {}
+
+    func clear() async throws {}
+
+    /// 토큰 조회가 실제로 멈출 때까지 기다린다.
+    func waitUntilSuspended() async {
+        guard !isSuspended else { return }
+        await withCheckedContinuation { suspensionWaiter = $0 }
+    }
+
+    func release() {
+        gate?.resume()
+        gate = nil
     }
 }

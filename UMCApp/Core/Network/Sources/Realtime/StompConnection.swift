@@ -108,8 +108,14 @@ public actor StompConnection {
 
     // MARK: - Function
 
+    /// 연결 사건 스트림.
+    ///
+    /// 소비자는 하나다. 다시 부르면 **이전 스트림은 종료되고** 새 스트림만 사건을 받는다.
+    /// `disconnect()` 로는 끝나지 않는다 — 이후 `connect()` 로 같은 스트림을 계속 쓰기 위해서다.
     public func events() -> AsyncStream<StompEvent> {
-        AsyncStream { continuation in
+        // 종료하지 않고 버리면 앞선 소비자의 for await 가 에러도 완료도 없이 영영 매달린다.
+        continuation?.finish()
+        return AsyncStream { continuation in
             self.continuation = continuation
         }
     }
@@ -122,7 +128,13 @@ public actor StompConnection {
 
         isStopping = false
 
-        guard let accessToken = await tokenStore.getAccessToken() else {
+        let accessToken = await tokenStore.getAccessToken()
+
+        // 토큰 조회 중 disconnect 가 끼어들면 여기서 재개된다. 그 뒤에 소켓을 열면
+        // 끊었다고 믿는 호출자 뒤로 아무도 닫지 않는 소켓과 수신 루프가 남는다.
+        guard !isStopping else { return }
+
+        guard let accessToken else {
             continuation?.yield(.disconnected(StompConnectionError.missingToken))
             scheduleReconnect()
             return
@@ -171,6 +183,10 @@ public actor StompConnection {
         try await write(StompFrame(command: .send, headers: allHeaders, body: body))
     }
 
+    /// 소켓과 재연결을 멈춘다.
+    ///
+    /// `events()` 스트림은 여기서 끝나지 않는다 — 이후 `connect()` 로 같은 스트림을 재사용하기 위해
+    /// 의도적으로 살려 둔다. 스트림을 끊으려면 소비 쪽 Task 를 취소한다.
     public func disconnect() async {
         isStopping = true
         reconnectTask?.cancel()
@@ -194,6 +210,8 @@ public actor StompConnection {
     }
 
     private func startReceiveLoop(on socket: any WebSocketConnecting) {
+        // 재연결 경로에서는 옛 루프가 자기 receive() 의 throw 로 이미 끝난 뒤 여기 온다.
+        // 이 취소는 그 밖의 경로(수동 재연결)에서 루프가 둘로 늘어나는 것을 막는 방어다.
         receiveLoop?.cancel()
         receiveLoop = Task { [weak self] in
             while !Task.isCancelled {
