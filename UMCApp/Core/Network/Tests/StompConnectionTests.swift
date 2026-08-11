@@ -262,7 +262,8 @@ struct StompConnectionBehaviorTests {
         #expect(socket.pendingInboxCount == 1)
     }
 
-    @Test("events 를 다시 부르면 이전 스트림은 매달리지 않고 종료된다")
+    // 회귀 시 next() 가 영영 매달리므로 상한이 필요하다. 없으면 CI 잡이 통째로 멈춘다.
+    @Test("events 를 다시 부르면 이전 스트림은 매달리지 않고 종료된다", .timeLimit(.minutes(1)))
     func finishesPreviousEventStream() async throws {
         let socket = FakeWebSocket()
         let connection = try makeConnection(socket: socket)
