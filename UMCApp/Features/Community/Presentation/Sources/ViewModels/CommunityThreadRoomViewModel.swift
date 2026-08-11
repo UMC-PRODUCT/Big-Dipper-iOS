@@ -42,10 +42,15 @@ public final class CommunityThreadRoomViewModel {
     private let threadId: String
     private let useCase: CommunityThreadRoomUseCaseProtocol
     private let errorHandler: ErrorHandler
+    private let currentMemberId: String?
     private let sendTimeout: Duration
 
     @ObservationIgnored private var hasMore = false
     @ObservationIgnored private var nextBefore: String?
+    @ObservationIgnored private var isLoading = false
+    /// eject 안내가 이미 진행 중인지. `alertPrompt` 는 View 가 다른 용도로도 쓰므로 그걸로 가늠하면
+    /// 남의 알림이 떠 있는 동안 도착한 종료성 이벤트를 통째로 삼킨다 — 재전송되지 않는 이벤트다.
+    @ObservationIgnored private var isEjecting = false
     /// clientMessageId → 타임아웃 감시 태스크. 응답이 오면 취소한다.
     @ObservationIgnored private var pendingTimeouts: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var readWatermarkTask: Task<Void, Never>?
@@ -55,16 +60,21 @@ public final class CommunityThreadRoomViewModel {
 
     // MARK: - Init
 
-    /// - Parameter sendTimeout: 이 시간 안에 `message.created` 도 에러도 오지 않으면 실패로 본다.
+    /// - Parameters:
+    ///   - currentMemberId: 내 메시지 판별용. 메시지 응답에 `isMine` 류 플래그가 없어
+    ///     `senderId` 대조가 유일한 방법이다.
+    ///   - sendTimeout: 이 시간 안에 `message.created` 도 에러도 오지 않으면 실패로 본다.
     public init(
         threadId: String,
         useCase: CommunityThreadRoomUseCaseProtocol,
         errorHandler: ErrorHandler,
+        currentMemberId: String? = AppStorageKey.memberIdString(),
         sendTimeout: Duration = .seconds(15)
     ) {
         self.threadId = threadId
         self.useCase = useCase
         self.errorHandler = errorHandler
+        self.currentMemberId = currentMemberId
         self.sendTimeout = sendTimeout
     }
 
@@ -73,13 +83,30 @@ public final class CommunityThreadRoomViewModel {
     /// 전송 버튼 활성 조건 = `validateText` 통과 + 쿨다운 아님. 상한을 넘긴 입력은 서버까지
     /// 보내지 않고 버튼을 잠가 실패 왕복을 없앤다 (스펙 3.3 클라이언트 선반영).
     public var canSend: Bool {
-        sendCooldownNotice == nil && (try? CommunityThreadRoomUseCase.validateText(draft)) != nil
+        sendCooldownNotice == nil
+            && (try? CommunityThreadRoomUseCase.validateText(trimmedDraft)) != nil
+    }
+
+    /// 검증과 전송이 같은 문자열을 봐야 한다 — 원문으로 검증하면 상한 뒤에 붙은 개행 하나로
+    /// 버튼이 잠기는데 실제로 보낼 값은 유효하다.
+    private var trimmedDraft: String {
+        draft.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Function
 
+    /// 내 메시지인지. 발신/수신 버블 정렬의 단일 판정 지점이다 — View 가 각자 판단하면 어긋난다.
+    public func isMine(_ message: ThreadMessage) -> Bool {
+        guard let currentMemberId, !currentMemberId.isEmpty else { return false }
+        return message.senderId == currentMemberId
+    }
+
     /// 헤더와 최신 페이지를 병렬로 읽는다. 둘은 서로를 기다릴 이유가 없다.
     public func load() async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+
         header = .loading
 
         async let threadRequest = useCase.loadThread(threadId: threadId)
@@ -87,7 +114,10 @@ public final class CommunityThreadRoomViewModel {
 
         do {
             let (thread, page) = try await (threadRequest, pageRequest)
-            messages = page.messages.reversed()
+            // 응답을 기다리는 동안 실시간으로 도착한 메시지와 전송 중인 낙관적 버블은 서버
+            // 스냅샷에 없다. 통째로 덮으면 되찾을 경로가 없어 대화록에 구멍이 남는다.
+            let known = Set(page.messages.map(\.id))
+            messages = page.messages.reversed() + messages.filter { !known.contains($0.id) }
             hasMore = page.hasMore
             nextBefore = page.nextBefore
             header = .loaded(thread)
@@ -113,7 +143,7 @@ public final class CommunityThreadRoomViewModel {
         // 공백·상한 초과·쿨다운을 여기서 끊는다. 서버까지 보내 실패 버블을 만들 이유가 없다.
         guard canSend else { return }
 
-        let content = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let content = trimmedDraft
         draft = ""
         // 서버 멱등 키이자 `message.created` 매칭 열쇠. 대문자 UUID 는 canonical 이 아니다.
         let clientMessageId = UUID().uuidString.lowercased()
@@ -139,6 +169,10 @@ public final class CommunityThreadRoomViewModel {
     /// 보내면 `notConnected` 로 버려진다.
     public func markRead(upTo messageId: String) {
         guard messageId != lastSentWatermark else { return }
+        // 미확정 버블의 id 는 내가 만든 UUID 다. 그대로 보내면 서버에 없는 messageId 가 나가고,
+        // 거절은 clientMessageId 없는 에러 프레임으로 와 조용히 버려진다. 가짜 id 를 만든 쪽이
+        // 여기라 방어도 여기서 한다 — View 에 규칙을 떠넘기면 반드시 샌다.
+        guard messages.first(where: { $0.id == messageId })?.deliveryState == .sent else { return }
 
         readWatermarkTask?.cancel()
         readWatermarkTask = Task { [weak self] in
@@ -202,7 +236,7 @@ public final class CommunityThreadRoomViewModel {
             // "내 큐로 왔다" 는 "내가 대상" 이 아니다 — 남이 강퇴당해도 그대로 도착한다.
             // 바로 내보내면 운영진의 강퇴 한 번에 방에 있던 전원이 튕긴다. 카운트만 반영하고
             // 내가 나가야 하는지는 REST 로 확정한다 (스펙 :126 종료성 이벤트 규칙).
-            // TODO: currentMemberId 주입되면 memberId 비교로 대체 - [26.08.12] 정의진
+            // memberId 비교로 갈아타지 않는다 — 재조회는 스레드 삭제·권한 변경까지 함께 확정한다.
             updateMemberCount(memberCount)
             membershipCheckTask?.cancel()
             membershipCheckTask = Task { [weak self] in await self?.confirmMembership() }
@@ -256,33 +290,48 @@ public final class CommunityThreadRoomViewModel {
 
     /// 재연결 직후 공백 메우기. 최신 페이지를 다시 읽어 모르는 것만 붙인다.
     private func backfill() async {
-        do {
-            let page = try await useCase.loadMessages(threadId: threadId, before: nil)
-            // 끊긴 동안 서버에 저장된 내 낙관적 메시지가 섞여 온다. 단순 append 하면 같은
-            // 말풍선이 둘 남으므로 clientMessageId 매칭까지 하는 경로로 넣는다.
-            for message in page.messages.reversed() {
-                insertOrReplace(message, clientMessageId: message.clientMessageId)
-            }
-        } catch {
-            errorHandler.handle(error, context: ErrorContext(
-                feature: "Community",
-                action: "backfillMessages",
-                retryAction: { [weak self] in await self?.backfill() }
-            ))
+        // 강퇴·스레드 삭제는 종료성 이벤트라 브로커가 재생하지 않는다. 끊긴 사이에 일어났다면
+        // 여기서 확정하지 않는 한 영원히 모른 채 이미 쫓겨난 방에 남는다 (스펙 §6.5).
+        await confirmMembership()
+        guard !isEjecting else { return }
+
+        // 재연결은 사용자가 시작한 동작이 아니다. 실패해도 Alert 을 띄우지 않는다 —
+        // 지하철에서 재연결이 세 번 튀면 흐름 중단형 Alert 이 세 번 뜬다 (스펙 §7).
+        guard let page = try? await useCase.loadMessages(threadId: threadId, before: nil) else {
+            return
+        }
+        // `GET /messages` 응답에는 `clientMessageId` 가 없어(스펙 3.4) 실제로는 messageId
+        // 비교로만 걸러진다. 에코 전에 끊기면 내 낙관적 버블이 중복으로 남는 한계가 있다.
+        for message in page.messages.reversed() {
+            insertOrReplace(message, clientMessageId: message.clientMessageId)
         }
     }
 
-    /// 강퇴 이벤트가 나를 겨눈 것인지 REST 로 확정한다.
+    /// 강퇴·삭제 이벤트가 나를 겨눈 것인지 REST 로 확정한다.
     ///
-    /// 실패는 "아직 모른다" 로 취급한다 — 네트워크가 한 번 튄 걸로 방에서 내보내면 안 된다.
+    /// 전송 실패만 "아직 모른다" 로 취급한다 — 네트워크가 한 번 튄 걸로 방을 닫으면 안 되지만,
+    /// 인가 거절까지 뭉개면 정작 강퇴당했을 때 확정 경로가 통째로 사라진다.
     private func confirmMembership() async {
-        guard let thread = try? await useCase.loadThread(threadId: threadId) else { return }
-
-        guard thread.isJoined else {
-            eject(message: "이 스레드에서 내보내졌어요.")
-            return
+        do {
+            let thread = try await useCase.loadThread(threadId: threadId)
+            guard thread.isJoined else {
+                eject(message: Constants.ejectedMessage)
+                return
+            }
+            header = .loaded(thread)
+        } catch {
+            guard isDefinitiveNonMember(error) else { return }
+            eject(message: Constants.ejectedMessage)
         }
-        header = .loaded(thread)
+    }
+
+    /// 강퇴 뒤 상세 조회는 서버 구현에 따라 `200 + isJoined:false` 일 수도, 403/404 일 수도 있다.
+    /// 어느 쪽이든 "이 스레드는 더 못 본다" 는 확정이라 둘 다 비멤버로 본다.
+    private func isDefinitiveNonMember(_ error: Error) -> Bool {
+        guard case .network(.requestFailed(let statusCode, _)) = AppError.from(error) else {
+            return false
+        }
+        return statusCode == 403 || statusCode == 404
     }
 
     /// 429 쿨다운. 서버가 남은 시간을 주지 않으므로 고정 시간 뒤에 스스로 푼다.
@@ -298,9 +347,11 @@ public final class CommunityThreadRoomViewModel {
     }
 
     /// 방이 사라진 경우. 알림을 먼저 띄우고, 확인을 누르면 리스트로 되돌린다.
-    /// 이미 떠 있는 알림이 있으면 덮어쓰지 않는다 — 삭제와 강퇴가 겹쳐 와도 안내는 한 번이면 된다.
+    /// 삭제와 강퇴가 겹쳐 와도 안내는 한 번이면 된다. 반대로 View 가 띄운 다른 알림은 덮는다 —
+    /// 볼 수 없게 된 방에서는 그쪽 선택지가 더 이상 의미가 없다.
     private func eject(message: String) {
-        guard alertPrompt == nil, !shouldDismiss else { return }
+        guard !isEjecting else { return }
+        isEjecting = true
         alertPrompt = AlertPrompt(
             title: "스레드를 볼 수 없어요",
             message: message,
@@ -322,8 +373,7 @@ public final class CommunityThreadRoomViewModel {
             // 서버 messageId 를 아직 모른다. 교체 전까지는 clientMessageId 가 신원이다.
             id: clientMessageId,
             threadId: threadId,
-            // TODO: currentMemberId 주입되면 발신자를 채운다 - [26.08.12] 정의진
-            senderId: "",
+            senderId: currentMemberId ?? "",
             senderName: "",
             content: content,
             type: .text,
@@ -368,10 +418,11 @@ public final class CommunityThreadRoomViewModel {
     }
 
     private func markFailed(clientMessageId: String) {
-        pendingTimeouts.removeValue(forKey: clientMessageId)?.cancel()
+        let key = clientMessageId.lowercased()
+        pendingTimeouts.removeValue(forKey: key)?.cancel()
         // 이미 에코가 도착해 `.sent` 가 된 항목은 되돌리지 않는다. 전송 프레임의 실패와
         // 서버 확정이 겹치는 구간에서 이 가드가 유일한 방어다.
-        guard let index = messages.firstIndex(where: { $0.clientMessageId == clientMessageId }),
+        guard let index = messages.firstIndex(where: { $0.clientMessageId?.lowercased() == key }),
               messages[index].deliveryState == .sending else { return }
         messages[index].deliveryState = .failed
     }
@@ -381,10 +432,12 @@ public final class CommunityThreadRoomViewModel {
     /// 재연결 백필과 실시간 수신이 겹치는 구간에서 같은 메시지가 두 경로로 들어온다.
     /// `messageId` 든 `clientMessageId` 든 하나만 걸리면 새로 넣지 않고 자리를 갈아 끼운다.
     private func insertOrReplace(_ message: ThreadMessage, clientMessageId: String?) {
-        if let key = clientMessageId ?? message.clientMessageId {
+        // 보낼 때만 정규화하면 서버가 대문자로 되돌려 줄 때 열쇠가 어긋나 중복 버블이 남는다.
+        if let key = (clientMessageId ?? message.clientMessageId)?.lowercased() {
             pendingTimeouts.removeValue(forKey: key)?.cancel()
 
-            if let index = messages.firstIndex(where: { $0.clientMessageId == key }) {
+            let match = messages.firstIndex { $0.clientMessageId?.lowercased() == key }
+            if let index = match {
                 messages[index] = message.with(deliveryState: .sent)
                 return
             }
@@ -416,4 +469,5 @@ fileprivate enum Constants {
     static let readWatermarkDebounce: Duration = .seconds(1)
     /// 서버가 남은 시간을 주지 않아 고정값으로 푼다.
     static let sendCooldown: Duration = .seconds(5)
+    static let ejectedMessage = "이 스레드에서 내보내졌어요."
 }

@@ -24,6 +24,8 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     var sendError: Error?
     var loadThreadError: Error?
     var loadMessagesError: Error?
+    /// 구독하자마자 흘려보낼 신호. 다 흘리면 스트림이 끝나 `observeRealtime()` 이 반환한다.
+    var pendingSignals: [CommunityRealtimeSignal] = []
 
     private(set) var sentContents: [String] = []
     private(set) var sentClientMessageIds: [String] = []
@@ -54,7 +56,11 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     func startRealtime() async {}
 
     func signals() async -> AsyncStream<CommunityRealtimeSignal> {
-        AsyncStream { $0.finish() }
+        let signals = pendingSignals
+        return AsyncStream { continuation in
+            signals.forEach { continuation.yield($0) }
+            continuation.finish()
+        }
     }
 }
 
@@ -69,10 +75,23 @@ private actor GatedRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     private var hasEnteredSend = false
     private var sendError: Error?
 
+    private var loadGate: CheckedContinuation<Void, Never>?
+    private var loadWaiter: CheckedContinuation<Void, Never>?
+    private var hasEnteredLoad = false
+    private var gatesLoad = false
+
     func loadThread(threadId: String) async throws -> CommunityThread { makeThread() }
 
     func loadMessages(threadId: String, before: String?) async throws -> ThreadMessagePage {
-        ThreadMessagePage(messages: [], hasMore: false, nextBefore: nil)
+        guard gatesLoad else {
+            return ThreadMessagePage(messages: [], hasMore: false, nextBefore: nil)
+        }
+        hasEnteredLoad = true
+        loadWaiter?.resume()
+        loadWaiter = nil
+
+        await withCheckedContinuation { loadGate = $0 }
+        return ThreadMessagePage(messages: [], hasMore: false, nextBefore: nil)
     }
 
     func send(threadId: String, clientMessageId: String, content: String) async throws {
@@ -102,6 +121,21 @@ private actor GatedRoomUseCase: CommunityThreadRoomUseCaseProtocol {
         sendError = error
         sendGate?.resume()
         sendGate = nil
+    }
+
+    func enableLoadGate() {
+        gatesLoad = true
+    }
+
+    /// `loadMessages` 가 게이트에 걸릴 때까지 기다린다.
+    func waitUntilLoading() async {
+        guard !hasEnteredLoad else { return }
+        await withCheckedContinuation { loadWaiter = $0 }
+    }
+
+    func releaseLoad() {
+        loadGate?.resume()
+        loadGate = nil
     }
 }
 
@@ -133,12 +167,13 @@ private func makeMessage(
     threadId: String = "1",
     content: String = "본문",
     clientMessageId: String? = nil,
+    senderId: String = "9",
     createdAt: TimeInterval = 0
 ) -> ThreadMessage {
     ThreadMessage(
         id: id,
         threadId: threadId,
-        senderId: "9",
+        senderId: senderId,
         senderName: "정의진",
         content: content,
         type: .text,
@@ -160,15 +195,19 @@ private func makeMessage(
 @MainActor
 struct CommunityThreadRoomViewModelTests {
 
+    /// `currentMemberId` 는 항상 주입한다 — 기본값은 실제 `UserDefaults` 를 읽어 테스트가
+    /// 로컬 로그인 상태에 끌려간다.
     private func makeViewModel(
         _ useCase: StubRoomUseCase,
         errorHandler: ErrorHandler = ErrorHandler(),
+        currentMemberId: String? = "9",
         sendTimeout: Duration = .seconds(15)
     ) -> CommunityThreadRoomViewModel {
         CommunityThreadRoomViewModel(
             threadId: "1",
             useCase: useCase,
             errorHandler: errorHandler,
+            currentMemberId: currentMemberId,
             sendTimeout: sendTimeout
         )
     }
@@ -508,14 +547,14 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.alertPrompt != nil)
     }
 
-    @Test("재조회가 실패하면 내보내지 않는다 — 네트워크 한 번에 방을 닫으면 안 된다",
+    @Test("재조회가 전송 단계에서 실패하면 내보내지 않는다 — 네트워크 한 번에 방을 닫으면 안 된다",
           .timeLimit(.minutes(1)))
-    func staysWhenMembershipRecheckFails() async {
+    func staysWhenMembershipRecheckCannotReachServer() async {
         let useCase = StubRoomUseCase()
         let viewModel = makeViewModel(useCase)
         await viewModel.load()
 
-        useCase.loadThreadError = AppError.unknown(message: "네트워크")
+        useCase.loadThreadError = AppError.network(.timeout)
         viewModel.apply(.memberKicked(threadId: "1", memberId: "9", memberCount: "2"))
         await waitUntil { useCase.loadThreadCount == 2 }
 
@@ -523,7 +562,124 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.shouldDismiss == false)
     }
 
+    @Test("재조회가 403 으로 거절되면 확정적 비멤버로 보고 내보낸다", .timeLimit(.minutes(1)))
+    func ejectsWhenMembershipRecheckIsForbidden() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        useCase.loadThreadError = AppError.network(.requestFailed(statusCode: 403, data: nil))
+        viewModel.apply(.memberKicked(threadId: "1", memberId: "9", memberCount: "2"))
+        await waitUntil { viewModel.alertPrompt != nil }
+
+        #expect(viewModel.alertPrompt != nil)
+    }
+
+    // MARK: - Reconnect
+
+    @Test("재연결 백필은 멤버십을 먼저 확정하고, 실패해도 전역 Alert 을 띄우지 않는다",
+          .timeLimit(.minutes(1)))
+    func backfillConfirmsMembershipAndStaysSilent() async {
+        let useCase = StubRoomUseCase()
+        let errorHandler = ErrorHandler()
+        let viewModel = makeViewModel(useCase, errorHandler: errorHandler)
+        await viewModel.load()
+
+        useCase.loadMessagesError = AppError.unknown(message: "백필 실패")
+        useCase.pendingSignals = [.reconnected]
+        await viewModel.observeRealtime()
+
+        #expect(useCase.loadThreadCount == 2)
+        #expect(errorHandler.currentError == nil)
+    }
+
+    @Test("끊긴 사이에 강퇴당했으면 재연결 시점에 확정해 내보낸다", .timeLimit(.minutes(1)))
+    func ejectsWhenKickedWhileDisconnected() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        // 종료성 이벤트는 브로커가 재생하지 않는다 — 재연결 시 REST 로만 알 수 있다.
+        useCase.thread = makeThread(isJoined: false, memberCount: "2")
+        useCase.pendingSignals = [.reconnected]
+        await viewModel.observeRealtime()
+
+        #expect(viewModel.alertPrompt != nil)
+    }
+
+    // MARK: - Ownership
+
+    @Test("내 메시지 판별은 senderId 대조 하나로만 한다")
+    func identifiesMyMessageBySenderId() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase, currentMemberId: "9")
+
+        #expect(viewModel.isMine(makeMessage(id: "1", senderId: "9")))
+        #expect(viewModel.isMine(makeMessage(id: "2", senderId: "7")) == false)
+    }
+
+    @Test("낙관적 메시지도 내 메시지로 판별된다")
+    func identifiesOptimisticMessageAsMine() async throws {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase, currentMemberId: "9")
+        await viewModel.load()
+
+        viewModel.draft = "안녕"
+        await viewModel.send()
+
+        let optimistic = try #require(viewModel.messages.first)
+        #expect(viewModel.isMine(optimistic))
+    }
+
     // MARK: - Race
+
+    @Test("실패로 확정된 뒤에 에코가 오면 서버 확정이 이긴다")
+    func lateEchoOverridesFailedMessage() async throws {
+        let useCase = StubRoomUseCase()
+        useCase.sendError = AppError.unknown(message: "실패")
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.draft = "안녕"
+        await viewModel.send()
+        let clientMessageId = try #require(useCase.sentClientMessageIds.first)
+        #expect(viewModel.messages.first?.deliveryState == .failed)
+
+        viewModel.apply(.messageCreated(
+            threadId: "1",
+            message: makeMessage(id: "77", content: "안녕", clientMessageId: clientMessageId),
+            clientMessageId: clientMessageId
+        ))
+
+        #expect(viewModel.messages.count == 1)
+        #expect(viewModel.messages.first?.deliveryState == .sent)
+    }
+
+    @Test("load() 응답을 기다리는 동안 도착한 실시간 메시지를 지우지 않는다",
+          .timeLimit(.minutes(1)))
+    func loadKeepsMessagesArrivedDuringRequest() async {
+        let useCase = GatedRoomUseCase()
+        await useCase.enableLoadGate()
+        let viewModel = CommunityThreadRoomViewModel(
+            threadId: "1",
+            useCase: useCase,
+            errorHandler: ErrorHandler(),
+            currentMemberId: "9",
+            sendTimeout: .seconds(15)
+        )
+
+        let loading = Task { await viewModel.load() }
+        await useCase.waitUntilLoading()
+        viewModel.apply(.messageCreated(
+            threadId: "1",
+            message: makeMessage(id: "77", createdAt: 700),
+            clientMessageId: nil
+        ))
+        await useCase.releaseLoad()
+        await loading.value
+
+        #expect(viewModel.messages.map(\.id) == ["77"])
+    }
 
     @Test("전송이 끝나기 전에 에코가 오면, 뒤늦은 전송 실패가 sent 를 되돌리지 않는다",
           .timeLimit(.minutes(1)))
@@ -533,6 +689,7 @@ struct CommunityThreadRoomViewModelTests {
             threadId: "1",
             useCase: useCase,
             errorHandler: ErrorHandler(),
+            currentMemberId: "9",
             sendTimeout: .seconds(15)
         )
         await viewModel.load()
