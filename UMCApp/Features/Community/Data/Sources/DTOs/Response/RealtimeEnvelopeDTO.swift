@@ -19,8 +19,6 @@ public struct RealtimeEnvelopeDTO: Decodable {
     // MARK: - Property
 
     public let eventId: String
-    public let type: String
-    public let threadId: String
     public let event: CommunityThreadRealtimeEvent
 
     // MARK: - CodingKeys
@@ -157,8 +155,6 @@ public struct RealtimeEnvelopeDTO: Decodable {
         }
 
         self.eventId = eventId
-        self.type = type
-        self.threadId = threadId
         self.event = event
     }
 }
