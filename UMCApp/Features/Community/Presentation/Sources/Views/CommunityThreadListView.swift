@@ -51,7 +51,7 @@ struct CommunityThreadListView: View {
                     ThreadFilterMenu(selection: $viewModel.filter)
                 }
             }
-            .overlay(alignment: .bottom) { createThreadPill }
+            .safeAreaInset(edge: .bottom) { createThreadPill }
             .alertPrompt(item: $viewModel.alertPrompt)
             .task { await viewModel.load() }
             .task { await viewModel.observeRealtime() }
@@ -85,25 +85,34 @@ struct CommunityThreadListView: View {
         }
     }
 
+    /// 고정 섹션이 없으면 `전체` 헤더도 없앤다. `Section("")` 은 헤더를 지우는 게 아니라
+    /// 빈 헤더를 그려서 리스트 상단에 정체불명의 여백을 남긴다.
     private func threadList(_ threads: [CommunityThread]) -> some View {
         List {
-            if !viewModel.pinned.isEmpty {
+            if viewModel.pinned.isEmpty {
+                pagedRows(threads)
+            } else {
                 Section("고정") {
                     ForEach(viewModel.pinned) { thread in
                         row(thread)
                     }
                 }
-            }
 
-            Section(viewModel.pinned.isEmpty ? "" : "전체") {
-                ForEach(threads) { thread in
-                    row(thread)
-                        .task { await viewModel.loadNextPageIfNeeded(currentItem: thread) }
+                Section("전체") {
+                    pagedRows(threads)
                 }
             }
         }
         .listStyle(.plain)
         .refreshable { await viewModel.refresh() }
+    }
+
+    @ViewBuilder
+    private func pagedRows(_ threads: [CommunityThread]) -> some View {
+        ForEach(threads) { thread in
+            row(thread)
+                .task { await viewModel.loadNextPageIfNeeded(currentItem: thread) }
+        }
     }
 
     /// 행 + 스와이프. 개설자 전용 `편집` 은 스레드 수정 화면이 후속 PR 이라 넣지 않는다.
@@ -152,10 +161,11 @@ struct CommunityThreadListView: View {
         )
     }
 
-    /// 하단 플로팅 생성 필.
+    /// 하단 생성 필.
     ///
-    /// 스레드 생성 화면이 후속 PR 이라 **배치만 하고 비활성**이다. 자리를 미리 잡아 둬야
-    /// 생성 기능이 붙을 때 리스트 하단 여백이 흔들리지 않는다.
+    /// 스레드 생성 화면이 후속 PR 이라 **배치만 하고 비활성**이다. `overlay` 가 아니라
+    /// `safeAreaInset` 으로 다는 이유는 필이 차지하는 만큼 리스트 콘텐츠 인셋을 실제로
+    /// 확보해야 마지막 행이 필 뒤에 가려지지 않기 때문이다.
     private var createThreadPill: some View {
         Button {
         } label: {

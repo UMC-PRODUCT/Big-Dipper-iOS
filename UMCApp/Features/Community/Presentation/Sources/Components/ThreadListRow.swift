@@ -59,15 +59,19 @@ struct ThreadListRow: View {
 
             categoryChip
 
+            // 행 전체가 Button 이라 자식 레이블이 합쳐진다. 레이블을 주지 않으면
+            // 한국어 제목 사이에 SF Symbol 기본 영문 이름이 그대로 읽힌다.
             if thread.isPinned {
                 Image(systemName: "pin.fill")
                     .foregroundStyle(Color.grey500)
                     .imageScale(.small)
+                    .accessibilityLabel("고정됨")
             }
             if thread.isMuted {
                 Image(systemName: "bell.slash.fill")
                     .foregroundStyle(Color.grey500)
                     .imageScale(.small)
+                    .accessibilityLabel("알림 꺼짐")
             }
 
             Spacer(minLength: DefaultSpacing.spacing4)
@@ -104,6 +108,7 @@ struct ThreadListRow: View {
                     .padding(.vertical, Constants.capsuleVerticalPadding)
                     .frame(minWidth: Constants.badgeMinWidth)
                     .background(Color.indigo500, in: .capsule)
+                    .accessibilityLabel("안읽음 \(badge)개")
             }
         }
     }
