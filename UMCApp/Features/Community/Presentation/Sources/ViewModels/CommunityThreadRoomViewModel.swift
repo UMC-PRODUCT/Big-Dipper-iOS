@@ -97,6 +97,10 @@ public final class CommunityThreadRoomViewModel {
 
     /// 내 메시지인지. 발신/수신 버블 정렬의 단일 판정 지점이다 — View 가 각자 판단하면 어긋난다.
     public func isMine(_ message: ThreadMessage) -> Bool {
+        // 미확정 항목은 방금 내가 만든 것이다. memberId 가 비어 있는 세션에서도 전송 중/실패
+        // 표시는 나와야 한다 — 수신 버블로 밀리면 재전송 버튼이 사라져 복구 경로가 없어진다.
+        // (에코가 오면 좌측으로 옮겨 가는 미관 문제는 감수한다.)
+        if message.deliveryState != .sent { return true }
         guard let currentMemberId, !currentMemberId.isEmpty else { return false }
         return message.senderId == currentMemberId
     }

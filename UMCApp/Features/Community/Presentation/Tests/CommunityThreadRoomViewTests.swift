@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftUI
 import Testing
 import CommunityDomain
 @testable import CommunityPresentation
@@ -17,7 +18,7 @@ private func makeDate(day: Int, hour: Int, minute: Int = 0) throws -> Date {
     return try #require(Calendar.current.date(from: components))
 }
 
-private func makeMessage(id: String, createdAt: Date) -> ThreadMessage {
+private func makeMessage(id: String, createdAt: Date = Date()) -> ThreadMessage {
     ThreadMessage(
         id: id,
         threadId: "1",
@@ -35,7 +36,6 @@ private func makeMessage(id: String, createdAt: Date) -> ThreadMessage {
 ///
 /// 화면 자체는 자동화하지 않는다(스펙 §8). 대신 렌더링과 무관하게 틀릴 수 있는 규칙만
 /// 순수 함수로 떼어 잠근다 — 구분선이 빠지거나 매 행마다 붙는 건 눈으로도 늦게 발견된다.
-@MainActor
 @Suite("CommunityThreadRoomView.dividerDate")
 struct CommunityThreadRoomViewTests {
 
@@ -89,5 +89,46 @@ struct CommunityThreadRoomViewTests {
         #expect(CommunityThreadRoomView.dividerDate(at: 1, in: messages) == nil)
         #expect(CommunityThreadRoomView.dividerDate(at: -1, in: messages) == nil)
         #expect(CommunityThreadRoomView.dividerDate(at: 0, in: []) == nil)
+    }
+}
+
+/// 읽음 워터마크 게이팅 (스펙 6.4).
+///
+/// ViewModel 의 `markRead(upTo:)` 는 무조건 보낸다 — "언제 보낼지" 는 전적으로 화면의 판단이라
+/// 여기서만 잠글 수 있다. 조건이 새면 안 본 메시지까지 읽음 처리된다.
+@Suite("CommunityThreadRoomView.readableMessageId")
+struct CommunityThreadRoomWatermarkTests {
+
+    @Test("백그라운드에서는 워터마크를 올리지 않는다")
+    func skipsWatermarkWhenNotActive() {
+        let messages = [makeMessage(id: "1"), makeMessage(id: "2")]
+
+        #expect(CommunityThreadRoomView.readableMessageId(
+            scenePhase: .background, isNearBottom: true, messages: messages
+        ) == nil)
+        #expect(CommunityThreadRoomView.readableMessageId(
+            scenePhase: .inactive, isNearBottom: true, messages: messages
+        ) == nil)
+    }
+
+    @Test("과거를 올려다보는 중에는 워터마크를 올리지 않는다")
+    func skipsWatermarkWhenScrolledUp() {
+        let messages = [makeMessage(id: "1"), makeMessage(id: "2")]
+
+        #expect(CommunityThreadRoomView.readableMessageId(
+            scenePhase: .active, isNearBottom: false, messages: messages
+        ) == nil)
+    }
+
+    @Test("포그라운드 + 최하단이면 마지막 메시지로 워터마크를 올린다")
+    func reportsLastMessageWhenActiveAtBottom() {
+        let messages = [makeMessage(id: "1"), makeMessage(id: "2")]
+
+        #expect(CommunityThreadRoomView.readableMessageId(
+            scenePhase: .active, isNearBottom: true, messages: messages
+        ) == "2")
+        #expect(CommunityThreadRoomView.readableMessageId(
+            scenePhase: .active, isNearBottom: true, messages: []
+        ) == nil)
     }
 }

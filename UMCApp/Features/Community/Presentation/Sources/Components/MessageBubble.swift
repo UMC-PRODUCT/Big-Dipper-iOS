@@ -15,6 +15,9 @@ fileprivate enum Constants {
     /// 컨테이너 폭을 위에서 내려받는 배선이 붙는다. 아이폰 폭(320~440pt)에서 고정 280pt 면
     /// 시안 비율(약 72%)과 맞고, 큰 화면에서는 줄 길이가 짧아져 오히려 읽기 좋다.
     static let maxBubbleWidth: CGFloat = 280
+    /// HIG 최소 탭 타깃. 재시도는 전송 실패에서 벗어나는 유일한 컨트롤이라 아이콘 크기로 두면
+    /// 미스탭 비용이 크다.
+    static let minimumTapTarget: CGFloat = 44
     static let deletedText = "삭제된 메시지예요"
 }
 
@@ -47,7 +50,10 @@ struct MessageBubble: View {
 
                 // 이름·내용·시각은 한 덩어리로 읽어야 자연스럽다. 재시도 버튼은 이 밖에 있어
                 // 합쳐도 접근 불가가 되지 않는다.
-                VStack(alignment: isMine ? .trailing : .leading, spacing: DefaultSpacing.spacing4) {
+                VStack(
+                    alignment: isMine ? .trailing : .leading,
+                    spacing: DefaultSpacing.spacing4
+                ) {
                     if !isMine {
                         Text(message.senderName)
                             .appFont(.caption2, color: .grey600)
@@ -102,6 +108,11 @@ struct MessageBubble: View {
             Button(action: onRetry) {
                 Image(systemName: "exclamationmark.circle.fill")
                     .foregroundStyle(Color.red500)
+                    .frame(
+                        minWidth: Constants.minimumTapTarget,
+                        minHeight: Constants.minimumTapTarget
+                    )
+                    .contentShape(.rect)
             }
             .accessibilityLabel("다시 보내기")
 

@@ -655,13 +655,27 @@ struct CommunityThreadRoomViewModelTests {
 
     // MARK: - Ownership
 
-    @Test("내 메시지 판별은 senderId 대조 하나로만 한다")
+    @Test("확정된 메시지의 내 것 판별은 senderId 대조로 한다")
     func identifiesMyMessageBySenderId() async {
         let useCase = StubRoomUseCase()
         let viewModel = makeViewModel(useCase, currentMemberId: "9")
 
         #expect(viewModel.isMine(makeMessage(id: "1", senderId: "9")))
         #expect(viewModel.isMine(makeMessage(id: "2", senderId: "7")) == false)
+    }
+
+    /// 로그인 응답에서 `memberId` 가 비면 저장값이 nil 이 된다. 그때 내 낙관적 메시지가 수신
+    /// 버블로 밀리면 재시도 버튼이 사라져 실패한 전송을 되살릴 방법이 없어진다.
+    @Test("memberId 를 몰라도 미확정 메시지는 내 것으로 본다 — 재전송 경로를 지키려고")
+    func treatsUnsettledMessageAsMineWithoutMemberId() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase, currentMemberId: nil)
+        let sending = makeMessage(id: "1", senderId: "").with(deliveryState: .sending)
+        let failed = makeMessage(id: "2", senderId: "").with(deliveryState: .failed)
+
+        #expect(viewModel.isMine(sending))
+        #expect(viewModel.isMine(failed))
+        #expect(viewModel.isMine(makeMessage(id: "3", senderId: "9")) == false)
     }
 
     @Test("낙관적 메시지도 내 메시지로 판별된다")

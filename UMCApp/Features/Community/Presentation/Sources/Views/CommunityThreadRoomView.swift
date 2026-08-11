@@ -141,7 +141,8 @@ struct CommunityThreadRoomView: View {
                         .padding(.vertical, DefaultSpacing.spacing8)
                 }
 
-                ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
+                let indexed = Array(viewModel.messages.enumerated())
+                ForEach(indexed, id: \.element.id) { index, message in
                     if let dividerDate = Self.dividerDate(at: index, in: viewModel.messages) {
                         DateDivider(date: dividerDate)
                     }
@@ -168,16 +169,28 @@ struct CommunityThreadRoomView: View {
 
     // MARK: - Computed Property
 
+    private var readableMessageId: String? {
+        Self.readableMessageId(
+            scenePhase: scenePhase,
+            isNearBottom: isNearBottom,
+            messages: viewModel.messages
+        )
+    }
+
+    // MARK: - Function
+
     /// 읽음 워터마크로 올릴 메시지. 게이팅 조건 세 가지(포그라운드·최하단·표시할 메시지 존재)를
     /// 한 값으로 합쳐 두면 어느 것이 바뀌든 `onChange` 한 곳만 반응하면 된다.
     ///
     /// 미확정 버블의 가짜 id 는 ViewModel 이 걸러 내므로 여기서 다시 보지 않는다.
-    private var readableMessageId: String? {
+    static func readableMessageId(
+        scenePhase: ScenePhase,
+        isNearBottom: Bool,
+        messages: [ThreadMessage]
+    ) -> String? {
         guard scenePhase == .active, isNearBottom else { return nil }
-        return viewModel.messages.last?.id
+        return messages.last?.id
     }
-
-    // MARK: - Function
 
     /// 앞 메시지와 날짜가 다를 때만 구분선을 넣는다. 첫 메시지 앞에는 항상 넣는다.
     static func dividerDate(at index: Int, in messages: [ThreadMessage]) -> Date? {
