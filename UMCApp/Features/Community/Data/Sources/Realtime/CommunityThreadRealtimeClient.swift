@@ -63,6 +63,10 @@ public actor CommunityThreadRealtimeClient: CommunityThreadRealtimeProtocol {
         // 취소 직전에 펌프가 connect() 로 진입했을 수 있다. 먼저 끝내지 않으면 뒤늦은 connect() 가
         // disconnect() 뒤에 소켓을 되살려 아무도 취소하지 않는 재연결 루프가 남는다.
         await pump?.value
+        // 기다리는 동안 actor 가 풀려 있으므로 start() 가 끼어들어 새 연결을 열었을 수 있다.
+        // 그 소켓을 끊거나 구독자를 finish 하면 재시작한 쪽이 조용히 죽는다.
+        guard pumpTask == nil else { return }
+
         await connection.disconnect()
 
         for continuation in continuations.values {

@@ -12,6 +12,9 @@ import Foundation
 public protocol CommunityThreadRealtimeProtocol: Sendable {
 
     /// 연결 + 구독 시작. 이미 연결돼 있으면 no-op.
+    ///
+    /// **반환 시점에는 아직 연결 전이다** — CONNECTED 를 받기 전에 돌아온다. 직후에 부른
+    /// `sendMessage`/`updateReadWatermark` 는 던진다. 화면은 낙관적 전송 + 실패 재시도를 전제한다.
     func start() async
 
     func stop() async

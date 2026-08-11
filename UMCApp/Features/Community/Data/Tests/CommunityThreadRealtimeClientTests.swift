@@ -66,14 +66,13 @@ struct CommunityThreadRealtimeClientTests {
         }
     }
 
-    @Test("start() 는 연결 완료를 기다리지 않는다 — 대입 뒤에 중단점이 없다는 뜻",
-          .timeLimit(.minutes(1)))
-    func startDoesNotAwaitConnect() async throws {
+    @Test("start() 는 connect() 의 토큰 조회를 기다리지 않는다", .timeLimit(.minutes(1)))
+    func startDoesNotAwaitTokenLookup() async throws {
         let factory = FakeSocketFactory()
         let tokenStore = GatedTokenStore()
         let client = try makeClient(factory: factory, tokenStore: tokenStore)
 
-        // 대입 전에 중단점이 하나라도 있으면 이 호출이 토큰 게이트에 걸려 영영 돌아오지 않는다.
+        // connect() 를 start() 안에서 직접 await 하면 이 호출이 게이트에 걸려 영영 돌아오지 않는다.
         await client.start()
         await tokenStore.waitUntilSuspended()
 
@@ -84,6 +83,39 @@ struct CommunityThreadRealtimeClientTests {
         // 뒤늦게 열린 소켓이 있어도 stop() 이 펌프 종료를 기다렸으므로 살아남지 않는다.
         let live = factory.sockets.filter { !$0.isCancelled }
         #expect(live.isEmpty)
+    }
+
+    @Test("stop() 대기 중 끼어든 start() 의 새 연결은 끊기지 않는다", .timeLimit(.minutes(1)))
+    func stopKeepsConnectionOpenedWhileWaiting() async throws {
+        let factory = FakeSocketFactory()
+        let tokenStore = GatedTokenStore()
+        let client = try makeClient(factory: factory, tokenStore: tokenStore)
+        let signals = await client.signals()
+
+        await client.start()
+        await tokenStore.waitUntilSuspended()
+
+        let stopping = Task { await client.stop() }
+        // 취소 관찰 = stop() 이 pumpTask 를 이미 비웠다는 뜻. 여기서 건 start() 가 재시작이 된다.
+        await waitUntil { tokenStore.isCallerCancelled }
+        await client.start()
+        await tokenStore.release()
+        await stopping.value
+
+        // stop() 이 재시작을 알아채지 못하면 이 소켓을 끊고 구독자까지 finish 해 버린다.
+        let live = factory.sockets.filter { !$0.isCancelled }
+        let socket = try #require(live.first)
+        socket.deliver(Self.connectedFrame)
+        await waitUntil { socket.sent(prefix: "SUBSCRIBE").count == 2 }
+
+        var received = signals.makeAsyncIterator()
+        socket.deliver(message(to: ThreadDestination.events, body: Self.acknowledgedEvent))
+        guard case .event = await received.next() else {
+            Issue.record("재시작한 연결에서 이벤트가 오지 않음")
+            return
+        }
+
+        await client.stop()
     }
 
     @Test("stop() 이후 start() 는 새 소켓으로 재개된다", .timeLimit(.minutes(1)))
@@ -172,8 +204,12 @@ struct CommunityThreadRealtimeClientTests {
     }
 
     /// 펌프가 별도 Task 에서 도는 구조라 결과가 즉시 보이지 않는다. `.timeLimit` 이 상한이다.
+    ///
+    /// `try?` 가 취소를 삼키므로 직접 확인하지 않으면, timeLimit 이 본문을 취소한 뒤에도
+    /// sleep 없는 tight loop 가 되어 테스트가 실패로 끝나지 못하고 코어를 태운다.
     private func waitUntil(_ condition: @Sendable () -> Bool) async {
         while !condition() {
+            if Task.isCancelled { return }
             try? await Task.sleep(for: .milliseconds(2))
         }
     }
@@ -282,12 +318,22 @@ private actor GatedTokenStore: TokenStore {
     private var suspensionWaiter: CheckedContinuation<Void, Never>?
     private var isSuspended = false
 
+    /// 게이트에 걸린 Task 가 취소됐는지 — 호출자 밖에서 봐야 하므로 actor 격리 밖에 둔다.
+    private let cancelledFlag = Mutex(false)
+
+    nonisolated var isCallerCancelled: Bool { cancelledFlag.withLock { $0 } }
+
     func getAccessToken() async -> String? {
-        await withCheckedContinuation { continuation in
-            gate = continuation
-            isSuspended = true
-            suspensionWaiter?.resume()
-            suspensionWaiter = nil
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                gate = continuation
+                isSuspended = true
+                suspensionWaiter?.resume()
+                suspensionWaiter = nil
+            }
+        } onCancel: {
+            // 취소만 기록하고 게이트는 계속 붙잡아 둔다 — release() 시점을 테스트가 정한다.
+            cancelledFlag.withLock { $0 = true }
         }
         return "token-1"
     }
