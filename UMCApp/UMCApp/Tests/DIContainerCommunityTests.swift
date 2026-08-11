@@ -89,7 +89,10 @@ struct DIContainerCommunityTests {
     func stompConnectionResolvesToSameInstance() throws {
         let container = try makeContainer()
 
-        #expect(container.resolve(StompConnection.self) === container.resolve(StompConnection.self))
+        let first = container.resolve(StompConnection.self)
+        let second = container.resolve(StompConnection.self)
+
+        #expect(first === second)
     }
 
     // MARK: - 공유 인프라 재사용

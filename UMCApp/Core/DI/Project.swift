@@ -8,5 +8,6 @@ let project = coreProject(
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .project(target: "CoreNetwork", path:
             .relativeToRoot("Core/Network")),
-    ]
+    ],
+    includesTests: true
 )

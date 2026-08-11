@@ -6,6 +6,7 @@
 //
 
 import AuthPresentation
+import CommunityDomain
 import CoreDesignSystem
 import CoreDI
 import CoreDomain
@@ -84,9 +85,16 @@ struct AppRootView: View {
     ///   기다리지 않는다. `resetCache()`가 인스턴스 자체를 폐기해도, 세션 만료 시점에
     ///   진행 중이던 프로필 조회가 있었다면 그 결과가 뒤늦게 캐시를 채우지 않도록
     ///   명시적으로 `invalidateCache()`를 함께 호출한다.
+    ///
+    /// - Note: STOMP 연결은 `resetCache()`가 참조를 버려도 펌프 Task가 자기 클라이언트를
+    ///   강참조해 살아남는다. 그 orphan은 생성 시점에 붙잡은 구 `TokenStore`의 인메모리 캐시를
+    ///   그대로 써서 만료된 세션의 토큰으로 재연결을 계속하므로, 참조를 버리기 전에 반드시
+    ///   `stop()`을 예약한다. 아직 시작하지 않은 연결에는 no-op이고, 한 번도 만들어지지
+    ///   않았다면 `resolveIfCached`가 nil을 반환해 새 인스턴스를 만들지 않는다.
     private func handleAuthSessionExpired() {
         let networkClient = di.resolve(NetworkClient.self)
         let memberProfileRepository = di.resolveIfRegistered(MemberProfileRepositoryProtocol.self)
+        let communityRealtime = di.resolveIfCached(CommunityThreadRealtimeProtocol.self)
         di.resolve(UserSessionManager.self).reset()
         di.resetCache()
         viewModel.logout()
@@ -95,6 +103,9 @@ struct AppRootView: View {
         }
         Task {
             await memberProfileRepository?.invalidateCache()
+        }
+        Task {
+            await communityRealtime?.stop()
         }
     }
 

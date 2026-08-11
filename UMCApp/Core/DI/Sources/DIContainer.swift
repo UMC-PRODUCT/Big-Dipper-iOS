@@ -128,6 +128,9 @@ public final class DIContainer {
 
     /// 등록 여부를 확인하며 의존성을 안전하게 조회합니다.
     ///
+    /// 캐시 미스면 `resolve`와 똑같이 **팩토리를 실행해 새 인스턴스를 만들고 캐시합니다.**
+    /// 미등록일 때만 `fatalError` 대신 nil을 돌려주는 점이 `resolve`와의 유일한 차이입니다.
+    ///
     /// - Returns: 등록된 경우 인스턴스, 미등록 시 nil
     public func resolveIfRegistered<T>(_ type: T.Type) -> T? {
         let key = ObjectIdentifier(type)
@@ -141,7 +144,19 @@ public final class DIContainer {
         cachedInstances[key] = instance
         return instance
     }
-    
+
+    /// 이미 생성되어 캐시된 인스턴스만 조회합니다.
+    ///
+    /// `resolve`/`resolveIfRegistered`와 달리 **캐시 미스 시 팩토리를 실행하지도, 캐시를 채우지도
+    /// 않습니다.** 살아 있는 인스턴스만 정리하고 싶은 경우 — 예: `resetCache()`로 참조를 버리기
+    /// 전에 종료 처리(`stop()`)가 필요한 연결 — 에 사용합니다. 그 자리에
+    /// `resolveIfRegistered`를 쓰면 정리하려던 순간에 인스턴스를 새로 만들어 캐시에 남깁니다.
+    ///
+    /// - Returns: 캐시된 인스턴스, 아직 생성되지 않았으면 nil
+    public func resolveIfCached<T>(_ type: T.Type) -> T? {
+        cachedInstances[ObjectIdentifier(type)] as? T
+    }
+
     // MARK: - Cache Management
 
     /// 모든 캐시된 인스턴스를 초기화합니다.
