@@ -1,7 +1,8 @@
 name: Tuist CI
 
-# 활성 코드베이스 UMCApp(Tuist)의 컴파일/테스트 게이트.
-# 동결된 레거시 AppProduct 는 ios.yml 이 담당한다(AppProduct/** 변경 시에만 실행).
+# 저장소의 단일 빌드/테스트 게이트 (이슈 #1128).
+# 레거시 AppProduct 는 v2.2.0 에 동결되어 더 이상 변경되지 않으므로, 그것만 감시하던
+# ios.yml 은 폐기했다. 다시 필요해지면 태그 v2.2.0 에서 복원한다.
 # 빌드 진입점은 로컬과 동일하게 UMCApp/Makefile 을 사용한다(CLAUDE.md 규약).
 
 on:
