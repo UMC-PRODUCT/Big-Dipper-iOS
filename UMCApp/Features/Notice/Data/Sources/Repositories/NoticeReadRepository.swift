@@ -33,7 +33,7 @@ public final class NoticeReadRepository: NoticeReadRepositoryProtocol, @unchecke
 
         return Set(
             records
-                .filter { $0.memberId == memberId }
+                .filter { $0.memberKey == memberId }
                 .map(\.noticeId)
         )
     }
@@ -42,12 +42,12 @@ public final class NoticeReadRepository: NoticeReadRepositoryProtocol, @unchecke
         let descriptor = FetchDescriptor<NoticeReadRecord>()
         let records = try modelContext.fetch(descriptor)
 
-        if let record = records.first(where: { $0.memberId == memberId && $0.noticeId == noticeId }) {
+        if let record = records.first(where: { $0.memberKey == memberId && $0.noticeId == noticeId }) {
             record.updatedAt = .now
         } else {
             modelContext.insert(
                 NoticeReadRecord(
-                    memberId: memberId,
+                    memberKey: memberId,
                     noticeId: noticeId
                 )
             )

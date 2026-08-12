@@ -177,7 +177,10 @@ extension UMCAppApp {
 
     /// SwiftData ModelContainer를 생성합니다.
     ///
-    /// - Returns: 생성된 ModelContainer. 로컬 저장소 초기화가 실패하면 인메모리로 폴백한다.
+    /// CloudKit(`iCloud.com.umc.product`) 동기화를 먼저 시도하고, 실패하면 로컬 →
+    /// 인메모리 순으로 폴백한다. (레거시 v2.2.0과 동일한 3단 체인)
+    ///
+    /// - Returns: 생성된 ModelContainer.
     ///
     /// - Note: `groupContainer: .none` — 위젯 IPC용 App Group 컨테이너를 SwiftData 기본
     ///   스토어 위치로 쓰지 않도록 명시한다. `.automatic`(기본값)은 App Group entitlement가
@@ -192,8 +195,24 @@ extension UMCAppApp {
         ])
 
         do {
-            let configuration = ModelConfiguration(schema: schema, groupContainer: .none)
-            return try ModelContainer(for: schema, configurations: [configuration])
+            let cloudConfiguration = ModelConfiguration(
+                schema: schema,
+                groupContainer: .none,
+                cloudKitDatabase: .automatic
+            )
+            return try ModelContainer(for: schema, configurations: [cloudConfiguration])
+        } catch {
+            let cloudReason = error.localizedDescription
+            logger.error("SwiftData CloudKit init failed, falling back to local: \(cloudReason)")
+        }
+
+        do {
+            let localConfiguration = ModelConfiguration(
+                schema: schema,
+                groupContainer: .none,
+                cloudKitDatabase: .none
+            )
+            return try ModelContainer(for: schema, configurations: [localConfiguration])
         } catch {
             let reason = error.localizedDescription
             logger.error("SwiftData local store init failed, falling back to in-memory: \(reason)")
@@ -201,7 +220,8 @@ extension UMCAppApp {
                 let memoryConfiguration = ModelConfiguration(
                     schema: schema,
                     isStoredInMemoryOnly: true,
-                    groupContainer: .none
+                    groupContainer: .none,
+                    cloudKitDatabase: .none
                 )
                 return try ModelContainer(for: schema, configurations: [memoryConfiguration])
             } catch {
