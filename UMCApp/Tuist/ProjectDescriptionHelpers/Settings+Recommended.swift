@@ -13,6 +13,8 @@ import ProjectDescription
 /// - `ENABLE_USER_SCRIPT_SANDBOXING`: Run Script Phase 샌드박스
 /// - `LOCALIZED_STRING_SWIFTUI_SUPPORT` / `STRING_CATALOG_GENERATE_SYMBOLS`: String Catalog 심볼 생성
 /// - `MARKETING_VERSION`: 앱 마케팅 버전(이슈 #948). 앱-노출 타겟의 CFBundleShortVersionString이 이 값을 참조한다.
+/// - `DEVELOPMENT_TEAM` / `CODE_SIGN_STYLE`: 서명 설정. Xcode UI에서 팀을 골라도 `tuist generate`
+///   시 `.xcodeproj`이 재생성되며 날아가므로 매니페스트에 고정해야 아카이브가 반복 가능하다.
 public let recommendedSettings: SettingsDictionary = [
     "ENABLE_MODULE_VERIFIER": "YES",
     "MODULE_VERIFIER_SUPPORTED_LANGUAGES": "objective-c objective-c++",
@@ -20,6 +22,8 @@ public let recommendedSettings: SettingsDictionary = [
     "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
     "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
     "MARKETING_VERSION": "3.0.0",
+    "DEVELOPMENT_TEAM": "8B8B4462NV",
+    "CODE_SIGN_STYLE": "Automatic",
 ]
 
 /// 프로젝트 전역에 권장 빌드 설정을 적용한 Settings

@@ -3,7 +3,7 @@ import ProjectDescriptionHelpers
 
 let project = widgetExtensionProject(
     name: "UMCAppWidget",
-    bundleId: "dev.tuist.UMCApp.widget",
+    bundleId: "com.umc.product.widget",
     entitlements: .file(path: "UMCAppWidget.entitlements"),
     dependencies: [
         .project(target: "CoreWidgetShared", path: .relativeToRoot("Core/WidgetShared")),
