@@ -12,7 +12,6 @@ import UMCFoundation
 // MARK: - Constants
 
 fileprivate enum Constants {
-    static let createPillBottomPadding: CGFloat = 24
     static let searchPrompt = "스레드 검색"
 }
 
@@ -51,7 +50,6 @@ struct CommunityThreadListView: View {
                     ThreadFilterMenu(selection: $viewModel.filter)
                 }
             }
-            .safeAreaInset(edge: .bottom) { createThreadPill }
             .alertPrompt(item: $viewModel.alertPrompt)
             .task { await viewModel.load() }
             .task { await viewModel.observeRealtime() }
@@ -162,23 +160,5 @@ struct CommunityThreadListView: View {
             systemImage: "bubble.left.and.bubble.right",
             description: Text("초대를 받으면 이곳에 표시돼요.")
         )
-    }
-
-    /// 하단 생성 필.
-    ///
-    /// 스레드 생성 화면이 후속 PR 이라 **배치만 하고 비활성**이다. `overlay` 가 아니라
-    /// `safeAreaInset` 으로 다는 이유는 필이 차지하는 만큼 리스트 콘텐츠 인셋을 실제로
-    /// 확보해야 마지막 행이 필 뒤에 가려지지 않기 때문이다.
-    private var createThreadPill: some View {
-        Button {
-        } label: {
-            Label("스레드 생성", systemImage: "plus")
-                .appFont(.subheadline, weight: .semibold)
-                .padding(.horizontal, DefaultSpacing.spacing24)
-                .padding(.vertical, DefaultSpacing.spacing12)
-        }
-        .buttonStyle(.glass)
-        .disabled(true)
-        .padding(.bottom, Constants.createPillBottomPadding)
     }
 }
