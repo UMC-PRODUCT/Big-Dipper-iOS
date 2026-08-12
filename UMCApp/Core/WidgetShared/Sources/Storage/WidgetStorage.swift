@@ -9,7 +9,7 @@ import Foundation
 
 /// App Group 기반 위젯 공유 스토리지 래퍼
 ///
-/// `group.dev.umc.appproduct.widget` App Group을 통해
+/// `group.com.umc.product.widget` App Group을 통해
 /// 메인 앱과 Widget Extension 간 데이터를 공유합니다.
 public final class WidgetStorage: Sendable {
 
@@ -17,7 +17,7 @@ public final class WidgetStorage: Sendable {
 
     public static let shared = WidgetStorage()
 
-    private static let appGroupSuiteName = "group.dev.umc.appproduct.widget"
+    private static let appGroupSuiteName = "group.com.umc.product.widget"
 
     nonisolated(unsafe) private let defaults: UserDefaults?
 
