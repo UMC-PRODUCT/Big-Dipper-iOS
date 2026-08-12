@@ -49,28 +49,28 @@ struct RootTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory { bottomAccessory }
+        .tabViewBottomAccessory(isEnabled: shouldShowAccessory) {
+            RootTabAccessoryView(pathStore: pathStore)
+        }
         .environment(pathStore)
     }
 
     // MARK: - Function
 
-    /// 탭바 하단 액세서리.
+    /// 탭바 하단 액세서리 노출 여부.
     ///
-    /// 레거시는 탭마다 액세서리를 뒀지만, Home 일정 등록·Notice 공지 작성은 각 화면 툴바
-    /// (`ToolBarCollection.AddBtn`)로 옮겨졌다. 남은 것은 운영진 ↔ 챌린저 모드 토글뿐이라
-    /// Activity 탭 루트에서 권한이 있을 때만 노출한다.
-    @ViewBuilder
-    private var bottomAccessory: some View {
+    /// 5개 탭이 각자 액세서리를 갖는다(Community 는 생성 화면이 아직 없어 비활성 자리표시).
+    /// 판단은 콘텐츠가 아니라 modifier 에서 한다 — `isEnabled:` 없이 콘텐츠만 비우면 SwiftUI 가
+    /// 액세서리 컨테이너를 계속 만들어 빈 유리 캡슐과 하단 safe area inset 이 그대로 남는다.
+    private var shouldShowAccessory: Bool {
         let userSession = di.resolve(UserSessionManager.self)
 
-        if AdminModeToggle.shouldShow(
-            selectedTab: pathStore.selectedTab,
-            isAtRoot: pathStore.isAtRoot(.activity),
+        return RootTabAccessoryView.shouldShow(
+            tab: pathStore.selectedTab,
+            isAtRoot: pathStore.isAtRoot(pathStore.selectedTab),
+            role: userSession.currentRole,
             canToggleAdminMode: userSession.canToggleAdminMode
-        ) {
-            AdminModeToggle(userSession: userSession)
-        }
+        )
     }
 
     private func tabLabel(_ tab: NavigationTab) -> some View {
@@ -126,9 +126,6 @@ struct RootTabView: View {
                 },
                 onAlarmHistoryTapped: {
                     pathStore.push(NavigationDestination.home(.alarmHistory), on: .home)
-                },
-                onScheduleRegistrationTapped: {
-                    pathStore.push(NavigationDestination.home(.registrationSchedule), on: .home)
                 }
             )
         case .notice:
@@ -158,62 +155,5 @@ struct RootTabView: View {
             get: { pathStore[tab] },
             set: { pathStore[tab] = $0 }
         )
-    }
-}
-
-// MARK: - AdminModeToggle
-
-/// 운영진 ↔ 챌린저 모드 전환 토글.
-///
-/// 액세서리는 축소(`inline`)·확장(`expanded`) 두 배치를 오가므로, 확장일 때만 현재 역할
-/// 배지와 좌우 여백을 더한다. 배치 값은 액세서리 콘텐츠 안에서만 유효해 별도 뷰로 뒀다.
-struct AdminModeToggle: View {
-
-    // MARK: - Property
-
-    let userSession: UserSessionManager
-
-    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
-
-    // MARK: - Gating
-
-    /// 토글 노출 조건.
-    ///
-    /// 액세서리는 탭 셸이 소유해 모든 탭에 걸쳐 있으므로 Activity 탭에서만 노출한다.
-    /// 스택이 쌓인 하위 화면에서는 모드를 바꿔도 보고 있는 화면이 그대로라 루트에서만 허용하고,
-    /// 운영진 권한이 없으면 전환 자체가 무의미해 숨긴다.
-    static func shouldShow(
-        selectedTab: NavigationTab,
-        isAtRoot: Bool,
-        canToggleAdminMode: Bool
-    ) -> Bool {
-        selectedTab == .activity && isAtRoot && canToggleAdminMode
-    }
-
-    // MARK: - Body
-
-    var body: some View {
-        Button {
-            // withAnimation 으로 감싸면 ActivityView 의 무거운 콘텐츠 교체(출석 체크 ↔ 출석 현황)까지
-            // 함께 애니메이션돼 두 화면이 겹쳐 보이는 잔상·경계선이 생긴다. 모드 전환은 즉시 처리한다.
-            userSession.toggleAdminMode()
-        } label: {
-            HStack(spacing: DefaultSpacing.spacing8) {
-                Image(systemName: userSession.isAdminModeEnabled ? "gearshape.fill" : "gearshape")
-                    .foregroundStyle(userSession.isAdminModeEnabled ? Color.indigo500 : .grey600)
-
-                Text(userSession.isAdminModeEnabled ? "운영진 모드" : "챌린저 모드")
-                    .appFont(.subheadline)
-                    .foregroundStyle(Color.grey900)
-
-                if placement == .expanded {
-                    Spacer()
-
-                    Text(userSession.currentRole.displayName)
-                        .appFont(.subheadline, color: .indigo500)
-                }
-            }
-            .padding(.horizontal, placement == .expanded ? DefaultConstant.defaultSafeHorizon : 0)
-        }
     }
 }

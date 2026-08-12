@@ -40,7 +40,6 @@ struct HomeView: View {
     private let onNoticeSelected: (NoticeDetail) -> Void
     private let onScheduleSelected: (String) -> Void
     private let onAlarmHistoryTapped: () -> Void
-    private let onScheduleRegistrationTapped: () -> Void
     private let reviewRequestPolicy: ReviewRequestPolicy
 
     // MARK: - Constants
@@ -57,7 +56,6 @@ struct HomeView: View {
     ///   - onNoticeSelected: 최근 공지 카드 탭 시 상세 화면 이동을 위임하는 콜백
     ///   - onScheduleSelected: 일정 카드 탭 시 일정 상세 이동을 위임하는 콜백
     ///   - onAlarmHistoryTapped: 툴바 알림 버튼 탭 시 알림 보관함 이동을 위임하는 콜백
-    ///   - onScheduleRegistrationTapped: 툴바 일정 등록 버튼 탭 시 등록 화면 이동을 위임하는 콜백
     ///   - reviewRequestPolicy: 리뷰 요청 간격 정책 (프리뷰/테스트용 주입 지점)
     init(
         container: DIContainer,
@@ -65,14 +63,12 @@ struct HomeView: View {
         onNoticeSelected: @escaping (NoticeDetail) -> Void = { _ in },
         onScheduleSelected: @escaping (String) -> Void = { _ in },
         onAlarmHistoryTapped: @escaping () -> Void = {},
-        onScheduleRegistrationTapped: @escaping () -> Void = {},
         reviewRequestPolicy: ReviewRequestPolicy = ReviewRequestPolicy()
     ) {
         _viewModel = State(initialValue: viewModel ?? HomeViewModel(container: container))
         self.onNoticeSelected = onNoticeSelected
         self.onScheduleSelected = onScheduleSelected
         self.onAlarmHistoryTapped = onAlarmHistoryTapped
-        self.onScheduleRegistrationTapped = onScheduleRegistrationTapped
         self.reviewRequestPolicy = reviewRequestPolicy
     }
 
@@ -95,8 +91,6 @@ struct HomeView: View {
         .umcDefaultBackground()
         .toolbar {
             ToolBarCollection.Logo()
-            // ponytail: 임시 진입점 — 하단 탭 액세서리(#1057) 결선 후 제거.
-            ToolBarCollection.AddBtn(action: onScheduleRegistrationTapped)
             ToolBarCollection.BellBtn(action: onAlarmHistoryTapped)
         }
         .task {
