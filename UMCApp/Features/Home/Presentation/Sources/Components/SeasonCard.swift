@@ -22,7 +22,7 @@ struct SeasonCard: View, Equatable {
     // MARK: - Constants
 
     fileprivate enum Constants {
-        static let cardSize = CGSize(width: 150, height: 120)
+        static let cardHeight: CGFloat = 120
         static let iconSize: CGFloat = 24
         static let mainPadding = EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20)
     }
@@ -37,7 +37,8 @@ struct SeasonCard: View, Equatable {
             value
         }
         .padding(Constants.mainPadding)
-        .frame(width: Constants.cardSize.width, height: Constants.cardSize.height, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: Constants.cardHeight)
         .glassEffect(
             .regular,
             in: .rect(corners: .concentric(minimum: DefaultConstant.concentricRadius), isUniform: true)
