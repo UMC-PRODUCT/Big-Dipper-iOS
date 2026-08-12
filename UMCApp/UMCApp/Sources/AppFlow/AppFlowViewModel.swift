@@ -44,10 +44,6 @@ final class AppFlowViewModel {
 
     // MARK: - Function
 
-    func showBootstrap() {
-        transition(to: .bootstrap)
-    }
-
     func showLogin() {
         transition(to: .login)
     }

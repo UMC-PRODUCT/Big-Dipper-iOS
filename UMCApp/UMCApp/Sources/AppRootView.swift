@@ -65,11 +65,6 @@ struct AppRootView: View {
         ) { _ in
             viewModel.showPendingApproval()
         }
-        #if DEBUG
-        .overlay(alignment: .bottom) {
-            debugFlowSwitcher
-        }
-        #endif
     }
 
     // MARK: - Function
@@ -108,19 +103,4 @@ struct AppRootView: View {
             await communityRealtime?.stop()
         }
     }
-
-    #if DEBUG
-    // MARK: - Debug
-
-    /// 상태머신 강제 전환 확인용 디버그 컨트롤. 릴리스 빌드에는 포함되지 않는다.
-    private var debugFlowSwitcher: some View {
-        HStack(spacing: DefaultSpacing.spacing12) {
-            Button("Bootstrap") { viewModel.showBootstrap() }
-            Button("Login") { viewModel.showLogin() }
-            Button("Main") { viewModel.showMain() }
-        }
-        .buttonStyle(.bordered)
-        .padding(.bottom, DefaultConstant.defaultSafeBottom)
-    }
-    #endif
 }
