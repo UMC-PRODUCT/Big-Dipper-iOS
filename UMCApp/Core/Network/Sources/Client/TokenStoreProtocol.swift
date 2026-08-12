@@ -42,7 +42,8 @@ public protocol TokenRefreshService: Sendable {
     /// 리프레시 토큰으로 새로운 토큰 쌍을 발급받습니다.
     ///
     /// - Throws:
-    ///   - `NetworkError.tokenRefreshFailed`: 토큰 갱신 API 호출 실패
+    ///   - `URLError`: 요청이 서버에 도달하지 못한 전송 계층 실패 (세션 만료 아님)
+    ///   - 그 외: 서버가 응답한 갱신 실패 (구현체 정의 에러)
     func refresh(_ refreshToken: String) async throws -> TokenPair
 }
 

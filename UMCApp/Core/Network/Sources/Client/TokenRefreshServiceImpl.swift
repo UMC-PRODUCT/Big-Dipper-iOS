@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UMCFoundation
 
 /// TokenRefreshService 프로토콜의 실제 구현체입니다.
 ///
@@ -104,7 +105,8 @@ private struct TokenResult: Codable, Sendable {
 
 /// 토큰 갱신 과정에서 발생하는 에러를 정의하는 열거형입니다.
 ///
-/// - Important: NetworkClient는 이 에러를 `NetworkError.tokenRefreshFailed`로 래핑합니다.
+/// - Important: 전송 계층 실패는 이 타입이 아니라 `URLError` 그대로 전파됩니다.
+///   NetworkClient는 두 경우를 구분해 각각 다른 `NetworkError`로 변환합니다.
 enum TokenRefreshError: Error, LocalizedError {
     case invalidResponse
     case serverError(statusCode: Int)
@@ -118,6 +120,23 @@ enum TokenRefreshError: Error, LocalizedError {
             return "서버 에러 (status: \(statusCode))"
         case .refreshFailed(let message):
             return message ?? "토큰 갱신 실패"
+        }
+    }
+
+    /// 서버가 리프레시 토큰을 거부한 경우에만 세션 만료(`tokenRefreshFailed`)로 변환합니다.
+    ///
+    /// 5xx 같은 일시적 서버 장애까지 세션 만료로 다루면 서버가 잠깐 흔들릴 때마다
+    /// 강제 로그아웃되므로, 일반 요청 실패로 남겨 재시도 가능하게 둡니다.
+    var asNetworkError: NetworkError {
+        switch self {
+        case .invalidResponse:
+            return .invalidResponse
+        case .serverError(let statusCode) where statusCode == 401 || statusCode == 403:
+            return .tokenRefreshFailed(reason: errorDescription)
+        case .serverError(let statusCode):
+            return .requestFailed(statusCode: statusCode, data: nil)
+        case .refreshFailed(let message):
+            return .tokenRefreshFailed(reason: message)
         }
     }
 }

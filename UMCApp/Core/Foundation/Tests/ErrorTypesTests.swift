@@ -40,12 +40,19 @@ struct NetworkErrorComputedTests {
     @Test("인증 계열은 critical + 재시도 불가")
     func authFamily() {
         let cases: [NetworkError] = [
-            .unauthorized, .tokenRefreshFailed(reason: nil), .noRefreshToken, .maxRetryExceeded
+            .unauthorized, .tokenRefreshFailed(reason: nil), .noRefreshToken
         ]
         for error in cases {
             #expect(error.severity == .critical)
             #expect(error.isRetryable == false)
         }
+    }
+
+    /// 재시도 소진은 세션을 파기하지 않으므로(#1151) 인증 계열과 달리 재시도를 허용한다.
+    @Test("재시도 소진은 critical 이지만 재시도 가능")
+    func maxRetryExceededIsRetryable() {
+        #expect(NetworkError.maxRetryExceeded.severity == .critical)
+        #expect(NetworkError.maxRetryExceeded.isRetryable == true)
     }
 
     @Test("5xx 는 critical + 재시도 가능, 4xx 는 warning + 재시도 불가")

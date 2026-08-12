@@ -132,6 +132,26 @@ public enum NetworkError: Error, Sendable, Equatable {
     }
 }
 
+// MARK: - NetworkError + URLError
+
+extension NetworkError {
+    /// 전송 계층 실패(`URLError`)를 대응하는 전용 케이스로 변환합니다.
+    ///
+    /// 요청이 서버에 도달하지 못한 실패이므로 저장된 토큰의 유효성과는 무관합니다.
+    /// 전용 케이스가 없는 코드(취소, DNS 실패 등)는 `nil`을 반환해 호출부가 원본 `URLError`를
+    /// 그대로 전파할 수 있게 합니다.
+    public static func transientFailure(from error: URLError) -> NetworkError? {
+        switch error.code {
+        case .notConnectedToInternet, .networkConnectionLost:
+            return .noNetwork
+        case .timedOut:
+            return .timeout
+        default:
+            return nil
+        }
+    }
+}
+
 // MARK: - NetworkError + LocalizedError
 
 extension NetworkError: LocalizedError {
@@ -166,8 +186,10 @@ extension NetworkError: LocalizedError {
         switch self {
         case .unauthorized:
             return "로그인이 필요합니다."
-        case .tokenRefreshFailed, .noRefreshToken, .maxRetryExceeded:
+        case .tokenRefreshFailed, .noRefreshToken:
             return "세션이 만료되었습니다. 다시 로그인해주세요."
+        case .maxRetryExceeded:
+            return "인증 정보를 확인하지 못했어요. 잠시 후 다시 시도해주세요."
         case .requestFailed(let statusCode, let data):
             if let serverMessage = Self.parseServerMessage(from: data) {
                 return serverMessage
@@ -205,8 +227,10 @@ extension NetworkError: LocalizedError {
     /// 로깅 및 알림 우선순위 결정에 사용됩니다.
     public var severity: ErrorSeverity {
         switch self {
-        case .unauthorized, .tokenRefreshFailed, .noRefreshToken, .maxRetryExceeded:
+        case .unauthorized, .tokenRefreshFailed, .noRefreshToken:
             return .critical  // 즉시 로그아웃/재로그인 필요
+        case .maxRetryExceeded:
+            return .critical  // 인증 확인 실패 — 세션은 유지하되 즉시 알림
         case .requestFailed(let statusCode, _):
             switch statusCode {
             case 500...599:
@@ -226,8 +250,10 @@ extension NetworkError: LocalizedError {
     /// ErrorHandler의 재시도 버튼 표시 여부 결정에 사용됩니다.
     public var isRetryable: Bool {
         switch self {
-        case .unauthorized, .tokenRefreshFailed, .noRefreshToken, .maxRetryExceeded:
+        case .unauthorized, .tokenRefreshFailed, .noRefreshToken:
             return false  // 로그인 필요
+        case .maxRetryExceeded:
+            return true   // 세션은 유지되므로 네트워크 복구 후 재시도 가능
         case .requestFailed(let statusCode, _):
             switch statusCode {
             case 500...599:

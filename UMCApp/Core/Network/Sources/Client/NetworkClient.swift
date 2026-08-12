@@ -150,6 +150,15 @@ extension NetworkClient {
                     refreshToken: tokenPair.refreshToken
                 )
                 return tokenPair
+            } catch let urlError as URLError {
+                // 갱신 요청이 서버에 도달조차 못한 실패다. 리프레시 토큰 거부가 아니므로
+                // 세션 만료(tokenRefreshFailed)로 승격하지 않는다.
+                if let transientError = NetworkError.transientFailure(from: urlError) {
+                    throw transientError
+                }
+                throw urlError
+            } catch let refreshError as TokenRefreshError {
+                throw refreshError.asNetworkError
             } catch {
                 throw NetworkError.tokenRefreshFailed(reason: error.localizedDescription)
             }

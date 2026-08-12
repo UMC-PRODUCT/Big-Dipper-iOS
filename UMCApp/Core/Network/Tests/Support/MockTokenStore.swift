@@ -45,6 +45,10 @@ actor MockTokenRefreshService: TokenRefreshService {
         case failure(MockRefreshError)
         /// 호출 시 sleep 후 success — single-flight 테스트에 사용
         case delayedSuccess(TokenPair, nanoseconds: UInt64)
+        /// 갱신 요청이 서버에 도달하지 못한 전송 계층 실패
+        case transportFailure(URLError)
+        /// 서버가 리프레시 토큰을 거부한 응답
+        case rejectedByServer(statusCode: Int)
     }
 
     private var behavior: Behavior
@@ -71,6 +75,10 @@ actor MockTokenRefreshService: TokenRefreshService {
         case .delayedSuccess(let pair, let nanoseconds):
             try? await Task.sleep(nanoseconds: nanoseconds)
             return pair
+        case .transportFailure(let urlError):
+            throw urlError
+        case .rejectedByServer(let statusCode):
+            throw TokenRefreshError.serverError(statusCode: statusCode)
         }
     }
 }
