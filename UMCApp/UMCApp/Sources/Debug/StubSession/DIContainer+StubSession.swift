@@ -8,6 +8,8 @@
 #if DEBUG
 import ActivityDomain
 import AuthDomain
+import CommunityData
+import CommunityDomain
 import CoreDI
 import CoreDomain
 import HomeDomain
@@ -53,9 +55,16 @@ extension DIContainer {
         register(OperatorAttendanceRepositoryProtocol.self) {
             StubAttendanceRepository()
         }
+        // 실시간(STOMP)은 그대로 둔다 — 교체하면 재연결·백필 경로를 stub 모드에서 못 밟는다.
+        register(CommunityThreadRepositoryProtocol.self) {
+            MockCommunityThreadRepository()
+        }
 
         Logger(subsystem: "UMCApp", category: "StubSession")
-            .notice("Stub 세션 모드 활성화 — 인증·홈·공지·스터디·멤버·출석 데이터가 픽스처로 대체됩니다.")
+            .notice("""
+                Stub 세션 모드 활성화 — 인증·홈·공지·스터디·멤버·출석·커뮤니티 데이터가 픽스처로 \
+                대체됩니다. 커뮤니티 실시간(STOMP)만 실서버라 메시지 전송은 15초 뒤 실패합니다.
+                """)
     }
 }
 #endif

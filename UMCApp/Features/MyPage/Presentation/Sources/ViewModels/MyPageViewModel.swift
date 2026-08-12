@@ -6,6 +6,7 @@
 //
 
 import AuthDomain
+import CommunityDomain
 import CoreDI
 import CoreDomain
 import CoreNetwork
@@ -142,21 +143,28 @@ public final class MyPageViewModel {
 
     // MARK: - Private Function
 
-    /// 토큰·세션 역할·프로필 캐시·DI 캐시를 차례로 비웁니다.
+    /// 토큰·세션 역할·프로필 캐시·STOMP 연결·DI 캐시를 차례로 비웁니다.
     ///
     /// `resetCache()`보다 먼저 참조를 확보하는 이유는 `AppRootView.handleAuthSessionExpired`와
     /// 같다 — 캐시를 비운 뒤 resolve하면 새 인스턴스가 만들어져 정리 대상이 어긋난다.
+    ///
+    /// STOMP 연결은 `resetCache()`가 참조를 버려도 펌프 Task가 클라이언트를 강참조해 살아남고,
+    /// 생성 시점에 붙잡은 구 `TokenStore`의 인메모리 캐시로 로그아웃한 세션의 토큰을 계속
+    /// 재사용한다. 그래서 캐시를 비우기 **전에** `stop()`을 끝까지 기다린다. 한 번도 만들어진
+    /// 적이 없으면 `resolveIfCached`가 nil을 반환해 새 인스턴스를 만들지 않는다.
     @MainActor
     private func tearDownSession() async throws {
         let networkClient = container.resolve(NetworkClient.self)
         let memberProfileRepository = container.resolveIfRegistered(
             MemberProfileRepositoryProtocol.self
         )
+        let communityRealtime = container.resolveIfCached(CommunityThreadRealtimeProtocol.self)
         let userSessionManager = container.resolve(UserSessionManager.self)
 
         try await networkClient.logout()
         userSessionManager.reset()
         await memberProfileRepository?.invalidateCache()
+        await communityRealtime?.stop()
         container.resetCache()
     }
 

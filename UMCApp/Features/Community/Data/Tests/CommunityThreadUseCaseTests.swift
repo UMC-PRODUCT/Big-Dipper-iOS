@@ -1,0 +1,523 @@
+//
+//  CommunityThreadUseCaseTests.swift
+//  CommunityDataTests
+//
+
+import Foundation
+import Testing
+import UMCFoundation
+
+import CommunityDomain
+
+@Suite("커뮤니티 스레드 리스트 UseCase")
+struct CommunityThreadListUseCaseTests {
+
+    // MARK: - Load
+
+    @Test("필터는 서버 쿼리 값으로, 페이지 크기는 UseCase 상수로 내려간다")
+    func passesFilterQueryValueAndPageSize() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        _ = try await useCase.loadThreads(filter: .category(.study), query: nil, offset: 40)
+
+        let call = try #require(await repository.fetchThreadsCalls.first)
+        #expect(call.filter == "STUDY")
+        #expect(call.offset == 40)
+        #expect(call.limit == CommunityThreadListUseCase.pageSize)
+    }
+
+    @Test("검색어는 앞뒤 공백을 털어서 내려간다")
+    func trimsQueryWhitespace() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        _ = try await useCase.loadThreads(filter: .all, query: "  iOS 스터디\n", offset: 0)
+
+        let call = try #require(await repository.fetchThreadsCalls.first)
+        #expect(call.query == "iOS 스터디")
+    }
+
+    @Test("공백뿐이거나 빈 검색어는 검색하지 않는다 — nil 로 내려간다")
+    func dropsBlankQuery() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        _ = try await useCase.loadThreads(filter: .all, query: "   \n\t ", offset: 0)
+        _ = try await useCase.loadThreads(filter: .all, query: "", offset: 0)
+        _ = try await useCase.loadThreads(filter: .all, query: nil, offset: 0)
+
+        let queries = await repository.fetchThreadsCalls.map(\.query)
+        #expect(queries == [nil, nil, nil])
+    }
+
+    @Test("상한을 넘는 검색어는 80 code point 로 잘라 보낸다")
+    func truncatesOverlongQuery() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        let query = String(repeating: "가", count: 100)
+        _ = try await useCase.loadThreads(filter: .all, query: query, offset: 0)
+
+        let call = try #require(await repository.fetchThreadsCalls.first)
+        #expect(call.query?.unicodeScalars.count == CommunityThreadListUseCase.queryMaxLength)
+        #expect(call.query == String(repeating: "가", count: 80))
+
+        // 그래파임으로 자르면 code point 140개가 그대로 나가 서버가 400 을 준다.
+        _ = try await useCase.loadThreads(
+            filter: .all,
+            query: String(repeating: "👨‍👩‍👧‍👦", count: 20),
+            offset: 0
+        )
+
+        let emojiCall = try #require(await repository.fetchThreadsCalls.last)
+        #expect(emojiCall.query?.unicodeScalars.count == CommunityThreadListUseCase.queryMaxLength)
+    }
+
+    @Test("페이지는 가공 없이 그대로 돌려준다")
+    func returnsRepositoryPageUnchanged() async throws {
+        let page = CommunityThreadPage(
+            pinned: [makeThread(id: "pinned-thread")],
+            threads: [makeThread(id: "thread-1"), makeThread(id: "thread-2")],
+            nextOffset: "20",
+            total: "42"
+        )
+        let repository = FakeThreadRepository(threadPage: page)
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        let loaded = try await useCase.loadThreads(filter: .unread, query: nil, offset: 0)
+
+        #expect(loaded == page)
+    }
+
+    @Test("Repository 에러는 삼키지 않고 그대로 올린다")
+    func propagatesRepositoryError() async {
+        let repository = FakeThreadRepository(error: FakeFailure())
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        await #expect(throws: FakeFailure.self) {
+            _ = try await useCase.loadThreads(filter: .all, query: nil, offset: 0)
+        }
+    }
+
+    // MARK: - Toggle
+
+    @Test("고정 토글은 켜기·끄기를 구분해 Repository 로 넘긴다")
+    func forwardsPinToggle() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        try await useCase.togglePin(threadId: "thread-1", isPinned: true)
+        try await useCase.togglePin(threadId: "thread-2", isPinned: false)
+
+        let calls = await repository.pinCalls
+        #expect(calls == [
+            FakeThreadRepository.ToggleCall(threadId: "thread-1", isOn: true),
+            FakeThreadRepository.ToggleCall(threadId: "thread-2", isOn: false),
+        ])
+        #expect(await repository.muteCalls.isEmpty)
+    }
+
+    @Test("알림 토글은 고정과 섞이지 않는다")
+    func forwardsMuteToggle() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        try await useCase.toggleMute(threadId: "thread-1", isMuted: true)
+
+        #expect(await repository.muteCalls == [
+            FakeThreadRepository.ToggleCall(threadId: "thread-1", isOn: true),
+        ])
+        #expect(await repository.pinCalls.isEmpty)
+    }
+
+    @Test("나가기는 해당 스레드로 Repository 를 호출한다")
+    func forwardsLeave() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadListUseCase(repository: repository)
+
+        try await useCase.leave(threadId: "thread-9")
+
+        #expect(await repository.leaveCalls == ["thread-9"])
+    }
+}
+
+@Suite("커뮤니티 스레드 채팅방 UseCase")
+struct CommunityThreadRoomUseCaseTests {
+
+    // MARK: - Read
+
+    @Test("스레드 상세는 REST 로 간다")
+    func loadsThreadFromRepository() async throws {
+        let repository = FakeThreadRepository(thread: makeThread(id: "thread-7"))
+        let useCase = makeUseCase(repository: repository)
+
+        let thread = try await useCase.loadThread(threadId: "thread-7")
+
+        #expect(thread.id == "thread-7")
+        #expect(await repository.fetchThreadCalls == ["thread-7"])
+    }
+
+    @Test("메시지 조회는 커서와 UseCase 페이지 크기를 함께 내려보낸다")
+    func passesCursorAndPageSize() async throws {
+        let page = ThreadMessagePage(
+            messages: [makeMessage(id: "message-1")],
+            hasMore: true,
+            nextBefore: "message-1"
+        )
+        let repository = FakeThreadRepository(messagePage: page)
+        let useCase = makeUseCase(repository: repository)
+
+        let loaded = try await useCase.loadMessages(threadId: "thread-1", before: "message-9")
+
+        let call = try #require(await repository.fetchMessagesCalls.first)
+        #expect(call.threadId == "thread-1")
+        #expect(call.before == "message-9")
+        #expect(call.limit == CommunityThreadRoomUseCase.pageSize)
+        #expect(loaded == page)
+    }
+
+    // MARK: - Send
+
+    @Test("전송은 REST 가 아니라 실시간 채널로 간다 — clientMessageId 를 그대로 싣는다")
+    func routesSendToRealtime() async throws {
+        let repository = FakeThreadRepository()
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(repository: repository, realtime: realtime)
+
+        try await useCase.send(
+            threadId: "thread-1",
+            clientMessageId: "3f0a1b2c-0000-4000-8000-000000000000",
+            content: "안녕하세요"
+        )
+
+        #expect(await realtime.sendCalls == [
+            FakeThreadRealtime.SendCall(
+                threadId: "thread-1",
+                clientMessageId: "3f0a1b2c-0000-4000-8000-000000000000",
+                content: "안녕하세요",
+                fileMetadataIds: []
+            ),
+        ])
+    }
+
+    @Test("검증에 걸린 본문은 실시간 채널에 닿기 전에 막힌다")
+    func rejectsInvalidContentBeforeSending() async {
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(realtime: realtime)
+
+        await #expect(throws: AppError.validation(.empty(field: "메시지"))) {
+            try await useCase.send(threadId: "thread-1", clientMessageId: "client-1", content: " ")
+        }
+        await #expect(
+            throws: AppError.validation(.tooLong(field: "메시지", maxLength: 2_000))
+        ) {
+            try await useCase.send(
+                threadId: "thread-1",
+                clientMessageId: "client-1",
+                content: String(repeating: "가", count: 2_001)
+            )
+        }
+
+        #expect(await realtime.sendCalls.isEmpty)
+    }
+
+    @Test("실시간 전송 실패는 그대로 올라온다")
+    func propagatesRealtimeSendError() async {
+        let realtime = FakeThreadRealtime(sendError: FakeFailure())
+        let useCase = makeUseCase(realtime: realtime)
+
+        await #expect(throws: FakeFailure.self) {
+            try await useCase.send(
+                threadId: "thread-1",
+                clientMessageId: "client-1",
+                content: "안녕하세요"
+            )
+        }
+    }
+
+    // MARK: - Read Watermark
+
+    @Test("읽음 갱신도 REST 가 아니라 실시간 채널로 간다")
+    func routesReadWatermarkToRealtime() async throws {
+        let repository = FakeThreadRepository()
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(repository: repository, realtime: realtime)
+
+        try await useCase.markRead(threadId: "thread-1", lastReadMessageId: "message-42")
+
+        #expect(await realtime.readCalls == [
+            FakeThreadRealtime.ReadCall(threadId: "thread-1", lastReadMessageId: "message-42"),
+        ])
+        #expect(await repository.fetchThreadCalls.isEmpty)
+    }
+
+    // MARK: - Realtime Lifecycle
+
+    @Test("실시간 시작은 연결 소유자에게 위임한다")
+    func startsRealtime() async {
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(realtime: realtime)
+
+        await useCase.startRealtime()
+
+        #expect(await realtime.startCount == 1)
+    }
+
+    @Test("신호 스트림은 실시간 채널의 스트림을 그대로 흘려보낸다")
+    func forwardsRealtimeSignals() async throws {
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(realtime: realtime)
+
+        let signals = await useCase.signals()
+        await realtime.emit(.commandFailed(makeCommandError()))
+
+        var iterator = signals.makeAsyncIterator()
+        let received = try #require(await iterator.next())
+
+        guard case .commandFailed(let error) = received else {
+            Issue.record("commandFailed 가 아닌 신호를 받았다")
+            return
+        }
+        #expect(error.isRateLimited)
+    }
+
+    // MARK: - Function
+
+    private func makeUseCase(
+        repository: FakeThreadRepository = FakeThreadRepository(),
+        realtime: FakeThreadRealtime = FakeThreadRealtime()
+    ) -> CommunityThreadRoomUseCase {
+        CommunityThreadRoomUseCase(repository: repository, realtime: realtime)
+    }
+}
+
+// MARK: - Fake
+
+private struct FakeFailure: Error, Equatable {}
+
+private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
+
+    struct FetchThreadsCall: Equatable {
+        let filter: String
+        let query: String?
+        let offset: Int
+        let limit: Int
+    }
+
+    struct FetchMessagesCall: Equatable {
+        let threadId: String
+        let before: String?
+        let limit: Int
+    }
+
+    struct ToggleCall: Equatable {
+        let threadId: String
+        let isOn: Bool
+    }
+
+    // MARK: - Property
+
+    private(set) var fetchThreadsCalls: [FetchThreadsCall] = []
+    private(set) var fetchThreadCalls: [String] = []
+    private(set) var fetchMessagesCalls: [FetchMessagesCall] = []
+    private(set) var pinCalls: [ToggleCall] = []
+    private(set) var muteCalls: [ToggleCall] = []
+    private(set) var leaveCalls: [String] = []
+
+    private let threadPage: CommunityThreadPage
+    private let thread: CommunityThread
+    private let messagePage: ThreadMessagePage
+    private let error: Error?
+
+    // MARK: - Init
+
+    init(
+        threadPage: CommunityThreadPage = CommunityThreadPage(
+            pinned: [],
+            threads: [],
+            nextOffset: nil,
+            total: "0"
+        ),
+        thread: CommunityThread = makeThread(),
+        messagePage: ThreadMessagePage = ThreadMessagePage(
+            messages: [],
+            hasMore: false,
+            nextBefore: nil
+        ),
+        error: Error? = nil
+    ) {
+        self.threadPage = threadPage
+        self.thread = thread
+        self.messagePage = messagePage
+        self.error = error
+    }
+
+    // MARK: - Function
+
+    func fetchThreads(
+        filter: String,
+        query: String?,
+        offset: Int,
+        limit: Int
+    ) async throws -> CommunityThreadPage {
+        fetchThreadsCalls.append(
+            FetchThreadsCall(filter: filter, query: query, offset: offset, limit: limit)
+        )
+        if let error { throw error }
+        return threadPage
+    }
+
+    func fetchThread(threadId: String) async throws -> CommunityThread {
+        fetchThreadCalls.append(threadId)
+        if let error { throw error }
+        return thread
+    }
+
+    func fetchMessages(
+        threadId: String,
+        before: String?,
+        limit: Int
+    ) async throws -> ThreadMessagePage {
+        fetchMessagesCalls.append(
+            FetchMessagesCall(threadId: threadId, before: before, limit: limit)
+        )
+        if let error { throw error }
+        return messagePage
+    }
+
+    func setPinned(threadId: String, isPinned: Bool) async throws {
+        pinCalls.append(ToggleCall(threadId: threadId, isOn: isPinned))
+        if let error { throw error }
+    }
+
+    func setMuted(threadId: String, isMuted: Bool) async throws {
+        muteCalls.append(ToggleCall(threadId: threadId, isOn: isMuted))
+        if let error { throw error }
+    }
+
+    func leaveThread(threadId: String) async throws {
+        leaveCalls.append(threadId)
+        if let error { throw error }
+    }
+}
+
+private actor FakeThreadRealtime: CommunityThreadRealtimeProtocol {
+
+    struct SendCall: Equatable {
+        let threadId: String
+        let clientMessageId: String
+        let content: String
+        let fileMetadataIds: [String]
+    }
+
+    struct ReadCall: Equatable {
+        let threadId: String
+        let lastReadMessageId: String
+    }
+
+    // MARK: - Property
+
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+    private(set) var sendCalls: [SendCall] = []
+    private(set) var readCalls: [ReadCall] = []
+
+    private let sendError: Error?
+    private let stream: AsyncStream<CommunityRealtimeSignal>
+    private let continuation: AsyncStream<CommunityRealtimeSignal>.Continuation
+
+    // MARK: - Init
+
+    init(sendError: Error? = nil) {
+        self.sendError = sendError
+        let made = AsyncStream.makeStream(of: CommunityRealtimeSignal.self)
+        self.stream = made.stream
+        self.continuation = made.continuation
+    }
+
+    // MARK: - Function
+
+    func emit(_ signal: CommunityRealtimeSignal) {
+        continuation.yield(signal)
+    }
+
+    func start() async {
+        startCount += 1
+    }
+
+    func stop() async {
+        stopCount += 1
+    }
+
+    func signals() async -> AsyncStream<CommunityRealtimeSignal> {
+        stream
+    }
+
+    func sendMessage(
+        threadId: String,
+        clientMessageId: String,
+        content: String,
+        fileMetadataIds: [String]
+    ) async throws {
+        sendCalls.append(
+            SendCall(
+                threadId: threadId,
+                clientMessageId: clientMessageId,
+                content: content,
+                fileMetadataIds: fileMetadataIds
+            )
+        )
+        if let sendError { throw sendError }
+    }
+
+    func updateReadWatermark(threadId: String, lastReadMessageId: String) async throws {
+        readCalls.append(ReadCall(threadId: threadId, lastReadMessageId: lastReadMessageId))
+    }
+}
+
+// MARK: - Fixture
+
+private func makeThread(id: String = "thread-1") -> CommunityThread {
+    CommunityThread(
+        id: id,
+        title: "iOS 스터디",
+        description: "설명",
+        category: .study,
+        icon: "🔥",
+        memberCount: "12",
+        unreadCount: "0",
+        maxMembers: "30",
+        isPinned: false,
+        isMuted: false,
+        isJoined: true,
+        myRole: .member,
+        lastMessage: nil,
+        createdBy: "creator-id",
+        createdAt: Date(timeIntervalSince1970: 0),
+        updatedAt: Date(timeIntervalSince1970: 100)
+    )
+}
+
+private func makeMessage(id: String) -> ThreadMessage {
+    ThreadMessage(
+        id: id,
+        threadId: "thread-1",
+        senderId: "sender-id",
+        senderName: "정의진",
+        content: "안녕하세요",
+        type: .text,
+        createdAt: Date(timeIntervalSince1970: 100)
+    )
+}
+
+private func makeCommandError() -> RealtimeCommandError {
+    RealtimeCommandError(
+        commandId: "command-id",
+        clientMessageId: "client-1",
+        status: "429",
+        code: "RATE_LIMITED",
+        message: "요청이 너무 많습니다",
+        retryable: true
+    )
+}

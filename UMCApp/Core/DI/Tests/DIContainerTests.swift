@@ -98,6 +98,35 @@ struct DIContainerTests {
         #expect(first === second)
     }
 
+    @Test("resolveIfCached는 이미 생성된 인스턴스를 그대로 반환한다")
+    func resolveIfCachedReturnsLiveInstance() {
+        let container = DIContainer()
+        container.register(GreeterProtocol.self) { Greeter() }
+        let resolved = container.resolve(GreeterProtocol.self)
+
+        #expect(container.resolveIfCached(GreeterProtocol.self) === resolved)
+    }
+
+    /// 정리 코드(`resetCache()` 직전 `stop()`)가 쓰는 경로다. 미스 시 생성해 버리면 정리하려던
+    /// 순간에 인스턴스가 하나 더 생겨 남는다 — `resolveIfRegistered`로 구현하면 이 테스트가 깨진다.
+    @Test("resolveIfCached는 등록만 된 타입에 대해 nil을 반환하고 아무것도 생성·캐싱하지 않는다")
+    func resolveIfCachedDoesNotCreateInstance() {
+        let container = DIContainer()
+        var factoryCallCount = 0
+        container.register(GreeterProtocol.self) {
+            factoryCallCount += 1
+            return Greeter()
+        }
+
+        #expect(container.resolveIfCached(GreeterProtocol.self) == nil)
+        #expect(factoryCallCount == 0)
+        // 캐시가 오염되지 않았으므로 이후 resolve가 정상적으로 첫 인스턴스를 만든다.
+        let resolved = container.resolve(GreeterProtocol.self)
+
+        #expect(factoryCallCount == 1)
+        #expect(container.resolveIfCached(GreeterProtocol.self) === resolved)
+    }
+
     @Test("resetCache()는 모든 캐시된 인스턴스를 제거한다")
     func resetCacheClearsAllInstances() {
         let container = DIContainer()

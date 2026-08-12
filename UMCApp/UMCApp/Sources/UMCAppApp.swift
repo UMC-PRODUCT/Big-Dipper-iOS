@@ -55,6 +55,7 @@ struct UMCAppApp: App {
             modelContext: sharedModelContainer.mainContext
         )
         container.registerActivityDependencies()
+        container.registerCommunityDependencies()
         container.registerMyPageDependencies()
         container.registerMaintenanceDependencies()
         #if DEBUG

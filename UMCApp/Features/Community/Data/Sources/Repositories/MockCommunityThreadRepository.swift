@@ -1,0 +1,127 @@
+//
+//  MockCommunityThreadRepository.swift
+//  CommunityData
+//
+
+#if DEBUG
+import Foundation
+import CommunityDomain
+
+/// 네트워크 없이 리스트·채팅방 UI 를 돌려 보기 위한 Mock.
+///
+/// 릴리스 빌드에는 포함되지 않는다(절대 규칙 #5).
+public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
+
+    // MARK: - Init
+
+    public init() {}
+
+    // MARK: - Function
+
+    public func fetchThreads(
+        filter: String,
+        query: String?,
+        offset: Int,
+        limit: Int
+    ) async throws -> CommunityThreadPage {
+        // 검색 모드에서는 서버가 pinned 를 비우고 고정 스레드를 threads 위로 올린다.
+        guard query == nil else {
+            return CommunityThreadPage(
+                pinned: [],
+                threads: [Self.pinnedSample, Self.plainSample],
+                nextOffset: nil,
+                total: "2"
+            )
+        }
+        return CommunityThreadPage(
+            pinned: [Self.pinnedSample],
+            threads: [Self.plainSample],
+            nextOffset: nil,
+            total: "1"
+        )
+    }
+
+    public func fetchThread(threadId: String) async throws -> CommunityThread {
+        Self.pinnedSample
+    }
+
+    public func fetchMessages(
+        threadId: String,
+        before: String?,
+        limit: Int
+    ) async throws -> ThreadMessagePage {
+        // 서버와 같이 최신순으로 준다.
+        ThreadMessagePage(
+            messages: [
+                Self.message(id: "3", sender: "정의진", content: "네 좋아요"),
+                Self.message(id: "2", sender: "이재원", content: "화요일 8시 어때요?"),
+                Self.message(id: "1", sender: "정의진", content: "이번 주 스터디 언제 하죠?")
+            ],
+            hasMore: false,
+            nextBefore: nil
+        )
+    }
+
+    public func setPinned(threadId: String, isPinned: Bool) async throws {}
+    public func setMuted(threadId: String, isMuted: Bool) async throws {}
+    public func leaveThread(threadId: String) async throws {}
+
+    // MARK: - Sample
+
+    private static let referenceDate = Date(timeIntervalSince1970: 1_786_000_000)
+
+    private static let pinnedSample = CommunityThread(
+        id: "1",
+        title: "iOS 스터디",
+        description: "매주 화요일 8시",
+        category: .study,
+        icon: "📚",
+        memberCount: "8",
+        unreadCount: "3",
+        maxMembers: "20",
+        isPinned: true,
+        isMuted: false,
+        isJoined: true,
+        myRole: .owner,
+        lastMessage: ThreadLastMessage(
+            preview: "네 좋아요",
+            senderName: "정의진",
+            createdAt: referenceDate
+        ),
+        createdBy: "5",
+        createdAt: referenceDate,
+        updatedAt: referenceDate
+    )
+
+    private static let plainSample = CommunityThread(
+        id: "2",
+        title: "자유로운 잡담방",
+        description: "",
+        category: .free,
+        icon: "",
+        memberCount: "42",
+        unreadCount: "0",
+        maxMembers: "100",
+        isPinned: false,
+        isMuted: true,
+        isJoined: false,
+        myRole: nil,
+        lastMessage: nil,
+        createdBy: "9",
+        createdAt: referenceDate,
+        updatedAt: referenceDate
+    )
+
+    private static func message(id: String, sender: String, content: String) -> ThreadMessage {
+        ThreadMessage(
+            id: id,
+            threadId: "1",
+            senderId: sender == "정의진" ? "5" : "9",
+            senderName: sender,
+            content: content,
+            type: .text,
+            createdAt: referenceDate
+        )
+    }
+}
+#endif
