@@ -1,6 +1,7 @@
 import ProjectDescription
 
-private let companionBundleId = "dev.umc.appproduct"
+/// 호스트 iOS 앱의 번들 ID. Watch 앱 번들 ID는 반드시 `<이 값>.watchkitapp` 이어야 한다.
+private let companionBundleId = "com.umc.product"
 
 /// Watch 앱 타겟용 Project 생성 헬퍼
 ///

@@ -3,8 +3,7 @@ import ProjectDescriptionHelpers
 
 let project = watchAppProject(
     name: "UMCWatchApp",
-    bundleId: "dev.umc.appproduct.watchkitapp",
-    entitlements: .file(path: "UMCWatchApp.entitlements"),
+    bundleId: "com.umc.product.watchkitapp",
     dependencies: [
         .project(target: "CoreWatchConnectivity", path: .relativeToRoot("Core/WatchConnectivity")),
     ]
