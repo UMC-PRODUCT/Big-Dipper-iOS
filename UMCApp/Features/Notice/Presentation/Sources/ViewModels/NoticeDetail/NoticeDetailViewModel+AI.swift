@@ -134,11 +134,11 @@ extension NoticeDetailViewModel {
             let descriptor = FetchDescriptor<AITokenDailyUsageRecord>()
             let records = try modelContext.fetch(descriptor)
 
-            if let record = records.first(where: { $0.memberId == currentMemberId && $0.date == today }) {
+            if let record = records.first(where: { $0.memberKey == currentMemberId && $0.date == today }) {
                 record.usedTokens += lastRunTokens
             } else {
                 modelContext.insert(AITokenDailyUsageRecord(
-                    memberId: currentMemberId,
+                    memberKey: currentMemberId,
                     date: today,
                     usedTokens: lastRunTokens
                 ))
