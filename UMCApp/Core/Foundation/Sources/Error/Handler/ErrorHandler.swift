@@ -211,14 +211,8 @@ public final class ErrorHandler {
     }
 
     private func convertURLError(_ error: URLError) -> NetworkError {
-        switch error.code {
-        case .notConnectedToInternet, .networkConnectionLost:
-            return .noNetwork
-        case .timedOut:
-            return .timeout
-        default:
-            return .requestFailed(statusCode: error.errorCode, data: nil)
-        }
+        NetworkError.transientFailure(from: error)
+            ?? .requestFailed(statusCode: error.errorCode, data: nil)
     }
 
     #if canImport(FoundationModels)
@@ -322,11 +316,12 @@ public final class ErrorHandler {
             NotificationCenter.default.post(name: .authSessionExpired, object: nil)
             return true
 
-        // NetworkError 인증 관련 에러 → 자동 로그아웃
+        // 서버가 토큰을 거부한 경우만 자동 로그아웃.
+        // 전송 계층 실패(.noNetwork/.timeout)와 재시도 소진(.maxRetryExceeded)은 토큰이
+        // 무효라는 근거가 아니므로 세션을 파기하지 않고 일반 Alert으로 처리한다.
         case .network(.unauthorized),
              .network(.tokenRefreshFailed),
-             .network(.noRefreshToken),
-             .network(.maxRetryExceeded):
+             .network(.noRefreshToken):
             NotificationCenter.default.post(name: .authSessionExpired, object: nil)
             return true
 

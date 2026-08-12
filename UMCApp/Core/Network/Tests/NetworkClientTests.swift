@@ -153,6 +153,67 @@ struct NetworkClientTests {
         }
     }
 
+    @Test("갱신 중 네트워크가 끊기면 noNetwork를 throw하고 저장된 토큰은 유지한다")
+    func transportFailureKeepsSession() async {
+        let store = MockTokenStore(accessToken: "OLD", refreshToken: "REFRESH")
+        let refresh = MockTokenRefreshService(
+            behavior: .transportFailure(URLError(.notConnectedToInternet))
+        )
+        let client = makeClient(store: store, refresh: refresh)
+
+        StubURLProtocol.handler = { _ in (Data(), 401, nil) }
+
+        await #expect(throws: NetworkError.noNetwork) {
+            _ = try await client.request(URLRequest(url: self.testURL))
+        }
+
+        let clearCount = await store.clearCallCount
+        let refreshToken = await store.refreshToken
+        #expect(clearCount == 0)
+        #expect(refreshToken == "REFRESH")
+    }
+
+    @Test("갱신 요청이 타임아웃되면 timeout을 throw한다")
+    func transportTimeoutIsNotSessionExpiry() async {
+        let store = MockTokenStore(accessToken: "OLD", refreshToken: "REFRESH")
+        let refresh = MockTokenRefreshService(behavior: .transportFailure(URLError(.timedOut)))
+        let client = makeClient(store: store, refresh: refresh)
+
+        StubURLProtocol.handler = { _ in (Data(), 401, nil) }
+
+        await #expect(throws: NetworkError.timeout) {
+            _ = try await client.request(URLRequest(url: self.testURL))
+        }
+    }
+
+    @Test("서버가 리프레시 토큰을 거부(401)하면 tokenRefreshFailed를 throw한다")
+    func serverRejectionBecomesTokenRefreshFailed() async {
+        let store = MockTokenStore(accessToken: "OLD", refreshToken: "REFRESH")
+        let refresh = MockTokenRefreshService(behavior: .rejectedByServer(statusCode: 401))
+        let client = makeClient(store: store, refresh: refresh)
+
+        StubURLProtocol.handler = { _ in (Data(), 401, nil) }
+
+        await #expect(
+            throws: NetworkError.tokenRefreshFailed(reason: "서버 에러 (status: 401)")
+        ) {
+            _ = try await client.request(URLRequest(url: self.testURL))
+        }
+    }
+
+    @Test("갱신 API가 5xx면 세션 만료가 아니라 requestFailed로 전파된다")
+    func serverOutageIsNotSessionExpiry() async {
+        let store = MockTokenStore(accessToken: "OLD", refreshToken: "REFRESH")
+        let refresh = MockTokenRefreshService(behavior: .rejectedByServer(statusCode: 503))
+        let client = makeClient(store: store, refresh: refresh)
+
+        StubURLProtocol.handler = { _ in (Data(), 401, nil) }
+
+        await #expect(throws: NetworkError.requestFailed(statusCode: 503, data: nil)) {
+            _ = try await client.request(URLRequest(url: self.testURL))
+        }
+    }
+
     @Test("리프레시 토큰이 없으면 NetworkError.noRefreshToken을 throw한다")
     func noRefreshTokenError() async {
         let store = MockTokenStore(accessToken: "OLD", refreshToken: nil)

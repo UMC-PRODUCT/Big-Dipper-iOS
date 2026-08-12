@@ -220,6 +220,27 @@ struct CheckAuthStatusUseCaseTests {
         #expect(repository.logoutCallCount == 1)
     }
 
+    @Test("네트워크 단절로 프로필 조회가 실패하면 canAutoLogin이어도 토큰을 지우지 않는다")
+    func keepsSessionWhenProfileFetchFailsWithTransportError() async {
+        let repository = MockAuthRepository()
+        repository.hasSessionResult = true
+        repository.refreshSessionError = NetworkError.noNetwork
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .failure(URLError(.notConnectedToInternet))
+        let userDefaults = makeIsolatedUserDefaults()
+        userDefaults.set(true, forKey: AppStorageKey.canAutoLogin)
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            userDefaults: userDefaults
+        )
+
+        let status = await useCase.execute()
+
+        #expect(status == .notLoggedIn)
+        #expect(repository.logoutCallCount == 0)
+    }
+
     @Test("프로필 조회 실패 + canAutoLogin이 false이면 로그아웃을 호출하지 않는다")
     func doesNotLogOutWhenProfileFetchFailsAndCanAutoLoginIsFalse() async {
         let repository = MockAuthRepository()

@@ -60,9 +60,10 @@ public final class CheckAuthStatusUseCase: CheckAuthStatusUseCaseProtocol {
             syncProfileStorageUseCase.execute(profile: profile)
             return .approved
         } catch {
-            // 레거시 `AuthBootstrapViewModel.resolveAuthStatus()`와 동일하게 에러 종류를
-            // 구분하지 않고, 자동 로그인이 허용된 세션만 명시적으로 로그아웃 처리한다.
-            if canAutoLogin {
+            // 자동 로그인이 허용된 세션만 명시적으로 로그아웃 처리한다. 단, 오프라인·타임아웃
+            // 같은 전송 계층 실패는 토큰이 무효라는 근거가 아니므로 토큰을 지우지 않는다.
+            // (지우면 네트워크 복구 후에도 소셜 로그인을 다시 해야 한다.)
+            if canAutoLogin, !error.isTransportFailure {
                 try? await repository.logout()
             }
             return .notLoggedIn
