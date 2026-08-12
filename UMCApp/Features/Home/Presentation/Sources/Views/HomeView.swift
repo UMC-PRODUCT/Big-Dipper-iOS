@@ -142,7 +142,6 @@ struct HomeView: View {
                 SeasonCard(seasonType: seasonType)
                     .equatable()
             }
-            Spacer(minLength: 0)
         }
     }
 
