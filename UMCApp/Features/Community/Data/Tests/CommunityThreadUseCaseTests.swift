@@ -507,6 +507,70 @@ struct CommunityThreadMemberUseCaseTests {
     }
 }
 
+@Suite("커뮤니티 스레드 초대 UseCase")
+struct CommunityThreadInviteUseCaseTests {
+
+    @Test("후보는 이름순으로 정렬하고 남은 정원을 함께 돌려준다")
+    func sortsCandidatesAndReportsRemainingSlots() async throws {
+        let repository = FakeThreadRepository(invitableMembers: [
+            makeMember(id: "3", name: "정의진", role: .member),
+            makeMember(id: "7", name: "강예진", role: .member)
+        ])
+        let useCase = CommunityThreadInviteUseCase(repository: repository)
+
+        let result = try await useCase.loadCandidates(threadId: "1")
+
+        #expect(result.candidates.map(\.id) == ["7", "3"])
+        // 정원 30 · 현재 12명.
+        #expect(result.remainingSlots == 18)
+        #expect(await repository.fetchInvitableMembersCalls == ["1"])
+    }
+
+    @Test("정원이 이미 찼으면 남은 자리는 음수가 아니라 0 이다")
+    func clampsRemainingSlotsAtZero() async throws {
+        let repository = FakeThreadRepository(
+            thread: makeThread(memberCount: "31", maxMembers: "30")
+        )
+        let useCase = CommunityThreadInviteUseCase(repository: repository)
+
+        let result = try await useCase.loadCandidates(threadId: "1")
+
+        #expect(result.remainingSlots == 0)
+    }
+
+    @Test("서버 정원 값이 쓸모없으면 상한을 두지 않는다 — nil 로 올린다")
+    func omitsRemainingSlotsWithoutCapacity() async throws {
+        let repository = FakeThreadRepository(thread: makeThread(maxMembers: "0"))
+        let useCase = CommunityThreadInviteUseCase(repository: repository)
+
+        let result = try await useCase.loadCandidates(threadId: "1")
+
+        #expect(result.remainingSlots == nil)
+    }
+
+    @Test("초대는 고른 멤버를 그대로 저장소에 넘긴다")
+    func forwardsInviteTargets() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadInviteUseCase(repository: repository)
+
+        try await useCase.invite(threadId: "1", memberIds: ["11", "12"])
+
+        let call = try #require(await repository.inviteCalls.first)
+        #expect(call.threadId == "1")
+        #expect(call.memberIds == ["11", "12"])
+    }
+
+    @Test("빈 선택은 저장소까지 가지 않는다 — 서버가 400 으로 거절하는 요청이다")
+    func skipsEmptyInvite() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadInviteUseCase(repository: repository)
+
+        try await useCase.invite(threadId: "1", memberIds: [])
+
+        #expect(await repository.inviteCalls.isEmpty)
+    }
+}
+
 // MARK: - Fake
 
 private struct FakeFailure: Error, Equatable {}
@@ -549,6 +613,11 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
         let reason: String
     }
 
+    struct InviteCall: Equatable {
+        let threadId: String
+        let memberIds: [String]
+    }
+
     // MARK: - Property
 
     private(set) var createThreadCalls: [CreateThreadCall] = []
@@ -558,6 +627,8 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
     private(set) var pinCalls: [ToggleCall] = []
     private(set) var muteCalls: [ToggleCall] = []
     private(set) var fetchMembersCalls: [String] = []
+    private(set) var fetchInvitableMembersCalls: [String] = []
+    private(set) var inviteCalls: [InviteCall] = []
     private(set) var kickCalls: [MemberCall] = []
     private(set) var roleCalls: [MemberCall] = []
     private(set) var leaveCalls: [String] = []
@@ -567,6 +638,7 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
     private let thread: CommunityThread
     private let messagePage: ThreadMessagePage
     private let members: [ThreadMember]
+    private let invitableMembers: [ThreadMember]
     private let error: Error?
 
     // MARK: - Init
@@ -585,12 +657,14 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
             nextBefore: nil
         ),
         members: [ThreadMember] = [],
+        invitableMembers: [ThreadMember] = [],
         error: Error? = nil
     ) {
         self.threadPage = threadPage
         self.thread = thread
         self.messagePage = messagePage
         self.members = members
+        self.invitableMembers = invitableMembers
         self.error = error
     }
 
@@ -659,6 +733,17 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
         fetchMembersCalls.append(threadId)
         if let error { throw error }
         return members
+    }
+
+    func fetchInvitableMembers(threadId: String) async throws -> [ThreadMember] {
+        fetchInvitableMembersCalls.append(threadId)
+        if let error { throw error }
+        return invitableMembers
+    }
+
+    func inviteMembers(threadId: String, memberIds: [String]) async throws {
+        inviteCalls.append(InviteCall(threadId: threadId, memberIds: memberIds))
+        if let error { throw error }
     }
 
     func kickMember(threadId: String, memberId: String) async throws {
@@ -793,16 +878,20 @@ private actor FakeThreadRealtime: CommunityThreadRealtimeProtocol {
 
 // MARK: - Fixture
 
-private func makeThread(id: String = "thread-1") -> CommunityThread {
+private func makeThread(
+    id: String = "thread-1",
+    memberCount: String = "12",
+    maxMembers: String = "30"
+) -> CommunityThread {
     CommunityThread(
         id: id,
         title: "iOS 스터디",
         description: "설명",
         category: .study,
         icon: "🔥",
-        memberCount: "12",
+        memberCount: memberCount,
         unreadCount: "0",
-        maxMembers: "30",
+        maxMembers: maxMembers,
         isPinned: false,
         isMuted: false,
         isJoined: true,

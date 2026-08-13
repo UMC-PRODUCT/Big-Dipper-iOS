@@ -115,6 +115,22 @@ public struct CommunityThreadRepository: CommunityThreadRepositoryProtocol, @unc
         ).toDomain
     }
 
+    /// 후보 목록도 참여자 목록과 같은 스키마로 온다. 후보에는 스레드 역할이 없어
+    /// `role` 이 비면 DTO 가 일반 참여자로 폴백하고, 초대 화면은 역할을 쓰지 않는다.
+    public func fetchInvitableMembers(threadId: String) async throws -> [ThreadMember] {
+        try await payload(
+            ThreadMemberListDTO.self,
+            from: .getInvitableMembers(threadId: threadId)
+        ).toDomain
+    }
+
+    public func inviteMembers(threadId: String, memberIds: [String]) async throws {
+        _ = try await payload(
+            EmptyResult.self,
+            from: .invite(threadId: threadId, body: InviteMembersBody(memberIds: memberIds))
+        )
+    }
+
     public func kickMember(threadId: String, memberId: String) async throws {
         _ = try await payload(
             EmptyResult.self,

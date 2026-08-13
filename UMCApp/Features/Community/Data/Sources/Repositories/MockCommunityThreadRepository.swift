@@ -96,6 +96,13 @@ public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
         Self.memberSamples
     }
 
+    /// 참여 중인 두 명(`5`·`9`)을 뺀 나머지. 서버가 걸러 주는 동작을 그대로 흉내 낸다.
+    public func fetchInvitableMembers(threadId: String) async throws -> [ThreadMember] {
+        Self.invitableSamples
+    }
+
+    public func inviteMembers(threadId: String, memberIds: [String]) async throws {}
+
     public func kickMember(threadId: String, memberId: String) async throws {}
     public func changeMemberRole(threadId: String, memberId: String, role: String) async throws {}
     public func leaveThread(threadId: String) async throws {}
@@ -163,6 +170,13 @@ public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
             profileImageURL: nil,
             role: .member
         )
+    ]
+
+    /// 초대 후보. 파트가 섞여 있어야 "동아리 전체" 범위(#1131 결정 3)를 눈으로 확인할 수 있다.
+    private static let invitableSamples = [
+        ThreadMember(id: "11", name: "김하늘", part: "Web", profileImageURL: nil, role: .member),
+        ThreadMember(id: "12", name: "박서준", part: "Spring", profileImageURL: nil, role: .member),
+        ThreadMember(id: "13", name: "최유나", part: nil, profileImageURL: nil, role: .member)
     ]
 
     private static func message(id: String, sender: String, content: String) -> ThreadMessage {
