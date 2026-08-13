@@ -61,13 +61,20 @@ struct DIContainerCommunityTests {
         #expect(container.resolveIfRegistered(CommunityThreadRepositoryProtocol.self) != nil)
     }
 
-    /// 요약기는 화면 진입 시점에 해석된다. 등록이 빠지면 채팅방을 여는 순간 크래시라
-    /// 조립 단계에서 잠근다.
+    /// 온디바이스 유틸은 화면 진입 시점에 해석된다. 등록이 빠지면 채팅방·생성 폼을 여는 순간
+    /// 크래시라 조립 단계에서 잠근다.
     @Test("대화 요약기가 등록되어 해석된다")
     func resolvesThreadSummarizer() throws {
         let container = try makeContainer()
 
         #expect(container.resolveIfRegistered(ThreadSummarizing.self) != nil)
+    }
+
+    @Test("스레드 분류기가 등록되어 해석된다")
+    func resolvesThreadClassifier() throws {
+        let container = try makeContainer()
+
+        #expect(container.resolveIfRegistered(ThreadClassifying.self) != nil)
     }
 
     // MARK: - 프로세스 단일 인스턴스
