@@ -49,4 +49,11 @@ public protocol CommunityThreadRepositoryProtocol: Sendable {
     func setPinned(threadId: String, isPinned: Bool) async throws
     func setMuted(threadId: String, isMuted: Bool) async throws
     func leaveThread(threadId: String) async throws
+
+    /// `POST /messages/{messageId}/report`.
+    ///
+    /// 경로가 `/threads/...` 하위가 아니라 `threadId` 를 받지 않는다 — messageId 하나로 신고한다.
+    ///
+    /// - Parameter reason: ``ThreadMessageReportReason`` 의 rawValue
+    func reportMessage(messageId: String, reason: String) async throws
 }

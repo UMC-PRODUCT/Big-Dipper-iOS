@@ -14,6 +14,7 @@ public protocol CommunityThreadRoomUseCaseProtocol: Sendable {
     func addReaction(threadId: String, messageId: String, emoji: String) async throws
     func removeReaction(threadId: String, messageId: String, emoji: String) async throws
     func deleteMessage(threadId: String, messageId: String) async throws
+    func reportMessage(messageId: String, reason: ThreadMessageReportReason) async throws
     func startRealtime() async
     func signals() async -> AsyncStream<CommunityRealtimeSignal>
 }
@@ -116,6 +117,14 @@ public struct CommunityThreadRoomUseCase: CommunityThreadRoomUseCaseProtocol {
 
     public func deleteMessage(threadId: String, messageId: String) async throws {
         try await realtime.deleteMessage(threadId: threadId, messageId: messageId)
+    }
+
+    /// 신고 접수. 삭제와 달리 STOMP 가 아니라 REST 다 — 결과가 다른 참여자에게 방송되지 않는다.
+    public func reportMessage(
+        messageId: String,
+        reason: ThreadMessageReportReason
+    ) async throws {
+        try await repository.reportMessage(messageId: messageId, reason: reason.rawValue)
     }
 
     public func startRealtime() async {

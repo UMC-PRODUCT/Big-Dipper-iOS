@@ -112,6 +112,16 @@ public struct CommunityThreadRepository: CommunityThreadRepositoryProtocol, @unc
         _ = try await payload(EmptyResult.self, from: .leave(threadId: threadId))
     }
 
+    public func reportMessage(messageId: String, reason: String) async throws {
+        _ = try await payload(
+            EmptyResult.self,
+            from: .reportMessage(
+                messageId: messageId,
+                body: ReportMessageBody(reason: reason)
+            )
+        )
+    }
+
     // MARK: - Private Function
 
     /// 공통 envelope 을 벗겨 `result` 페이로드만 돌려준다.
