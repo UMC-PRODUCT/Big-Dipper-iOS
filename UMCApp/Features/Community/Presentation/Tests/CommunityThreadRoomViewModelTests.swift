@@ -1058,6 +1058,82 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.alertPrompt != nil)
     }
 
+    // MARK: - New Message Count
+
+    // 플로팅 카운트 (스펙 #35). 아래 네 개가 표시 조건 전부다 — 하나라도 새면 안 읽은 메시지를
+    // 놓치거나, 정작 최하단에 있는데도 안내가 뜬다.
+
+    @Test("위를 읽는 중 도착한 타인 메시지를 센다")
+    func countsMessagesArrivedWhileScrolledUp() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.updateNearBottom(false)
+        viewModel.apply(.messageCreated(
+            threadId: "1",
+            message: makeMessage(id: "10", senderId: "42", createdAt: 1000),
+            clientMessageId: nil
+        ))
+        viewModel.apply(.messageCreated(
+            threadId: "1",
+            message: makeMessage(id: "11", senderId: "42", createdAt: 1100),
+            clientMessageId: nil
+        ))
+
+        #expect(viewModel.newMessageCount == 2)
+    }
+
+    @Test("최하단을 보고 있으면 세지 않는다 — 이미 화면에 들어온 메시지다")
+    func skipsCountWhileNearBottom() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.apply(.messageCreated(
+            threadId: "1",
+            message: makeMessage(id: "10", senderId: "42", createdAt: 1000),
+            clientMessageId: nil
+        ))
+
+        #expect(viewModel.newMessageCount == 0)
+    }
+
+    @Test("내가 보낸 메시지는 세지 않는다")
+    func skipsCountForOwnMessage() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.updateNearBottom(false)
+        viewModel.apply(.messageCreated(
+            threadId: "1",
+            message: makeMessage(id: "10", senderId: "9", createdAt: 1000),
+            clientMessageId: nil
+        ))
+
+        #expect(viewModel.newMessageCount == 0)
+    }
+
+    @Test("최하단으로 돌아오면 카운트를 지운다")
+    func clearsCountOnReturnToBottom() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.updateNearBottom(false)
+        viewModel.apply(.messageCreated(
+            threadId: "1",
+            message: makeMessage(id: "10", senderId: "42", createdAt: 1000),
+            clientMessageId: nil
+        ))
+        #expect(viewModel.newMessageCount == 1)
+
+        viewModel.updateNearBottom(true)
+
+        #expect(viewModel.newMessageCount == 0)
+    }
+
     // MARK: - Reconnect
 
     @Test("재연결 백필은 멤버십을 먼저 확정하고, 실패해도 전역 Alert 을 띄우지 않는다",

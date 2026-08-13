@@ -17,6 +17,12 @@ fileprivate enum Constants {
     static let bottomProximity: CGFloat = 44
     static let headerLineSpacing: CGFloat = 2
     static let loadFailureTitle = "대화를 불러오지 못했어요"
+    static let emptyTitle = "아직 대화가 없어요"
+    static let emptyDescription = "첫 메시지를 보내 대화를 시작해 보세요."
+    /// HIG 최소 탭 타깃.
+    static let minimumTapTarget: CGFloat = 44
+    static let newMessagePillIconSize: CGFloat = 12
+    static let newMessagePillBottomPadding: CGFloat = 12
 }
 
 /// 스레드 채팅방.
@@ -143,11 +149,15 @@ struct CommunityThreadRoomView: View {
     private var content: some View {
         switch viewModel.header {
         case .idle, .loading:
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            MessageListSkeleton()
 
         case .loaded:
-            messageList
+            // 컴포저는 이 분기 밖(헤더 존재 여부)에 걸려 있어 빈 방에서도 그대로 살아 있다.
+            if viewModel.messages.isEmpty {
+                emptyMessages
+            } else {
+                messageList
+            }
 
         case .failed(let error):
             RetryContentUnavailableView(
@@ -162,9 +172,40 @@ struct CommunityThreadRoomView: View {
         }
     }
 
+    /// 메시지 0건 (스펙 #14). 컴포저는 계속 쓸 수 있으므로 여기서는 유도 문구만 낸다.
+    private var emptyMessages: some View {
+        ContentUnavailableView(
+            Constants.emptyTitle,
+            systemImage: "bubble.left.and.bubble.right",
+            description: Text(Constants.emptyDescription)
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     /// `.defaultScrollAnchor(.bottom)` 이 진입 시 최하단 착지와 새 메시지 추종을 둘 다 처리한다.
-    /// ScrollViewReader 로 직접 스크롤을 밀면 사용자가 위를 읽는 중에도 끌려 내려가 성가시다.
+    /// `ScrollViewReader` 는 플로팅을 눌렀을 때만 쓴다 — 상시로 스크롤을 밀면 사용자가 위를
+    /// 읽는 중에도 끌려 내려가 성가시다.
     private var messageList: some View {
+        ScrollViewReader { proxy in
+            scrollableMessages
+                .overlay(alignment: .bottom) { newMessageOverlay(proxy: proxy) }
+        }
+    }
+
+    /// 플로팅을 담는 층. `animation` 을 스크롤 뷰가 아니라 여기에 걸어 둔다 — 위에 걸면 같은
+    /// 순간에 함께 바뀌는 메시지 배열까지 애니메이션 대상이 된다.
+    private func newMessageOverlay(proxy: ScrollViewProxy) -> some View {
+        ZStack {
+            if viewModel.newMessageCount > 0 {
+                newMessagePill(proxy: proxy)
+                    .padding(.bottom, Constants.newMessagePillBottomPadding)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.default, value: viewModel.newMessageCount)
+    }
+
+    private var scrollableMessages: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 if viewModel.isLoadingOlder {
@@ -203,7 +244,31 @@ struct CommunityThreadRoomView: View {
                 >= geometry.contentSize.height - Constants.bottomProximity
         } action: { _, isNearBottom in
             self.isNearBottom = isNearBottom
+            // 플로팅 카운트는 ViewModel 이 세고, "지금 최하단인가" 는 화면만 안다.
+            viewModel.updateNearBottom(isNearBottom)
         }
+    }
+
+    /// 위를 읽는 동안 도착한 메시지 안내 (스펙 #35).
+    private func newMessagePill(proxy: ScrollViewProxy) -> some View {
+        Button {
+            scrollToBottom(proxy: proxy)
+        } label: {
+            HStack(spacing: DefaultSpacing.spacing4) {
+                Image(systemName: "arrow.down")
+                    .font(.system(size: Constants.newMessagePillIconSize, weight: .semibold))
+
+                Text("새 메시지 \(viewModel.newMessageCount)개")
+            }
+            .appFont(.caption1, weight: .semibold, color: .grey000)
+            .padding(.horizontal, DefaultSpacing.spacing16)
+            // 캡슐 자체는 문구 크기로 두고 탭 영역만 44pt 로 넓힌다.
+            .frame(minHeight: Constants.minimumTapTarget)
+            .background(Color.indigo500, in: .capsule)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("새 메시지 \(viewModel.newMessageCount)개, 최신 메시지로 이동")
     }
 
     // MARK: - Computed Property
@@ -217,6 +282,17 @@ struct CommunityThreadRoomView: View {
     }
 
     // MARK: - Function
+
+    /// 최하단으로 내려간다. 마지막 항목이 `LazyVStack` 에서 아직 만들어지지 않았어도
+    /// `scrollTo` 가 위치를 잡아 준다.
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        guard let lastMessageId = viewModel.messages.last?.id else { return }
+
+        // 누른 순간 이미 최하단으로 가기로 정해졌다. 스크롤이 끝나고 geometry 콜백이 올 때까지
+        // 기다리면 그동안 배지가 남아 눌리지 않은 것처럼 보인다.
+        viewModel.updateNearBottom(true)
+        withAnimation { proxy.scrollTo(lastMessageId, anchor: .bottom) }
+    }
 
     /// 읽음 워터마크로 올릴 메시지. 게이팅 조건 세 가지(포그라운드·최하단·표시할 메시지 존재)를
     /// 한 값으로 합쳐 두면 어느 것이 바뀌든 `onChange` 한 곳만 반응하면 된다.
