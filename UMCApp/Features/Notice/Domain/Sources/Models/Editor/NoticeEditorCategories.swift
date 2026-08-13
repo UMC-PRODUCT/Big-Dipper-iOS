@@ -7,7 +7,6 @@
 
 import Foundation
 import UMCFoundation
-import NoticeDomain
 
 // MARK: - EditorMainCategory
 /// 공지 에디터 메인 카테고리

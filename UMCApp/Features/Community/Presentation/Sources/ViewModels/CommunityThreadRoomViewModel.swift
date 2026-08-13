@@ -745,7 +745,7 @@ public final class CommunityThreadRoomViewModel {
         pendingTimeouts[clientMessageId] = Task { [weak self, sendTimeout] in
             try? await Task.sleep(for: sendTimeout)
             guard !Task.isCancelled else { return }
-            await self?.markFailed(clientMessageId: clientMessageId)
+            self?.markFailed(clientMessageId: clientMessageId)
         }
     }
 

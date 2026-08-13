@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import NoticeDomain
 
 #if DEBUG
 // MARK: - EditorMockData

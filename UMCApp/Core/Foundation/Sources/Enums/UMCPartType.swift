@@ -22,7 +22,7 @@ import Foundation
 /// let serverPart: UMCPartType = .server(type: .spring)
 /// print(serverPart.name)  // "Spring"
 /// ```
-public enum UMCPartType: Codable, Equatable, Hashable {
+public enum UMCPartType: Codable, Equatable, Hashable, Sendable {
     // MARK: - Cases
 
     /// 운영진 파트
@@ -123,7 +123,7 @@ public enum UMCPartType: Codable, Equatable, Hashable {
     // MARK: - Nested Types
 
     /// 서버 파트의 기술 스택을 정의하는 열거형입니다.
-    public enum ServerType: String, Codable, Equatable, Hashable {
+    public enum ServerType: String, Codable, Equatable, Hashable, Sendable {
         /// Spring Framework 기반 백엔드 개발
         case spring = "Spring"
 
@@ -132,7 +132,7 @@ public enum UMCPartType: Codable, Equatable, Hashable {
     }
 
     /// 프론트 파트의 기술 스택을 정의하는 열거형입니다.
-    public enum FrontType: String, Codable, Equatable, Hashable {
+    public enum FrontType: String, Codable, Equatable, Hashable, Sendable {
         /// 웹 프론트엔드 개발 (React, Vue 등)
         case web = "Web"
 
