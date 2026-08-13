@@ -39,17 +39,26 @@ public final class CommunityThreadCreateViewModel {
         }
     }
 
+    /// 미지원 기기·분류 실패에서 그대로 남는 기본값. 이 값이라 폼은 분류 없이도 제출된다.
     public var category: CommunityThreadCategory = .free
     public var isCategorySheetPresented = false
 
     public private(set) var state: Loadable<CommunityThread> = .idle
 
+    /// 온디바이스 자동 분류 상태. 로직은 `+Classification` 확장에 있다.
+    public internal(set) var classification: Loadable<ThreadClassification> = .idle
+
     private let useCase: CommunityThreadCreateUseCaseProtocol
+    let classifier: ThreadClassifying
 
     // MARK: - Init
 
-    public init(useCase: CommunityThreadCreateUseCaseProtocol) {
+    public init(
+        useCase: CommunityThreadCreateUseCaseProtocol,
+        classifier: ThreadClassifying
+    ) {
         self.useCase = useCase
+        self.classifier = classifier
     }
 
     // MARK: - Computed Property
