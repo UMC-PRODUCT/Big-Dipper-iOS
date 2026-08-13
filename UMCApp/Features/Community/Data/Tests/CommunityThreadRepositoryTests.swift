@@ -159,6 +159,32 @@ struct CommunityThreadRepositoryTests {
         #expect(threadId == "12")
     }
 
+    @Test("createThread 가 POST /threads 로 가고 본문을 변형 없이 싣는다")
+    func createThreadCallsPostThreads() async throws {
+        let (repository, network) = makeRepository(.success(Fixture.thread))
+
+        let thread = try await repository.createThread(
+            title: "iOS 스터디",
+            description: "매주 화요일 8시",
+            category: "STUDY",
+            icon: "📚"
+        )
+
+        #expect(thread.id == "12")
+        #expect(network.lastPath == "/api/v1/community/threads")
+        #expect(network.lastMethod == .post)
+        guard case .createThread(let body) = network.lastTarget else {
+            Issue.record(
+                "lastTarget 이 createThread 가 아닙니다: \(String(describing: network.lastTarget))"
+            )
+            return
+        }
+        #expect(body.title == "iOS 스터디")
+        #expect(body.description == "매주 화요일 8시")
+        #expect(body.category == "STUDY")
+        #expect(body.icon == "📚")
+    }
+
     @Test("fetchMessages 가 getMessages 로 가고 배타적 커서를 그대로 싣는다")
     func fetchMessagesCallsGetMessages() async throws {
         let (repository, network) = makeRepository(.success(Fixture.messagePage))

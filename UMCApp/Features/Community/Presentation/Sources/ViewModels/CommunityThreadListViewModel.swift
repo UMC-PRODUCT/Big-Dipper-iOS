@@ -146,6 +146,17 @@ public final class CommunityThreadListViewModel {
         }
     }
 
+    /// 방금 만든 스레드를 목록 맨 위에 꽂는다.
+    ///
+    /// 서버는 개설자에게 실시간 이벤트를 쏘지 않으므로(`thread.invited` 는 초대된 멤버 전용)
+    /// 생성 화면이 직접 알려 주는 이 경로가 유일하다. `.threadInvited` 와 같은 이유로 중복은
+    /// 건너뛴다 — 재조회가 먼저 도착했을 수 있다.
+    public func insertCreated(_ thread: CommunityThread) {
+        let threads = state.value ?? []
+        guard !threads.contains(where: { $0.id == thread.id }) else { return }
+        state = .loaded([thread] + threads)
+    }
+
     /// 마지막 행이 보이면 다음 페이지를 붙인다.
     public func loadNextPageIfNeeded(currentItem: CommunityThread) async {
         guard let offset = nextOffset,

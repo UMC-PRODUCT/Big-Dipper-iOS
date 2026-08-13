@@ -272,6 +272,27 @@ struct CommunityThreadListViewModelTests {
         #expect(viewModel.state.value?.map(\.id) == ["1", "2"])
     }
 
+    // MARK: - Create
+
+    @Test("생성한 스레드는 목록 맨 위에 붙고, 재조회가 먼저 넣었으면 중복되지 않는다")
+    func insertsCreatedThreadOnce() async {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [],
+            threads: [makeThread(id: "1")],
+            nextOffset: nil,
+            total: "1"
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.insertCreated(makeThread(id: "9"))
+        #expect(viewModel.state.value?.map(\.id) == ["9", "1"])
+
+        viewModel.insertCreated(makeThread(id: "9"))
+        #expect(viewModel.state.value?.map(\.id) == ["9", "1"])
+    }
+
     // MARK: - Toggle & Leave
 
     @Test("고정 토글은 즉시 반영하고, 실패하면 되돌린다")
