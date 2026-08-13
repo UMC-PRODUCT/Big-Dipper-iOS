@@ -48,7 +48,8 @@ struct CommunityRoutingView: View {
         case .threadCreate:
             CommunityThreadCreateView(
                 viewModel: CommunityThreadCreateViewModel(
-                    useCase: container.resolve(CommunityThreadCreateUseCaseProtocol.self)
+                    useCase: container.resolve(CommunityThreadCreateUseCaseProtocol.self),
+                    classifier: container.resolve(ThreadClassifying.self)
                 ),
                 onCreated: onThreadCreated
             )
