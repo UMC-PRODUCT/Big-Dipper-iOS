@@ -109,6 +109,18 @@ struct CommunityThreadDomainModelTests {
         #expect(queryValues == ["all", "unread", "STUDY", "QNA", "PROJECT", "FREE"])
     }
 
+    /// 구분선 위아래 묶음이 곧 메뉴 두 섹션이다. 한쪽에서 항목이 새면 그 항목은 메뉴에서
+    /// 사라지는데, 화면을 열어 보기 전에는 드러나지 않는다.
+    @Test("상태 묶음과 카테고리 묶음은 겹치지 않고 합치면 메뉴 전체가 된다")
+    func filterGroupsPartitionMenuItems() {
+        #expect(CommunityThreadFilter.statusItems == [.all, .unread])
+        #expect(CommunityThreadFilter.categoryItems.count == CommunityThreadCategory.allCases.count)
+        #expect(
+            CommunityThreadFilter.statusItems + CommunityThreadFilter.categoryItems
+                == CommunityThreadFilter.menuItems
+        )
+    }
+
     // MARK: - Thread
 
     @Test("icon 이 비면 카테고리 기본 이모지로 폴백한다")
