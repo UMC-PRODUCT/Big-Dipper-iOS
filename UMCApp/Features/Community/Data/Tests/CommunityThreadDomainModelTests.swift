@@ -109,6 +109,18 @@ struct CommunityThreadDomainModelTests {
         #expect(queryValues == ["all", "unread", "STUDY", "QNA", "PROJECT", "FREE"])
     }
 
+    /// 구분선 위아래 묶음이 곧 메뉴 두 섹션이다. 한쪽에서 항목이 새면 그 항목은 메뉴에서
+    /// 사라지는데, 화면을 열어 보기 전에는 드러나지 않는다.
+    @Test("상태 묶음과 카테고리 묶음은 겹치지 않고 합치면 메뉴 전체가 된다")
+    func filterGroupsPartitionMenuItems() {
+        #expect(CommunityThreadFilter.statusItems == [.all, .unread])
+        #expect(CommunityThreadFilter.categoryItems.count == CommunityThreadCategory.allCases.count)
+        #expect(
+            CommunityThreadFilter.statusItems + CommunityThreadFilter.categoryItems
+                == CommunityThreadFilter.menuItems
+        )
+    }
+
     // MARK: - Thread
 
     @Test("icon 이 비면 카테고리 기본 이모지로 폴백한다")
@@ -127,6 +139,14 @@ struct CommunityThreadDomainModelTests {
         #expect(makeThread(unreadCount: "99").unreadBadge == "99")
         #expect(makeThread(unreadCount: "100").unreadBadge == "99+")
         #expect(makeThread(unreadCount: "").unreadBadge == nil)
+    }
+
+    @Test("isUnread 는 배지가 뜨는 조건과 같다")
+    func isUnreadMatchesBadgeVisibility() {
+        #expect(makeThread(unreadCount: "0").isUnread == false)
+        #expect(makeThread(unreadCount: "").isUnread == false)
+        #expect(makeThread(unreadCount: "1").isUnread)
+        #expect(makeThread(unreadCount: "100").isUnread)
     }
 
     @Test("memberCountText 는 멤버 수를 그대로 문장에 넣는다")

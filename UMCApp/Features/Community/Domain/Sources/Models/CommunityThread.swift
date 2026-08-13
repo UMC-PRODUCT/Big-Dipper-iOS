@@ -107,6 +107,11 @@ public struct CommunityThread: Identifiable, Hashable, Sendable {
         return count > 99 ? "99+" : String(count)
     }
 
+    /// 읽지 않은 메시지가 남았는지. 리스트 행의 강조(볼드·틴트)와 딤을 가르는 기준이다.
+    public var isUnread: Bool {
+        unreadBadge != nil
+    }
+
     public var memberCountText: String {
         "멤버 \(memberCount)명"
     }

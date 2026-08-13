@@ -67,9 +67,15 @@ public enum CommunityThreadFilter: Hashable, Sendable {
         }
     }
 
-    /// 메뉴 표시 순서. 구분선은 View 가 `all`/`unread` 뒤에 넣는다.
-    public static let menuItems: [CommunityThreadFilter] = [.all, .unread]
-        + CommunityThreadCategory.allCases.map(CommunityThreadFilter.category)
+    /// 읽음 상태 축. 카테고리와 성격이 달라 메뉴에서 따로 묶는다.
+    public static let statusItems: [CommunityThreadFilter] = [.all, .unread]
+
+    /// 카테고리 축. 메뉴에서 구분선 아래 묶음이다.
+    public static let categoryItems: [CommunityThreadFilter] =
+        CommunityThreadCategory.allCases.map(CommunityThreadFilter.category)
+
+    /// 메뉴 표시 순서. 구분선은 View 가 두 묶음 사이에 넣는다.
+    public static let menuItems: [CommunityThreadFilter] = statusItems + categoryItems
 }
 
 /// 로컬 전송 상태. 서버 `status` 는 값이 `SENT` 하나뿐이라 정보가 없어 쓰지 않는다.
