@@ -108,6 +108,35 @@ public struct CommunityThreadRepository: CommunityThreadRepositoryProtocol, @unc
         )
     }
 
+    public func fetchMembers(threadId: String) async throws -> [ThreadMember] {
+        try await payload(
+            ThreadMemberListDTO.self,
+            from: .getMembers(threadId: threadId)
+        ).toDomain
+    }
+
+    public func kickMember(threadId: String, memberId: String) async throws {
+        _ = try await payload(
+            EmptyResult.self,
+            from: .kickMember(threadId: threadId, memberId: memberId)
+        )
+    }
+
+    public func changeMemberRole(
+        threadId: String,
+        memberId: String,
+        role: String
+    ) async throws {
+        _ = try await payload(
+            EmptyResult.self,
+            from: .changeMemberRole(
+                threadId: threadId,
+                memberId: memberId,
+                body: ThreadMemberRoleBody(role: role)
+            )
+        )
+    }
+
     public func leaveThread(threadId: String) async throws {
         _ = try await payload(EmptyResult.self, from: .leave(threadId: threadId))
     }

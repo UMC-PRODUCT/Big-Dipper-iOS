@@ -48,6 +48,28 @@ public protocol CommunityThreadRepositoryProtocol: Sendable {
 
     func setPinned(threadId: String, isPinned: Bool) async throws
     func setMuted(threadId: String, isMuted: Bool) async throws
+
+    /// `GET /threads/{threadId}/members`.
+    ///
+    /// 참여자 목록·초대(#1136)·`@`멘션 자동완성(#1140)이 함께 쓰는 진입점이다.
+    func fetchMembers(threadId: String) async throws -> [ThreadMember]
+
+    /// `DELETE /threads/{threadId}/members/{memberId}`.
+    ///
+    /// `OWNER`/`ADMIN` 만 호출할 수 있고 `OWNER` 는 대상이 될 수 없다(409 `COMMUNITY-0042`).
+    func kickMember(threadId: String, memberId: String) async throws
+
+    /// `PATCH /threads/{threadId}/members/{memberId}/role`.
+    ///
+    /// `OWNER` 를 넘기면 서버가 소유권을 **원자적으로 스왑**한다 — 대상이 `OWNER` 가 되고
+    /// 호출자는 `ADMIN` 으로 내려온다. 호출은 `OWNER` 만 가능하다.
+    ///
+    /// - Parameter role: ``ThreadMemberRole`` 의 rawValue
+    func changeMemberRole(threadId: String, memberId: String, role: String) async throws
+
+    /// `POST /threads/{threadId}/leave`.
+    ///
+    /// `OWNER` 는 거절된다(409 `COMMUNITY-0041`) — 소유권 이전이 선행돼야 한다.
     func leaveThread(threadId: String) async throws
 
     /// `POST /messages/{messageId}/report`.

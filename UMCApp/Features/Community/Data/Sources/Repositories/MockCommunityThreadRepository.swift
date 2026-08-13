@@ -91,6 +91,13 @@ public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
 
     public func setPinned(threadId: String, isPinned: Bool) async throws {}
     public func setMuted(threadId: String, isMuted: Bool) async throws {}
+
+    public func fetchMembers(threadId: String) async throws -> [ThreadMember] {
+        Self.memberSamples
+    }
+
+    public func kickMember(threadId: String, memberId: String) async throws {}
+    public func changeMemberRole(threadId: String, memberId: String, role: String) async throws {}
     public func leaveThread(threadId: String) async throws {}
     public func reportMessage(messageId: String, reason: String) async throws {}
 
@@ -139,6 +146,24 @@ public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
         createdAt: referenceDate,
         updatedAt: referenceDate
     )
+
+    /// 개설자(나)·참여자 두 명. 위임·내보내기 메뉴가 둘 다 나오는 최소 구성이다.
+    private static let memberSamples = [
+        ThreadMember(
+            id: "5",
+            name: "정의진",
+            part: "iOS",
+            profileImageURL: nil,
+            role: .owner
+        ),
+        ThreadMember(
+            id: "9",
+            name: "이재원",
+            part: "Spring",
+            profileImageURL: nil,
+            role: .member
+        )
+    ]
 
     private static func message(id: String, sender: String, content: String) -> ThreadMessage {
         ThreadMessage(
