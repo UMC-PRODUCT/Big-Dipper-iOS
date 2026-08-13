@@ -38,6 +38,10 @@ struct CommunityRoutingView: View {
     /// 로도 행이 지워지지만, 그걸 기다리면 루트로 되돌아온 직후 잠깐 남아 있는 행이 보인다.
     let onThreadRemoved: (String) -> Void
 
+    /// 채팅방 ⋯ 메뉴에서 바꾼 고정·알림을 리스트 행에 반영한다 (#1138). 두 값은 나에게만 해당해
+    /// 실시간 이벤트가 오지 않으므로, 이 통로가 없으면 돌아온 목록이 옛 상태로 남는다.
+    let onThreadToggled: (CommunityThread) -> Void
+
     // MARK: - Body
 
     var body: some View {
@@ -47,9 +51,12 @@ struct CommunityRoutingView: View {
                 viewModel: CommunityThreadRoomViewModel(
                     threadId: threadId,
                     useCase: container.resolve(CommunityThreadRoomUseCaseProtocol.self),
+                    listUseCase: container.resolve(CommunityThreadListUseCaseProtocol.self),
                     errorHandler: errorHandler,
                     summarizer: container.resolve(ThreadSummarizing.self)
-                )
+                ),
+                onThreadToggled: onThreadToggled,
+                onThreadRemoved: onThreadRemoved
             )
             .navigationTitle(title)
 
