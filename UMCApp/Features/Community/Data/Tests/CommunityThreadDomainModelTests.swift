@@ -19,7 +19,8 @@ struct CommunityThreadDomainModelTests {
         memberCount: String = "12",
         unreadCount: String = "0",
         isPinned: Bool = false,
-        isMuted: Bool = false
+        isMuted: Bool = false,
+        myRole: ThreadMemberRole? = .member
     ) -> CommunityThread {
         CommunityThread(
             id: "1",
@@ -33,7 +34,7 @@ struct CommunityThreadDomainModelTests {
             isPinned: isPinned,
             isMuted: isMuted,
             isJoined: true,
-            myRole: .member,
+            myRole: myRole,
             lastMessage: nil,
             createdBy: "9",
             createdAt: Date(timeIntervalSince1970: 0),
@@ -152,6 +153,16 @@ struct CommunityThreadDomainModelTests {
     @Test("memberCountText 는 멤버 수를 그대로 문장에 넣는다")
     func memberCountText() {
         #expect(makeThread(memberCount: "12").memberCountText == "멤버 12명")
+    }
+
+    /// 리스트 스와이프의 `편집`·`삭제` 노출 조건이 이 값 하나로 결정된다 (#1134).
+    @Test("수정·삭제 권한은 개설자와 관리자에게만 열린다")
+    func canEditOnlyForOwnerOrAdmin() {
+        #expect(makeThread(myRole: .owner).canEdit)
+        #expect(makeThread(myRole: .admin).canEdit)
+        #expect(!makeThread(myRole: .member).canEdit)
+        // 역할을 모르는 요약 응답에서는 잠가 둔다 — 403 을 받고 나서 아는 것보다 낫다.
+        #expect(!makeThread(myRole: nil).canEdit)
     }
 
     @Test("with 는 전달한 토글만 바꾸고 나머지는 유지한다")

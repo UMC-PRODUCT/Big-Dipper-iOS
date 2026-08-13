@@ -116,6 +116,15 @@ public struct CommunityThread: Identifiable, Hashable, Sendable {
         "멤버 \(memberCount)명"
     }
 
+    /// 이 스레드를 수정·삭제할 수 있는지.
+    ///
+    /// 서버는 `OWNER` 와 `ADMIN` 둘 다 허용한다(위반 시 403 `COMMUNITY-0040`). 시안이
+    /// "개설자 전용" 이라 적었지만 그대로 좁히면 위임으로 `ADMIN` 이 된 전 개설자가 자기가 만든
+    /// 스레드를 못 고친다 — 게이팅 기준은 서버 규칙에 맞춘다.
+    public var canEdit: Bool {
+        myRole == .owner || myRole == .admin
+    }
+
     // MARK: - Function
 
     /// 낙관적 토글용 복사본. 실패하면 이전 값으로 되돌린다.

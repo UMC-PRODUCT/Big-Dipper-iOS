@@ -51,7 +51,7 @@ fileprivate enum Constants {
     )
 }
 
-/// 생성 폼 안의 온디바이스 분류 카드.
+/// 생성·편집 폼 안의 온디바이스 분류 카드.
 ///
 /// 아이콘·카테고리·근거를 한 카드에 묶는다. 분류 결과를 폼 필드에만 반영하고 카드를 두지
 /// 않으면, 카테고리가 왜 바뀌었는지 알 수 없는 채로 값만 바뀌어 있다.
@@ -61,7 +61,7 @@ struct ThreadClassificationCard: View {
 
     // MARK: - Property
 
-    let viewModel: CommunityThreadCreateViewModel
+    let viewModel: any ThreadClassificationPresenting
 
     /// 이모지 칸으로 포커스를 옮긴다. 포커스는 폼이 들고 있어 화면이 넘겨 준다.
     let onChangeIcon: () -> Void

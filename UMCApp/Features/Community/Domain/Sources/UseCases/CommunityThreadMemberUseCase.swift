@@ -19,6 +19,9 @@ public protocol CommunityThreadMemberUseCaseProtocol: Sendable {
     func transferOwnership(threadId: String, to memberId: String) async throws
 
     func leave(threadId: String) async throws
+
+    /// 참여자가 나뿐이라 위임할 상대가 없을 때의 유일한 출구다 (#1131 결정 2 → #1134 삭제 플로우).
+    func deleteThread(threadId: String) async throws
 }
 
 public struct CommunityThreadMemberUseCase: CommunityThreadMemberUseCaseProtocol {
@@ -58,5 +61,9 @@ public struct CommunityThreadMemberUseCase: CommunityThreadMemberUseCaseProtocol
 
     public func leave(threadId: String) async throws {
         try await repository.leaveThread(threadId: threadId)
+    }
+
+    public func deleteThread(threadId: String) async throws {
+        try await repository.deleteThread(threadId: threadId)
     }
 }

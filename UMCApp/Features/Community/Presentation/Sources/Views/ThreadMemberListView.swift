@@ -26,17 +26,17 @@ struct ThreadMemberListView: View {
 
     @State private var viewModel: ThreadMemberListViewModel
 
-    /// 나가기가 끝났을 때 리스트 화면에 알린다. 실시간 `member.left` 로도 행이 지워지지만,
-    /// 그걸 기다리면 루트로 돌아온 직후 잠깐 남아 있는 행이 보인다.
-    private let onLeft: () -> Void
+    /// 나가기·삭제가 끝났을 때 리스트 화면에 알린다. 실시간 `member.left`/`thread.deleted` 로도
+    /// 행이 지워지지만, 그걸 기다리면 루트로 돌아온 직후 잠깐 남아 있는 행이 보인다.
+    private let onRemoved: () -> Void
 
     @Environment(PathStore.self) private var pathStore
 
     // MARK: - Init
 
-    init(viewModel: ThreadMemberListViewModel, onLeft: @escaping () -> Void) {
+    init(viewModel: ThreadMemberListViewModel, onRemoved: @escaping () -> Void) {
         _viewModel = State(initialValue: viewModel)
-        self.onLeft = onLeft
+        self.onRemoved = onRemoved
     }
 
     // MARK: - Body
@@ -50,7 +50,7 @@ struct ThreadMemberListView: View {
             .task { await viewModel.load() }
             .onChange(of: viewModel.didLeave) { _, didLeave in
                 guard didLeave else { return }
-                onLeft()
+                onRemoved()
                 // 방까지 함께 접어야 한다 — 한 단계만 pop 하면 이미 나온 스레드의 채팅방이 남는다.
                 pathStore[.community] = NavigationPath()
             }
@@ -103,12 +103,23 @@ struct ThreadMemberListView: View {
     }
 
     /// 나가기. 개설자는 위임 전까지 버튼이 잠기고, 그 사유를 footer 로 붙인다 (#1131 결정 2).
+    ///
+    /// 위임할 상대조차 없으면 사유 대신 삭제 버튼을 연다 — 안내만 남기면 막다른 길이 된다 (#1134).
     private var leaveSection: some View {
         Section {
             Button("스레드 나가기", role: .destructive) {
                 viewModel.confirmLeave()
             }
             .disabled(!viewModel.canLeave)
+
+            if viewModel.canDeleteThread {
+                Button(role: .destructive) {
+                    viewModel.confirmDeleteThread()
+                } label: {
+                    // 색만으로 구분하지 않도록 휴지통 아이콘을 함께 둔다.
+                    Label("스레드 삭제", systemImage: "trash")
+                }
+            }
         } footer: {
             if let reason = viewModel.leaveBlockReason {
                 Text(reason)

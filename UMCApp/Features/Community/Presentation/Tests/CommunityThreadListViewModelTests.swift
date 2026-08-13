@@ -28,6 +28,7 @@ private final class StubListUseCase: CommunityThreadListUseCaseProtocol {
     private(set) var requestedQueries: [String?] = []
     private(set) var pinCalls: [(threadId: String, isPinned: Bool)] = []
     private(set) var leaveCalls: [String] = []
+    private(set) var deleteCalls: [String] = []
 
     func loadThreads(
         filter: CommunityThreadFilter,
@@ -51,6 +52,11 @@ private final class StubListUseCase: CommunityThreadListUseCaseProtocol {
 
     func leave(threadId: String) async throws {
         leaveCalls.append(threadId)
+        if shouldFailToggle { throw AppError.unknown(message: "실패") }
+    }
+
+    func deleteThread(threadId: String) async throws {
+        deleteCalls.append(threadId)
         if shouldFailToggle { throw AppError.unknown(message: "실패") }
     }
 }
