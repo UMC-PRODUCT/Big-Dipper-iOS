@@ -127,6 +127,7 @@ private final class StubSearchListUseCase: CommunityThreadListUseCaseProtocol {
     func togglePin(threadId: String, isPinned: Bool) async throws {}
     func toggleMute(threadId: String, isMuted: Bool) async throws {}
     func leave(threadId: String) async throws {}
+    func deleteThread(threadId: String) async throws {}
 }
 
 @Suite("CommunityThreadListViewModel 최근 검색어")

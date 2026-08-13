@@ -77,7 +77,8 @@ struct CommunityThreadListView: View {
                     container: di,
                     errorHandler: errorHandler,
                     onThreadCreated: { viewModel.insertCreated($0) },
-                    onThreadLeft: { viewModel.removeThread(threadId: $0) }
+                    onThreadUpdated: { viewModel.applyUpdated($0) },
+                    onThreadRemoved: { viewModel.removeThread(threadId: $0) }
                 )
             }
     }
@@ -161,7 +162,7 @@ struct CommunityThreadListView: View {
         }
     }
 
-    /// 행 + 스와이프. 개설자 전용 `편집` 은 스레드 수정 화면이 후속 PR 이라 넣지 않는다.
+    /// 행 + 스와이프. `편집`·`삭제` 는 권한이 있는 사람에게만 열린다 (`canEdit`).
     private func row(_ thread: CommunityThread) -> some View {
         Button {
             // 리스트 뷰는 방에서 pop 해도 계층을 떠난 적이 없어 `.task` 가 다시 돌지 않는다.
@@ -196,7 +197,24 @@ struct CommunityThreadListView: View {
             }
             .tint(.blue)
         }
+        // 삭제를 가장 바깥(오른쪽 끝)에 둔다. 스와이프를 끝까지 당겼을 때 손가락이 먼저 닿는
+        // 자리라 파괴적 액션의 관례 위치이고, 편집과도 멀어져 오탭이 줄어든다 (#1134).
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if thread.canEdit {
+                Button(role: .destructive) {
+                    viewModel.confirmDelete(thread)
+                } label: {
+                    Label("삭제", systemImage: "trash")
+                }
+
+                Button {
+                    pathStore.push(CommunityDestination.threadEdit(thread: thread), on: .community)
+                } label: {
+                    Label("편집", systemImage: "pencil")
+                }
+                .tint(.indigo)
+            }
+
             Button(role: .destructive) {
                 viewModel.confirmLeave(thread)
             } label: {

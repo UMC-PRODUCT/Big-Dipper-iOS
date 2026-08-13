@@ -27,6 +27,7 @@ private final class StubMemberUseCase: CommunityThreadMemberUseCaseProtocol {
     private(set) var kickCalls: [String] = []
     private(set) var transferCalls: [String] = []
     private(set) var leaveCalls: [String] = []
+    private(set) var deleteCalls: [String] = []
 
     func loadMembers(threadId: String) async throws -> [ThreadMember] {
         if shouldFailLoad { throw AppError.unknown(message: "실패") }
@@ -46,6 +47,11 @@ private final class StubMemberUseCase: CommunityThreadMemberUseCaseProtocol {
 
     func leave(threadId: String) async throws {
         leaveCalls.append(threadId)
+        if shouldFailCommand { throw AppError.unknown(message: "실패") }
+    }
+
+    func deleteThread(threadId: String) async throws {
+        deleteCalls.append(threadId)
         if shouldFailCommand { throw AppError.unknown(message: "실패") }
     }
 }
