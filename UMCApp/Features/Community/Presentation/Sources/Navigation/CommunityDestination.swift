@@ -15,4 +15,7 @@ import Foundation
 public enum CommunityDestination: Hashable {
     case threadRoom(threadId: String, title: String)
     case threadCreate
+    /// 참여자 목록. 내가 개설자인지는 목록의 내 행에서 읽으므로 함께 싣지 않는다 —
+    /// 위임 직후 값이 바뀌는데 경로에 박아 두면 뒤로 갔다 오기 전까지 옛 권한이 남는다.
+    case threadMembers(threadId: String)
 }

@@ -79,6 +79,11 @@ extension DIContainer {
                 noticeRepository: self.resolve(NoticeRepositoryProtocol.self)
             )
         }
+        register(CommunityThreadMemberUseCaseProtocol.self) {
+            CommunityThreadMemberUseCase(
+                repository: self.resolve(CommunityThreadRepositoryProtocol.self)
+            )
+        }
     }
 
     // MARK: - Summarizer
