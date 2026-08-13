@@ -3,6 +3,7 @@
 //  CommunityPresentation
 //
 
+import Foundation
 import SwiftUI
 import CommunityDomain
 import CoreDesignSystem
@@ -104,18 +105,33 @@ struct MessageBubble: View {
         }
     }
 
+    /// 본문은 항상 그대로 남기고, 내부 링크가 있으면 그 아래에 카드를 덧붙인다.
+    ///
+    /// 링크 문자열을 카드로 **치환**하지 않는 이유는 카드가 실패할 수 있기 때문이다. 원문을
+    /// 지워 두면 메타 조회가 실패한 순간 링크에 닿을 방법이 사라진다 — 남겨 두면 그 경우가
+    /// 그냥 "카드 없는 텍스트 링크" 가 된다.
     private var bubbleContent: some View {
-        Text(message.isDeleted ? Constants.deletedText : message.content)
-            .appFont(.subheadline)
-            .foregroundStyle(bubbleForeground)
-            .italic(message.isDeleted)
-            .padding(.horizontal, DefaultSpacing.spacing12)
-            .padding(.vertical, DefaultSpacing.spacing8)
-            .background(bubbleBackground, in: .rect(cornerRadius: Constants.cornerRadius))
-            .frame(
-                maxWidth: Constants.maxBubbleWidth,
-                alignment: isMine ? .trailing : .leading
-            )
+        VStack(
+            alignment: isMine ? .trailing : .leading,
+            spacing: DefaultSpacing.spacing8
+        ) {
+            Text(bubbleText)
+                .appFont(.subheadline)
+                .foregroundStyle(bubbleForeground)
+                .italic(message.isDeleted)
+                .tint(linkTint)
+
+            ForEach(cardLinks, id: \.self) { link in
+                MessageLinkCard(link: link)
+            }
+        }
+        .padding(.horizontal, DefaultSpacing.spacing12)
+        .padding(.vertical, DefaultSpacing.spacing8)
+        .background(bubbleBackground, in: .rect(cornerRadius: Constants.cornerRadius))
+        .frame(
+            maxWidth: Constants.maxBubbleWidth,
+            alignment: isMine ? .trailing : .leading
+        )
     }
 
     /// 이모지 팔레트는 메뉴 맨 위 한 줄로 낸다. `ControlGroup` + `.compactMenu` 가 네이티브
@@ -239,7 +255,89 @@ struct MessageBubble: View {
         return isMine ? .white : .grey900
     }
 
+    /// 링크 색. 발신 버블은 배경이 인디고라 인디고 링크가 묻힌다 — 밑줄과 함께 흰색으로 뺀다.
+    private var linkTint: Color {
+        isMine ? .white : .indigo600
+    }
+
+    private var bubbleText: AttributedString {
+        guard !message.isDeleted else { return AttributedString(Constants.deletedText) }
+        return Self.attributed(message.content)
+    }
+
+    /// 카드로 그릴 내부 링크. 같은 링크를 여러 번 붙여 보낸 메시지에 카드를 겹쳐 세우지 않는다.
+    private var cardLinks: [MessageLink] {
+        guard !message.isDeleted else { return [] }
+
+        var seen: Set<MessageLink> = []
+        return MessageLink.segments(in: message.content).compactMap { segment in
+            guard case .link(let link, _) = segment, seen.insert(link).inserted else {
+                return nil
+            }
+            return link
+        }
+    }
+
     // MARK: - Function
+
+    /// 본문을 링크가 살아 있는 문자열로 바꾼다.
+    ///
+    /// 내부 링크는 ``MessageLink`` 가 가려낸 구간에, 외부 URL 은 `NSDataDetector` 가 찾은
+    /// 구간에 각각 `link` 속성을 건다. 어느 쪽이든 탭은 `openURL` 로 가고, 내부 링크인지는
+    /// 그쪽에서 다시 판정한다 — 여기서는 "무엇이 링크인가" 만 정한다.
+    private static func attributed(_ content: String) -> AttributedString {
+        var result = AttributedString()
+        for segment in MessageLink.segments(in: content) {
+            switch segment {
+            case .text(let text):
+                result += externalLinked(text)
+            case .link(let link, let raw):
+                result += linkRun(raw, url: link.url)
+            }
+        }
+        return result
+    }
+
+    private static func externalLinked(_ text: String) -> AttributedString {
+        guard let detector = urlDetector else { return AttributedString(text) }
+
+        var result = AttributedString()
+        var cursor = text.startIndex
+
+        for match in detector.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+            guard let range = Range(match.range, in: text), let url = match.url else { continue }
+            if cursor < range.lowerBound {
+                result += AttributedString(String(text[cursor..<range.lowerBound]))
+            }
+            result += linkRun(String(text[range]), url: url)
+            cursor = range.upperBound
+        }
+
+        if cursor < text.endIndex {
+            result += AttributedString(String(text[cursor...]))
+        }
+        return result
+    }
+
+    /// 링크 런. 밑줄까지 넣는 건 색만으로 구분이 안 되는 사용자를 위한 것이다.
+    ///
+    /// 속성 키를 스코프까지 적어 지정한다 — `run.link` 처럼 dynamic member 로 쓰면 Foundation·
+    /// UIKit·SwiftUI 스코프가 같은 이름을 들고 있어 모호해질 수 있다.
+    private static func linkRun(_ text: String, url: URL?) -> AttributedString {
+        var run = AttributedString(text)
+        guard let url else { return run }
+
+        var attributes = AttributeContainer()
+        attributes[AttributeScopes.FoundationAttributes.LinkAttribute.self] = url
+        attributes[AttributeScopes.SwiftUIAttributes.UnderlineStyleAttribute.self] = .single
+        run.mergeAttributes(attributes)
+        return run
+    }
+
+    /// 외부 URL 탐지기. `http`/`https` 외에 `www.` 로 시작하는 표기도 잡는다.
+    private static let urlDetector = try? NSDataDetector(
+        types: NSTextCheckingResult.CheckingType.link.rawValue
+    )
 
     /// 칩은 이모지 글리프만 읽히면 몇 개인지·내가 눌렀는지가 사라진다.
     private static func reactionLabel(_ reaction: ThreadMessageReaction) -> String {
@@ -318,6 +416,12 @@ struct MessageBubble: View {
                     ThreadMessageReaction(emoji: "🙏", count: "1", reactedByMe: false)
                 ]
             ),
+            isMine: false
+        )
+        // 외부 URL 은 카드가 아니라 텍스트 링크로만 남는다. 내부 링크 카드는 메타 조회에
+        // DI 가 필요해 프리뷰에서는 다루지 않는다.
+        bubble(
+            message(id: "8", content: "자료는 여기 https://umc.it.kr/docs 참고해 주세요"),
             isMine: false
         )
         bubble(message(id: "4", content: "보내는 중", deliveryState: .sending), isMine: true)

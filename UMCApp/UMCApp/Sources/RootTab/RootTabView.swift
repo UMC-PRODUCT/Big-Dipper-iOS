@@ -8,6 +8,7 @@
 import SwiftUI
 
 import ActivityPresentation
+import CommunityDomain
 import CommunityPresentation
 import CoreDesignSystem
 import CoreDI
@@ -35,6 +36,7 @@ struct RootTabView: View {
     @State private var pathStore = PathStore()
 
     @Environment(\.di) private var di
+    @Environment(DeepLinkStore.self) private var deepLinkStore
 
     // MARK: - Body
 
@@ -53,6 +55,10 @@ struct RootTabView: View {
             RootTabAccessoryView(pathStore: pathStore)
         }
         .environment(pathStore)
+        // 앱이 켜져 있는 동안 도착한 링크와, 로그인 화면에 머무는 사이 밀려 있던 링크를
+        // 같은 함수로 받는다. 후자는 이 뷰가 처음 뜨는 시점에 한 번 꺼내면 된다.
+        .task { consumePendingDeepLink() }
+        .onChange(of: deepLinkStore.pending) { _, _ in consumePendingDeepLink() }
     }
 
     // MARK: - Function
@@ -143,10 +149,35 @@ struct RootTabView: View {
         case .activity:
             ActivityFeatureView()
         case .community:
-            CommunityFeatureView()
+            CommunityFeatureView(
+                onNoticeSelected: { detailItem in
+                    pathStore.push(
+                        NavigationDestination.notice(.detail(detailItem: detailItem)),
+                        on: .community
+                    )
+                }
+            )
         case .mypage:
             MyPageFeatureView()
         }
+    }
+
+    /// 밀려 있던 딥링크를 열어 준다.
+    ///
+    /// 커뮤니티 탭으로 옮긴 뒤 채팅방을 push 한다. 비멤버 차단은 채팅방이 첫 로드에서
+    /// 판정하므로(`CommunityThreadRoomViewModel.load()`) 여기서 미리 막지 않는다 — 링크
+    /// 하나 열자고 App 이 커뮤니티 멤버십 규칙을 알 이유가 없다.
+    ///
+    /// - Note: 공지 링크(`umc://notice/{id}`)는 딥링크로 들어오지 않는다. 메시지 안의 링크
+    ///   카드로만 열리고, 그 경로는 `CommunityFeatureView` 가 맡는다.
+    private func consumePendingDeepLink() {
+        guard case .thread(let threadId)? = deepLinkStore.take() else { return }
+
+        pathStore.selectedTab = .community
+        pathStore.push(
+            CommunityDestination.threadRoom(threadId: threadId, title: ""),
+            on: .community
+        )
     }
 
     /// 탭별 독립 `NavigationStack` path 바인딩을 `PathStore`에 위임한다.

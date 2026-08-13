@@ -45,6 +45,11 @@ let project = Project(
                         [
                             "CFBundleURLSchemes": ["$(GOOGLE_REVERSED_CLIENT_ID)"],
                         ],
+                        // 스레드 공유 딥링크 `umc://thread/{id}` (CommunityDomain.MessageLink)
+                        [
+                            "CFBundleURLName": "com.umc.product.deeplink",
+                            "CFBundleURLSchemes": ["umc"],
+                        ],
                     ],
                     "LSApplicationQueriesSchemes": [
                         "kakaokompassauth", "kakaolink", "kakaotalk", "kakaoplus",

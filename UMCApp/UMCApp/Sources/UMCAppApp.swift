@@ -32,6 +32,7 @@ struct UMCAppApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var container: DIContainer
     @State private var errorHandler: ErrorHandler = .init()
+    @State private var deepLinkStore: DeepLinkStore = .init()
     @State private var maintenanceViewModel: MaintenanceViewModel
     private let sharedModelContainer: ModelContainer
 
@@ -78,6 +79,7 @@ struct UMCAppApp: App {
         WindowGroup {
             AppRootView()
                 .environment(errorHandler)
+                .environment(deepLinkStore)
                 .environment(\.di, container)
                 .modelContainer(sharedModelContainer)
                 .alertPrompt(item: errorAlertBinding)
@@ -142,8 +144,14 @@ extension UMCAppApp {
         )
     }
 
-    /// 소셜 로그인 딥링크 URL을 처리합니다.
+    /// 딥링크 URL을 처리합니다.
+    ///
+    /// 앱 내부 링크(`umc://`)는 탭 셸이 떠 있어야 열 수 있으므로 여기서는 보관만 하고,
+    /// 실제 화면 이동은 `RootTabView`가 꺼내 간다 (``DeepLinkStore``).
     private func handleOpenURL(_ url: URL) {
+        if deepLinkStore.receive(url) {
+            return
+        }
         if AuthApi.isKakaoTalkLoginUrl(url) {
             AuthController.handleOpenUrl(url: url)
             return
