@@ -45,6 +45,33 @@ public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
         Self.pinnedSample
     }
 
+    /// 서버처럼 개설자를 `OWNER` 로 넣은 새 스레드를 돌려준다.
+    public func createThread(
+        title: String,
+        description: String,
+        category: String,
+        icon: String
+    ) async throws -> CommunityThread {
+        CommunityThread(
+            id: "999",
+            title: title,
+            description: description,
+            category: CommunityThreadCategory(rawValue: category) ?? .free,
+            icon: icon,
+            memberCount: "1",
+            unreadCount: "0",
+            maxMembers: "100",
+            isPinned: false,
+            isMuted: false,
+            isJoined: true,
+            myRole: .owner,
+            lastMessage: nil,
+            createdBy: "5",
+            createdAt: Self.referenceDate,
+            updatedAt: Self.referenceDate
+        )
+    }
+
     public func fetchMessages(
         threadId: String,
         before: String?,

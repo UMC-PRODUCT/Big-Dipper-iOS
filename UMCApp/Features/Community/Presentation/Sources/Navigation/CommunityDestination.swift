@@ -14,4 +14,5 @@ import Foundation
 ///   띄우기 위해서다. 로드가 끝나면 서버 값으로 대체된다.
 public enum CommunityDestination: Hashable {
     case threadRoom(threadId: String, title: String)
+    case threadCreate
 }

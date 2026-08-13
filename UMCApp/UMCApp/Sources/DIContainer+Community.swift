@@ -57,6 +57,11 @@ extension DIContainer {
                 repository: self.resolve(CommunityThreadRepositoryProtocol.self)
             )
         }
+        register(CommunityThreadCreateUseCaseProtocol.self) {
+            CommunityThreadCreateUseCase(
+                repository: self.resolve(CommunityThreadRepositoryProtocol.self)
+            )
+        }
         register(CommunityThreadRoomUseCaseProtocol.self) {
             CommunityThreadRoomUseCase(
                 repository: self.resolve(CommunityThreadRepositoryProtocol.self),

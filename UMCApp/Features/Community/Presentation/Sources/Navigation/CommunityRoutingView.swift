@@ -25,6 +25,11 @@ struct CommunityRoutingView: View {
     let container: DIContainer
     let errorHandler: ErrorHandler
 
+    /// 생성 성공을 리스트에 알린다. 서버는 개설자에게 실시간 이벤트를 보내지 않으므로
+    /// (초대된 멤버에게만 `thread.invited` 를 쏜다) 이 통로가 없으면 새 스레드가 다음 수동
+    /// 새로고침까지 목록에 나타나지 않는다.
+    let onThreadCreated: (CommunityThread) -> Void
+
     // MARK: - Body
 
     var body: some View {
@@ -38,6 +43,14 @@ struct CommunityRoutingView: View {
                 )
             )
             .navigationTitle(title)
+
+        case .threadCreate:
+            CommunityThreadCreateView(
+                viewModel: CommunityThreadCreateViewModel(
+                    useCase: container.resolve(CommunityThreadCreateUseCaseProtocol.self)
+                ),
+                onCreated: onThreadCreated
+            )
         }
     }
 }

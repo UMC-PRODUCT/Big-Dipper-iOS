@@ -6,6 +6,7 @@
 import SwiftUI
 import CommunityDomain
 import CoreDesignSystem
+import CoreDI
 import CoreUIComponents
 import UMCFoundation
 
@@ -27,6 +28,9 @@ struct CommunityThreadListView: View {
     @State private var viewModel: CommunityThreadListViewModel
 
     private let onThreadSelected: (CommunityThread) -> Void
+
+    @Environment(\.di) private var di
+    @Environment(ErrorHandler.self) private var errorHandler
 
     // MARK: - Init
 
@@ -53,6 +57,16 @@ struct CommunityThreadListView: View {
             .alertPrompt(item: $viewModel.alertPrompt)
             .task { await viewModel.load() }
             .task { await viewModel.observeRealtime() }
+            // 목적지 등록이 여기 있는 이유: 생성 화면이 돌려준 스레드를 `viewModel` 에 바로
+            // 꽂아야 한다. 상위(`CommunityFeatureView`)는 이 VM 인스턴스를 잡고 있지 않다.
+            .navigationDestination(for: CommunityDestination.self) { destination in
+                CommunityRoutingView(
+                    destination: destination,
+                    container: di,
+                    errorHandler: errorHandler,
+                    onThreadCreated: { viewModel.insertCreated($0) }
+                )
+            }
     }
 
     // MARK: - View Component

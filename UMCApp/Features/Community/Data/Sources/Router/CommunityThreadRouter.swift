@@ -13,6 +13,7 @@ import CoreNetwork
 public enum CommunityThreadRouter {
     case getThreads(query: ThreadListQuery)
     case getThread(threadId: String)
+    case createThread(body: CreateThreadBody)
     case getMessages(threadId: String, query: ThreadMessageQuery)
     case setPin(threadId: String, isPinned: Bool)
     case setMute(threadId: String, isMuted: Bool)
@@ -25,7 +26,7 @@ extension CommunityThreadRouter: BaseTargetType {
 
     public var path: String {
         switch self {
-        case .getThreads:
+        case .getThreads, .createThread:
             return threadsPath
         case .getThread(let threadId):
             return "\(threadsPath)/\(threadId)"
@@ -48,7 +49,7 @@ extension CommunityThreadRouter: BaseTargetType {
             return isPinned ? .post : .delete
         case .setMute(_, let isMuted):
             return isMuted ? .post : .delete
-        case .leave:
+        case .createThread, .leave:
             return .post
         }
     }
@@ -65,6 +66,8 @@ extension CommunityThreadRouter: BaseTargetType {
                 parameters: query.toParameters,
                 encoding: URLEncoding.queryString
             )
+        case .createThread(let body):
+            return .requestJSONEncodable(body)
         case .getThread, .setPin, .setMute, .leave:
             return .requestPlain
         }
