@@ -32,6 +32,8 @@ public func watchAppProject(
                 infoPlist: .extendingDefault(
                     with: [
                         "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                        // watchOS 앱의 CFBundleVersion도 호스트 앱과 일치해야 업로드가 통과한다.
+                        "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
                         "WKCompanionAppBundleIdentifier": .string(companionBundleId),
                         "UISupportedInterfaceOrientations": .array([
                             .string("UIInterfaceOrientationPortrait"),
