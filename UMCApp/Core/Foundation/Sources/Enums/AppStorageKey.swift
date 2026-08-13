@@ -23,6 +23,8 @@ public enum AppStorageKey {
     public static let uploadedFCMMemberId: String = "UploadedFCMMemberId"
     /// 최근 검색 장소 목록
     public static let recentSearchPlaces: String = "recentSearchPlaces"
+    /// 커뮤니티 스레드 최근 검색어 목록 (`[String]`)
+    public static let recentThreadSearches: String = "recentThreadSearches"
     /// OAuth 연동된 소셜 provider 목록(JSON 문자열 배열)
     public static let connectedSocialProviders: String = "connectedSocialProviders"
     /// 자동 로그인 허용 여부 (승인/등록 완료 사용자만 true)
