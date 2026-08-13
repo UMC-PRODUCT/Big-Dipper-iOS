@@ -336,6 +336,41 @@ struct CommunityThreadListViewModelTests {
         #expect(viewModel.state.value?.map(\.id) == ["1"])
     }
 
+    /// 완료 조건 3 — 방에서 고정·알림을 바꾸고 돌아오면 목록이 그 상태여야 한다 (#1138).
+    @Test("채팅방에서 바꾼 고정·알림을 행에 반영한다")
+    func appliesTogglesFromRoom() async throws {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [], threads: [makeThread(id: "1"), makeThread(id: "2")],
+            nextOffset: nil, total: "2"
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.applyToggles(makeThread(id: "1", isPinned: true).with(isMuted: true))
+
+        // 고정은 섹션 이동까지 따라야 한다 — 값만 바꾸면 일반 목록에 고정 배지가 남는다.
+        #expect(viewModel.pinned.map(\.id) == ["1"])
+        #expect(viewModel.state.value?.map(\.id) == ["2"])
+        #expect(viewModel.pinned.first?.isMuted == true)
+    }
+
+    @Test("이미 같은 상태인 행은 고정 해제만 반영한다")
+    func appliesUnpinFromRoom() async throws {
+        let useCase = StubListUseCase()
+        useCase.page = CommunityThreadPage(
+            pinned: [makeThread(id: "1", isPinned: true)], threads: [makeThread(id: "2")],
+            nextOffset: nil, total: "2"
+        )
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.applyToggles(makeThread(id: "1"))
+
+        #expect(viewModel.pinned.isEmpty)
+        #expect(viewModel.state.value?.map(\.id) == ["1", "2"])
+    }
+
     @Test("나가기는 확인을 받은 뒤에만 실행된다", .timeLimit(.minutes(1)))
     func leavesOnlyAfterConfirmation() async throws {
         let useCase = StubListUseCase()
