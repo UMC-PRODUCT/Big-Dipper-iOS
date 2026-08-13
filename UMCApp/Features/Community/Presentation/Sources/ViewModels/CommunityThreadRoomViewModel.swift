@@ -48,6 +48,12 @@ public final class CommunityThreadRoomViewModel {
     public private(set) var ejectionNotice: String?
     /// 참여 종료 화면의 이탈 버튼을 눌렀는지. View 가 이걸 보고 리스트로 pop 한다.
     public private(set) var shouldDismiss = false
+    /// 헤더 ⋯ 메뉴로 내가 직접 나갔거나 스레드를 지웠는지 (#1138).
+    ///
+    /// `shouldDismiss` 와 나누는 이유는 뒤처리가 달라서다 — 이쪽은 리스트 행까지 지워야 하고,
+    /// 강퇴·삭제 통보(`ejectionNotice`)는 실시간 이벤트가 이미 행을 지운 뒤다.
+    /// 갱신은 `CommunityThreadRoomViewModel+ThreadMenu` 가 맡아 setter 를 모듈 내부로 연다.
+    public internal(set) var didLeave = false
     /// 429 쿨다운 안내. `nil` 이 아닌 동안 전송이 잠긴다 (스펙 §7).
     public private(set) var sendCooldownNotice: String?
 
@@ -115,7 +121,11 @@ public final class CommunityThreadRoomViewModel {
     let threadId: String
     /// `+Summary` 의 `summarizer` 와 같은 이유로 모듈 내부에 연다 — `+Report` 확장이 쓴다.
     let useCase: CommunityThreadRoomUseCaseProtocol
-    private let errorHandler: ErrorHandler
+    /// 헤더 ⋯ 메뉴의 고정·음소거·나가기·삭제 (#1138). 리스트 화면이 쓰던 계약을 그대로 빌린다 —
+    /// 네 호출 모두 이미 여기 모여 있어 채팅방 전용 계약을 새로 파면 같은 REST 경로가 둘이 된다.
+    let listUseCase: CommunityThreadListUseCaseProtocol
+    /// `useCase` 와 같은 이유로 모듈 내부에 연다 — `+ThreadMenu` 확장이 명령 실패를 올린다.
+    let errorHandler: ErrorHandler
     private let currentMemberId: String?
     private let sendTimeout: Duration
 
@@ -143,6 +153,7 @@ public final class CommunityThreadRoomViewModel {
     public init(
         threadId: String,
         useCase: CommunityThreadRoomUseCaseProtocol,
+        listUseCase: CommunityThreadListUseCaseProtocol,
         errorHandler: ErrorHandler,
         summarizer: ThreadSummarizing,
         currentMemberId: String? = AppStorageKey.memberIdString(),
@@ -150,6 +161,7 @@ public final class CommunityThreadRoomViewModel {
     ) {
         self.threadId = threadId
         self.useCase = useCase
+        self.listUseCase = listUseCase
         self.errorHandler = errorHandler
         self.summarizer = summarizer
         self.currentMemberId = currentMemberId
@@ -646,16 +658,32 @@ public final class CommunityThreadRoomViewModel {
     ///
     /// 삭제와 강퇴가 겹쳐 와도 사유는 먼저 온 하나면 된다 — 이미 끝난 참여를 두 번 설명할 이유가 없다.
     /// 떠 있던 알림은 함께 내린다. 볼 수 없게 된 방에서는 그쪽 선택지가 더 이상 의미가 없다.
+    /// 내가 직접 나간 뒤에는 띄우지 않는다 — 내 `member.left` 도 팬아웃으로 되돌아와, 리스트로
+    /// 빠지는 중인 화면에 "다른 기기에서 나갔어요" 가 한 프레임 스쳐 지나간다 (#1138).
     private func eject(message: String) {
-        guard ejectionNotice == nil else { return }
+        guard ejectionNotice == nil, !didLeave else { return }
         ejectionNotice = message
         alertPrompt = nil
     }
 
     private func updateMemberCount(_ memberCount: String) {
-        guard var thread = header.value else { return }
-        thread.memberCount = memberCount
-        header = .loaded(thread)
+        updateThread { thread in
+            var updated = thread
+            updated.memberCount = memberCount
+            return updated
+        }
+    }
+
+    /// 헤더의 스레드를 제자리에서 고친다.
+    ///
+    /// `header` 의 setter 가 `private` 이라 다른 파일의 확장은 직접 못 쓴다. 접근 수준을 넓히는
+    /// 대신 통로 하나만 열어 둔다 — 아직 헤더를 못 받았으면 조용히 넘긴다.
+    @discardableResult
+    func updateThread(_ transform: (CommunityThread) -> CommunityThread) -> CommunityThread? {
+        guard let thread = header.value else { return nil }
+        let updated = transform(thread)
+        header = .loaded(updated)
+        return updated
     }
 
     /// 인용·멘션까지 담아 둔다. 서버 에코가 같은 자리를 덮어쓰지만, 그 전까지 인용 블록이
