@@ -43,7 +43,7 @@ private final class StubClassifier: ThreadClassifying, @unchecked Sendable {
     var result: ThreadClassification?
     private(set) var callCount = 0
 
-    init(isAvailable: Bool = true, result: ThreadClassification? = defaultResult) {
+    init(isAvailable: Bool = true, result: ThreadClassification? = StubClassifier.defaultResult) {
         self.isAvailable = isAvailable
         self.result = result
     }
