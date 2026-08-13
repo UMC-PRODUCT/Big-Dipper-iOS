@@ -158,6 +158,13 @@ public final class CommunityThreadRoomViewModel {
 
         do {
             let (thread, page) = try await (threadRequest, pageRequest)
+            // 공유 링크·딥링크로 들어온 비멤버를 여기서 끊는다 (#1142). 진입 경로가 리스트 탭·
+            // 링크 카드·`umc://thread/{id}` 셋으로 늘었지만 모두 이 화면으로 모이므로, 게이트도
+            // 여기 하나면 된다. "공유해도 멤버만 열림, 신규 유입은 초대로만" (명세 FLOW 04).
+            guard thread.isJoined else {
+                eject(message: Constants.nonMemberMessage)
+                return
+            }
             // 응답을 기다리는 동안 실시간으로 도착한 메시지와 전송 중인 낙관적 버블은 서버
             // 스냅샷에 없다. 통째로 덮으면 되찾을 경로가 없어 대화록에 구멍이 남는다.
             // 반대로 `loadOlder` 로 쌓인 과거 이력까지 살리면 최신 페이지 뒤에 붙어 시간순이
@@ -181,6 +188,12 @@ public final class CommunityThreadRoomViewModel {
         } catch {
             // 취소는 화면을 떠난 정상 흐름이다. 에러 화면으로 바꾸면 안 된다.
             guard !(error is CancellationError) else { return }
+            // 비멤버 조회는 서버 구현에 따라 403/404 로 온다. 재시도 버튼이 달린 실패 화면을
+            // 띄우면 눌러도 같은 거절만 반복된다 — 안내하고 리스트로 돌려보낸다.
+            guard !isDefinitiveNonMember(error) else {
+                eject(message: Constants.nonMemberMessage)
+                return
+            }
             header = .failed(AppError.from(error))
         }
     }
@@ -646,4 +659,6 @@ fileprivate enum Constants {
     static let sendCooldown: Duration = .seconds(5)
     static let ejectedMessage = "이 스레드에서 내보내졌어요."
     static let leftMessage = "다른 기기에서 이 스레드를 나갔어요."
+    /// 공유 링크로 들어온 비멤버 안내. 링크 자체로는 참여시키지 않는다 (명세 FLOW 04).
+    static let nonMemberMessage = "이 스레드의 멤버만 대화를 볼 수 있어요. 초대를 받아 참여해 주세요."
 }
