@@ -29,6 +29,9 @@ struct CommunityThreadListView: View {
 
     private let onThreadSelected: (CommunityThread) -> Void
 
+    /// 최근 검색어를 고른 뒤 키보드를 내려 결과를 가리지 않게 한다.
+    @FocusState private var isSearchFieldFocused: Bool
+
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
 
@@ -46,9 +49,12 @@ struct CommunityThreadListView: View {
 
     var body: some View {
         content
+            .overlay { recentSearchList }
             .navigationTitle("커뮤니티")
             .umcDefaultBackground()
             .searchable(text: $viewModel.searchText, prompt: Constants.searchPrompt)
+            .searchFocused($isSearchFieldFocused)
+            .onSubmit(of: .search) { viewModel.recordCurrentSearch() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     ThreadFilterMenu(selection: $viewModel.filter)
@@ -80,7 +86,12 @@ struct CommunityThreadListView: View {
 
         case .loaded(let threads):
             if threads.isEmpty && viewModel.pinned.isEmpty {
-                emptyView
+                // 검색 중이라면 "참여한 스레드가 없다" 는 틀린 안내다.
+                if let query = viewModel.trimmedQuery {
+                    searchEmptyView(query)
+                } else {
+                    emptyView
+                }
             } else {
                 threadList(threads)
             }
@@ -101,7 +112,9 @@ struct CommunityThreadListView: View {
     /// 빈 헤더를 그려서 리스트 상단에 정체불명의 여백을 남긴다.
     private func threadList(_ threads: [CommunityThread]) -> some View {
         List {
-            if viewModel.pinned.isEmpty {
+            if let query = viewModel.trimmedQuery {
+                searchResultSection(query: query, threads: threads)
+            } else if viewModel.pinned.isEmpty {
                 pagedRows(threads)
             } else {
                 Section("고정") {
@@ -119,6 +132,21 @@ struct CommunityThreadListView: View {
         .refreshable { await viewModel.refresh() }
     }
 
+    /// 검색 중 한 섹션. 서버가 `q` 를 받으면 `pinned` 를 비우고 고정 스레드까지 `threads` 에
+    /// 담아 주므로(`CommunityThreadPage` 주석), 고정 섹션이 사라진 이유를 푸터로 알린다.
+    private func searchResultSection(
+        query: String,
+        threads: [CommunityThread]
+    ) -> some View {
+        Section {
+            pagedRows(threads)
+        } header: {
+            Text("'\(query)' 검색 결과")
+        } footer: {
+            Text("검색 중에는 고정 스레드도 이 목록에 함께 나와요.")
+        }
+    }
+
     @ViewBuilder
     private func pagedRows(_ threads: [CommunityThread]) -> some View {
         ForEach(threads) { thread in
@@ -133,6 +161,8 @@ struct CommunityThreadListView: View {
             // 리스트 뷰는 방에서 pop 해도 계층을 떠난 적이 없어 `.task` 가 다시 돌지 않는다.
             // 여기서 내리지 않으면 읽고 온 배지가 다음 수동 새로고침까지 남는다.
             viewModel.markThreadRead(threadId: thread.id)
+            // 결과를 골라 들어갔다는 건 그 검색어가 쓸모 있었다는 뜻이다. 검색 중이 아니면 무시된다.
+            viewModel.recordCurrentSearch()
             onThreadSelected(thread)
         } label: {
             ThreadListRow(thread: thread)
@@ -173,6 +203,30 @@ struct CommunityThreadListView: View {
             "아직 참여한 스레드가 없어요",
             systemImage: "bubble.left.and.bubble.right",
             description: Text("초대를 받으면 이곳에 표시돼요.")
+        )
+    }
+
+    /// 검색 결과 0건 전용. 메시지 본문은 검색 대상이 아니라는 것까지 알려 준다.
+    private func searchEmptyView(_ query: String) -> some View {
+        ContentUnavailableView {
+            Label("검색 결과가 없어요", systemImage: "magnifyingglass")
+        } description: {
+            Text("'\(query)' 와 일치하는 스레드가 없어요.\n스레드 이름과 소개만 검색해요.")
+        } actions: {
+            Button("검색어 지우기") { viewModel.clearSearch() }
+        }
+    }
+
+    private var recentSearchList: some View {
+        RecentThreadSearchList(
+            terms: viewModel.recentSearches,
+            isQueryEmpty: viewModel.trimmedQuery == nil,
+            onSelect: { term in
+                isSearchFieldFocused = false
+                viewModel.applyRecentSearch(term)
+            },
+            onDelete: { viewModel.removeRecentSearch($0) },
+            onClearAll: { viewModel.clearRecentSearches() }
         )
     }
 }
