@@ -59,12 +59,18 @@ struct CommunityThreadListView: View {
             .navigationTitle("커뮤니티")
             .umcDefaultBackground()
             .searchable(text: $viewModel.searchText, prompt: Constants.searchPrompt)
+            .searchToolbarBehavior(.minimize)
             .searchFocused($isSearchFieldFocused)
             .onSubmit(of: .search) { viewModel.recordCurrentSearch() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     ThreadFilterMenu(selection: $viewModel.filter)
                 }
+
+                // 필터와 검색은 성격이 다른 축이라 유리 그룹을 갈라 준다.
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+
+                DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
             }
             .alertPrompt(item: $viewModel.alertPrompt)
             .task { await viewModel.load() }
