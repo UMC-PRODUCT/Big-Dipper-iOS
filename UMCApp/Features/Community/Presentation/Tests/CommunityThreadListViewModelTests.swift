@@ -69,7 +69,15 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
         ThreadMessagePage(messages: [], hasMore: false, nextBefore: nil)
     }
 
-    func send(threadId: String, clientMessageId: String, content: String) async throws {}
+    func loadMembers(threadId: String) async throws -> [ThreadMember] { [] }
+
+    func send(
+        threadId: String,
+        clientMessageId: String,
+        content: String,
+        replyToId: String?,
+        mentionedMemberIds: [String]
+    ) async throws {}
 
     func markRead(threadId: String, lastReadMessageId: String) async throws {}
 

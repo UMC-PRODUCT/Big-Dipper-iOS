@@ -29,7 +29,16 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
         let reason: ThreadMessageReportReason
     }
 
+    /// 인용·멘션이 전송 페이로드에 실렸는지 확인하는 데 쓴다.
+    struct SendCall: Equatable {
+        let content: String
+        let replyToId: String?
+        let mentionedMemberIds: [String]
+    }
+
     var thread = makeThread()
+    var members: [ThreadMember] = []
+    var loadMembersError: Error?
     var pages: [String?: ThreadMessagePage] = [:]
     var sendError: Error?
     var loadThreadError: Error?
@@ -42,6 +51,8 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
 
     private(set) var sentContents: [String] = []
     private(set) var sentClientMessageIds: [String] = []
+    private(set) var sendCalls: [SendCall] = []
+    private(set) var loadMembersCount = 0
     private(set) var readWatermarks: [String] = []
     private(set) var loadThreadCount = 0
     private(set) var addedReactions: [ReactionCall] = []
@@ -60,9 +71,28 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
         return pages[before] ?? ThreadMessagePage(messages: [], hasMore: false, nextBefore: nil)
     }
 
-    func send(threadId: String, clientMessageId: String, content: String) async throws {
+    func loadMembers(threadId: String) async throws -> [ThreadMember] {
+        loadMembersCount += 1
+        if let loadMembersError { throw loadMembersError }
+        return members
+    }
+
+    func send(
+        threadId: String,
+        clientMessageId: String,
+        content: String,
+        replyToId: String?,
+        mentionedMemberIds: [String]
+    ) async throws {
         sentClientMessageIds.append(clientMessageId)
         sentContents.append(content)
+        sendCalls.append(
+            SendCall(
+                content: content,
+                replyToId: replyToId,
+                mentionedMemberIds: mentionedMemberIds
+            )
+        )
         if let sendError { throw sendError }
     }
 
@@ -131,7 +161,15 @@ private actor GatedRoomUseCase: CommunityThreadRoomUseCaseProtocol {
         return ThreadMessagePage(messages: [], hasMore: false, nextBefore: nil)
     }
 
-    func send(threadId: String, clientMessageId: String, content: String) async throws {
+    func loadMembers(threadId: String) async throws -> [ThreadMember] { [] }
+
+    func send(
+        threadId: String,
+        clientMessageId: String,
+        content: String,
+        replyToId: String?,
+        mentionedMemberIds: [String]
+    ) async throws {
         hasEnteredSend = true
         arrivalWaiter?.resume()
         arrivalWaiter = nil
@@ -307,6 +345,14 @@ private func makeMessage(
         deletedAt: nil,
         deliveryState: .sent
     )
+}
+
+private func makeMember(
+    id: String,
+    name: String,
+    role: ThreadMemberRole = .member
+) -> ThreadMember {
+    ThreadMember(id: id, name: name, part: "iOS", profileImageURL: nil, role: role)
 }
 
 // MARK: - Tests
@@ -630,6 +676,200 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.canSend == false)
         #expect(useCase.sentContents.isEmpty)
         #expect(viewModel.messages.isEmpty)
+    }
+
+    // MARK: - Reply
+
+    @Test("답장을 걸면 인용 칩이 뜨고, 취소하면 사라진다")
+    func togglesReplyTarget() async {
+        let useCase = StubRoomUseCase()
+        let target = makeMessage(id: "1", content: "오늘 스터디 7시에 시작합니다")
+        let viewModel = await makeLoadedViewModel(useCase, with: target)
+
+        viewModel.requestReply(target)
+
+        #expect(viewModel.replyTarget?.messageId == "1")
+        #expect(viewModel.replyTarget?.senderName == "정의진")
+        #expect(viewModel.replyTarget?.snippet == "오늘 스터디 7시에 시작합니다")
+
+        viewModel.cancelReply()
+
+        #expect(viewModel.replyTarget == nil)
+    }
+
+    /// 미확정 버블의 id 는 클라이언트가 만든 UUID 라 `replyToId` 로 쓸 수 없다.
+    @Test("서버가 아직 모르는 메시지에는 답장을 걸 수 없다")
+    func rejectsReplyToUnconfirmedMessage() async throws {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.draft = "안녕"
+        await viewModel.send()
+        let optimistic = try #require(viewModel.messages.first)
+
+        #expect(viewModel.canReply(optimistic) == false)
+
+        viewModel.requestReply(optimistic)
+
+        #expect(viewModel.replyTarget == nil)
+    }
+
+    @Test("답장 전송은 대상 id 를 싣고, 낙관적 버블에도 인용이 남는다")
+    func sendsReplyTargetWithMessage() async throws {
+        let useCase = StubRoomUseCase()
+        let target = makeMessage(id: "1", content: "몇 시에 시작하나요?")
+        let viewModel = await makeLoadedViewModel(useCase, with: target)
+
+        viewModel.requestReply(target)
+        viewModel.draft = "7시요"
+        await viewModel.send()
+
+        let call = try #require(useCase.sendCalls.first)
+        #expect(call.replyToId == "1")
+        #expect(viewModel.messages.last?.replyTo?.messageId == "1")
+        // 한 번 보낸 인용은 다음 메시지까지 따라가지 않는다.
+        #expect(viewModel.replyTarget == nil)
+    }
+
+    @Test("재전송은 낙관적 버블에 남은 인용·멘션을 그대로 다시 싣는다")
+    func retryCarriesReplyAndMentions() async throws {
+        let useCase = StubRoomUseCase()
+        useCase.members = [makeMember(id: "7", name: "김유엠")]
+        let target = makeMessage(id: "1")
+        let viewModel = await makeLoadedViewModel(useCase, with: target)
+
+        viewModel.requestReply(target)
+        viewModel.draft = "@"
+        viewModel.draftDidChange()
+        await waitUntil { !viewModel.mentionCandidates.isEmpty }
+        viewModel.selectMention(try #require(viewModel.mentionCandidates.first))
+
+        useCase.sendError = AppError.unknown(message: "실패")
+        await viewModel.send()
+
+        let failed = try #require(viewModel.messages.last)
+        useCase.sendError = nil
+        await viewModel.retry(failed)
+
+        let resent = try #require(useCase.sendCalls.last)
+        #expect(resent.replyToId == "1")
+        #expect(resent.mentionedMemberIds == ["7"])
+    }
+
+    /// 아직 안 불러온 과거를 가리키는 인용은 이동할 곳이 없다 — 특정 메시지가 든 페이지를 주는
+    /// 서버 API 가 없어 여기서 끊는다.
+    @Test("목록에 없는 원본으로는 스크롤하지 않는다")
+    func ignoresQuoteScrollToMissingMessage() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = await makeLoadedViewModel(useCase, with: makeMessage(id: "1"))
+
+        viewModel.scrollToQuoted("999")
+
+        #expect(viewModel.quoteScrollTarget == nil)
+
+        viewModel.scrollToQuoted("1")
+
+        #expect(viewModel.quoteScrollTarget == "1")
+
+        viewModel.clearQuoteScrollTarget()
+
+        #expect(viewModel.quoteScrollTarget == nil)
+    }
+
+    // MARK: - Mention
+
+    @Test("@ 뒤 검색어로 참여자를 좁힌다 — 목록은 한 번만 읽는다")
+    func filtersMentionCandidates() async {
+        let useCase = StubRoomUseCase()
+        useCase.members = [
+            makeMember(id: "7", name: "김유엠"),
+            makeMember(id: "9", name: "박메이커스")
+        ]
+        let viewModel = await makeLoadedViewModel(useCase, with: makeMessage(id: "1"))
+
+        viewModel.draft = "@"
+        viewModel.draftDidChange()
+        await waitUntil { !viewModel.mentionCandidates.isEmpty }
+
+        #expect(viewModel.mentionCandidates.count == 2)
+
+        viewModel.draft = "@박"
+        viewModel.draftDidChange()
+
+        #expect(viewModel.mentionCandidates.map(\.id) == ["9"])
+        #expect(useCase.loadMembersCount == 1)
+
+        // 공백이 들어오면 토큰이 끝난 것으로 보고 오버레이를 닫는다.
+        viewModel.draft = "@박메이커스 안녕"
+        viewModel.draftDidChange()
+
+        #expect(viewModel.mentionCandidates.isEmpty)
+    }
+
+    @Test("후보를 고르면 마지막 @ 토큰이 이름으로 바뀌고 대상에 실린다")
+    func insertsSelectedMention() async throws {
+        let useCase = StubRoomUseCase()
+        useCase.members = [makeMember(id: "7", name: "김유엠")]
+        let viewModel = await makeLoadedViewModel(useCase, with: makeMessage(id: "1"))
+
+        viewModel.draft = "안녕 @김"
+        viewModel.draftDidChange()
+        await waitUntil { !viewModel.mentionCandidates.isEmpty }
+        viewModel.selectMention(try #require(viewModel.mentionCandidates.first))
+
+        #expect(viewModel.draft == "안녕 @김유엠 ")
+        #expect(viewModel.mentionCandidates.isEmpty)
+
+        viewModel.draft += "확인 부탁해요"
+        await viewModel.send()
+
+        let call = try #require(useCase.sendCalls.first)
+        #expect(call.mentionedMemberIds == ["7"])
+        #expect(viewModel.messages.last?.mentions.map(\.name) == ["김유엠"])
+    }
+
+    /// 골랐다가 이름을 지우면 본문에 없는 사람에게 알림만 가는 상태가 된다.
+    @Test("본문에서 이름을 지우면 멘션 대상에서도 빠진다")
+    func dropsMentionRemovedFromDraft() async throws {
+        let useCase = StubRoomUseCase()
+        useCase.members = [makeMember(id: "7", name: "김유엠")]
+        let viewModel = await makeLoadedViewModel(useCase, with: makeMessage(id: "1"))
+
+        viewModel.draft = "@김"
+        viewModel.draftDidChange()
+        await waitUntil { !viewModel.mentionCandidates.isEmpty }
+        viewModel.selectMention(try #require(viewModel.mentionCandidates.first))
+
+        viewModel.draft = "역시 그냥 보낼게요"
+        await viewModel.send()
+
+        let call = try #require(useCase.sendCalls.first)
+        #expect(call.mentionedMemberIds.isEmpty)
+    }
+
+    @Test("참여자 목록을 못 읽어도 입력은 막지 않는다 — 다음 @ 에서 다시 시도한다")
+    func keepsTypingWhenMemberLoadFails() async {
+        let useCase = StubRoomUseCase()
+        useCase.loadMembersError = AppError.unknown(message: "실패")
+        let errorHandler = ErrorHandler()
+        let viewModel = await makeLoadedViewModel(
+            useCase,
+            with: makeMessage(id: "1"),
+            errorHandler: errorHandler
+        )
+
+        viewModel.draft = "@김"
+        viewModel.draftDidChange()
+        await waitUntil { useCase.loadMembersCount == 1 }
+
+        #expect(viewModel.mentionCandidates.isEmpty)
+        #expect(errorHandler.currentError == nil)
+
+        viewModel.draftDidChange()
+        await waitUntil { useCase.loadMembersCount == 2 }
+
+        #expect(useCase.loadMembersCount == 2)
     }
 
     // MARK: - Reaction
