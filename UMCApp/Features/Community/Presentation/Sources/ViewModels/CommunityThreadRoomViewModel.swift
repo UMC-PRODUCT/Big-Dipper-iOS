@@ -60,8 +60,26 @@ public final class CommunityThreadRoomViewModel {
 
     let summarizer: ThreadSummarizing
 
+    // MARK: - Report Property
+
+    /// 신고 사유 시트의 대상. `nil` 이면 시트가 닫힌 상태다.
+    ///
+    /// 갱신은 `CommunityThreadRoomViewModel+Report` 가 맡는다.
+    public internal(set) var reportTarget: ThreadMessage?
+    /// 접수 요청 상태. 실패는 시트 안 인라인으로 보여 주므로 `Loadable` 이다.
+    public internal(set) var reportState: Loadable<ThreadMessageReportReason> = .idle
+    /// 접수 완료·중복 안내를 띄우는 잠깐짜리 문구. 쿨다운 안내와 같은 자리에 그린다.
+    public internal(set) var reportNotice: String?
+
+    /// 이번 세션에 신고를 접수한 메시지. 재신고를 막는 유일한 근거다 — 서버가 기존 신고 여부를
+    /// 내려주지 않아 화면을 다시 열면 초기화된다(중복 요청은 서버가 최종적으로 거른다).
+    /// 화면이 직접 읽지 않는 값이라 관찰에서 뺀다.
+    @ObservationIgnored var reportedMessageIds: Set<String> = []
+    @ObservationIgnored var reportNoticeTask: Task<Void, Never>?
+
     private let threadId: String
-    private let useCase: CommunityThreadRoomUseCaseProtocol
+    /// `+Summary` 의 `summarizer` 와 같은 이유로 모듈 내부에 연다 — `+Report` 확장이 쓴다.
+    let useCase: CommunityThreadRoomUseCaseProtocol
     private let errorHandler: ErrorHandler
     private let currentMemberId: String?
     private let sendTimeout: Duration
