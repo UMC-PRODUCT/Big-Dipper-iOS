@@ -7,6 +7,7 @@ import SwiftUI
 import CommunityDomain
 import CoreDesignSystem
 import CoreDI
+import CoreRouting
 import CoreUIComponents
 import UMCFoundation
 
@@ -14,6 +15,10 @@ import UMCFoundation
 
 fileprivate enum Constants {
     static let searchPrompt = "스레드 검색"
+    static let emptyTitle = "아직 참여한 스레드가 없어요"
+    static let emptyDescription = "첫 스레드를 만들어 대화를 시작해 보세요.\n초대를 받아도 이곳에 표시돼요."
+    static let emptyImage = "bubble.left.and.bubble.right"
+    static let createThreadTitle = "새 스레드"
 }
 
 /// 커뮤니티 탭 루트 — 스레드 리스트.
@@ -31,6 +36,7 @@ struct CommunityThreadListView: View {
 
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
+    @Environment(PathStore.self) private var pathStore
 
     // MARK: - Init
 
@@ -168,11 +174,19 @@ struct CommunityThreadListView: View {
         }
     }
 
+    /// 빈 상태에서 바로 첫 스레드를 만들 수 있게 CTA 를 건다. 하단 액세서리의 생성 버튼과
+    /// 같은 목적지로 보내 진입점이 갈라지지 않게 한다.
     private var emptyView: some View {
-        ContentUnavailableView(
-            "아직 참여한 스레드가 없어요",
-            systemImage: "bubble.left.and.bubble.right",
-            description: Text("초대를 받으면 이곳에 표시돼요.")
-        )
+        ContentUnavailableView {
+            Label(Constants.emptyTitle, systemImage: Constants.emptyImage)
+        } description: {
+            Text(Constants.emptyDescription)
+                .multilineTextAlignment(.center)
+        } actions: {
+            Button(Constants.createThreadTitle) {
+                pathStore.push(CommunityDestination.threadCreate, on: .community)
+            }
+            .buttonStyle(.glassProminent)
+        }
     }
 }
