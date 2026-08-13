@@ -40,11 +40,9 @@ fileprivate enum Constants {
         bottom: DefaultSpacing.spacing16,
         trailing: DefaultConstant.defaultSafeHorizon
     )
-    static let shimmerBarHeight: CGFloat = 12
     /// 줄마다 오른쪽을 다르게 비워 실제 문단처럼 보이게 한다. 비율 대신 여백으로 잡는 이유는
     /// 비율을 쓰려면 카드 너비를 재야 하고, 그 값을 재는 순간 카드 안쪽 패딩까지 따라와서다.
     static let shimmerBarInsets: [CGFloat] = [0, DefaultSpacing.spacing24, DefaultSpacing.spacing96]
-    static let shimmerDuration: Double = 1.1
     static let aiBorderWidth: CGFloat = 1
 
     /// AI 처리 중임을 알리는 그라디언트.
@@ -299,47 +297,5 @@ struct ThreadSummarySheet: View {
         Text(Constants.disclaimer)
             .appFont(.caption2, color: .grey500)
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// MARK: - Shimmer
-
-/// 요약이 오기 전 자리를 잡아 주는 뼈대 줄.
-///
-/// 그라디언트의 시작·끝 지점을 애니메이션해 빛이 지나가게 만든다. 마스크를 오프셋으로 미는
-/// 흔한 방식은 뷰 너비를 알아야 해서 `GeometryReader` 가 붙는데, 여기서는 그 값이 필요 없다.
-private struct ShimmerBar: View {
-
-    // MARK: - Property
-
-    let trailingInset: CGFloat
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    @State private var isAnimating = false
-
-    // MARK: - Body
-
-    var body: some View {
-        Capsule()
-            .fill(
-                LinearGradient(
-                    colors: [.grey100, .grey200, .grey100],
-                    startPoint: isAnimating ? .init(x: 1, y: 0.5) : .init(x: -1, y: 0.5),
-                    endPoint: isAnimating ? .init(x: 2, y: 0.5) : .init(x: 0, y: 0.5)
-                )
-            )
-            .frame(height: Constants.shimmerBarHeight)
-            .padding(.trailing, trailingInset)
-            // 끝나지 않는 반복 애니메이션이라 모션 민감 사용자에게는 그대로 두면 안 된다.
-            // 뼈대 줄 자체는 남긴다 — 자리를 잡아 주는 역할은 움직임과 무관하다.
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(
-                    .linear(duration: Constants.shimmerDuration).repeatForever(autoreverses: false)
-                ) {
-                    isAnimating = true
-                }
-            }
     }
 }

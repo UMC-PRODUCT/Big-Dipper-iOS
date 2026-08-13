@@ -75,8 +75,7 @@ struct CommunityThreadListView: View {
     private var content: some View {
         switch viewModel.state {
         case .idle, .loading:
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ThreadListSkeleton()
 
         case .loaded(let threads):
             if threads.isEmpty && viewModel.pinned.isEmpty {
