@@ -61,6 +61,15 @@ struct DIContainerCommunityTests {
         #expect(container.resolveIfRegistered(CommunityThreadRepositoryProtocol.self) != nil)
     }
 
+    /// 요약기는 화면 진입 시점에 해석된다. 등록이 빠지면 채팅방을 여는 순간 크래시라
+    /// 조립 단계에서 잠근다.
+    @Test("대화 요약기가 등록되어 해석된다")
+    func resolvesThreadSummarizer() throws {
+        let container = try makeContainer()
+
+        #expect(container.resolveIfRegistered(ThreadSummarizing.self) != nil)
+    }
+
     // MARK: - 프로세스 단일 인스턴스
 
     /// 구독 destination 이 유저별이라 실시간 클라이언트는 프로세스에 하나여야 한다.

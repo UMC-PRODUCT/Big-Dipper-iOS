@@ -34,7 +34,8 @@ struct CommunityRoutingView: View {
                 viewModel: CommunityThreadRoomViewModel(
                     threadId: threadId,
                     useCase: container.resolve(CommunityThreadRoomUseCaseProtocol.self),
-                    errorHandler: errorHandler
+                    errorHandler: errorHandler,
+                    summarizer: container.resolve(ThreadSummarizing.self)
                 )
             )
             .navigationTitle(title)

@@ -25,6 +25,7 @@ extension DIContainer {
         registerCommunityRealtime()
         registerCommunityRepositories()
         registerCommunityUseCases()
+        registerCommunitySummarizer()
     }
 
     // MARK: - Realtime
@@ -62,6 +63,18 @@ extension DIContainer {
                 repository: self.resolve(CommunityThreadRepositoryProtocol.self),
                 realtime: self.resolve(CommunityThreadRealtimeProtocol.self)
             )
+        }
+    }
+
+    // MARK: - Summarizer
+
+    /// 온디바이스 대화 요약기.
+    ///
+    /// 요약 한 번마다 세션을 새로 만들고 인스턴스에는 상태가 없다 — 실시간 클라이언트와 달리
+    /// 단일 인스턴스를 강제할 이유가 없다.
+    private func registerCommunitySummarizer() {
+        register(ThreadSummarizing.self) {
+            FoundationModelsThreadSummarizer()
         }
     }
 }
