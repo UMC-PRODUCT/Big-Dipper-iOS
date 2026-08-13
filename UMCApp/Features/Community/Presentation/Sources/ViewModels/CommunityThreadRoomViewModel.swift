@@ -33,6 +33,12 @@ public final class CommunityThreadRoomViewModel {
     public private(set) var messages: [ThreadMessage] = []
     public private(set) var isLoadingOlder = false
 
+    /// 최하단을 벗어나 있는 동안 도착한 타인 메시지 수 (스펙 #35).
+    ///
+    /// 서버가 주는 값이 아니라 화면이 세는 로컬 카운터라 `Int` 로 둔다 — 비교와 문구 조립에만
+    /// 쓰이고 어떤 레이어로도 나가지 않는다.
+    public private(set) var newMessageCount = 0
+
     public var draft: String = ""
     public var alertPrompt: AlertPrompt?
     /// 스레드 삭제·강퇴로 더 볼 것이 없어진 상태. View 가 이걸 보고 리스트로 pop 한다.
@@ -66,6 +72,9 @@ public final class CommunityThreadRoomViewModel {
     private let currentMemberId: String?
     private let sendTimeout: Duration
 
+    /// 최하단 근처를 보고 있는지. 화면만 알 수 있는 값이라 `updateNearBottom(_:)` 로 받아 둔다.
+    /// 진입 직후는 `defaultScrollAnchor(.bottom)` 때문에 항상 최하단이라 초기값이 곧 실제 상태다.
+    @ObservationIgnored private var isNearBottom = true
     @ObservationIgnored private var hasMore = false
     @ObservationIgnored private var nextBefore: String?
     @ObservationIgnored private var isLoading = false
@@ -167,6 +176,9 @@ public final class CommunityThreadRoomViewModel {
                 !known.contains($0.id) && !priorIds.contains($0.id)
             }
             messages = page.messages.reversed() + arrivedDuringRequest
+            // 최신 페이지로 리셋하면 화면도 다시 최하단에서 시작한다 — 실패 후 재시도로 들어온
+            // 경우 이전에 세어 둔 플로팅 카운트는 가리킬 곳이 없다.
+            newMessageCount = 0
             hasMore = page.hasMore
             nextBefore = page.nextBefore
             header = .loaded(thread)
@@ -183,6 +195,17 @@ public final class CommunityThreadRoomViewModel {
             guard !(error is CancellationError) else { return }
             header = .failed(AppError.from(error))
         }
+    }
+
+    /// 스크롤 위치 보고 (스펙 #35).
+    ///
+    /// 최하단으로 돌아왔다는 건 밀린 메시지를 다 봤다는 뜻이라 카운트를 지운다. 플로팅을 눌러
+    /// 내려가는 경우도 화면이 이걸 그대로 호출한다 — 스크롤 애니메이션이 끝나고 geometry 콜백이
+    /// 올 때까지 기다리면 누른 뒤에도 배지가 남아 눌리지 않은 것처럼 보인다.
+    public func updateNearBottom(_ isNearBottom: Bool) {
+        self.isNearBottom = isNearBottom
+        guard isNearBottom else { return }
+        newMessageCount = 0
     }
 
     /// 맨 위 항목이 보이면 이전 페이지를 앞에 붙인다.
@@ -624,6 +647,16 @@ public final class CommunityThreadRoomViewModel {
         }
 
         messages.append(message.with(deliveryState: .sent))
+        countUnseen(message)
+    }
+
+    /// 플로팅 카운트 (스펙 #35). 위를 읽는 중에 **새로 붙은 타인 메시지**만 센다.
+    ///
+    /// 내가 보낸 것은 낙관적 버블 교체 경로로 들어와 여기까지 오지 않지만, 발신자 대조를 한 번 더
+    /// 둔다 — 에코 전에 재연결되면 백필이 같은 메시지를 append 로 밀어 넣는다.
+    private func countUnseen(_ message: ThreadMessage) {
+        guard !isNearBottom, !isMe(message.senderId) else { return }
+        newMessageCount += 1
     }
 
     private func sendWatermark(_ messageId: String) async {
