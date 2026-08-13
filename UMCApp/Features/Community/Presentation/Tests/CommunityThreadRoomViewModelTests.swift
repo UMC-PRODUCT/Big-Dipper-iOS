@@ -222,6 +222,49 @@ private actor GatedRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     }
 }
 
+/// 헤더 ⋯ 메뉴가 부르는 리스트 UseCase 대역 (#1138).
+///
+/// 리스트 스위트에도 같은 이름의 대역이 있지만 둘 다 `private` 이라 파일 밖으로 나가지 않는다 —
+/// 공유 대역으로 끌어올리면 한쪽 스위트의 필요가 다른 쪽 대역을 계속 부풀린다.
+@MainActor
+private final class StubThreadListUseCase: CommunityThreadListUseCaseProtocol {
+
+    var commandError: Error?
+
+    private(set) var pinCalls: [(threadId: String, isPinned: Bool)] = []
+    private(set) var muteCalls: [(threadId: String, isMuted: Bool)] = []
+    private(set) var leaveCalls: [String] = []
+    private(set) var deleteCalls: [String] = []
+
+    func loadThreads(
+        filter: CommunityThreadFilter,
+        query: String?,
+        offset: Int
+    ) async throws -> CommunityThreadPage {
+        CommunityThreadPage(pinned: [], threads: [], nextOffset: nil, total: "0")
+    }
+
+    func togglePin(threadId: String, isPinned: Bool) async throws {
+        pinCalls.append((threadId, isPinned))
+        if let commandError { throw commandError }
+    }
+
+    func toggleMute(threadId: String, isMuted: Bool) async throws {
+        muteCalls.append((threadId, isMuted))
+        if let commandError { throw commandError }
+    }
+
+    func leave(threadId: String) async throws {
+        leaveCalls.append(threadId)
+        if let commandError { throw commandError }
+    }
+
+    func deleteThread(threadId: String) async throws {
+        deleteCalls.append(threadId)
+        if let commandError { throw commandError }
+    }
+}
+
 /// 요약기 대역.
 ///
 /// 프로토콜이 `Sendable` 이고 `isAvailable` 이 동기 요구 사항이라 `@MainActor` 로 격리하면
@@ -295,7 +338,10 @@ private func makeThread(
     isJoined: Bool = true,
     memberCount: String = "3",
     unreadCount: String = "0",
-    myRole: ThreadMemberRole = .member
+    myRole: ThreadMemberRole = .member,
+    isPinned: Bool = false,
+    isMuted: Bool = false,
+    shareURL: String? = nil
 ) -> CommunityThread {
     CommunityThread(
         id: "1",
@@ -306,15 +352,15 @@ private func makeThread(
         memberCount: memberCount,
         unreadCount: unreadCount,
         maxMembers: "20",
-        isPinned: false,
-        isMuted: false,
+        isPinned: isPinned,
+        isMuted: isMuted,
         isJoined: isJoined,
         myRole: myRole,
         lastMessage: nil,
         createdBy: "1",
         createdAt: Date(timeIntervalSince1970: 0),
         updatedAt: Date(timeIntervalSince1970: 0),
-        shareURL: nil,
+        shareURL: shareURL,
         deletedAt: nil
     )
 }
@@ -365,6 +411,7 @@ struct CommunityThreadRoomViewModelTests {
     /// 로컬 로그인 상태에 끌려간다.
     private func makeViewModel(
         _ useCase: StubRoomUseCase,
+        listUseCase: CommunityThreadListUseCaseProtocol = StubThreadListUseCase(),
         errorHandler: ErrorHandler = ErrorHandler(),
         summarizer: ThreadSummarizing = StubSummarizer(),
         currentMemberId: String? = "9",
@@ -373,6 +420,7 @@ struct CommunityThreadRoomViewModelTests {
         CommunityThreadRoomViewModel(
             threadId: "1",
             useCase: useCase,
+            listUseCase: listUseCase,
             errorHandler: errorHandler,
             summarizer: summarizer,
             currentMemberId: currentMemberId,
@@ -1489,6 +1537,7 @@ struct CommunityThreadRoomViewModelTests {
         let viewModel = CommunityThreadRoomViewModel(
             threadId: "1",
             useCase: useCase,
+            listUseCase: StubThreadListUseCase(),
             errorHandler: ErrorHandler(),
             summarizer: StubSummarizer(),
             currentMemberId: "9",
@@ -1515,6 +1564,7 @@ struct CommunityThreadRoomViewModelTests {
         let viewModel = CommunityThreadRoomViewModel(
             threadId: "1",
             useCase: useCase,
+            listUseCase: StubThreadListUseCase(),
             errorHandler: ErrorHandler(),
             summarizer: StubSummarizer(),
             currentMemberId: "9",
@@ -1730,5 +1780,168 @@ struct CommunityThreadRoomViewModelTests {
         await first.value
 
         #expect(viewModel.summary.value != nil)
+    }
+
+    // MARK: - Thread Menu
+
+    /// 헤더 ⋯ 메뉴가 걸린 방을 만든다. 메뉴 항목은 헤더를 받아야 판정되므로 `load()` 까지 마친다.
+    private func makeMenuRoom(
+        myRole: ThreadMemberRole = .member,
+        isPinned: Bool = false,
+        isMuted: Bool = false,
+        shareURL: String? = nil,
+        summarizer: ThreadSummarizing = StubSummarizer()
+    ) async -> (StubThreadListUseCase, CommunityThreadRoomViewModel) {
+        let useCase = StubRoomUseCase()
+        useCase.thread = makeThread(
+            myRole: myRole,
+            isPinned: isPinned,
+            isMuted: isMuted,
+            shareURL: shareURL
+        )
+        let listUseCase = StubThreadListUseCase()
+        let viewModel = makeViewModel(useCase, listUseCase: listUseCase, summarizer: summarizer)
+        await viewModel.load()
+        return (listUseCase, viewModel)
+    }
+
+    @Test("개설자에게는 운영 그룹이 열린다")
+    func opensManagementGroupForOwner() async {
+        let (_, viewModel) = await makeMenuRoom(myRole: .owner)
+
+        #expect(viewModel.canInvite)
+        #expect(viewModel.canEditThread)
+        #expect(viewModel.canManageThread)
+    }
+
+    @Test("일반 참여자에게는 운영 그룹이 통째로 닫힌다")
+    func hidesManagementGroupForMember() async {
+        let (_, viewModel) = await makeMenuRoom(myRole: .member)
+
+        #expect(viewModel.canInvite == false)
+        #expect(viewModel.canEditThread == false)
+        #expect(viewModel.canManageThread == false)
+    }
+
+    /// 요약 모델을 못 쓰는 기기에서는 항목이 비활성으로 남아야 한다 (완료 조건 6).
+    @Test("요약기를 쓸 수 없으면 대화 요약이 비활성이다")
+    func disablesSummaryWhenUnavailable() async {
+        let (_, viewModel) = await makeMenuRoom(summarizer: StubSummarizer(isAvailable: false))
+
+        #expect(viewModel.canSummarize == false)
+    }
+
+    @Test("고정 토글은 먼저 뒤집고 서버에 목표 값을 보낸다")
+    func togglesPinOptimistically() async {
+        let (listUseCase, viewModel) = await makeMenuRoom()
+
+        await viewModel.togglePin()
+
+        #expect(viewModel.isPinned)
+        #expect(listUseCase.pinCalls.map(\.isPinned) == [true])
+        #expect(listUseCase.pinCalls.map(\.threadId) == ["1"])
+    }
+
+    @Test("고정 토글이 실패하면 원래 값으로 되돌린다")
+    func rollsBackPinOnFailure() async {
+        let (listUseCase, viewModel) = await makeMenuRoom(isPinned: true)
+        listUseCase.commandError = AppError.unknown(message: "실패")
+
+        await viewModel.togglePin()
+
+        #expect(viewModel.isPinned)
+    }
+
+    @Test("알림 끄기가 실패하면 원래 값으로 되돌린다")
+    func rollsBackMuteOnFailure() async {
+        let (listUseCase, viewModel) = await makeMenuRoom()
+        listUseCase.commandError = AppError.unknown(message: "실패")
+
+        await viewModel.toggleMute()
+
+        #expect(viewModel.isMuted == false)
+        #expect(listUseCase.muteCalls.map(\.isMuted) == [true])
+    }
+
+    /// #1131 결정 2 — 개설자는 위임이 먼저다. 리스트 스와이프와 같은 문구로 막는다.
+    @Test("개설자의 나가기는 위임 안내로 막힌다")
+    func blocksOwnerLeave() async throws {
+        let (listUseCase, viewModel) = await makeMenuRoom(myRole: .owner)
+
+        viewModel.confirmLeave()
+
+        let prompt = try #require(viewModel.alertPrompt)
+        #expect(prompt.title == "개설자는 바로 나갈 수 없어요")
+        // 진행 버튼이 아니라 안내 확인이다 — 취소 버튼도 없다.
+        #expect(prompt.positiveBtnTitle == "확인")
+        #expect(prompt.negativeBtnTitle == nil)
+        #expect(listUseCase.leaveCalls.isEmpty)
+    }
+
+    @Test("일반 참여자가 나가기를 확정하면 화면을 접는다", .timeLimit(.minutes(1)))
+    func leavesThreadAfterConfirmation() async throws {
+        let (listUseCase, viewModel) = await makeMenuRoom()
+
+        viewModel.confirmLeave()
+        #expect(listUseCase.leaveCalls.isEmpty)
+
+        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
+        confirm()
+        await waitUntil { viewModel.didLeave }
+
+        #expect(listUseCase.leaveCalls == ["1"])
+    }
+
+    /// 내 `member.left` 도 팬아웃으로 되돌아온다. 그걸 강퇴로 읽으면 리스트로 빠지는 중인 화면에
+    /// "다른 기기에서 나갔어요" 가 스쳐 지나간다.
+    @Test("내가 나간 뒤 도착한 member.left 는 참여 종료 화면을 띄우지 않는다",
+          .timeLimit(.minutes(1)))
+    func ignoresOwnLeftEventAfterLeaving() async throws {
+        let (_, viewModel) = await makeMenuRoom()
+
+        viewModel.confirmLeave()
+        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
+        confirm()
+        await waitUntil { viewModel.didLeave }
+
+        viewModel.apply(.memberLeft(threadId: "1", memberId: "9", memberCount: "2"))
+
+        #expect(viewModel.ejectionNotice == nil)
+    }
+
+    @Test("삭제를 확정하면 스레드를 지우고 화면을 접는다", .timeLimit(.minutes(1)))
+    func deletesThreadAfterConfirmation() async throws {
+        let (listUseCase, viewModel) = await makeMenuRoom(myRole: .owner)
+
+        viewModel.confirmDeleteThread()
+        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
+        confirm()
+        await waitUntil { viewModel.didLeave }
+
+        #expect(listUseCase.deleteCalls == ["1"])
+    }
+
+    @Test("권한이 없으면 삭제 확인창조차 뜨지 않는다")
+    func ignoresDeleteWithoutPermission() async {
+        let (listUseCase, viewModel) = await makeMenuRoom(myRole: .member)
+
+        viewModel.confirmDeleteThread()
+
+        #expect(viewModel.alertPrompt == nil)
+        #expect(listUseCase.deleteCalls.isEmpty)
+    }
+
+    @Test("공유 링크는 서버 shareURL 을 우선 쓴다")
+    func prefersServerShareURL() async {
+        let (_, viewModel) = await makeMenuRoom(shareURL: "https://umc.it.kr/t/1")
+
+        #expect(viewModel.shareLink?.absoluteString == "https://umc.it.kr/t/1")
+    }
+
+    @Test("shareURL 이 없으면 딥링크로 대체한다")
+    func fallsBackToDeepLink() async {
+        let (_, viewModel) = await makeMenuRoom()
+
+        #expect(viewModel.shareLink?.absoluteString == "umc://thread/1")
     }
 }

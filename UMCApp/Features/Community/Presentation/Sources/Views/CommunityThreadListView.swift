@@ -78,7 +78,8 @@ struct CommunityThreadListView: View {
                     errorHandler: errorHandler,
                     onThreadCreated: { viewModel.insertCreated($0) },
                     onThreadUpdated: { viewModel.applyUpdated($0) },
-                    onThreadRemoved: { viewModel.removeThread(threadId: $0) }
+                    onThreadRemoved: { viewModel.removeThread(threadId: $0) },
+                    onThreadToggled: { viewModel.applyToggles($0) }
                 )
             }
     }

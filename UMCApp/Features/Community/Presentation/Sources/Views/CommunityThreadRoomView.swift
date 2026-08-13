@@ -7,6 +7,7 @@ import SwiftUI
 import CommunityDomain
 import CoreDesignSystem
 import CoreDI
+import CoreRouting
 import CoreUIComponents
 import UMCFoundation
 
@@ -36,9 +37,17 @@ struct CommunityThreadRoomView: View {
 
     @State private var viewModel: CommunityThreadRoomViewModel
 
+    /// 방 안에서 바꾼 고정·알림을 리스트 행에 반영한다. 두 값은 실시간 이벤트가 없어
+    /// (`thread.updated` 는 제목·설명 계열만 싣는다) 이 통로가 유일한 동기화 수단이다.
+    private let onThreadToggled: (CommunityThread) -> Void
+
+    /// 나가기·삭제로 스레드가 목록에서 빠졌음을 알린다.
+    private let onThreadRemoved: (String) -> Void
+
     @Environment(\.di) private var di
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(PathStore.self) private var pathStore
 
     @State private var isInviteSheetPresented = false
 
@@ -48,8 +57,14 @@ struct CommunityThreadRoomView: View {
 
     // MARK: - Init
 
-    init(viewModel: CommunityThreadRoomViewModel) {
+    init(
+        viewModel: CommunityThreadRoomViewModel,
+        onThreadToggled: @escaping (CommunityThread) -> Void,
+        onThreadRemoved: @escaping (String) -> Void
+    ) {
         _viewModel = State(initialValue: viewModel)
+        self.onThreadToggled = onThreadToggled
+        self.onThreadRemoved = onThreadRemoved
     }
 
     // MARK: - Body
@@ -69,6 +84,13 @@ struct CommunityThreadRoomView: View {
         .onChange(of: viewModel.shouldDismiss) { _, shouldDismiss in
             guard shouldDismiss else { return }
             dismiss()
+        }
+        // 나가기·삭제가 확정되면 리스트 행까지 지우고 루트로 되돌린다. `dismiss()` 로 한 단계만
+        // 접으면 참여자 목록을 거쳐 들어온 경우 이미 나온 스레드의 화면이 그대로 남는다.
+        .onChange(of: viewModel.didLeave) { _, didLeave in
+            guard didLeave else { return }
+            onThreadRemoved(viewModel.threadId)
+            pathStore[.community] = NavigationPath()
         }
     }
 
@@ -125,8 +147,8 @@ struct CommunityThreadRoomView: View {
             if let thread = viewModel.header.value {
                 ToolbarItem(placement: .principal) { navigationHeader(thread) }
             }
-            ToolbarItem(placement: .topBarTrailing) { memberListLink }
-            if viewModel.canInvite {
+            // 헤더가 있어야 역할·고정·알림·공유 링크를 안다. 그전에는 빈 메뉴만 열린다.
+            if viewModel.header.value != nil {
                 ToolbarItem(placement: .topBarTrailing) { threadMenu }
             }
         }
@@ -157,11 +179,106 @@ struct CommunityThreadRoomView: View {
         }
     }
 
-    /// 개설자 전용 ⋯ 메뉴. 지금은 초대 하나뿐이지만 시안(#36)의 자리가 여기다.
+    /// 헤더 ⋯ 풀다운 메뉴 (#1138, 시안 #36).
+    ///
+    /// 네 묶음(조회·AI / 내 설정 / 운영 / 탈퇴)을 `Section` 으로 나눈다. 파괴적 항목 둘은
+    /// 이슈 본문의 "구분선 아래 맨 밑" 규칙을 따라 운영에서 떼어 마지막 묶음에 함께 둔다 —
+    /// 실수로 누르기 가장 어려운 자리가 되고, 빨강 두 개가 한곳에 모여 경계도 또렷해진다.
     private var threadMenu: some View {
         Menu {
-            Button("참여자 초대", systemImage: "person.badge.plus") {
-                isInviteSheetPresented = true
+            Section {
+                Button {
+                    pathStore.push(
+                        CommunityDestination.threadMembers(threadId: viewModel.threadId),
+                        on: .community
+                    )
+                } label: {
+                    // 목록 화면이 역할에 따라 관리 메뉴를 열고 닫는다 (#1135). 여기서는 그 결과를
+                    // 이름으로만 미리 알려 준다.
+                    Label(
+                        viewModel.canInvite ? "참여자 관리" : "참여자 보기",
+                        systemImage: "person.2"
+                    )
+                }
+
+                Button {
+                    viewModel.isSummarySheetPresented = true
+                } label: {
+                    Label("대화 요약", systemImage: "sparkles")
+                }
+                // 온디바이스 모델을 쓸 수 없는 기기에서는 열어 봐야 할 일이 없다 (#1137).
+                .disabled(!viewModel.canSummarize)
+            }
+
+            Section {
+                Button {
+                    Task {
+                        await viewModel.togglePin()
+                        notifyToggled()
+                    }
+                } label: {
+                    Label(
+                        viewModel.isPinned ? "고정 해제" : "고정",
+                        systemImage: viewModel.isPinned ? "pin.slash" : "pin"
+                    )
+                }
+
+                Button {
+                    Task {
+                        await viewModel.toggleMute()
+                        notifyToggled()
+                    }
+                } label: {
+                    Label(
+                        viewModel.isMuted ? "알림 켜기" : "알림 끄기",
+                        systemImage: viewModel.isMuted ? "bell" : "bell.slash"
+                    )
+                }
+
+                if let shareLink = viewModel.shareLink {
+                    ShareLink(item: shareLink) {
+                        Label("링크 공유", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+
+            if viewModel.canManageThread {
+                Section {
+                    if viewModel.canInvite {
+                        Button {
+                            isInviteSheetPresented = true
+                        } label: {
+                            Label("참여자 초대", systemImage: "person.badge.plus")
+                        }
+                    }
+
+                    if let thread = viewModel.header.value, thread.canEdit {
+                        Button {
+                            pathStore.push(
+                                CommunityDestination.threadEdit(thread: thread),
+                                on: .community
+                            )
+                        } label: {
+                            Label("스레드 편집", systemImage: "pencil")
+                        }
+                    }
+                }
+            }
+
+            Section {
+                if viewModel.canEditThread {
+                    Button(role: .destructive) {
+                        viewModel.confirmDeleteThread()
+                    } label: {
+                        Label("스레드 삭제", systemImage: "trash")
+                    }
+                }
+
+                Button(role: .destructive) {
+                    viewModel.confirmLeave()
+                } label: {
+                    Label("나가기", systemImage: "rectangle.portrait.and.arrow.right")
+                }
             }
         } label: {
             Image(systemName: "ellipsis")
@@ -169,12 +286,12 @@ struct CommunityThreadRoomView: View {
         .accessibilityLabel("스레드 메뉴")
     }
 
-    /// 참여자 목록 진입점. 목적지 등록은 리스트 화면이 하고 있어 값만 얹으면 된다.
-    private var memberListLink: some View {
-        NavigationLink(value: CommunityDestination.threadMembers(threadId: viewModel.threadId)) {
-            Image(systemName: "person.2")
-        }
-        .accessibilityLabel("참여자 목록")
+    /// 토글이 끝난 뒤 확정된 값을 리스트에 넘긴다.
+    ///
+    /// 낙관적 갱신이 실패해 되돌아간 경우까지 같은 통로로 흘려보내야 리스트가 방과 어긋나지 않는다.
+    private func notifyToggled() {
+        guard let thread = viewModel.header.value else { return }
+        onThreadToggled(thread)
     }
 
     /// 잠깐 떴다 사라지는 안내 문구. 쿨다운과 신고 접수가 같은 모양을 쓴다.

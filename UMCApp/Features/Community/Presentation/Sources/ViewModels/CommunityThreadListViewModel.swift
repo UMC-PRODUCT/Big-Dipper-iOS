@@ -279,6 +279,17 @@ public final class CommunityThreadListViewModel {
         }
     }
 
+    /// 채팅방 ⋯ 메뉴에서 바꾼 고정·알림을 행에 반영한다 (#1138).
+    ///
+    /// `applyUpdated` 에 얹지 않는다 — 그쪽은 편집 화면이 고친 4개 필드 전용이고, 고정은 섹션
+    /// 이동까지 따라야 해서 갱신 방법이 아예 다르다. 이미 그 상태인 행은 `movePin` 이 넘긴다.
+    public func applyToggles(_ thread: CommunityThread) {
+        movePin(threadId: thread.id, isPinned: thread.isPinned)
+        updateRow(threadId: thread.id) {
+            $0.with(isPinned: thread.isPinned, isMuted: thread.isMuted)
+        }
+    }
+
     /// 스와이프 삭제 확인. 나가기와 달리 스레드 자체가 사라지므로 문구를 따로 쓴다 (#1134).
     public func confirmDelete(_ thread: CommunityThread) {
         // 스와이프에 이미 권한 게이팅이 걸려 있지만, 서버 403 을 받기 전 마지막 방어선으로 본다.
