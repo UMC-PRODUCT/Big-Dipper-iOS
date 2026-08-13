@@ -58,6 +58,21 @@ let project = Project(
                 "UMCApp/Resources",
             ],
             entitlements: .file(path: "UMCApp.entitlements"),
+            scripts: [
+                // 시크릿(Secrets.xcconfig / GoogleService-Info.plist) 누락 시 Release 빌드 중단.
+                // Debug 는 경고만 — 신규 클론·CI 는 시크릿 없이도 빌드되어야 한다.
+                // ENABLE_USER_SCRIPT_SANDBOXING=YES 이므로 스크립트 본체·읽는 파일을
+                // inputPaths 로 선언해야 샌드박스가 접근을 허용한다(미선언 시 EPERM).
+                .pre(
+                    path: "Scripts/verify-secrets.sh",
+                    name: "Verify Secrets",
+                    inputPaths: [
+                        "$(SRCROOT)/Scripts/verify-secrets.sh",
+                        "$(SRCROOT)/UMCApp/Resources/GoogleService-Info.plist",
+                    ],
+                    basedOnDependencyAnalysis: false
+                ),
+            ],
             dependencies: [
                 .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
                 .project(target: "CoreRouting", path: .relativeToRoot("Core/Routing")),
