@@ -31,6 +31,9 @@ struct CommunityThreadCreateView: View {
 
     private let onCreated: (CommunityThread) -> Void
 
+    /// "이모지 변경하기" 가 이모지 키보드를 바로 띄우게 하는 통로.
+    @FocusState private var isIconFocused: Bool
+
     @Environment(\.dismiss) private var dismiss
 
     // MARK: - Init
@@ -68,6 +71,13 @@ struct CommunityThreadCreateView: View {
                 )
             }
 
+            Section {
+                ThreadClassificationCard(viewModel: viewModel) { isIconFocused = true }
+            }
+            // 카드가 자체 배경(Glass)을 그리므로 Form 의 행 배경·여백을 걷어 낸다.
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+
             Section("카테고리") {
                 categoryRow
             }
@@ -83,7 +93,10 @@ struct CommunityThreadCreateView: View {
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) { submitButton }
         .sheet(isPresented: $viewModel.isCategorySheetPresented) {
-            ThreadCategorySheet(selection: $viewModel.category)
+            ThreadCategorySheet(
+                selection: $viewModel.category,
+                recommended: viewModel.recommendedCategory
+            )
         }
     }
 
@@ -97,6 +110,7 @@ struct CommunityThreadCreateView: View {
         )
         .font(.system(size: Constants.iconFontSize))
         .multilineTextAlignment(.center)
+        .focused($isIconFocused)
         .autocorrectionDisabled()
         .textInputAutocapitalization(.never)
         .submitLabel(.done)
