@@ -141,6 +141,14 @@ struct CommunityThreadDomainModelTests {
         #expect(makeThread(unreadCount: "").unreadBadge == nil)
     }
 
+    @Test("isUnread 는 배지가 뜨는 조건과 같다")
+    func isUnreadMatchesBadgeVisibility() {
+        #expect(makeThread(unreadCount: "0").isUnread == false)
+        #expect(makeThread(unreadCount: "").isUnread == false)
+        #expect(makeThread(unreadCount: "1").isUnread)
+        #expect(makeThread(unreadCount: "100").isUnread)
+    }
+
     @Test("memberCountText 는 멤버 수를 그대로 문장에 넣는다")
     func memberCountText() {
         #expect(makeThread(memberCount: "12").memberCountText == "멤버 12명")

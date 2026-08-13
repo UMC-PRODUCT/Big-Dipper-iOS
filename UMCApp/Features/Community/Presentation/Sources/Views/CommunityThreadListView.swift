@@ -138,6 +138,7 @@ struct CommunityThreadListView: View {
             ThreadListRow(thread: thread)
         }
         .buttonStyle(.plain)
+        .listRowBackground(ThreadListRow.rowTint(for: thread))
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
                 Task { await viewModel.togglePin(thread) }
