@@ -30,6 +30,10 @@ struct CommunityRoutingView: View {
     /// 새로고침까지 목록에 나타나지 않는다.
     let onThreadCreated: (CommunityThread) -> Void
 
+    /// 나가기 확정을 리스트에 알린다. 실시간 `member.left` 로도 행이 지워지지만, 그걸 기다리면
+    /// 루트로 되돌아온 직후 잠깐 남아 있는 행이 보인다.
+    let onThreadLeft: (String) -> Void
+
     // MARK: - Body
 
     var body: some View {
@@ -52,6 +56,16 @@ struct CommunityRoutingView: View {
                     classifier: container.resolve(ThreadClassifying.self)
                 ),
                 onCreated: onThreadCreated
+            )
+
+        case .threadMembers(let threadId):
+            ThreadMemberListView(
+                viewModel: ThreadMemberListViewModel(
+                    threadId: threadId,
+                    useCase: container.resolve(CommunityThreadMemberUseCaseProtocol.self),
+                    errorHandler: errorHandler
+                ),
+                onLeft: { onThreadLeft(threadId) }
             )
         }
     }

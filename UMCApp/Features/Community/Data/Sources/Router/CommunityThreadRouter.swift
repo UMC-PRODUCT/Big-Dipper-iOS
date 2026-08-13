@@ -18,6 +18,9 @@ public enum CommunityThreadRouter {
     case getMessages(threadId: String, query: ThreadMessageQuery)
     case setPin(threadId: String, isPinned: Bool)
     case setMute(threadId: String, isMuted: Bool)
+    case getMembers(threadId: String)
+    case kickMember(threadId: String, memberId: String)
+    case changeMemberRole(threadId: String, memberId: String, body: ThreadMemberRoleBody)
     case leave(threadId: String)
     case reportMessage(messageId: String, body: ReportMessageBody)
 }
@@ -27,6 +30,10 @@ extension CommunityThreadRouter: BaseTargetType {
     private var threadsPath: String { "/api/v1/community/threads" }
     /// 신고만 `/threads` 하위가 아니라 메시지 단독 경로를 쓴다 (서버 계약).
     private var messagesPath: String { "/api/v1/community/messages" }
+
+    private func membersPath(_ threadId: String) -> String {
+        "\(threadsPath)/\(threadId)/members"
+    }
 
     public var path: String {
         switch self {
@@ -40,6 +47,12 @@ extension CommunityThreadRouter: BaseTargetType {
             return "\(threadsPath)/\(threadId)/pin"
         case .setMute(let threadId, _):
             return "\(threadsPath)/\(threadId)/mute"
+        case .getMembers(let threadId):
+            return membersPath(threadId)
+        case .kickMember(let threadId, let memberId):
+            return "\(membersPath(threadId))/\(memberId)"
+        case .changeMemberRole(let threadId, let memberId, _):
+            return "\(membersPath(threadId))/\(memberId)/role"
         case .leave(let threadId):
             return "\(threadsPath)/\(threadId)/leave"
         case .reportMessage(let messageId, _):
@@ -49,12 +62,16 @@ extension CommunityThreadRouter: BaseTargetType {
 
     public var method: Moya.Method {
         switch self {
-        case .getThreads, .getThread, .getMessages:
+        case .getThreads, .getThread, .getMessages, .getMembers:
             return .get
         case .setPin(_, let isPinned):
             return isPinned ? .post : .delete
         case .setMute(_, let isMuted):
             return isMuted ? .post : .delete
+        case .kickMember:
+            return .delete
+        case .changeMemberRole:
+            return .patch
         case .createThread, .leave, .reportMessage:
             return .post
         }
@@ -74,9 +91,11 @@ extension CommunityThreadRouter: BaseTargetType {
             )
         case .createThread(let body):
             return .requestJSONEncodable(body)
+        case .changeMemberRole(_, _, let body):
+            return .requestJSONEncodable(body)
         case .reportMessage(_, let body):
             return .requestJSONEncodable(body)
-        case .getThread, .setPin, .setMute, .leave:
+        case .getThread, .setPin, .setMute, .getMembers, .kickMember, .leave:
             return .requestPlain
         }
     }

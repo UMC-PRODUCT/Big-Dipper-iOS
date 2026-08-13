@@ -41,7 +41,12 @@ public final class CommunityThreadRoomViewModel {
 
     public var draft: String = ""
     public var alertPrompt: AlertPrompt?
-    /// 스레드 삭제·강퇴로 더 볼 것이 없어진 상태. View 가 이걸 보고 리스트로 pop 한다.
+    /// 스레드 삭제·강퇴로 더 볼 것이 없어진 상태와 그 사유.
+    ///
+    /// `nil` 이 아니면 View 가 방 대신 "참여 종료됨" 화면을 그린다 (시안 #31). 알림이 아니라
+    /// 화면인 이유는 알림은 덮이거나 스와이프로 넘어가고, 그러면 이미 볼 수 없는 방에 남기 때문이다.
+    public private(set) var ejectionNotice: String?
+    /// 참여 종료 화면의 이탈 버튼을 눌렀는지. View 가 이걸 보고 리스트로 pop 한다.
     public private(set) var shouldDismiss = false
     /// 429 쿨다운 안내. `nil` 이 아닌 동안 전송이 잠긴다 (스펙 §7).
     public private(set) var sendCooldownNotice: String?
@@ -83,7 +88,8 @@ public final class CommunityThreadRoomViewModel {
     @ObservationIgnored var reportedMessageIds: Set<String> = []
     @ObservationIgnored var reportNoticeTask: Task<Void, Never>?
 
-    private let threadId: String
+    /// 참여자 목록 목적지를 만들 때 View 가 읽는다.
+    let threadId: String
     /// `+Summary` 의 `summarizer` 와 같은 이유로 모듈 내부에 연다 — `+Report` 확장이 쓴다.
     let useCase: CommunityThreadRoomUseCaseProtocol
     private let errorHandler: ErrorHandler
@@ -96,9 +102,6 @@ public final class CommunityThreadRoomViewModel {
     @ObservationIgnored private var hasMore = false
     @ObservationIgnored private var nextBefore: String?
     @ObservationIgnored private var isLoading = false
-    /// eject 안내가 이미 진행 중인지. `alertPrompt` 는 View 가 다른 용도로도 쓰므로 그걸로 가늠하면
-    /// 남의 알림이 떠 있는 동안 도착한 종료성 이벤트를 통째로 삼킨다 — 재전송되지 않는 이벤트다.
-    @ObservationIgnored private var isEjecting = false
     /// clientMessageId → 타임아웃 감시 태스크. 응답이 오면 취소한다.
     @ObservationIgnored private var pendingTimeouts: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var readWatermarkTask: Task<Void, Never>?
@@ -365,6 +368,11 @@ public final class CommunityThreadRoomViewModel {
         }
     }
 
+    /// "참여 종료됨" 화면의 유일한 이탈 경로. 리스트로 되돌린다 (시안 #31).
+    public func acknowledgeEjection() {
+        shouldDismiss = true
+    }
+
     /// 실시간 이벤트 반영. 테스트가 직접 호출할 수 있게 열어 둔다.
     func apply(_ event: CommunityThreadRealtimeEvent) {
         // 유저 단위 팬아웃이라 다른 스레드 이벤트가 섞여 온다.
@@ -522,7 +530,7 @@ public final class CommunityThreadRoomViewModel {
         // 강퇴·스레드 삭제는 종료성 이벤트라 브로커가 재생하지 않는다. 끊긴 사이에 일어났다면
         // 여기서 확정하지 않는 한 영원히 모른 채 이미 쫓겨난 방에 남는다 (스펙 §6.5).
         await confirmMembership()
-        guard !isEjecting else { return }
+        guard ejectionNotice == nil else { return }
 
         // 재연결은 사용자가 시작한 동작이 아니다. 실패해도 Alert 을 띄우지 않는다 —
         // 지하철에서 재연결이 세 번 튀면 흐름 중단형 Alert 이 세 번 뜬다 (스펙 §7).
@@ -575,20 +583,14 @@ public final class CommunityThreadRoomViewModel {
         }
     }
 
-    /// 방이 사라진 경우. 알림을 먼저 띄우고, 확인을 누르면 리스트로 되돌린다.
-    /// 삭제와 강퇴가 겹쳐 와도 안내는 한 번이면 된다. 반대로 View 가 띄운 다른 알림은 덮는다 —
-    /// 볼 수 없게 된 방에서는 그쪽 선택지가 더 이상 의미가 없다.
+    /// 방이 사라진 경우. 방 대신 "참여 종료됨" 화면으로 갈아탄다.
+    ///
+    /// 삭제와 강퇴가 겹쳐 와도 사유는 먼저 온 하나면 된다 — 이미 끝난 참여를 두 번 설명할 이유가 없다.
+    /// 떠 있던 알림은 함께 내린다. 볼 수 없게 된 방에서는 그쪽 선택지가 더 이상 의미가 없다.
     private func eject(message: String) {
-        guard !isEjecting else { return }
-        isEjecting = true
-        alertPrompt = AlertPrompt(
-            title: "스레드를 볼 수 없어요",
-            message: message,
-            positiveBtnTitle: "확인",
-            positiveBtnAction: { [weak self] in
-                Task { @MainActor in self?.shouldDismiss = true }
-            }
-        )
+        guard ejectionNotice == nil else { return }
+        ejectionNotice = message
+        alertPrompt = nil
     }
 
     private func updateMemberCount(_ memberCount: String) {

@@ -76,7 +76,8 @@ struct CommunityThreadListView: View {
                     destination: destination,
                     container: di,
                     errorHandler: errorHandler,
-                    onThreadCreated: { viewModel.insertCreated($0) }
+                    onThreadCreated: { viewModel.insertCreated($0) },
+                    onThreadLeft: { viewModel.removeThread(threadId: $0) }
                 )
             }
     }

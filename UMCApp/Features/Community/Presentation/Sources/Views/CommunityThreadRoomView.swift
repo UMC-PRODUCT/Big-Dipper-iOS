@@ -51,6 +51,28 @@ struct CommunityThreadRoomView: View {
     // MARK: - Body
 
     var body: some View {
+        Group {
+            if let notice = viewModel.ejectionNotice {
+                ThreadEjectedView(message: notice) { viewModel.acknowledgeEjection() }
+            } else {
+                room
+            }
+        }
+        .umcDefaultBackground()
+        .navigationBarTitleDisplayMode(.inline)
+        // 참여 종료 화면의 이탈 경로는 화면 안의 버튼 하나뿐이다 (시안 #31).
+        .navigationBarBackButtonHidden(viewModel.ejectionNotice != nil)
+        .onChange(of: viewModel.shouldDismiss) { _, shouldDismiss in
+            guard shouldDismiss else { return }
+            dismiss()
+        }
+    }
+
+    // MARK: - View Component
+
+    /// 채팅방 본체. 참여가 끝나면 통째로 걷히고, 함께 걸린 `.task` 도 그때 취소된다 —
+    /// 이미 나온 방의 실시간 구독과 읽음 워터마크를 계속 돌릴 이유가 없다.
+    private var room: some View {
         VStack(spacing: 0) {
             // 리스트 위에 얹지 않고 위로 밀어낸다. 오버레이로 띄우면 정작 읽으러 온 첫 버블을 가린다.
             if viewModel.isSummaryBannerVisible {
@@ -86,14 +108,13 @@ struct CommunityThreadRoomView: View {
         .animation(.default, value: viewModel.sendCooldownNotice)
         .animation(.default, value: viewModel.reportNotice)
         .animation(.default, value: viewModel.isSummaryBannerVisible)
-        .umcDefaultBackground()
-        .navigationBarTitleDisplayMode(.inline)
         // 헤더가 오기 전에는 principal 아이템 자체를 만들지 않는다. 내용이 빈 principal 은
         // titleView 를 차지한 채로 비어 있어서, 라우팅이 걸어 둔 `navigationTitle` 까지 가린다.
         .toolbar {
             if let thread = viewModel.header.value {
                 ToolbarItem(placement: .principal) { navigationHeader(thread) }
             }
+            ToolbarItem(placement: .topBarTrailing) { memberListLink }
         }
         .task { await viewModel.load() }
         .task { await viewModel.observeRealtime() }
@@ -111,14 +132,15 @@ struct CommunityThreadRoomView: View {
             guard let messageId else { return }
             viewModel.markRead(upTo: messageId)
         }
-        // 강퇴·스레드 삭제. 안내를 확인한 뒤에 리스트로 되돌린다 (스펙 §7).
-        .onChange(of: viewModel.shouldDismiss) { _, shouldDismiss in
-            guard shouldDismiss else { return }
-            dismiss()
-        }
     }
 
-    // MARK: - View Component
+    /// 참여자 목록 진입점. 목적지 등록은 리스트 화면이 하고 있어 값만 얹으면 된다.
+    private var memberListLink: some View {
+        NavigationLink(value: CommunityDestination.threadMembers(threadId: viewModel.threadId)) {
+            Image(systemName: "person.2")
+        }
+        .accessibilityLabel("참여자 목록")
+    }
 
     /// 잠깐 떴다 사라지는 안내 문구. 쿨다운과 신고 접수가 같은 모양을 쓴다.
     private func noticeCapsule(_ notice: String) -> some View {

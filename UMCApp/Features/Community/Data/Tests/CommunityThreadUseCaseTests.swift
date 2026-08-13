@@ -454,6 +454,59 @@ struct CommunityThreadRoomUseCaseTests {
     }
 }
 
+@Suite("커뮤니티 스레드 참여자 UseCase")
+struct CommunityThreadMemberUseCaseTests {
+
+    @Test("개설자를 맨 위로, 나머지는 이름순으로 정렬한다")
+    func sortsOwnerFirstThenByName() async throws {
+        let repository = FakeThreadRepository(members: [
+            makeMember(id: "3", name: "정의진", role: .member),
+            makeMember(id: "7", name: "이재원", role: .owner),
+            makeMember(id: "9", name: "강예진", role: .admin)
+        ])
+        let useCase = CommunityThreadMemberUseCase(repository: repository)
+
+        let members = try await useCase.loadMembers(threadId: "1")
+
+        #expect(members.map(\.id) == ["7", "9", "3"])
+        #expect(await repository.fetchMembersCalls == ["1"])
+    }
+
+    @Test("내보내기는 대상 멤버 그대로 저장소에 넘긴다")
+    func forwardsKickTarget() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadMemberUseCase(repository: repository)
+
+        try await useCase.kick(threadId: "1", memberId: "9")
+
+        let call = try #require(await repository.kickCalls.first)
+        #expect(call.threadId == "1")
+        #expect(call.memberId == "9")
+    }
+
+    @Test("위임은 대상 멤버의 역할을 OWNER 로 올린다")
+    func transfersOwnershipWithOwnerRole() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadMemberUseCase(repository: repository)
+
+        try await useCase.transferOwnership(threadId: "1", to: "9")
+
+        let call = try #require(await repository.roleCalls.first)
+        #expect(call.memberId == "9")
+        #expect(call.role == ThreadMemberRole.owner.rawValue)
+    }
+
+    @Test("나가기 실패는 삼키지 않고 그대로 올린다 — 개설자 차단(409)을 화면이 알아야 한다")
+    func propagatesLeaveFailure() async {
+        let repository = FakeThreadRepository(error: FakeFailure())
+        let useCase = CommunityThreadMemberUseCase(repository: repository)
+
+        await #expect(throws: FakeFailure.self) {
+            try await useCase.leave(threadId: "1")
+        }
+    }
+}
+
 // MARK: - Fake
 
 private struct FakeFailure: Error, Equatable {}
@@ -485,6 +538,12 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
         let icon: String
     }
 
+    struct MemberCall: Equatable {
+        let threadId: String
+        let memberId: String
+        let role: String?
+    }
+
     struct ReportCall: Equatable {
         let messageId: String
         let reason: String
@@ -498,12 +557,16 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
     private(set) var fetchMessagesCalls: [FetchMessagesCall] = []
     private(set) var pinCalls: [ToggleCall] = []
     private(set) var muteCalls: [ToggleCall] = []
+    private(set) var fetchMembersCalls: [String] = []
+    private(set) var kickCalls: [MemberCall] = []
+    private(set) var roleCalls: [MemberCall] = []
     private(set) var leaveCalls: [String] = []
     private(set) var reportCalls: [ReportCall] = []
 
     private let threadPage: CommunityThreadPage
     private let thread: CommunityThread
     private let messagePage: ThreadMessagePage
+    private let members: [ThreadMember]
     private let error: Error?
 
     // MARK: - Init
@@ -521,11 +584,13 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
             hasMore: false,
             nextBefore: nil
         ),
+        members: [ThreadMember] = [],
         error: Error? = nil
     ) {
         self.threadPage = threadPage
         self.thread = thread
         self.messagePage = messagePage
+        self.members = members
         self.error = error
     }
 
@@ -587,6 +652,22 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
 
     func setMuted(threadId: String, isMuted: Bool) async throws {
         muteCalls.append(ToggleCall(threadId: threadId, isOn: isMuted))
+        if let error { throw error }
+    }
+
+    func fetchMembers(threadId: String) async throws -> [ThreadMember] {
+        fetchMembersCalls.append(threadId)
+        if let error { throw error }
+        return members
+    }
+
+    func kickMember(threadId: String, memberId: String) async throws {
+        kickCalls.append(MemberCall(threadId: threadId, memberId: memberId, role: nil))
+        if let error { throw error }
+    }
+
+    func changeMemberRole(threadId: String, memberId: String, role: String) async throws {
+        roleCalls.append(MemberCall(threadId: threadId, memberId: memberId, role: role))
         if let error { throw error }
     }
 
@@ -731,6 +812,14 @@ private func makeThread(id: String = "thread-1") -> CommunityThread {
         createdAt: Date(timeIntervalSince1970: 0),
         updatedAt: Date(timeIntervalSince1970: 100)
     )
+}
+
+private func makeMember(
+    id: String,
+    name: String,
+    role: ThreadMemberRole
+) -> ThreadMember {
+    ThreadMember(id: id, name: name, part: "iOS", profileImageURL: nil, role: role)
 }
 
 private func makeMessage(id: String) -> ThreadMessage {

@@ -259,11 +259,30 @@ public final class CommunityThreadListViewModel {
         }
     }
 
+    /// 다른 화면에서 나가기가 확정됐을 때 행을 지운다.
+    public func removeThread(threadId: String) {
+        removeRow(threadId: threadId)
+    }
+
     /// 나가기는 되돌릴 수 없어 확인을 먼저 받는다 (절대 규칙 — 파괴적 작업은 AlertPrompt).
     public func confirmLeave(_ thread: CommunityThread) {
+        // #1131 결정 2: 개설자는 위임 전까지 나갈 수 없다. 서버 409 를 알림으로 되돌려 주는 것보다
+        // 여기서 막고 다음 행동을 알려 주는 편이 빠르다 — 위임은 참여자 목록의 ⋯ 메뉴에 있다.
+        guard thread.myRole != .owner else {
+            alertPrompt = AlertPrompt(
+                title: "개설자는 바로 나갈 수 없어요",
+                message: "먼저 참여자 목록에서 다른 참여자에게 개설자를 위임해 주세요.",
+                positiveBtnTitle: "확인"
+            )
+            return
+        }
+
         alertPrompt = AlertPrompt(
             title: "스레드 나가기",
-            message: "'\(thread.title)' 에서 나가면 대화 내용을 볼 수 없어요.",
+            message: """
+                '\(thread.title)' 에서 나가면 대화 내용을 볼 수 없어요. \
+                다시 참여하려면 초대를 받아야 해요.
+                """,
             positiveBtnTitle: "나가기",
             positiveBtnAction: { [weak self] in
                 Task { await self?.leave(thread) }

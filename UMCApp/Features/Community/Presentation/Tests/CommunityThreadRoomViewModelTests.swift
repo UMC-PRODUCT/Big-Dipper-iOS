@@ -952,7 +952,7 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.messages.first?.isDeleted == true)
     }
 
-    @Test("스레드 삭제는 안내 알림을 띄우고, 확인하면 화면을 닫는다", .timeLimit(.minutes(1)))
+    @Test("스레드 삭제는 참여 종료 화면을 띄우고, 이탈 버튼이 화면을 닫는다", .timeLimit(.minutes(1)))
     func ejectsOnThreadDelete() async throws {
         let useCase = StubRoomUseCase()
         let viewModel = makeViewModel(useCase)
@@ -960,13 +960,27 @@ struct CommunityThreadRoomViewModelTests {
 
         viewModel.apply(.threadDeleted(threadId: "1", deletedAt: Date()))
 
-        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
+        #expect(viewModel.ejectionNotice != nil)
         #expect(viewModel.shouldDismiss == false)
 
-        confirm()
-        await waitUntil { viewModel.shouldDismiss }
+        viewModel.acknowledgeEjection()
 
         #expect(viewModel.shouldDismiss)
+    }
+
+    @Test("참여 종료 화면은 떠 있던 알림을 걷어 낸다 — 볼 수 없는 방의 선택지다")
+    func ejectionClearsPendingAlert() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.requestDelete(makeMessage(id: "5", senderId: "9"))
+        #expect(viewModel.alertPrompt != nil)
+
+        viewModel.apply(.threadDeleted(threadId: "1", deletedAt: Date()))
+
+        #expect(viewModel.alertPrompt == nil)
+        #expect(viewModel.ejectionNotice != nil)
     }
 
     @Test("다른 기기에서 내가 나가면 REST 확정 없이 방을 닫는다", .timeLimit(.minutes(1)))
@@ -978,11 +992,10 @@ struct CommunityThreadRoomViewModelTests {
         // 강퇴와 달리 대상이 명시돼 있다 — 재조회 없이 바로 닫힌다.
         viewModel.apply(.memberLeft(threadId: "1", memberId: "9", memberCount: "2"))
 
-        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
+        #expect(viewModel.ejectionNotice != nil)
         #expect(useCase.loadThreadCount == 1)
 
-        confirm()
-        await waitUntil { viewModel.shouldDismiss }
+        viewModel.acknowledgeEjection()
 
         #expect(viewModel.shouldDismiss)
     }
@@ -996,7 +1009,7 @@ struct CommunityThreadRoomViewModelTests {
 
         viewModel.apply(.memberLeft(threadId: "1", memberId: "7", memberCount: "2"))
 
-        #expect(viewModel.alertPrompt == nil)
+        #expect(viewModel.ejectionNotice == nil)
         #expect(viewModel.shouldDismiss == false)
         #expect(viewModel.header.value?.memberCount == "2")
     }
@@ -1012,7 +1025,7 @@ struct CommunityThreadRoomViewModelTests {
         viewModel.apply(.memberKicked(threadId: "1", memberId: "9", memberCount: "2"))
         await waitUntil { useCase.loadThreadCount == 2 }
 
-        #expect(viewModel.alertPrompt == nil)
+        #expect(viewModel.ejectionNotice == nil)
         #expect(viewModel.shouldDismiss == false)
         #expect(viewModel.header.value?.memberCount == "2")
     }
@@ -1025,9 +1038,9 @@ struct CommunityThreadRoomViewModelTests {
 
         useCase.thread = makeThread(isJoined: false, memberCount: "2")
         viewModel.apply(.memberKicked(threadId: "1", memberId: "9", memberCount: "2"))
-        await waitUntil { viewModel.alertPrompt != nil }
+        await waitUntil { viewModel.ejectionNotice != nil }
 
-        #expect(viewModel.alertPrompt != nil)
+        #expect(viewModel.ejectionNotice != nil)
     }
 
     @Test("재조회가 전송 단계에서 실패하면 내보내지 않는다 — 네트워크 한 번에 방을 닫으면 안 된다",
@@ -1041,7 +1054,7 @@ struct CommunityThreadRoomViewModelTests {
         viewModel.apply(.memberKicked(threadId: "1", memberId: "9", memberCount: "2"))
         await waitUntil { useCase.loadThreadCount == 2 }
 
-        #expect(viewModel.alertPrompt == nil)
+        #expect(viewModel.ejectionNotice == nil)
         #expect(viewModel.shouldDismiss == false)
     }
 
@@ -1053,9 +1066,9 @@ struct CommunityThreadRoomViewModelTests {
 
         useCase.loadThreadError = AppError.network(.requestFailed(statusCode: 403, data: nil))
         viewModel.apply(.memberKicked(threadId: "1", memberId: "9", memberCount: "2"))
-        await waitUntil { viewModel.alertPrompt != nil }
+        await waitUntil { viewModel.ejectionNotice != nil }
 
-        #expect(viewModel.alertPrompt != nil)
+        #expect(viewModel.ejectionNotice != nil)
     }
 
     // MARK: - New Message Count
@@ -1163,7 +1176,7 @@ struct CommunityThreadRoomViewModelTests {
         useCase.pendingSignals = [.reconnected]
         await viewModel.observeRealtime()
 
-        #expect(viewModel.alertPrompt != nil)
+        #expect(viewModel.ejectionNotice != nil)
     }
 
     // MARK: - Ownership
