@@ -15,6 +15,10 @@ public protocol CommunityThreadListUseCaseProtocol: Sendable {
     func togglePin(threadId: String, isPinned: Bool) async throws
     func toggleMute(threadId: String, isMuted: Bool) async throws
     func leave(threadId: String) async throws
+
+    /// 스와이프 삭제(#1134). 같은 REST 호출을 ``CommunityThreadEditUseCaseProtocol`` 도 갖지만,
+    /// 화면마다 자기 UseCase 를 부르는 게 이 모듈의 기존 구성이라(`leave` 도 그렇다) 여기에도 둔다.
+    func deleteThread(threadId: String) async throws
 }
 
 public struct CommunityThreadListUseCase: CommunityThreadListUseCaseProtocol {
@@ -68,5 +72,9 @@ public struct CommunityThreadListUseCase: CommunityThreadListUseCaseProtocol {
 
     public func leave(threadId: String) async throws {
         try await repository.leaveThread(threadId: threadId)
+    }
+
+    public func deleteThread(threadId: String) async throws {
+        try await repository.deleteThread(threadId: threadId)
     }
 }

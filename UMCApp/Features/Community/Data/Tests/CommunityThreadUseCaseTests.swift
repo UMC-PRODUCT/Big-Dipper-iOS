@@ -507,6 +507,92 @@ struct CommunityThreadMemberUseCaseTests {
     }
 }
 
+@Suite("커뮤니티 스레드 편집 UseCase")
+struct CommunityThreadEditUseCaseTests {
+
+    /// 부분 수정의 전부다 — 안 건드린 필드가 `nil` 로 남아야 서버 값이 유지된다.
+    @Test("넘기지 않은 필드는 nil 그대로 내려가 서버 값을 건드리지 않는다")
+    func keepsUntouchedFieldsNil() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadEditUseCase(repository: repository)
+
+        _ = try await useCase.update(
+            threadId: "1",
+            title: nil,
+            description: "매주 목요일 9시",
+            category: nil,
+            icon: nil
+        )
+
+        let call = try #require(await repository.updateThreadCalls.first)
+        #expect(call.threadId == "1")
+        #expect(call.title == nil)
+        #expect(call.description == "매주 목요일 9시")
+        #expect(call.category == nil)
+        #expect(call.icon == nil)
+    }
+
+    @Test("제목·특징은 공백을 털고 상한까지 잘라 보내며 카테고리는 rawValue 로 내려간다")
+    func trimsClampsAndSendsRawValue() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadEditUseCase(repository: repository)
+
+        _ = try await useCase.update(
+            threadId: "1",
+            title: "  " + String(repeating: "가", count: 100) + " ",
+            description: " 매주 화요일 8시 ",
+            category: .project,
+            icon: "🚀"
+        )
+
+        let call = try #require(await repository.updateThreadCalls.first)
+        #expect(call.title?.unicodeScalars.count == CommunityThreadCreateRule.titleMaxLength)
+        #expect(call.description == "매주 화요일 8시")
+        #expect(call.category == "PROJECT")
+        #expect(call.icon == "🚀")
+    }
+
+    /// 아이콘만 지우는 요청은 서버 계약에 없다. 빈 값으로 밀면 `@SingleGrapheme` 400 이다.
+    @Test("이모지가 아닌 아이콘은 키째 빼서 기존 아이콘을 남긴다")
+    func dropsNonEmojiIcon() async throws {
+        for input in ["", "a", "스터디"] {
+            let repository = FakeThreadRepository()
+            let useCase = CommunityThreadEditUseCase(repository: repository)
+
+            _ = try await useCase.update(
+                threadId: "1",
+                title: nil,
+                description: nil,
+                category: nil,
+                icon: input
+            )
+
+            let call = try #require(await repository.updateThreadCalls.first)
+            #expect(call.icon == nil, "입력 \(input)")
+        }
+    }
+
+    @Test("삭제는 스레드 id 를 그대로 넘긴다")
+    func forwardsDeleteTarget() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadEditUseCase(repository: repository)
+
+        try await useCase.delete(threadId: "42")
+
+        #expect(await repository.deleteThreadCalls == ["42"])
+    }
+
+    @Test("삭제 실패는 삼키지 않고 그대로 올린다 — 권한 없음(403)을 화면이 알아야 한다")
+    func propagatesDeleteFailure() async {
+        let repository = FakeThreadRepository(error: FakeFailure())
+        let useCase = CommunityThreadEditUseCase(repository: repository)
+
+        await #expect(throws: FakeFailure.self) {
+            try await useCase.delete(threadId: "1")
+        }
+    }
+}
+
 // MARK: - Fake
 
 private struct FakeFailure: Error, Equatable {}
@@ -544,6 +630,15 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
         let role: String?
     }
 
+    /// `nil` 은 "그 필드는 건드리지 않는다" 는 뜻이라 부분 수정 검증의 핵심이다.
+    struct UpdateThreadCall: Equatable {
+        let threadId: String
+        let title: String?
+        let description: String?
+        let category: String?
+        let icon: String?
+    }
+
     struct ReportCall: Equatable {
         let messageId: String
         let reason: String
@@ -562,6 +657,8 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
     private(set) var roleCalls: [MemberCall] = []
     private(set) var leaveCalls: [String] = []
     private(set) var reportCalls: [ReportCall] = []
+    private(set) var updateThreadCalls: [UpdateThreadCall] = []
+    private(set) var deleteThreadCalls: [String] = []
 
     private let threadPage: CommunityThreadPage
     private let thread: CommunityThread
@@ -643,6 +740,31 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
         )
         if let error { throw error }
         return thread
+    }
+
+    func updateThread(
+        threadId: String,
+        title: String?,
+        description: String?,
+        category: String?,
+        icon: String?
+    ) async throws -> CommunityThread {
+        updateThreadCalls.append(
+            UpdateThreadCall(
+                threadId: threadId,
+                title: title,
+                description: description,
+                category: category,
+                icon: icon
+            )
+        )
+        if let error { throw error }
+        return thread
+    }
+
+    func deleteThread(threadId: String) async throws {
+        deleteThreadCalls.append(threadId)
+        if let error { throw error }
     }
 
     func setPinned(threadId: String, isPinned: Bool) async throws {

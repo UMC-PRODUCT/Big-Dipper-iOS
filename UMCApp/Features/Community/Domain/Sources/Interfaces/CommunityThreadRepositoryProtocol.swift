@@ -38,6 +38,27 @@ public protocol CommunityThreadRepositoryProtocol: Sendable {
         icon: String
     ) async throws -> CommunityThread
 
+    /// `PATCH /threads/{threadId}` — **부분 수정**.
+    ///
+    /// `nil` 인 파라미터는 본문에서 키째로 빠져 서버가 건드리지 않는다. 즉 특징만 바꾸면
+    /// 카테고리는 그대로 남는다(자동 재분류 없음).
+    ///
+    /// 호출은 `OWNER`/`ADMIN` 만 가능하다 — 위반 시 403 `COMMUNITY-0040`.
+    ///
+    /// - Returns: 갱신된 스레드 상세.
+    func updateThread(
+        threadId: String,
+        title: String?,
+        description: String?,
+        category: String?,
+        icon: String?
+    ) async throws -> CommunityThread
+
+    /// `DELETE /threads/{threadId}`.
+    ///
+    /// `OWNER`/`ADMIN` 만 가능하고 되돌릴 수 없다 — 호출 전에 반드시 확인을 받는다.
+    func deleteThread(threadId: String) async throws
+
     /// - Parameter before: **배타적** 커서. `nil` 이면 최신부터.
     /// - Returns: 서버가 최신순으로 주므로 표시 직전에 뒤집어야 한다.
     func fetchMessages(
