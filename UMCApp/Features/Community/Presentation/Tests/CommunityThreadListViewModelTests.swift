@@ -28,6 +28,7 @@ private final class StubListUseCase: CommunityThreadListUseCaseProtocol {
     private(set) var requestedQueries: [String?] = []
     private(set) var pinCalls: [(threadId: String, isPinned: Bool)] = []
     private(set) var leaveCalls: [String] = []
+    private(set) var deleteCalls: [String] = []
 
     func loadThreads(
         filter: CommunityThreadFilter,
@@ -53,6 +54,11 @@ private final class StubListUseCase: CommunityThreadListUseCaseProtocol {
         leaveCalls.append(threadId)
         if shouldFailToggle { throw AppError.unknown(message: "실패") }
     }
+
+    func deleteThread(threadId: String) async throws {
+        deleteCalls.append(threadId)
+        if shouldFailToggle { throw AppError.unknown(message: "실패") }
+    }
 }
 
 /// 실시간 결선만 확인하기 위한 최소 대역 — 미리 심어 둔 신호를 흘리고 스트림을 닫는다.
@@ -69,7 +75,15 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
         ThreadMessagePage(messages: [], hasMore: false, nextBefore: nil)
     }
 
-    func send(threadId: String, clientMessageId: String, content: String) async throws {}
+    func loadMembers(threadId: String) async throws -> [ThreadMember] { [] }
+
+    func send(
+        threadId: String,
+        clientMessageId: String,
+        content: String,
+        replyToId: String?,
+        mentionedMemberIds: [String]
+    ) async throws {}
 
     func markRead(threadId: String, lastReadMessageId: String) async throws {}
 

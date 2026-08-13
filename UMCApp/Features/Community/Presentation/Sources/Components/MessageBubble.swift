@@ -20,6 +20,10 @@ fileprivate enum Constants {
     /// 미스탭 비용이 크다.
     static let minimumTapTarget: CGFloat = 44
     static let deletedText = "삭제된 메시지예요"
+    /// 인용 블록 왼쪽 세로 막대. 컴포저 인용 칩과 같은 두께로 맞춰 둔다.
+    static let quoteBarWidth: CGFloat = 3
+    /// 말풍선 안에 들어가는 블록이라 바깥 모서리(16)보다 작게 준다.
+    static let quoteCornerRadius: CGFloat = 8
     /// 반응 팔레트. 고정 목록만 노출해 사용자 자유 입력 경로를 아예 두지 않는다 —
     /// 그래서 Genmoji(표준 유니코드가 아닌 이미지 글리프)가 서버로 나갈 수 없다.
     static let reactionEmojis = ["👍", "❤️", "😂", "😮", "😢", "🙏"]
@@ -43,6 +47,9 @@ struct MessageBubble: View {
     let canReport: Bool
     let onRetry: () -> Void
     let onReact: (String) -> Void
+    let onReply: () -> Void
+    /// 인용 블록 탭 → 원본 messageId 로 스크롤 (시안 #38).
+    let onQuoteTap: (String) -> Void
     let onCopy: () -> Void
     let onDelete: () -> Void
     let onReport: () -> Void
@@ -115,6 +122,12 @@ struct MessageBubble: View {
             alignment: isMine ? .trailing : .leading,
             spacing: DefaultSpacing.spacing8
         ) {
+            // 대상이 삭제되면 서버가 `replyTo` 를 통째로 `null` 로 준다 — 그때는 인용 없이
+            // 본문만 남는다. 빈 인용 블록을 그려 두면 무엇을 가리켰는지 알 수 없는 껍데기가 된다.
+            if let reply = message.replyTo, !message.isDeleted {
+                quoteBlock(reply)
+            }
+
             Text(bubbleText)
                 .appFont(.subheadline)
                 .foregroundStyle(bubbleForeground)
@@ -134,10 +147,45 @@ struct MessageBubble: View {
         )
     }
 
+    /// 답장 대상 요약 (시안 #38).
+    ///
+    /// 원문을 다시 찾아 올리지 않는다 — 서버가 스니펫을 잘라서 함께 내려주므로 이 세 필드로
+    /// 다 그려진다. 탭하면 원본으로 스크롤하지만, 아직 안 불러온 과거라면 아무 일도 하지 않는다.
+    private func quoteBlock(_ reply: ThreadMessageReply) -> some View {
+        Button {
+            onQuoteTap(reply.messageId)
+        } label: {
+            HStack(spacing: DefaultSpacing.spacing8) {
+                Rectangle()
+                    .fill(quoteAccent)
+                    .frame(width: Constants.quoteBarWidth)
+
+                VStack(alignment: .leading, spacing: DefaultSpacing.spacing4) {
+                    Text(reply.senderName)
+                        .appFont(.caption2, weight: .semibold)
+                        .foregroundStyle(quoteAccent)
+
+                    Text(reply.snippet)
+                        .appFont(.caption2)
+                        .foregroundStyle(quoteForeground)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, DefaultSpacing.spacing4)
+            .padding(.trailing, DefaultSpacing.spacing8)
+            .background(quoteBackground, in: .rect(cornerRadius: Constants.quoteCornerRadius))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(reply.senderName)님의 메시지에 답장, \(reply.snippet)")
+        .accessibilityHint("원본 메시지로 이동")
+    }
+
     /// 이모지 팔레트는 메뉴 맨 위 한 줄로 낸다. `ControlGroup` + `.compactMenu` 가 네이티브
     /// 가로 배열을 그려 주므로 오버레이를 직접 띄우지 않는다.
-    ///
-    /// 답장은 후속 이슈 소관이라 지금 넣으면 아무 일도 하지 않는 항목이 된다.
     ///
     /// 신고에 `.destructive` 를 주지 않는다 — 지우는 동작이 아니고, 운영진 권한이라 삭제와
     /// 신고가 함께 뜨는 자리에서 빨강이 둘이면 어느 쪽이 되돌릴 수 없는지가 흐려진다.
@@ -149,6 +197,13 @@ struct MessageBubble: View {
             }
         }
         .controlGroupStyle(.compactMenu)
+
+        // 아직 서버가 모르는 메시지는 답장 대상이 될 수 없다 — 보낼 id 가 내가 만든 UUID 다.
+        if message.deliveryState == .sent {
+            Button(action: onReply) {
+                Label("답장", systemImage: "arrowshape.turn.up.left")
+            }
+        }
 
         Button(action: onCopy) {
             Label("복사", systemImage: "doc.on.doc")
@@ -256,13 +311,31 @@ struct MessageBubble: View {
     }
 
     /// 링크 색. 발신 버블은 배경이 인디고라 인디고 링크가 묻힌다 — 밑줄과 함께 흰색으로 뺀다.
+    /// 멘션도 같은 이유로 같은 색을 쓴다.
     private var linkTint: Color {
         isMine ? .white : .indigo600
     }
 
+    /// 인용 블록 3색. 발신 버블은 배경이 인디고라 수신 버블과 같은 색을 쓰면 통째로 묻힌다.
+    private var quoteAccent: Color {
+        isMine ? .indigo100 : .indigo500
+    }
+
+    private var quoteForeground: Color {
+        isMine ? .grey100 : .grey600
+    }
+
+    private var quoteBackground: Color {
+        isMine ? .indigo600 : .grey200
+    }
+
     private var bubbleText: AttributedString {
         guard !message.isDeleted else { return AttributedString(Constants.deletedText) }
-        return Self.attributed(message.content)
+        return Self.attributed(
+            message.content,
+            mentions: message.mentions,
+            mentionTint: linkTint
+        )
     }
 
     /// 카드로 그릴 내부 링크. 같은 링크를 여러 번 붙여 보낸 메시지에 카드를 겹쳐 세우지 않는다.
@@ -280,12 +353,16 @@ struct MessageBubble: View {
 
     // MARK: - Function
 
-    /// 본문을 링크가 살아 있는 문자열로 바꾼다.
+    /// 본문을 링크가 살아 있는 문자열로 바꾸고 멘션을 강조한다.
     ///
     /// 내부 링크는 ``MessageLink`` 가 가려낸 구간에, 외부 URL 은 `NSDataDetector` 가 찾은
     /// 구간에 각각 `link` 속성을 건다. 어느 쪽이든 탭은 `openURL` 로 가고, 내부 링크인지는
     /// 그쪽에서 다시 판정한다 — 여기서는 "무엇이 링크인가" 만 정한다.
-    private static func attributed(_ content: String) -> AttributedString {
+    private static func attributed(
+        _ content: String,
+        mentions: [ThreadMessageMention],
+        mentionTint: Color
+    ) -> AttributedString {
         var result = AttributedString()
         for segment in MessageLink.segments(in: content) {
             switch segment {
@@ -293,6 +370,41 @@ struct MessageBubble: View {
                 result += externalLinked(text)
             case .link(let link, let raw):
                 result += linkRun(raw, url: link.url)
+            }
+        }
+        return highlighted(result, mentions: mentions, tint: mentionTint)
+    }
+
+    /// 서버가 준 멘션 대상의 `@이름` 구간을 강조한다.
+    ///
+    /// 본문에 멘션 마크업이 없어(서버는 대상 목록만 따로 준다) 이름으로 되짚는 수밖에 없다.
+    /// 그래서 우연히 같은 문자열이 본문에 또 있으면 그것도 함께 강조된다 — 색이 하나 더 붙는
+    /// 것뿐이라 오탐 비용이 작고, 마크업 계약이 생기면 그때 구간 기반으로 바꾼다.
+    ///
+    /// 굵기는 `Font` 를 덮어쓰지 않고 `inlinePresentationIntent` 로 준다 — 폰트를 직접 넣으면
+    /// 본문에 걸린 `appFont` 와 Dynamic Type 스케일이 그 구간만 어긋난다.
+    private static func highlighted(
+        _ base: AttributedString,
+        mentions: [ThreadMessageMention],
+        tint: Color
+    ) -> AttributedString {
+        var result = base
+        // 찾기는 평문에서 한다. `AttributedString.Index` 는 속성만 바꿔도 무효가 될 수 있어
+        // 위치를 문자 오프셋으로 들고 다니다가 쓸 때마다 새로 센다 — 본문 길이는 안 변한다.
+        let text = String(base.characters)
+
+        for mention in mentions where !mention.name.isEmpty {
+            let token = "@\(mention.name)"
+            var searchStart = text.startIndex
+
+            while let found = text.range(of: token, range: searchStart..<text.endIndex) {
+                let offset = text.distance(from: text.startIndex, to: found.lowerBound)
+                let start = result.index(result.startIndex, offsetByCharacters: offset)
+                let end = result.index(start, offsetByCharacters: token.count)
+
+                result[start..<end].foregroundColor = tint
+                result[start..<end].inlinePresentationIntent = .stronglyEmphasized
+                searchStart = found.upperBound
             }
         }
         return result
@@ -365,6 +477,8 @@ struct MessageBubble: View {
         id: String,
         content: String,
         type: ThreadMessageType = .text,
+        mentions: [ThreadMessageMention] = [],
+        replyTo: ThreadMessageReply? = nil,
         reactions: [ThreadMessageReaction] = [],
         deliveryState: ThreadMessageDeliveryState = .sent,
         deletedAt: Date? = nil
@@ -376,6 +490,8 @@ struct MessageBubble: View {
             senderName: "김유엠",
             content: content,
             type: type,
+            mentions: mentions,
+            replyTo: replyTo,
             reactions: reactions,
             createdAt: base,
             deletedAt: deletedAt,
@@ -395,6 +511,8 @@ struct MessageBubble: View {
             canReport: !isMine,
             onRetry: {},
             onReact: { _ in },
+            onReply: {},
+            onQuoteTap: { _ in },
             onCopy: {},
             onDelete: {},
             onReport: {}
@@ -423,6 +541,32 @@ struct MessageBubble: View {
         bubble(
             message(id: "8", content: "자료는 여기 https://umc.it.kr/docs 참고해 주세요"),
             isMine: false
+        )
+        bubble(
+            message(
+                id: "9",
+                content: "@김유엠 7시 맞아요",
+                mentions: [ThreadMessageMention(memberId: "7", name: "김유엠")],
+                replyTo: ThreadMessageReply(
+                    messageId: "1",
+                    senderName: "김유엠",
+                    snippet: "안녕하세요! 오늘 스터디 몇 시에 시작하나요?"
+                )
+            ),
+            isMine: false
+        )
+        bubble(
+            message(
+                id: "10",
+                content: "@김유엠 확인했습니다",
+                mentions: [ThreadMessageMention(memberId: "7", name: "김유엠")],
+                replyTo: ThreadMessageReply(
+                    messageId: "2",
+                    senderName: "김메이커스",
+                    snippet: "7시에 시작합니다"
+                )
+            ),
+            isMine: true
         )
         bubble(message(id: "4", content: "보내는 중", deliveryState: .sending), isMine: true)
         bubble(message(id: "5", content: "실패한 메시지", deliveryState: .failed), isMine: true)

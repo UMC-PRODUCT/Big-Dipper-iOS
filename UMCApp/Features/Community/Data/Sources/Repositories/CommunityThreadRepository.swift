@@ -79,6 +79,34 @@ public struct CommunityThreadRepository: CommunityThreadRepositoryProtocol, @unc
         ).toDomain
     }
 
+    /// 보낼 필드가 하나도 없으면 요청 자체를 생략하고 서버 재조회로 최신 상태만 돌려준다 —
+    /// `{}` 를 보내면 `updatedAt` 만 흔들고 얻는 게 없다.
+    public func updateThread(
+        threadId: String,
+        title: String?,
+        description: String?,
+        category: String?,
+        icon: String?
+    ) async throws -> CommunityThread {
+        let body = UpdateThreadBody(
+            title: title,
+            description: description,
+            category: category,
+            icon: icon
+        )
+        guard !body.isEmpty else { return try await fetchThread(threadId: threadId) }
+
+        // 200 응답 본문이 상세와 같은 스키마라 `fetchThread` 와 같은 DTO 를 쓴다.
+        return try await payload(
+            CommunityThreadDTO.self,
+            from: .updateThread(threadId: threadId, body: body)
+        ).toDomain
+    }
+
+    public func deleteThread(threadId: String) async throws {
+        _ = try await payload(EmptyResult.self, from: .deleteThread(threadId: threadId))
+    }
+
     public func fetchMessages(
         threadId: String,
         before: String?,

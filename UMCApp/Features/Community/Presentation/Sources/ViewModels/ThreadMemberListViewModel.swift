@@ -21,7 +21,8 @@ public final class ThreadMemberListViewModel {
 
     public private(set) var state: Loadable<[ThreadMember]> = .idle
     public var alertPrompt: AlertPrompt?
-    /// 나가기가 확정된 상태. View 가 이걸 보고 커뮤니티 루트로 되돌린다.
+    /// 나가기·삭제가 확정된 상태. View 가 이걸 보고 커뮤니티 루트로 되돌린다 — 둘 다 결과가
+    /// "이 스레드가 내 목록에서 사라졌다" 로 같아 플래그를 나누지 않는다.
     public private(set) var didLeave = false
 
     /// 초대 시트가 같은 스레드를 보게 하려면 화면이 이 값을 읽어야 한다 (#1136).
@@ -68,6 +69,14 @@ public final class ThreadMemberListViewModel {
     /// 나가기 버튼 활성 조건. 목록을 받기 전에는 내 역할을 모르므로 잠가 둔다.
     public var canLeave: Bool {
         state.value != nil && leaveBlockReason == nil
+    }
+
+    /// 삭제가 유일한 출구인지 (#1131 결정 2 → #1134).
+    ///
+    /// 개설자이면서 참여자가 나뿐일 때만 연다. 안내 문구만 띄우고 버튼을 주지 않으면
+    /// "삭제해 주세요" 를 읽은 사용자가 삭제할 곳을 찾아 다녀야 한다.
+    public var canDeleteThread: Bool {
+        isOwner && !members.contains { !isMe($0.id) }
     }
 
     // MARK: - Function
@@ -142,6 +151,22 @@ public final class ThreadMemberListViewModel {
         )
     }
 
+    /// 스레드 삭제 확인. 나가기와 달리 남는 사람이 없어 대화까지 함께 사라진다.
+    public func confirmDeleteThread() {
+        guard canDeleteThread else { return }
+
+        alertPrompt = AlertPrompt(
+            title: "스레드를 삭제할까요?",
+            message: "대화 내용이 모두 사라져요. 되돌릴 수 없어요.",
+            positiveBtnTitle: "삭제",
+            positiveBtnAction: { [weak self] in
+                Task { @MainActor in await self?.deleteThread() }
+            },
+            negativeBtnTitle: "취소",
+            isPositiveBtnDestructive: true
+        )
+    }
+
     // MARK: - Private Function
 
     private func isMe(_ memberId: String) -> Bool {
@@ -183,6 +208,19 @@ public final class ThreadMemberListViewModel {
             didLeave = true
         } catch {
             errorHandler.handle(error, context: errorContext("leaveThread"))
+        }
+    }
+
+    /// 나가기와 마찬가지로 마지막 방어선을 한 번 더 둔다 — 알럿이 떠 있는 동안 다른 기기에서
+    /// 위임이 들어오면 조건이 무너진다.
+    private func deleteThread() async {
+        guard canDeleteThread else { return }
+
+        do {
+            try await useCase.deleteThread(threadId: threadId)
+            didLeave = true
+        } catch {
+            errorHandler.handle(error, context: errorContext("deleteThread"))
         }
     }
 

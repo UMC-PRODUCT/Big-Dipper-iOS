@@ -71,6 +71,29 @@ public final class CommunityThreadRoomViewModel {
 
     let summarizer: ThreadSummarizing
 
+    // MARK: - Reply · Mention Property
+
+    /// 컴포저 위 인용 칩의 내용. `nil` 이면 평범한 전송 상태다 (시안 #22).
+    ///
+    /// 대상 메시지 전체가 아니라 ``ThreadMessageReply`` 를 들고 있는다 — 칩·말풍선 인용 블록·
+    /// 낙관적 버블이 모두 이 세 필드(대상 id·발신자·스니펫)만 쓰고, 서버 응답도 같은 모양이라
+    /// 그리는 코드를 한 벌로 유지할 수 있다.
+    ///
+    /// 갱신은 `CommunityThreadRoomViewModel+Mention` 이 맡는다.
+    public internal(set) var replyTarget: ThreadMessageReply?
+    /// `@` 자동완성 후보. 비어 있으면 오버레이가 뜨지 않는다.
+    public internal(set) var mentionCandidates: [ThreadMember] = []
+    /// 인용 블록 탭으로 이동할 원본 messageId. View 가 스크롤한 뒤 `nil` 로 비운다.
+    public internal(set) var quoteScrollTarget: String?
+
+    /// 이번 초안에서 고른 멘션. 전송 시 본문에 이름이 남아 있는 것만 실어 보낸다 —
+    /// 골랐다가 지운 이름까지 보내면 알림만 받고 본문에는 자기 이름이 없는 상황이 된다.
+    @ObservationIgnored var pickedMentions: [ThreadMember] = []
+    /// 참여자 목록 캐시. `@` 를 한 글자 칠 때마다 REST 를 때리지 않는다. 실패하면 비워 둔 채
+    /// 두어 다음 `@` 에서 다시 시도한다.
+    @ObservationIgnored var memberCache: [ThreadMember]?
+    @ObservationIgnored var memberLoadTask: Task<Void, Never>?
+
     // MARK: - Report Property
 
     /// 신고 사유 시트의 대상. `nil` 이면 시트가 닫힌 상태다.
@@ -267,12 +290,28 @@ public final class CommunityThreadRoomViewModel {
         guard canSend else { return }
 
         let content = trimmedDraft
+        // 인용·멘션은 초안에 딸린 값이라 초안을 비우기 전에 확정한다.
+        let reply = replyTarget
+        let mentions = mentionedMembers(in: content)
         draft = ""
+        clearComposerAttachments()
         // 서버 멱등 키이자 `message.created` 매칭 열쇠. 대문자 UUID 는 canonical 이 아니다.
         let clientMessageId = UUID().uuidString.lowercased()
-        messages.append(optimisticMessage(clientMessageId: clientMessageId, content: content))
+        messages.append(
+            optimisticMessage(
+                clientMessageId: clientMessageId,
+                content: content,
+                replyTo: reply,
+                mentions: mentions
+            )
+        )
 
-        await dispatch(clientMessageId: clientMessageId, content: content)
+        await dispatch(
+            clientMessageId: clientMessageId,
+            content: content,
+            replyToId: reply?.messageId,
+            mentionedMemberIds: mentions.map(\.memberId)
+        )
     }
 
     /// 실패한 메시지 재전송. 같은 `clientMessageId` 를 다시 쓰면 서버가 중복을 걸러 준다.
@@ -283,7 +322,13 @@ public final class CommunityThreadRoomViewModel {
               messages[index].deliveryState == .failed else { return }
 
         messages[index].deliveryState = .sending
-        await dispatch(clientMessageId: clientMessageId, content: messages[index].content)
+        // 인용·멘션은 낙관적 버블이 그대로 들고 있다 — 초안은 이미 비워졌으므로 여기가 유일한 출처다.
+        await dispatch(
+            clientMessageId: clientMessageId,
+            content: messages[index].content,
+            replyToId: messages[index].replyTo?.messageId,
+            mentionedMemberIds: messages[index].mentions.map(\.memberId)
+        )
     }
 
     /// 반응 토글. 서버에는 토글이 없어 `reactedByMe` 로 add/remove 방향을 여기서 정한다.
@@ -613,7 +658,14 @@ public final class CommunityThreadRoomViewModel {
         header = .loaded(thread)
     }
 
-    private func optimisticMessage(clientMessageId: String, content: String) -> ThreadMessage {
+    /// 인용·멘션까지 담아 둔다. 서버 에코가 같은 자리를 덮어쓰지만, 그 전까지 인용 블록이
+    /// 비어 보이면 방금 답장한 게 맞는지 확인할 방법이 없다. 재전송도 이 값을 다시 읽는다.
+    private func optimisticMessage(
+        clientMessageId: String,
+        content: String,
+        replyTo: ThreadMessageReply?,
+        mentions: [ThreadMessageMention]
+    ) -> ThreadMessage {
         ThreadMessage(
             // 서버 messageId 를 아직 모른다. 교체 전까지는 clientMessageId 가 신원이다.
             id: clientMessageId,
@@ -623,8 +675,8 @@ public final class CommunityThreadRoomViewModel {
             content: content,
             type: .text,
             files: [],
-            mentions: [],
-            replyTo: nil,
+            mentions: mentions,
+            replyTo: replyTo,
             reactions: [],
             clientMessageId: clientMessageId,
             createdAt: Date(),
@@ -634,14 +686,21 @@ public final class CommunityThreadRoomViewModel {
         )
     }
 
-    private func dispatch(clientMessageId: String, content: String) async {
+    private func dispatch(
+        clientMessageId: String,
+        content: String,
+        replyToId: String?,
+        mentionedMemberIds: [String]
+    ) async {
         startTimeout(for: clientMessageId)
 
         do {
             try await useCase.send(
                 threadId: threadId,
                 clientMessageId: clientMessageId,
-                content: content
+                content: content,
+                replyToId: replyToId,
+                mentionedMemberIds: mentionedMemberIds
             )
         } catch {
             // 프레임을 못 띄웠으면 서버 응답을 기다릴 이유가 없다. 전역 Alert 은 띄우지 않는다 —

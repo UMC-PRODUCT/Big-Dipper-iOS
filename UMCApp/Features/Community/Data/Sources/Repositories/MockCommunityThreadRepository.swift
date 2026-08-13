@@ -72,6 +72,24 @@ public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
         )
     }
 
+    /// 서버처럼 넘어온 필드만 갈아 끼운다 — `nil` 은 "안 바꾼다" 다.
+    public func updateThread(
+        threadId: String,
+        title: String?,
+        description: String?,
+        category: String?,
+        icon: String?
+    ) async throws -> CommunityThread {
+        var thread = Self.pinnedSample
+        if let title { thread.title = title }
+        if let description { thread.description = description }
+        if let category { thread.category = CommunityThreadCategory(rawValue: category) ?? .free }
+        if let icon { thread.icon = icon }
+        return thread
+    }
+
+    public func deleteThread(threadId: String) async throws {}
+
     public func fetchMessages(
         threadId: String,
         before: String?,

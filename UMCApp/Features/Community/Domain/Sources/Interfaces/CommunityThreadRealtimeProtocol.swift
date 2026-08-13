@@ -26,13 +26,19 @@ public protocol CommunityThreadRealtimeProtocol: Sendable {
     /// 모든 스레드의 신호가 섞여 나온다. 화면이 `threadId` 로 필터링한다.
     func signals() async -> AsyncStream<CommunityRealtimeSignal>
 
-    /// - Parameter clientMessageId: canonical lowercase UUID. 서버 멱등 키이자
-    ///   `messageCreated` 수신 시 낙관적 항목을 찾는 열쇠다.
+    /// - Parameters:
+    ///   - clientMessageId: canonical lowercase UUID. 서버 멱등 키이자
+    ///     `messageCreated` 수신 시 낙관적 항목을 찾는 열쇠다.
+    ///   - replyToId: 답장 대상 messageId. 대상이 이미 삭제됐으면 서버가 응답의 `replyTo` 를
+    ///     `null` 로 내려준다 — 전송 자체는 거절되지 않는다.
+    ///   - mentionedMemberIds: 멘션 대상. 서버가 중복 제거·정렬하고 100개까지 받는다.
     func sendMessage(
         threadId: String,
         clientMessageId: String,
         content: String,
-        fileMetadataIds: [String]
+        fileMetadataIds: [String],
+        replyToId: String?,
+        mentionedMemberIds: [String]
     ) async throws
 
     /// 읽음 워터마크 갱신. 더 작거나 같은 값은 서버가 멱등 no-op 처리한다.

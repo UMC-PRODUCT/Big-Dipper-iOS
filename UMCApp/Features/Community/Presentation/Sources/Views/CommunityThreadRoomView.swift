@@ -105,8 +105,15 @@ struct CommunityThreadRoomView: View {
                 MessageComposer(
                     text: $viewModel.draft,
                     canSend: viewModel.canSend,
-                    onSend: { Task { await viewModel.send() } }
+                    replyTarget: viewModel.replyTarget,
+                    mentionCandidates: viewModel.mentionCandidates,
+                    onSend: { Task { await viewModel.send() } },
+                    onCancelReply: { viewModel.cancelReply() },
+                    onSelectMention: { viewModel.selectMention($0) }
                 )
+                // 초안이 바뀔 때마다 `@` 토큰을 다시 판정한다. `TextField` 는 커서를 넘겨주지
+                // 않으므로 텍스트 변화가 유일한 신호다.
+                .onChange(of: viewModel.draft) { _, _ in viewModel.draftDidChange() }
             }
         }
         .animation(.default, value: viewModel.sendCooldownNotice)
@@ -239,6 +246,13 @@ struct CommunityThreadRoomView: View {
         ScrollViewReader { proxy in
             scrollableMessages
                 .overlay(alignment: .bottom) { newMessageOverlay(proxy: proxy) }
+                // 인용 블록 탭 → 원본으로 이동 (시안 #38). 대상이 이미 불러온 메시지일 때만
+                // ViewModel 이 값을 채우므로 여기서는 존재 여부만 보고 옮기면 된다.
+                .onChange(of: viewModel.quoteScrollTarget) { _, messageId in
+                    guard let messageId else { return }
+                    withAnimation { proxy.scrollTo(messageId, anchor: .center) }
+                    viewModel.clearQuoteScrollTarget()
+                }
         }
     }
 
@@ -278,6 +292,8 @@ struct CommunityThreadRoomView: View {
                         onReact: { emoji in
                             Task { await viewModel.toggleReaction(message, emoji: emoji) }
                         },
+                        onReply: { viewModel.requestReply(message) },
+                        onQuoteTap: { viewModel.scrollToQuoted($0) },
                         onCopy: { viewModel.copyContent(message) },
                         onDelete: { viewModel.requestDelete(message) },
                         onReport: { viewModel.requestReport(message) }

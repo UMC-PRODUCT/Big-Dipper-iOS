@@ -15,6 +15,9 @@ public enum CommunityThreadRouter {
     case getThreads(query: ThreadListQuery)
     case getThread(threadId: String)
     case createThread(body: CreateThreadBody)
+    /// 부분 수정. 본문에 실린 키만 갱신된다 (`UpdateThreadBody` 주석).
+    case updateThread(threadId: String, body: UpdateThreadBody)
+    case deleteThread(threadId: String)
     case getMessages(threadId: String, query: ThreadMessageQuery)
     case setPin(threadId: String, isPinned: Bool)
     case setMute(threadId: String, isMuted: Bool)
@@ -41,7 +44,9 @@ extension CommunityThreadRouter: BaseTargetType {
         switch self {
         case .getThreads, .createThread:
             return threadsPath
-        case .getThread(let threadId):
+        case .getThread(let threadId),
+             .updateThread(let threadId, _),
+             .deleteThread(let threadId):
             return "\(threadsPath)/\(threadId)"
         case .getMessages(let threadId, _):
             return "\(threadsPath)/\(threadId)/messages"
@@ -74,9 +79,9 @@ extension CommunityThreadRouter: BaseTargetType {
             return isPinned ? .post : .delete
         case .setMute(_, let isMuted):
             return isMuted ? .post : .delete
-        case .kickMember:
+        case .kickMember, .deleteThread:
             return .delete
-        case .changeMemberRole:
+        case .changeMemberRole, .updateThread:
             return .patch
         case .createThread, .invite, .leave, .reportMessage:
             return .post
@@ -97,14 +102,16 @@ extension CommunityThreadRouter: BaseTargetType {
             )
         case .createThread(let body):
             return .requestJSONEncodable(body)
+        case .updateThread(_, let body):
+            return .requestJSONEncodable(body)
         case .invite(_, let body):
             return .requestJSONEncodable(body)
         case .changeMemberRole(_, _, let body):
             return .requestJSONEncodable(body)
         case .reportMessage(_, let body):
             return .requestJSONEncodable(body)
-        case .getThread, .setPin, .setMute, .getMembers, .getInvitableMembers,
-             .kickMember, .leave:
+        case .getThread, .deleteThread, .setPin, .setMute,
+             .getMembers, .getInvitableMembers, .kickMember, .leave:
             return .requestPlain
         }
     }
