@@ -18,6 +18,8 @@
 //    - `.approved` / `.pendingApproval` → AppFlow 로 외부 화면 라우팅
 //    - `.notLoggedIn` → **`stage` 를 `.loginReady` 로 전환** → 같은 화면 안에서 layout 이
 //      `withAnimation` 으로 morph (로고가 위로 슬라이드, LoginActionStack 이 아래에서 등장)
+//    - `.networkUnavailable` → **`stage` 를 `.networkUnavailable` 로 전환** → 재시도 안내를
+//      노출한다. 토큰이 살아있는데 서버에 닿지 못한 것뿐이므로 로그인 화면으로 내리지 않는다.
 //  - 사용자가 소셜 로그인 버튼을 누르면 내부 `LoginViewModel` 이 인증을 진행하고, 결과 상태
 //    변경 시 AppFlow 로 외부 화면 라우팅.
 //  - UMC 계정(ID/PW) 로그인은 `LoginView` 와 동일하게 `EmailLoginView` 를 push 한다 (#943).
@@ -50,6 +52,8 @@ public struct BootstrapView: View {
         case cinematic
         /// 시네마틱 종료 + 자동 로그인 실패. 로고가 위쪽으로 morph, 하단에 LoginActionStack 등장.
         case loginReady
+        /// 전송 계층 실패로 인증 판정 불가. 로그인 화면 대신 재시도 안내를 노출.
+        case networkUnavailable
     }
 
     // MARK: - Property
@@ -61,6 +65,7 @@ public struct BootstrapView: View {
     /// (lens 가 비춰지면서 슬로건이 차오름) → collapse 동안 1 유지. `revealSlogan()` 가 컨트롤.
     @State private var sloganOpacity: Double = 0
     @State private var isEmailLoginPresented = false
+    @State private var isRetryingAuth = false
 
     @Environment(\.appFlow) private var appFlow
 
@@ -75,7 +80,8 @@ public struct BootstrapView: View {
         /// 유지하고, 그 후 morph 트리거. **이 값과 refractiveCinematic 의 duration 합은 항상
         /// 동기화해야 한다** — 어긋나면 라우팅이 collapse 도중 끊고 들어온다.
         static let cinematicTotalDuration: TimeInterval = 2.3
-        /// 인증 최대 대기 시간. 초과 시 `.notLoggedIn` 가정 후 loginReady morph.
+        /// 인증 최대 대기 시간. 초과 시 `.networkUnavailable` 로 간주해 재시도 안내를 노출한다.
+        /// 응답이 늦다는 사실만으로는 세션 무효를 단정할 수 없어 로그인 화면으로 내리지 않는다.
         static let authTimeout: TimeInterval = 3.0
         /// stage 전환 애니메이션 시간 — 로고 위로 슬라이드 + actionStack 등장 morph.
         static let morphDuration: TimeInterval = 0.55
@@ -85,6 +91,12 @@ public struct BootstrapView: View {
         /// 슬로건 reveal 애니메이션 시간. RefractiveCinematic 의 bloomDuration 과 동기화 —
         /// lens 가 펴지는 동안 슬로건이 0 → 1 로 차올라 "lens 안에서 슬로건이 보이며 등장" 효과.
         static let sloganRevealDuration: TimeInterval = 1.0
+        static let networkGuideTitle = "네트워크 연결을 확인해 주세요"
+        static let networkGuideSystemImage = "wifi.exclamationmark"
+        static let networkGuideDescription = """
+        인터넷에 연결한 뒤 다시 시도해 주세요.
+        로그인 정보는 그대로 유지됩니다.
+        """
     }
 
     // MARK: - Init
@@ -134,7 +146,11 @@ public struct BootstrapView: View {
 
             Spacer()
 
-            if stage == .loginReady {
+            switch stage {
+            case .cinematic:
+                EmptyView()
+
+            case .loginReady:
                 LoginActionStack(
                     isLoading: loginViewModel.loginState.isLoading,
                     onKakaoTap: { Task { await loginViewModel.loginWithKakao() } },
@@ -144,6 +160,20 @@ public struct BootstrapView: View {
                     onSupportTap: {
                         kakaoPlusManager.openKakaoChannel(errorHandler: errorHandler)
                     }
+                )
+                .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                .padding(.bottom, DefaultConstant.defaultSafeBottom)
+                .transition(
+                    .opacity.combined(with: .move(edge: .bottom))
+                )
+
+            case .networkUnavailable:
+                RetryContentUnavailableView(
+                    title: Constants.networkGuideTitle,
+                    systemImage: Constants.networkGuideSystemImage,
+                    description: Constants.networkGuideDescription,
+                    isRetrying: isRetryingAuth,
+                    retryAction: { await retryAuthResolution() }
                 )
                 .padding(.horizontal, DefaultConstant.defaultSafeHorizon)
                 .padding(.bottom, DefaultConstant.defaultSafeBottom)
@@ -188,8 +218,20 @@ public struct BootstrapView: View {
         route(for: resolvedStatus)
     }
 
-    /// 인증 검사를 타임아웃 안에서 실행한다. 타임아웃이 먼저 끝나면 `.notLoggedIn` 으로 간주해
-    /// 시네마틱이 무한정 인증을 기다리며 화면이 멈추는 상황을 방지한다.
+    /// 네트워크 안내 뷰의 재시도 — 시네마틱은 이미 끝났으므로 인증 판정만 다시 수행한다.
+    ///
+    /// `runBootstrap()` 을 재호출하면 최소 대기(2.3s)가 다시 걸려 사용자가 시네마틱을 한 번 더
+    /// 기다리게 되므로, 재시도 경로에서는 대기 없이 `resolveAuthStatusWithTimeout()` 만 돌린다.
+    @MainActor
+    private func retryAuthResolution() async {
+        guard !isRetryingAuth else { return }
+        isRetryingAuth = true
+        defer { isRetryingAuth = false }
+        route(for: await resolveAuthStatusWithTimeout())
+    }
+
+    /// 인증 검사를 타임아웃 안에서 실행한다. 타임아웃이 먼저 끝나면 `.networkUnavailable` 로
+    /// 간주해 시네마틱이 무한정 인증을 기다리며 화면이 멈추는 상황을 방지한다.
     @MainActor
     private func resolveAuthStatusWithTimeout() async -> AuthBootstrapStatus {
         await withTaskGroup(of: AuthBootstrapStatus?.self) { group in
@@ -202,7 +244,7 @@ public struct BootstrapView: View {
             }
             let firstResult = await group.next() ?? nil
             group.cancelAll()
-            return firstResult ?? .notLoggedIn
+            return firstResult ?? .networkUnavailable
         }
     }
 
@@ -220,6 +262,8 @@ public struct BootstrapView: View {
             appFlow.showPendingApproval()
         case .notLoggedIn:
             stage = .loginReady
+        case .networkUnavailable:
+            stage = .networkUnavailable
         }
     }
 
