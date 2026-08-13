@@ -19,6 +19,14 @@ fileprivate enum Constants {
     static let emptyDescription = "첫 스레드를 만들어 대화를 시작해 보세요.\n초대를 받아도 이곳에 표시돼요."
     static let emptyImage = "bubble.left.and.bubble.right"
     static let createThreadTitle = "새 스레드"
+    /// 카드 사이 간격(위아래 4 씩 = 8)과 화면 좌우 여백. 기본 행 인셋으로는 카드가 화면
+    /// 끝에 붙고 그림자가 잘린다.
+    static let cardRowInsets = EdgeInsets(
+        top: DefaultSpacing.spacing4,
+        leading: DefaultConstant.defaultSafeHorizon,
+        bottom: DefaultSpacing.spacing4,
+        trailing: DefaultConstant.defaultSafeHorizon
+    )
 }
 
 /// 커뮤니티 탭 루트 — 스레드 리스트.
@@ -125,19 +133,34 @@ struct CommunityThreadListView: View {
             } else if viewModel.pinned.isEmpty {
                 pagedRows(threads)
             } else {
-                Section("고정") {
+                Section {
                     ForEach(viewModel.pinned) { thread in
                         row(thread)
                     }
+                } header: {
+                    sectionHeader("고정")
                 }
 
-                Section("전체") {
+                Section {
                     pagedRows(threads)
+                } header: {
+                    sectionHeader("전체")
                 }
             }
         }
         .listStyle(.plain)
+        // 행이 카드라서 리스트가 흰 배경을 깔면 카드 경계가 사라진다. 뒤의 연회색은
+        // 화면 배경(`umcDefaultBackground`)이 낸다.
+        .scrollContentBackground(.hidden)
         .refreshable { await viewModel.refresh() }
+    }
+
+    /// `.plain` 기본 헤더는 작은 회색이라 카드 목록 위에서 묻힌다. `textCase(nil)` 은 검색어처럼
+    /// 영문이 섞인 헤더가 대문자로 뒤집히지 않게 한다.
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .appFont(.callout, weight: .semibold, color: .grey900)
+            .textCase(nil)
     }
 
     /// 검색 중 한 섹션. 서버가 `q` 를 받으면 `pinned` 를 비우고 고정 스레드까지 `threads` 에
@@ -149,7 +172,7 @@ struct CommunityThreadListView: View {
         Section {
             pagedRows(threads)
         } header: {
-            Text("'\(query)' 검색 결과")
+            sectionHeader("'\(query)' 검색 결과")
         } footer: {
             Text("검색 중에는 고정 스레드도 이 목록에 함께 나와요.")
         }
@@ -176,7 +199,9 @@ struct CommunityThreadListView: View {
             ThreadListRow(thread: thread)
         }
         .buttonStyle(.plain)
-        .listRowBackground(ThreadListRow.rowTint(for: thread))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(Constants.cardRowInsets)
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
                 Task { await viewModel.togglePin(thread) }
