@@ -485,6 +485,11 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
         let icon: String
     }
 
+    struct ReportCall: Equatable {
+        let messageId: String
+        let reason: String
+    }
+
     // MARK: - Property
 
     private(set) var createThreadCalls: [CreateThreadCall] = []
@@ -494,6 +499,7 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
     private(set) var pinCalls: [ToggleCall] = []
     private(set) var muteCalls: [ToggleCall] = []
     private(set) var leaveCalls: [String] = []
+    private(set) var reportCalls: [ReportCall] = []
 
     private let threadPage: CommunityThreadPage
     private let thread: CommunityThread
@@ -586,6 +592,11 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
 
     func leaveThread(threadId: String) async throws {
         leaveCalls.append(threadId)
+        if let error { throw error }
+    }
+
+    func reportMessage(messageId: String, reason: String) async throws {
+        reportCalls.append(ReportCall(messageId: messageId, reason: reason))
         if let error { throw error }
     }
 }

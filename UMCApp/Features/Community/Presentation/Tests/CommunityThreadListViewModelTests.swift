@@ -79,6 +79,8 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
 
     func deleteMessage(threadId: String, messageId: String) async throws {}
 
+    func reportMessage(messageId: String, reason: ThreadMessageReportReason) async throws {}
+
     func startRealtime() async {}
 
     func signals() async -> AsyncStream<CommunityRealtimeSignal> {

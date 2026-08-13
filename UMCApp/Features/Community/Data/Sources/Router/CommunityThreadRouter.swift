@@ -9,7 +9,8 @@ import CoreNetwork
 
 /// 커뮤니티 스레드 REST 엔드포인트.
 ///
-/// 메시지 생성·수정·삭제·리액션·읽음은 STOMP 전용이라 여기 없다.
+/// 메시지 생성·수정·삭제·리액션·읽음은 STOMP 전용이라 여기 없다. 신고는 예외로 REST 다 —
+/// 다른 참여자에게 방송되지 않는 접수 요청이라 실시간 채널을 탈 이유가 없다.
 public enum CommunityThreadRouter {
     case getThreads(query: ThreadListQuery)
     case getThread(threadId: String)
@@ -18,11 +19,14 @@ public enum CommunityThreadRouter {
     case setPin(threadId: String, isPinned: Bool)
     case setMute(threadId: String, isMuted: Bool)
     case leave(threadId: String)
+    case reportMessage(messageId: String, body: ReportMessageBody)
 }
 
 extension CommunityThreadRouter: BaseTargetType {
 
     private var threadsPath: String { "/api/v1/community/threads" }
+    /// 신고만 `/threads` 하위가 아니라 메시지 단독 경로를 쓴다 (서버 계약).
+    private var messagesPath: String { "/api/v1/community/messages" }
 
     public var path: String {
         switch self {
@@ -38,6 +42,8 @@ extension CommunityThreadRouter: BaseTargetType {
             return "\(threadsPath)/\(threadId)/mute"
         case .leave(let threadId):
             return "\(threadsPath)/\(threadId)/leave"
+        case .reportMessage(let messageId, _):
+            return "\(messagesPath)/\(messageId)/report"
         }
     }
 
@@ -49,7 +55,7 @@ extension CommunityThreadRouter: BaseTargetType {
             return isPinned ? .post : .delete
         case .setMute(_, let isMuted):
             return isMuted ? .post : .delete
-        case .createThread, .leave:
+        case .createThread, .leave, .reportMessage:
             return .post
         }
     }
@@ -67,6 +73,8 @@ extension CommunityThreadRouter: BaseTargetType {
                 encoding: URLEncoding.queryString
             )
         case .createThread(let body):
+            return .requestJSONEncodable(body)
+        case .reportMessage(_, let body):
             return .requestJSONEncodable(body)
         case .getThread, .setPin, .setMute, .leave:
             return .requestPlain

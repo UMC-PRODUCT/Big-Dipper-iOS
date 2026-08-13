@@ -92,6 +92,7 @@ public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
     public func setPinned(threadId: String, isPinned: Bool) async throws {}
     public func setMuted(threadId: String, isMuted: Bool) async throws {}
     public func leaveThread(threadId: String) async throws {}
+    public func reportMessage(messageId: String, reason: String) async throws {}
 
     // MARK: - Sample
 

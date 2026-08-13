@@ -24,6 +24,11 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
         let emoji: String
     }
 
+    struct ReportCall: Equatable {
+        let messageId: String
+        let reason: ThreadMessageReportReason
+    }
+
     var thread = makeThread()
     var pages: [String?: ThreadMessagePage] = [:]
     var sendError: Error?
@@ -31,6 +36,7 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     var loadMessagesError: Error?
     var reactionError: Error?
     var deleteError: Error?
+    var reportError: Error?
     /// 구독하자마자 흘려보낼 신호. 다 흘리면 스트림이 끝나 `observeRealtime()` 이 반환한다.
     var pendingSignals: [CommunityRealtimeSignal] = []
 
@@ -41,6 +47,7 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     private(set) var addedReactions: [ReactionCall] = []
     private(set) var removedReactions: [ReactionCall] = []
     private(set) var deletedMessageIds: [String] = []
+    private(set) var reportCalls: [ReportCall] = []
 
     func loadThread(threadId: String) async throws -> CommunityThread {
         loadThreadCount += 1
@@ -76,6 +83,11 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     func deleteMessage(threadId: String, messageId: String) async throws {
         deletedMessageIds.append(messageId)
         if let deleteError { throw deleteError }
+    }
+
+    func reportMessage(messageId: String, reason: ThreadMessageReportReason) async throws {
+        reportCalls.append(ReportCall(messageId: messageId, reason: reason))
+        if let reportError { throw reportError }
     }
 
     func startRealtime() async {}
@@ -135,6 +147,8 @@ private actor GatedRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     func removeReaction(threadId: String, messageId: String, emoji: String) async throws {}
 
     func deleteMessage(threadId: String, messageId: String) async throws {}
+
+    func reportMessage(messageId: String, reason: ThreadMessageReportReason) async throws {}
 
     func startRealtime() async {}
 
@@ -810,6 +824,79 @@ struct CommunityThreadRoomViewModelTests {
         await waitUntil { errorHandler.currentError != nil }
 
         #expect(errorHandler.currentError != nil)
+    }
+
+    // MARK: - Report
+
+    @Test("신고는 남의 메시지에만 걸리고, 톰스톤·미확정 메시지에는 걸지 않는다")
+    func limitsReportToSettledOthersMessage() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase, currentMemberId: "9")
+        await viewModel.load()
+
+        var deleted = makeMessage(id: "3", senderId: "7")
+        deleted.deletedAt = Date(timeIntervalSince1970: 600)
+
+        #expect(viewModel.canReport(makeMessage(id: "1", senderId: "7")))
+        #expect(viewModel.canReport(makeMessage(id: "2", senderId: "9")) == false)
+        #expect(viewModel.canReport(deleted) == false)
+        #expect(viewModel.canReport(
+            makeMessage(id: "4", senderId: "7").with(deliveryState: .sending)
+        ) == false)
+    }
+
+    @Test("사유를 골라 접수하면 시트가 닫히고 완료 안내가 뜬다")
+    func submitsReportAndClosesSheet() async {
+        let useCase = StubRoomUseCase()
+        let message = makeMessage(id: "5", senderId: "7", createdAt: 500)
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        viewModel.requestReport(message)
+        #expect(viewModel.reportTarget?.id == "5")
+
+        await viewModel.submitReport(reason: .spam)
+
+        #expect(useCase.reportCalls == [.init(messageId: "5", reason: .spam)])
+        #expect(viewModel.reportTarget == nil)
+        #expect(viewModel.reportNotice != nil)
+    }
+
+    /// 사유를 다시 고르게 해 놓고 마지막에 거절하면 고른 시간을 통째로 버린다.
+    @Test("이미 신고한 메시지는 시트를 열지 않고 안내만 띄운다")
+    func blocksDuplicateReport() async {
+        let useCase = StubRoomUseCase()
+        let message = makeMessage(id: "5", senderId: "7", createdAt: 500)
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        viewModel.requestReport(message)
+        await viewModel.submitReport(reason: .abuse)
+
+        viewModel.requestReport(message)
+
+        #expect(viewModel.reportTarget == nil)
+        #expect(useCase.reportCalls.count == 1)
+        #expect(viewModel.reportNotice != nil)
+    }
+
+    /// 고른 사유를 잃지 않고 그 자리에서 다시 누르면 되는 실패라 흐름을 끊지 않는다.
+    @Test("접수가 실패하면 시트를 연 채 인라인으로 알리고 전역 Alert 은 띄우지 않는다")
+    func keepsSheetOpenOnReportFailure() async {
+        let useCase = StubRoomUseCase()
+        useCase.reportError = AppError.unknown(message: "실패")
+        let errorHandler = ErrorHandler()
+        let message = makeMessage(id: "5", senderId: "7", createdAt: 500)
+        let viewModel = await makeLoadedViewModel(
+            useCase,
+            with: message,
+            errorHandler: errorHandler
+        )
+
+        viewModel.requestReport(message)
+        await viewModel.submitReport(reason: .privacy)
+
+        #expect(viewModel.reportTarget?.id == "5")
+        #expect(viewModel.reportState.error != nil)
+        #expect(errorHandler.currentError == nil)
     }
 
     // MARK: - Realtime

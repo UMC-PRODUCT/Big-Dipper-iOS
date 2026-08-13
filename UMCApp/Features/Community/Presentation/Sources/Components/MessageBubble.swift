@@ -39,10 +39,12 @@ struct MessageBubble: View {
     let message: ThreadMessage
     let isMine: Bool
     let canDelete: Bool
+    let canReport: Bool
     let onRetry: () -> Void
     let onReact: (String) -> Void
     let onCopy: () -> Void
     let onDelete: () -> Void
+    let onReport: () -> Void
 
     // MARK: - Body
 
@@ -119,7 +121,10 @@ struct MessageBubble: View {
     /// 이모지 팔레트는 메뉴 맨 위 한 줄로 낸다. `ControlGroup` + `.compactMenu` 가 네이티브
     /// 가로 배열을 그려 주므로 오버레이를 직접 띄우지 않는다.
     ///
-    /// 답장·신고는 각각 후속 이슈 소관이라 지금 넣으면 아무 일도 하지 않는 항목이 된다.
+    /// 답장은 후속 이슈 소관이라 지금 넣으면 아무 일도 하지 않는 항목이 된다.
+    ///
+    /// 신고에 `.destructive` 를 주지 않는다 — 지우는 동작이 아니고, 운영진 권한이라 삭제와
+    /// 신고가 함께 뜨는 자리에서 빨강이 둘이면 어느 쪽이 되돌릴 수 없는지가 흐려진다.
     @ViewBuilder
     private var contextMenuItems: some View {
         ControlGroup {
@@ -131,6 +136,12 @@ struct MessageBubble: View {
 
         Button(action: onCopy) {
             Label("복사", systemImage: "doc.on.doc")
+        }
+
+        if canReport {
+            Button(action: onReport) {
+                Label("신고", systemImage: "exclamationmark.bubble")
+            }
         }
 
         if canDelete {
@@ -283,10 +294,12 @@ struct MessageBubble: View {
             message: message,
             isMine: isMine,
             canDelete: canDelete,
+            canReport: !isMine,
             onRetry: {},
             onReact: { _ in },
             onCopy: {},
-            onDelete: {}
+            onDelete: {},
+            onReport: {}
         )
     }
 

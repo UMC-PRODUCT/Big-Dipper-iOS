@@ -59,13 +59,13 @@ struct CommunityThreadRoomView: View {
             content
 
             if let notice = viewModel.sendCooldownNotice {
-                Text(notice)
-                    .appFont(.caption1, color: .grey000)
-                    .padding(.horizontal, DefaultSpacing.spacing12)
-                    .padding(.vertical, DefaultSpacing.spacing8)
-                    .background(Color.grey800, in: .capsule)
-                    .padding(.bottom, DefaultSpacing.spacing8)
-                    .transition(.opacity)
+                noticeCapsule(notice)
+            }
+
+            // 신고 접수·중복 안내. 확인을 누를 것이 없어 Alert 대신 쿨다운 안내와 같은 자리에
+            // 잠깐 띄운다.
+            if let notice = viewModel.reportNotice {
+                noticeCapsule(notice)
             }
 
             // 첫 로드가 끝나기 전이거나 실패했으면 보낼 방이 없다.
@@ -78,6 +78,7 @@ struct CommunityThreadRoomView: View {
             }
         }
         .animation(.default, value: viewModel.sendCooldownNotice)
+        .animation(.default, value: viewModel.reportNotice)
         .animation(.default, value: viewModel.isSummaryBannerVisible)
         .umcDefaultBackground()
         .navigationBarTitleDisplayMode(.inline)
@@ -94,6 +95,10 @@ struct CommunityThreadRoomView: View {
         .sheet(isPresented: $viewModel.isSummarySheetPresented) {
             ThreadSummarySheet(viewModel: viewModel)
         }
+        // 대상이 곧 표시 조건이라 `item:` 을 쓴다 — 성공하면 ViewModel 이 대상을 비워 시트가 닫힌다.
+        .sheet(item: $viewModel.reportTarget) { _ in
+            MessageReportSheet(viewModel: viewModel)
+        }
         // 스펙 6.4: 포그라운드 + 최하단일 때만 워터마크를 올린다. 과거를 읽는 중이거나 앱이
         // 백그라운드인 동안 올리면 안 본 메시지까지 읽음 처리된다.
         .onChange(of: readableMessageId) { _, messageId in
@@ -108,6 +113,17 @@ struct CommunityThreadRoomView: View {
     }
 
     // MARK: - View Component
+
+    /// 잠깐 떴다 사라지는 안내 문구. 쿨다운과 신고 접수가 같은 모양을 쓴다.
+    private func noticeCapsule(_ notice: String) -> some View {
+        Text(notice)
+            .appFont(.caption1, color: .grey000)
+            .padding(.horizontal, DefaultSpacing.spacing12)
+            .padding(.vertical, DefaultSpacing.spacing8)
+            .background(Color.grey800, in: .capsule)
+            .padding(.bottom, DefaultSpacing.spacing8)
+            .transition(.opacity)
+    }
 
     private func navigationHeader(_ thread: CommunityThread) -> some View {
         VStack(spacing: Constants.headerLineSpacing) {
@@ -166,12 +182,14 @@ struct CommunityThreadRoomView: View {
                         message: message,
                         isMine: viewModel.isMine(message),
                         canDelete: viewModel.canDelete(message),
+                        canReport: viewModel.canReport(message),
                         onRetry: { Task { await viewModel.retry(message) } },
                         onReact: { emoji in
                             Task { await viewModel.toggleReaction(message, emoji: emoji) }
                         },
                         onCopy: { viewModel.copyContent(message) },
-                        onDelete: { viewModel.requestDelete(message) }
+                        onDelete: { viewModel.requestDelete(message) },
+                        onReport: { viewModel.requestReport(message) }
                     )
                     .task { await viewModel.loadOlderIfNeeded(currentItem: message) }
                 }
