@@ -7,6 +7,7 @@ import CommunityData
 import CommunityDomain
 import CoreDI
 import CoreNetwork
+import NoticeDomain
 
 extension DIContainer {
 
@@ -67,6 +68,15 @@ extension DIContainer {
             CommunityThreadRoomUseCase(
                 repository: self.resolve(CommunityThreadRepositoryProtocol.self),
                 realtime: self.resolve(CommunityThreadRealtimeProtocol.self)
+            )
+        }
+        // 링크 카드 메타(#1142). 조회 결과를 링크별로 캐싱하므로 인스턴스가 유지돼야 의미가
+        // 있는데, `resolve` 가 타입 키로 첫 생성분을 캐싱해 그대로 만족한다.
+        // `NoticeRepositoryProtocol` 은 ``registerNoticeDependencies()`` 가 먼저 등록한다.
+        register(MessageLinkPreviewUseCaseProtocol.self) {
+            MessageLinkPreviewUseCase(
+                threadRepository: self.resolve(CommunityThreadRepositoryProtocol.self),
+                noticeRepository: self.resolve(NoticeRepositoryProtocol.self)
             )
         }
     }
