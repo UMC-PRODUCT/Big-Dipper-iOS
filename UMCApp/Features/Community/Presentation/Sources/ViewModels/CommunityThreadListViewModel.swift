@@ -25,6 +25,8 @@ public final class CommunityThreadListViewModel {
     public private(set) var state: Loadable<[CommunityThread]> = .idle
     public private(set) var pinned: [CommunityThread] = []
     public private(set) var isLoadingNextPage = false
+    /// 최신순 최근 검색어. 검색 필드를 열었을 때만 화면에 나온다.
+    public private(set) var recentSearches: [String] = []
 
     public var alertPrompt: AlertPrompt?
 
@@ -54,6 +56,7 @@ public final class CommunityThreadListViewModel {
     private let errorHandler: ErrorHandler
     private let currentMemberId: String?
 
+    @ObservationIgnored private let recentSearchStore: RecentThreadSearchStore
     @ObservationIgnored private var nextOffset: Int?
     @ObservationIgnored private var reloadTask: Task<Void, Never>?
 
@@ -62,21 +65,26 @@ public final class CommunityThreadListViewModel {
     /// - Parameters:
     ///   - roomUseCase: 실시간 신호 구독용. 테스트에서는 `nil` 을 넣어 STOMP 를 뺀다.
     ///   - currentMemberId: 팬아웃으로 도착한 이벤트가 나를 겨눈 것인지 가르는 유일한 열쇠.
+    ///   - recentSearchStore: 최근 검색어 로컬 저장소. 테스트에서 격리 suite 를 주입한다.
     public init(
         listUseCase: CommunityThreadListUseCaseProtocol,
         roomUseCase: CommunityThreadRoomUseCaseProtocol?,
         errorHandler: ErrorHandler,
-        currentMemberId: String? = AppStorageKey.memberIdString()
+        currentMemberId: String? = AppStorageKey.memberIdString(),
+        recentSearchStore: RecentThreadSearchStore = RecentThreadSearchStore()
     ) {
         self.listUseCase = listUseCase
         self.roomUseCase = roomUseCase
         self.errorHandler = errorHandler
         self.currentMemberId = currentMemberId
+        self.recentSearchStore = recentSearchStore
+        self.recentSearches = recentSearchStore.load()
     }
 
     // MARK: - Computed Property
 
-    private var trimmedQuery: String? {
+    /// 지금 조회에 쓰이는 검색어. `nil` 이면 검색 중이 아니다.
+    public var trimmedQuery: String? {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
@@ -133,6 +141,38 @@ public final class CommunityThreadListViewModel {
             errorHandler.handle(error, context: errorContext("refreshThreads"))
         }
     }
+
+    // MARK: - Search
+
+    /// 최근 검색어를 눌렀을 때. 검색어를 채우면 `searchText` 의 디바운스가 조회까지 이어간다.
+    public func applyRecentSearch(_ term: String) {
+        recentSearches = recentSearchStore.add(term)
+        searchText = term
+    }
+
+    /// 검색어를 확정했을 때만 기록한다.
+    ///
+    /// 디바운스 조회마다 기록하면 `스`·`스터`·`스터디` 가 나란히 쌓인다. 키보드 검색 버튼과
+    /// 결과 행 진입(= 원하는 걸 찾았다는 신호) 두 지점에서만 부른다.
+    public func recordCurrentSearch() {
+        guard let query = trimmedQuery else { return }
+        recentSearches = recentSearchStore.add(query)
+    }
+
+    public func removeRecentSearch(_ term: String) {
+        recentSearches = recentSearchStore.remove(term)
+    }
+
+    public func clearRecentSearches() {
+        recentSearches = recentSearchStore.clear()
+    }
+
+    /// 결과 없음 빈 상태의 `검색어 지우기`. 원래의 고정/전체 2섹션 목록으로 되돌아간다.
+    public func clearSearch() {
+        searchText = ""
+    }
+
+    // MARK: - Function
 
     /// 채팅방에 들어간 순간 그 행의 미읽음 배지를 로컬로 내린다.
     ///
