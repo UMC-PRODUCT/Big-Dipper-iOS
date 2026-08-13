@@ -154,8 +154,7 @@ struct ThreadMemberListViewModelTests {
         viewModel.confirmKick(target)
         #expect(useCase.kickCalls.isEmpty)
 
-        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
-        confirm()
+        try tapConfirm(viewModel)
         await Task.yield()
 
         #expect(useCase.kickCalls == ["9"])
@@ -184,7 +183,7 @@ struct ThreadMemberListViewModelTests {
         let target = try #require(viewModel.members.first { $0.id == "9" })
 
         viewModel.confirmKick(target)
-        try #require(viewModel.alertPrompt?.positiveBtnAction)()
+        try tapConfirm(viewModel)
         await Task.yield()
 
         #expect(viewModel.members.map(\.id) == ["5", "9"])
@@ -198,7 +197,8 @@ struct ThreadMemberListViewModelTests {
         let viewModel = makeViewModel(useCase)
         await viewModel.load()
 
-        viewModel.confirmKick(try #require(viewModel.members.first { $0.id == "9" }))
+        let target = try #require(viewModel.members.first { $0.id == "9" })
+        viewModel.confirmKick(target)
 
         #expect(viewModel.alertPrompt == nil)
         #expect(useCase.kickCalls.isEmpty)
@@ -220,7 +220,7 @@ struct ThreadMemberListViewModelTests {
         viewModel.confirmTransferOwnership(to: target)
         #expect(useCase.transferCalls.isEmpty)
 
-        try #require(viewModel.alertPrompt?.positiveBtnAction)()
+        try tapConfirm(viewModel)
         await waitUntil { viewModel.isOwner == false }
 
         #expect(useCase.transferCalls == ["9"])
@@ -263,14 +263,15 @@ struct ThreadMemberListViewModelTests {
             makeMember(id: "5", role: .member)
         ]
 
-        viewModel.confirmTransferOwnership(to: try #require(viewModel.members.first { $0.id == "9" }))
-        try #require(viewModel.alertPrompt?.positiveBtnAction)()
+        let target = try #require(viewModel.members.first { $0.id == "9" })
+        viewModel.confirmTransferOwnership(to: target)
+        try tapConfirm(viewModel)
         await waitUntil { viewModel.canLeave }
 
         #expect(viewModel.leaveBlockReason == nil)
 
         viewModel.confirmLeave()
-        try #require(viewModel.alertPrompt?.positiveBtnAction)()
+        try tapConfirm(viewModel)
         await waitUntil { viewModel.didLeave }
 
         #expect(useCase.leaveCalls == ["1"])
@@ -300,13 +301,22 @@ struct ThreadMemberListViewModelTests {
         useCase.shouldFailCommand = true
 
         viewModel.confirmLeave()
-        try #require(viewModel.alertPrompt?.positiveBtnAction)()
+        try tapConfirm(viewModel)
         await waitUntil { errorHandler.currentError != nil }
 
         #expect(viewModel.didLeave == false)
     }
 
     // MARK: - Helper
+
+    /// 확인 알림의 긍정 버튼을 누른다.
+    ///
+    /// `#require(...)()` 처럼 매크로 결과를 바로 호출하면 Swift 6.3.3 프런트엔드가
+    /// 타입 체크 중 죽는다(`recordArgumentList` assertion). 지역 변수로 한 번 받아서 부른다.
+    private func tapConfirm(_ viewModel: ThreadMemberListViewModel) throws {
+        let action = try #require(viewModel.alertPrompt?.positiveBtnAction)
+        action()
+    }
 
     /// `AlertPrompt` 액션이 띄운 Task 가 끝날 때까지 기다린다.
     private func waitUntil(
