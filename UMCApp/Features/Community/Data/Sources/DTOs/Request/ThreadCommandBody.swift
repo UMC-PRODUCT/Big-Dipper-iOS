@@ -20,6 +20,23 @@ enum ThreadDestination {
     static func read(_ threadId: String) -> String {
         "/app/community/threads/\(threadId)/read"
     }
+
+    /// 반응은 토글 destination 이 없다 — 방향이 경로로 갈린다.
+    static func reactionAdd(_ threadId: String, _ messageId: String) -> String {
+        "\(messagePath(threadId, messageId))/reactions/add"
+    }
+
+    static func reactionRemove(_ threadId: String, _ messageId: String) -> String {
+        "\(messagePath(threadId, messageId))/reactions/remove"
+    }
+
+    static func deleteMessage(_ threadId: String, _ messageId: String) -> String {
+        "\(messagePath(threadId, messageId))/delete"
+    }
+
+    private static func messagePath(_ threadId: String, _ messageId: String) -> String {
+        "\(messages(threadId))/\(messageId)"
+    }
 }
 
 /// SEND 의 `x-command-id` 헤더 값.
@@ -66,4 +83,32 @@ public struct ReadWatermarkBody: Encodable {
     public init(lastReadMessageId: String) {
         self.lastReadMessageId = lastReadMessageId
     }
+}
+
+/// 반응 add/remove 공통 본문.
+///
+/// 서버가 `@JsonAnySetter` 로 모르는 필드를 잡아내 프레임을 즉시 거절한다.
+/// `emoji` 외에는 무엇도 싣지 않는다 — 편의 필드 하나가 반응 전체를 죽인다.
+public struct ReactionBody: Encodable {
+
+    // MARK: - Property
+
+    public let emoji: String
+
+    // MARK: - Init
+
+    public init(emoji: String) {
+        self.emoji = emoji
+    }
+}
+
+/// 본문이 필요 없는 명령(삭제)용 빈 객체.
+///
+/// 대상은 destination 경로가 전부 지목하므로 실을 값이 없다. 그래도 프레임 본문은 있어야 해서
+/// `{}` 를 만든다 — 프로퍼티가 없는 `Encodable` 이 그 결과를 낸다.
+public struct EmptyCommandBody: Encodable {
+
+    // MARK: - Init
+
+    public init() {}
 }

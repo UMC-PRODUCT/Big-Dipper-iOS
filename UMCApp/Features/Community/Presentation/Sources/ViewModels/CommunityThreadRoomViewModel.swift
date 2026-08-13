@@ -5,6 +5,7 @@
 
 import Foundation
 import Observation
+import UIKit
 import CommunityDomain
 import UMCFoundation
 
@@ -128,6 +129,20 @@ public final class CommunityThreadRoomViewModel {
         return isMe(message.senderId)
     }
 
+    /// 삭제 메뉴를 띄울지. 본인 메시지이거나 스레드 운영진이면 지울 수 있다.
+    ///
+    /// 아직 서버가 모르는 메시지(`.sending`/`.failed`)는 지울 대상 자체가 없다 — 보낼 messageId
+    /// 가 내가 만든 UUID 라 서버가 거절한다.
+    public func canDelete(_ message: ThreadMessage) -> Bool {
+        guard !message.isDeleted, message.deliveryState == .sent else { return false }
+        if isMe(message.senderId) { return true }
+
+        switch header.value?.myRole {
+        case .owner, .admin: return true
+        case .member, nil: return false
+        }
+    }
+
     /// 헤더와 최신 페이지를 병렬로 읽는다. 둘은 서로를 기다릴 이유가 없다.
     public func load() async {
         guard !isLoading else { return }
@@ -198,6 +213,63 @@ public final class CommunityThreadRoomViewModel {
 
         messages[index].deliveryState = .sending
         await dispatch(clientMessageId: clientMessageId, content: messages[index].content)
+    }
+
+    /// 반응 토글. 서버에는 토글이 없어 `reactedByMe` 로 add/remove 방향을 여기서 정한다.
+    ///
+    /// 먼저 칩을 바꿔 놓고 보낸다. 실패하면 되돌리는데, 그 사이 `reaction.changed` 가 도착했다면
+    /// 서버가 준 배열이 진실이므로 덮어쓰지 않는다.
+    public func toggleReaction(_ message: ThreadMessage, emoji: String) async {
+        // 미확정 버블의 id 는 내가 만든 UUID 다. 톰스톤도 반응 대상이 아니다.
+        guard let index = messages.firstIndex(where: { $0.id == message.id }),
+              messages[index].deliveryState == .sent,
+              !messages[index].isDeleted else { return }
+
+        let messageId = messages[index].id
+        let snapshot = messages[index].reactions
+        let isAdding = !(snapshot.first { $0.emoji == emoji }?.reactedByMe ?? false)
+        let optimistic = Self.reactions(snapshot, togglingOn: isAdding, emoji: emoji)
+        messages[index].reactions = optimistic
+
+        do {
+            if isAdding {
+                try await useCase.addReaction(
+                    threadId: threadId,
+                    messageId: messageId,
+                    emoji: emoji
+                )
+            } else {
+                try await useCase.removeReaction(
+                    threadId: threadId,
+                    messageId: messageId,
+                    emoji: emoji
+                )
+            }
+        } catch {
+            rollbackReactions(messageId: messageId, from: optimistic, to: snapshot)
+        }
+    }
+
+    /// 삭제 확인. 파괴적 작업이라 알림을 한 번 거친다 (스펙 §7).
+    public func requestDelete(_ message: ThreadMessage) {
+        guard canDelete(message) else { return }
+
+        alertPrompt = AlertPrompt(
+            title: "메시지를 삭제할까요?",
+            message: "삭제한 메시지는 되돌릴 수 없어요.",
+            positiveBtnTitle: "삭제",
+            positiveBtnAction: { [weak self] in
+                Task { @MainActor in await self?.performDelete(message) }
+            },
+            negativeBtnTitle: "취소",
+            isPositiveBtnDestructive: true
+        )
+    }
+
+    /// 본문 복사. 클립보드에 닿는 지점을 하나로 묶어 둔다 — View 마다 흩어지면 톰스톤 문구가
+    /// 복사되는 것 같은 차이가 생긴다.
+    public func copyContent(_ message: ThreadMessage) {
+        UIPasteboard.general.string = message.content
     }
 
     /// 읽음 워터마크. 스크롤마다 보내면 낭비라 1초 모아서 한 번만 보낸다.
@@ -311,6 +383,59 @@ public final class CommunityThreadRoomViewModel {
     private func isMe(_ memberId: String) -> Bool {
         guard let currentMemberId, !currentMemberId.isEmpty else { return false }
         return memberId == currentMemberId
+    }
+
+    /// 낙관적 반응 갱신. 서버가 카운트를 String 으로 주므로 연산 직전에만 Int 로 바꾼다.
+    /// 마지막 하나를 뗀 칩은 배열에서 없앤다 — 카운트 0 짜리 칩은 서버도 내려보내지 않는다.
+    private static func reactions(
+        _ reactions: [ThreadMessageReaction],
+        togglingOn isAdding: Bool,
+        emoji: String
+    ) -> [ThreadMessageReaction] {
+        var updated = reactions
+        guard let index = updated.firstIndex(where: { $0.emoji == emoji }) else {
+            guard isAdding else { return updated }
+            updated.append(ThreadMessageReaction(emoji: emoji, count: "1", reactedByMe: true))
+            return updated
+        }
+
+        let count = (Int(updated[index].count) ?? 0) + (isAdding ? 1 : -1)
+        guard count > 0 else {
+            updated.remove(at: index)
+            return updated
+        }
+        updated[index] = ThreadMessageReaction(
+            emoji: emoji,
+            count: String(count),
+            reactedByMe: isAdding
+        )
+        return updated
+    }
+
+    /// 전송 실패 되돌리기. 내가 만든 배열 그대로일 때만 손댄다 — 그 사이 `reaction.changed` 가
+    /// 통째로 갈아 끼웠다면 서버 값이 더 정확하다.
+    private func rollbackReactions(
+        messageId: String,
+        from optimistic: [ThreadMessageReaction],
+        to snapshot: [ThreadMessageReaction]
+    ) {
+        guard let index = messages.firstIndex(where: { $0.id == messageId }),
+              messages[index].reactions == optimistic else { return }
+        messages[index].reactions = snapshot
+    }
+
+    /// 톰스톤은 만들지 않는다. 삭제 성공은 `message.deleted` 가 확정하고, 실패했는데 먼저
+    /// 지워 두면 되살릴 이벤트가 없다.
+    private func performDelete(_ message: ThreadMessage) async {
+        do {
+            try await useCase.deleteMessage(threadId: threadId, messageId: message.id)
+        } catch {
+            errorHandler.handle(error, context: ErrorContext(
+                feature: "Community",
+                action: "deleteMessage",
+                retryAction: { [weak self] in await self?.performDelete(message) }
+            ))
+        }
     }
 
     private func loadOlder() async {

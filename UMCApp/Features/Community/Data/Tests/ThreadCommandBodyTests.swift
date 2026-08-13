@@ -40,12 +40,43 @@ struct ThreadCommandBodyTests {
         #expect(object.count == 1)
     }
 
+    /// 서버가 `emoji` 외 필드를 보면 `@JsonAnySetter` 로 프레임을 통째로 거절한다.
+    @Test("반응 본문은 이모지 하나만 싣는다")
+    func encodesReactionEmojiOnly() throws {
+        let object = try json(ReactionBody(emoji: "👍"))
+
+        #expect(object["emoji"] as? String == "👍")
+        #expect(object.count == 1)
+    }
+
+    @Test("삭제 본문은 빈 객체다 — 대상은 destination 이 지목한다")
+    func encodesEmptyDeleteBody() throws {
+        #expect(try json(EmptyCommandBody()).isEmpty)
+    }
+
     @Test("destination 은 threadId 를 경로에 박는다")
     func buildsDestinations() {
         #expect(ThreadDestination.messages("12") == "/app/community/threads/12/messages")
         #expect(ThreadDestination.read("12") == "/app/community/threads/12/read")
         #expect(ThreadDestination.events == "/user/queue/community/threads/events")
         #expect(ThreadDestination.errors == "/user/queue/errors")
+    }
+
+    /// 반응은 토글 destination 이 없다 — add/remove 경로가 뒤바뀌면 카운트가 반대로 움직인다.
+    @Test("반응·삭제 destination 은 messageId 까지 경로에 박는다")
+    func buildsMessageScopedDestinations() {
+        #expect(
+            ThreadDestination.reactionAdd("12", "77")
+                == "/app/community/threads/12/messages/77/reactions/add"
+        )
+        #expect(
+            ThreadDestination.reactionRemove("12", "77")
+                == "/app/community/threads/12/messages/77/reactions/remove"
+        )
+        #expect(
+            ThreadDestination.deleteMessage("12", "77")
+                == "/app/community/threads/12/messages/77/delete"
+        )
     }
 
     @Test("x-command-id 는 canonical lowercase UUID 다 — 서버가 대문자를 거절한다")

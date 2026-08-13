@@ -73,6 +73,12 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
 
     func markRead(threadId: String, lastReadMessageId: String) async throws {}
 
+    func addReaction(threadId: String, messageId: String, emoji: String) async throws {}
+
+    func removeReaction(threadId: String, messageId: String, emoji: String) async throws {}
+
+    func deleteMessage(threadId: String, messageId: String) async throws {}
+
     func startRealtime() async {}
 
     func signals() async -> AsyncStream<CommunityRealtimeSignal> {
