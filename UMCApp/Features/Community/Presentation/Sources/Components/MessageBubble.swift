@@ -309,11 +309,17 @@ struct MessageBubble: View {
     }
 
     /// 링크 런. 밑줄까지 넣는 건 색만으로 구분이 안 되는 사용자를 위한 것이다.
+    ///
+    /// 속성 키를 스코프까지 적어 지정한다 — `run.link` 처럼 dynamic member 로 쓰면 Foundation·
+    /// UIKit·SwiftUI 스코프가 같은 이름을 들고 있어 모호해질 수 있다.
     private static func linkRun(_ text: String, url: URL?) -> AttributedString {
         var run = AttributedString(text)
         guard let url else { return run }
-        run.link = url
-        run.underlineStyle = .single
+
+        var attributes = AttributeContainer()
+        attributes[AttributeScopes.FoundationAttributes.LinkAttribute.self] = url
+        attributes[AttributeScopes.SwiftUIAttributes.UnderlineStyleAttribute.self] = .single
+        run.mergeAttributes(attributes)
         return run
     }
 
