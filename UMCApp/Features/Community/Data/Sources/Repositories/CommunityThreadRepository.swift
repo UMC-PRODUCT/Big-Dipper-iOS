@@ -59,6 +59,26 @@ public struct CommunityThreadRepository: CommunityThreadRepositoryProtocol, @unc
         try await payload(CommunityThreadDTO.self, from: .getThread(threadId: threadId)).toDomain
     }
 
+    public func createThread(
+        title: String,
+        description: String,
+        category: String,
+        icon: String
+    ) async throws -> CommunityThread {
+        // 201 응답 본문이 상세와 같은 스키마라 `fetchThread` 와 같은 DTO 를 쓴다.
+        try await payload(
+            CommunityThreadDTO.self,
+            from: .createThread(
+                body: CreateThreadBody(
+                    title: title,
+                    description: description,
+                    category: category,
+                    icon: icon
+                )
+            )
+        ).toDomain
+    }
+
     public func fetchMessages(
         threadId: String,
         before: String?,

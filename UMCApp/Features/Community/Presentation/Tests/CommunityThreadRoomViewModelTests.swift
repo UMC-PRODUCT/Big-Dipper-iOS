@@ -170,9 +170,79 @@ private actor GatedRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     }
 }
 
+/// 요약기 대역.
+///
+/// 프로토콜이 `Sendable` 이고 `isAvailable` 이 동기 요구 사항이라 `@MainActor` 로 격리하면
+/// 만족시킬 수 없다. 실제로 만지는 쪽은 `@MainActor` 인 스위트와 ViewModel 뿐이라 `@unchecked`
+/// 로 잠근다 (같은 이유로 격리를 넘어야 하는 경합 검증은 아래 `GatedSummarizer` 가 맡는다).
+private final class StubSummarizer: ThreadSummarizing, @unchecked Sendable {
+
+    var isAvailable: Bool
+    var result: Result<ThreadSummary, Error>
+
+    private(set) var receivedMessages: [ThreadMessage] = []
+    private(set) var receivedMemberName: String?
+    private(set) var callCount = 0
+
+    init(
+        isAvailable: Bool = true,
+        result: Result<ThreadSummary, Error> = .success(
+            ThreadSummary(bullets: ["일정이 정해졌어요"], actionItems: ["회비 납부하기"])
+        )
+    ) {
+        self.isAvailable = isAvailable
+        self.result = result
+    }
+
+    func summarize(
+        messages: [ThreadMessage],
+        currentMemberName: String?
+    ) async throws -> ThreadSummary {
+        callCount += 1
+        receivedMessages = messages
+        receivedMemberName = currentMemberName
+        return try result.get()
+    }
+}
+
+/// 요약을 게이트에 묶어 두는 대역. 진행 중 상태(`.loading`)를 관찰하려면 실제로 멈춰 세워야 한다.
+private actor GatedSummarizer: ThreadSummarizing {
+
+    nonisolated let isAvailable = true
+
+    private var gate: CheckedContinuation<Void, Never>?
+    private var arrivalWaiter: CheckedContinuation<Void, Never>?
+    private var hasEntered = false
+
+    func summarize(
+        messages: [ThreadMessage],
+        currentMemberName: String?
+    ) async throws -> ThreadSummary {
+        hasEntered = true
+        arrivalWaiter?.resume()
+        arrivalWaiter = nil
+
+        await withCheckedContinuation { gate = $0 }
+        return ThreadSummary(bullets: ["요약"], actionItems: [])
+    }
+
+    /// `summarize` 가 게이트에 걸릴 때까지 기다린다.
+    func waitUntilSummarizing() async {
+        guard !hasEntered else { return }
+        await withCheckedContinuation { arrivalWaiter = $0 }
+    }
+
+    func release() {
+        hasEntered = false
+        gate?.resume()
+        gate = nil
+    }
+}
+
 private func makeThread(
     isJoined: Bool = true,
     memberCount: String = "3",
+    unreadCount: String = "0",
     myRole: ThreadMemberRole = .member
 ) -> CommunityThread {
     CommunityThread(
@@ -182,7 +252,7 @@ private func makeThread(
         category: .free,
         icon: "",
         memberCount: memberCount,
-        unreadCount: "0",
+        unreadCount: unreadCount,
         maxMembers: "20",
         isPinned: false,
         isMuted: false,
@@ -236,6 +306,7 @@ struct CommunityThreadRoomViewModelTests {
     private func makeViewModel(
         _ useCase: StubRoomUseCase,
         errorHandler: ErrorHandler = ErrorHandler(),
+        summarizer: ThreadSummarizing = StubSummarizer(),
         currentMemberId: String? = "9",
         sendTimeout: Duration = .seconds(15)
     ) -> CommunityThreadRoomViewModel {
@@ -243,6 +314,7 @@ struct CommunityThreadRoomViewModelTests {
             threadId: "1",
             useCase: useCase,
             errorHandler: errorHandler,
+            summarizer: summarizer,
             currentMemberId: currentMemberId,
             sendTimeout: sendTimeout
         )
@@ -1002,6 +1074,7 @@ struct CommunityThreadRoomViewModelTests {
             threadId: "1",
             useCase: useCase,
             errorHandler: ErrorHandler(),
+            summarizer: StubSummarizer(),
             currentMemberId: "9",
             sendTimeout: .seconds(15)
         )
@@ -1027,6 +1100,7 @@ struct CommunityThreadRoomViewModelTests {
             threadId: "1",
             useCase: useCase,
             errorHandler: ErrorHandler(),
+            summarizer: StubSummarizer(),
             currentMemberId: "9",
             sendTimeout: .seconds(15)
         )
@@ -1049,5 +1123,196 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.messages.count == 1)
         #expect(viewModel.messages.first?.id == "77")
         #expect(viewModel.messages.first?.deliveryState == .sent)
+    }
+
+    // MARK: - Summary
+
+    /// 미읽음 N개짜리 방을 연 상태를 만든다. 히스토리는 진입 전에 쌓여 있던 것으로 본다.
+    private func makeRoom(
+        unreadCount: String,
+        historyCount: Int = 30,
+        summarizer: ThreadSummarizing
+    ) -> (StubRoomUseCase, CommunityThreadRoomViewModel) {
+        let useCase = StubRoomUseCase()
+        useCase.thread = makeThread(unreadCount: unreadCount)
+        useCase.pages[nil] = ThreadMessagePage(
+            // 서버는 최신순으로 준다.
+            messages: (1...historyCount).reversed().map {
+                makeMessage(id: "\($0)", content: "메시지 \($0)", createdAt: TimeInterval($0))
+            },
+            hasMore: false,
+            nextBefore: nil
+        )
+        return (useCase, makeViewModel(useCase, summarizer: summarizer))
+    }
+
+    @Test("미읽음이 임계치에 못 미치면 요약 배너를 띄우지 않는다")
+    func hidesSummaryBannerBelowThreshold() async {
+        let (_, viewModel) = makeRoom(unreadCount: "9", summarizer: StubSummarizer())
+
+        await viewModel.load()
+
+        #expect(viewModel.isSummaryBannerVisible == false)
+    }
+
+    @Test("미읽음이 임계치를 넘으면 요약 배너를 띄운다")
+    func showsSummaryBannerAtThreshold() async {
+        let (_, viewModel) = makeRoom(unreadCount: "10", summarizer: StubSummarizer())
+
+        await viewModel.load()
+
+        #expect(viewModel.isSummaryBannerVisible)
+        #expect(viewModel.entryUnreadCount == 10)
+    }
+
+    /// 미지원 기기에 진입점을 노출하면 눌러도 실패만 보게 된다. 아예 감추는 게 맞다.
+    @Test("온디바이스 모델을 못 쓰는 기기에서는 임계치를 넘겨도 배너가 없다")
+    func hidesSummaryBannerWhenModelUnavailable() async {
+        let (_, viewModel) = makeRoom(
+            unreadCount: "50",
+            summarizer: StubSummarizer(isAvailable: false)
+        )
+
+        await viewModel.load()
+
+        #expect(viewModel.isSummaryBannerVisible == false)
+    }
+
+    @Test("배너를 닫으면 이 방에 머무는 동안 다시 뜨지 않는다")
+    func keepsSummaryBannerDismissed() async {
+        let (_, viewModel) = makeRoom(unreadCount: "30", summarizer: StubSummarizer())
+        await viewModel.load()
+
+        viewModel.dismissSummaryBanner()
+
+        #expect(viewModel.isSummaryBannerVisible == false)
+    }
+
+    /// `load()` 는 성공 직후 읽음 워터마크를 올린다. 배너 조건을 헤더에서 매번 다시 읽으면
+    /// 그 뒤 재조회 한 번에 미읽음이 0 으로 정정돼 배너가 사라진다.
+    @Test("진입 시점 미읽음 수는 이후 스레드 재조회에도 흔들리지 않는다", .timeLimit(.minutes(1)))
+    func keepsEntryUnreadCountAfterRefetch() async {
+        let (useCase, viewModel) = makeRoom(unreadCount: "24", summarizer: StubSummarizer())
+        await viewModel.load()
+
+        // 강퇴 확인 경로가 스레드를 다시 읽어 헤더를 갈아 끼운다 — 그때 미읽음은 이미 0 이다.
+        useCase.thread = makeThread(unreadCount: "0")
+        viewModel.apply(.memberKicked(threadId: "1", memberId: "7", memberCount: "2"))
+        await waitUntil { useCase.loadThreadCount == 2 }
+
+        #expect(viewModel.entryUnreadCount == 24)
+        #expect(viewModel.isSummaryBannerVisible)
+    }
+
+    @Test("요약에 넘기는 대화는 미읽음 구간으로 잘린다")
+    func summarizesOnlyUnreadWindow() async {
+        let summarizer = StubSummarizer()
+        let (_, viewModel) = makeRoom(
+            unreadCount: "12",
+            historyCount: 30,
+            summarizer: summarizer
+        )
+        await viewModel.load()
+
+        await viewModel.requestSummary()
+
+        #expect(summarizer.receivedMessages.count == 12)
+        #expect(summarizer.receivedMessages.first?.id == "19")
+        #expect(summarizer.receivedMessages.last?.id == "30")
+    }
+
+    @Test("액션 아이템 주인 힌트로 내가 보낸 메시지의 발신자 이름을 넘긴다")
+    func passesCurrentMemberNameHint() async {
+        let summarizer = StubSummarizer()
+        let (_, viewModel) = makeRoom(unreadCount: "12", summarizer: summarizer)
+        await viewModel.load()
+
+        await viewModel.requestSummary()
+
+        // 히스토리의 `senderId` 는 내 memberId 와 같게 만들어져 있다.
+        #expect(summarizer.receivedMemberName == "정의진")
+    }
+
+    @Test("요약에 성공하면 결과를 담은 loaded 가 된다")
+    func loadsSummaryOnSuccess() async throws {
+        let summary = ThreadSummary(bullets: ["회비 일정 공지"], actionItems: ["금요일까지 납부"])
+        let summarizer = StubSummarizer(result: .success(summary))
+        let (_, viewModel) = makeRoom(unreadCount: "12", summarizer: summarizer)
+        await viewModel.load()
+
+        await viewModel.requestSummary()
+
+        #expect(viewModel.summary.value == summary)
+    }
+
+    /// 요약 실패는 채팅 흐름을 막지 않는다 — 시트 안 인라인이어야 하고 전역 Alert 이면 안 된다.
+    @Test("요약에 실패하면 failed 로 남고 전역 Alert 을 띄우지 않는다")
+    func failedSummaryStaysInline() async {
+        let errorHandler = ErrorHandler()
+        let useCase = StubRoomUseCase()
+        useCase.thread = makeThread(unreadCount: "12")
+        let summarizer = StubSummarizer(result: .failure(ThreadSummaryError.unavailable))
+        let viewModel = makeViewModel(
+            useCase,
+            errorHandler: errorHandler,
+            summarizer: summarizer
+        )
+        await viewModel.load()
+
+        await viewModel.requestSummary()
+
+        #expect(viewModel.summary.error != nil)
+        #expect(errorHandler.currentError == nil)
+    }
+
+    @Test("시트를 닫으면 결과를 버려 다음 진입에서 다시 요약한다")
+    func resetsSummaryOnDismiss() async {
+        let (_, viewModel) = makeRoom(unreadCount: "12", summarizer: StubSummarizer())
+        await viewModel.load()
+        await viewModel.requestSummary()
+
+        viewModel.dismissSummary()
+
+        #expect(viewModel.summary.isIdle)
+    }
+
+    @Test("재시도하면 다시 loading 으로 들어갔다가 결과로 끝난다", .timeLimit(.minutes(1)))
+    func retryReentersLoading() async {
+        let summarizer = GatedSummarizer()
+        let (_, viewModel) = makeRoom(unreadCount: "12", summarizer: summarizer)
+        await viewModel.load()
+
+        let first = Task { await viewModel.requestSummary() }
+        await summarizer.waitUntilSummarizing()
+        #expect(viewModel.summary.isLoading)
+        await summarizer.release()
+        await first.value
+        #expect(viewModel.summary.value != nil)
+
+        let retry = Task { await viewModel.retrySummary() }
+        await summarizer.waitUntilSummarizing()
+        #expect(viewModel.summary.isLoading)
+        await summarizer.release()
+        await retry.value
+
+        #expect(viewModel.summary.value != nil)
+    }
+
+    /// 시트가 뜨는 동안 `.task` 와 재시도 버튼이 겹쳐 들어오면 같은 요약을 두 번 돌린다.
+    @Test("요약이 진행 중이면 재요청을 무시한다", .timeLimit(.minutes(1)))
+    func ignoresSummaryRequestWhileLoading() async {
+        let summarizer = GatedSummarizer()
+        let (_, viewModel) = makeRoom(unreadCount: "12", summarizer: summarizer)
+        await viewModel.load()
+
+        let first = Task { await viewModel.requestSummary() }
+        await summarizer.waitUntilSummarizing()
+        await viewModel.requestSummary()
+        #expect(viewModel.summary.isLoading)
+
+        await summarizer.release()
+        await first.value
+
+        #expect(viewModel.summary.value != nil)
     }
 }

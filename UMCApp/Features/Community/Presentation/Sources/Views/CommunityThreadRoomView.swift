@@ -46,6 +46,16 @@ struct CommunityThreadRoomView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // 리스트 위에 얹지 않고 위로 밀어낸다. 오버레이로 띄우면 정작 읽으러 온 첫 버블을 가린다.
+            if viewModel.isSummaryBannerVisible {
+                ThreadSummaryBanner(
+                    unreadCount: viewModel.entryUnreadCount,
+                    onTap: { viewModel.isSummarySheetPresented = true },
+                    onDismiss: { viewModel.dismissSummaryBanner() }
+                )
+                .transition(.opacity)
+            }
+
             content
 
             if let notice = viewModel.sendCooldownNotice {
@@ -68,6 +78,7 @@ struct CommunityThreadRoomView: View {
             }
         }
         .animation(.default, value: viewModel.sendCooldownNotice)
+        .animation(.default, value: viewModel.isSummaryBannerVisible)
         .umcDefaultBackground()
         .navigationBarTitleDisplayMode(.inline)
         // 헤더가 오기 전에는 principal 아이템 자체를 만들지 않는다. 내용이 빈 principal 은
@@ -80,6 +91,9 @@ struct CommunityThreadRoomView: View {
         .task { await viewModel.load() }
         .task { await viewModel.observeRealtime() }
         .alertPrompt(item: $viewModel.alertPrompt)
+        .sheet(isPresented: $viewModel.isSummarySheetPresented) {
+            ThreadSummarySheet(viewModel: viewModel)
+        }
         // 스펙 6.4: 포그라운드 + 최하단일 때만 워터마크를 올린다. 과거를 읽는 중이거나 앱이
         // 백그라운드인 동안 올리면 안 본 메시지까지 읽음 처리된다.
         .onChange(of: readableMessageId) { _, messageId in

@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+import CommunityPresentation
 import CoreDesignSystem
 import CoreDI
 import CoreDomain
@@ -63,7 +64,7 @@ struct RootTabAccessoryView: View {
         case .activity:
             AdminModeToggle()
         case .community:
-            CommunityAccessory()
+            CommunityAccessory(pathStore: pathStore)
         case .mypage:
             MyPageAccessory()
         }
@@ -196,16 +197,19 @@ fileprivate struct AdminModeToggle: View {
 
 // MARK: - Community
 
-/// 커뮤니티 탭 액세서리 — 게시글 작성 진입점.
-///
-/// 스레드/게시글 생성 화면이 UMCApp 에 아직 없어(후속 PR) 자리만 잡아 두고 비활성으로 둔다.
+/// 커뮤니티 탭 액세서리 — 스레드 생성 진입점.
 fileprivate struct CommunityAccessory: View {
+
+    // MARK: - Property
+
+    let pathStore: PathStore
 
     // MARK: - Body
 
     var body: some View {
-        AccessoryActionButton(title: "게시글 작성", systemImageName: "plus.circle.fill") {}
-            .disabled(true)
+        AccessoryActionButton(title: "스레드 생성", systemImageName: "plus.circle.fill") {
+            pathStore.push(CommunityDestination.threadCreate, on: .community)
+        }
     }
 }
 

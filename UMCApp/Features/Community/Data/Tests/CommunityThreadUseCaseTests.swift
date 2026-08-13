@@ -142,6 +142,87 @@ struct CommunityThreadListUseCaseTests {
     }
 }
 
+@Suite("커뮤니티 스레드 생성 UseCase")
+struct CommunityThreadCreateUseCaseTests {
+
+    @Test("제목·특징은 앞뒤 공백을 털고 카테고리는 rawValue 로 내려간다")
+    func trimsAndSendsCategoryRawValue() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadCreateUseCase(repository: repository)
+
+        _ = try await useCase.create(
+            title: "  iOS 스터디\n",
+            description: " 매주 화요일 8시 ",
+            category: .study,
+            icon: "📚"
+        )
+
+        let call = try #require(await repository.createThreadCalls.first)
+        #expect(call.title == "iOS 스터디")
+        #expect(call.description == "매주 화요일 8시")
+        #expect(call.category == "STUDY")
+        #expect(call.icon == "📚")
+    }
+
+    @Test("상한을 넘긴 제목·특징은 코드포인트 기준으로 잘라 보낸다")
+    func clampsOverlongText() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadCreateUseCase(repository: repository)
+
+        _ = try await useCase.create(
+            title: String(repeating: "가", count: 100),
+            description: String(repeating: "나", count: 600),
+            category: .free,
+            icon: "💬"
+        )
+
+        let call = try #require(await repository.createThreadCalls.first)
+        #expect(call.title.unicodeScalars.count == CommunityThreadCreateRule.titleMaxLength)
+        #expect(
+            call.description.unicodeScalars.count == CommunityThreadCreateRule.descriptionMaxLength
+        )
+    }
+
+    @Test("아이콘이 비었으면 카테고리 기본 이모지로 채운다 — 서버가 필수로 받는다")
+    func fallsBackToCategoryIcon() async throws {
+        let repository = FakeThreadRepository()
+        let useCase = CommunityThreadCreateUseCase(repository: repository)
+
+        _ = try await useCase.create(title: "질문방", description: "무엇이든", category: .qna, icon: "")
+
+        let call = try #require(await repository.createThreadCalls.first)
+        #expect(call.icon == CommunityThreadCategory.qna.defaultIcon)
+    }
+
+    @Test("여러 글자·이모지가 아닌 입력은 grapheme 하나로 줄이거나 기본값으로 떨어진다")
+    func normalizesIconToSingleGrapheme() async throws {
+        // 서버 @SingleGrapheme 는 두 글자 이상을 400 으로 막는다.
+        let cases: [(input: String, expected: String)] = [
+            ("📚🚀", "🚀"),
+            ("👨‍👩‍👧", "👨‍👩‍👧"),
+            ("❤️", "❤️"),
+            ("a", CommunityThreadCategory.project.defaultIcon),
+            ("7", CommunityThreadCategory.project.defaultIcon),
+            ("스터디", CommunityThreadCategory.project.defaultIcon)
+        ]
+
+        for (input, expected) in cases {
+            let repository = FakeThreadRepository()
+            let useCase = CommunityThreadCreateUseCase(repository: repository)
+
+            _ = try await useCase.create(
+                title: "제목",
+                description: "특징",
+                category: .project,
+                icon: input
+            )
+
+            let call = try #require(await repository.createThreadCalls.first)
+            #expect(call.icon == expected, "입력 \(input)")
+        }
+    }
+}
+
 @Suite("커뮤니티 스레드 채팅방 UseCase")
 struct CommunityThreadRoomUseCaseTests {
 
@@ -397,8 +478,16 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
         let isOn: Bool
     }
 
+    struct CreateThreadCall: Equatable {
+        let title: String
+        let description: String
+        let category: String
+        let icon: String
+    }
+
     // MARK: - Property
 
+    private(set) var createThreadCalls: [CreateThreadCall] = []
     private(set) var fetchThreadsCalls: [FetchThreadsCall] = []
     private(set) var fetchThreadCalls: [String] = []
     private(set) var fetchMessagesCalls: [FetchMessagesCall] = []
@@ -465,6 +554,24 @@ private actor FakeThreadRepository: CommunityThreadRepositoryProtocol {
         )
         if let error { throw error }
         return messagePage
+    }
+
+    func createThread(
+        title: String,
+        description: String,
+        category: String,
+        icon: String
+    ) async throws -> CommunityThread {
+        createThreadCalls.append(
+            CreateThreadCall(
+                title: title,
+                description: description,
+                category: category,
+                icon: icon
+            )
+        )
+        if let error { throw error }
+        return thread
     }
 
     func setPinned(threadId: String, isPinned: Bool) async throws {

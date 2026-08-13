@@ -220,8 +220,8 @@ struct CheckAuthStatusUseCaseTests {
         #expect(repository.logoutCallCount == 1)
     }
 
-    @Test("네트워크 단절로 프로필 조회가 실패하면 canAutoLogin이어도 토큰을 지우지 않는다")
-    func keepsSessionWhenProfileFetchFailsWithTransportError() async {
+    @Test("네트워크 단절로 프로필 조회가 실패하면 networkUnavailable이고 토큰을 지우지 않는다")
+    func returnsNetworkUnavailableWhenProfileFetchFailsWithTransportError() async {
         let repository = MockAuthRepository()
         repository.hasSessionResult = true
         repository.refreshSessionError = NetworkError.noNetwork
@@ -237,7 +237,53 @@ struct CheckAuthStatusUseCaseTests {
 
         let status = await useCase.execute()
 
-        #expect(status == .notLoggedIn)
+        #expect(status == .networkUnavailable)
+        #expect(repository.logoutCallCount == 0)
+    }
+
+    @Test("세션 갱신만 성공적으로 끝나고 프로필 조회가 전송 실패면 networkUnavailable")
+    func returnsNetworkUnavailableWhenOnlyProfileFetchFailsOnTransport() async {
+        let repository = MockAuthRepository()
+        repository.hasSessionResult = true
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .failure(NetworkError.timeout)
+        let userDefaults = makeIsolatedUserDefaults()
+        userDefaults.set(true, forKey: AppStorageKey.canAutoLogin)
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            userDefaults: userDefaults
+        )
+
+        let status = await useCase.execute()
+
+        #expect(status == .networkUnavailable)
+        #expect(repository.logoutCallCount == 0)
+    }
+
+    @Test("세션 갱신이 전송 실패해도 프로필 조회가 성공하면 approved (완화 정책 회귀 테스트)")
+    func returnsApprovedWhenRefreshFailsOnTransportButProfileSucceeds() async {
+        let repository = MockAuthRepository()
+        repository.hasSessionResult = true
+        repository.refreshSessionError = URLError(.notConnectedToInternet)
+        let fetchProfile = MockFetchMemberProfileUseCase()
+        fetchProfile.result = .success(Profile(
+            memberId: "1",
+            name: "홍길동",
+            nickname: "길동이",
+            generations: ["11"]
+        ))
+        let syncSpy = SyncProfileStorageSpy()
+        let useCase = makeUseCase(
+            repository: repository,
+            fetchMemberProfileUseCase: fetchProfile,
+            syncProfileStorageSpy: syncSpy
+        )
+
+        let status = await useCase.execute()
+
+        #expect(status == .approved)
+        #expect(syncSpy.executeCallCount == 1)
         #expect(repository.logoutCallCount == 0)
     }
 

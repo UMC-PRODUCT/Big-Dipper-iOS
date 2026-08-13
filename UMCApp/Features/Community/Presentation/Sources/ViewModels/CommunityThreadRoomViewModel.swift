@@ -40,6 +40,26 @@ public final class CommunityThreadRoomViewModel {
     /// 429 쿨다운 안내. `nil` 이 아닌 동안 전송이 잠긴다 (스펙 §7).
     public private(set) var sendCooldownNotice: String?
 
+    // MARK: - Summary Property
+
+    /// 요약 시트의 상태. 로딩·결과·실패를 한 값으로 모아 시트가 분기 하나만 보게 한다.
+    ///
+    /// 갱신은 `CommunityThreadRoomViewModel+Summary` 가 맡아 setter 를 모듈 내부로 연다.
+    public internal(set) var summary: Loadable<ThreadSummary> = .idle
+    public var isSummarySheetPresented = false
+    /// 방에 들어온 순간의 미읽음 수.
+    ///
+    /// `load()` 가 성공 직후 읽음 워터마크를 올리므로 서버가 주는 `unreadCount` 는 곧 0 으로
+    /// 정정된다. 배너 조건을 헤더 값으로 계산하면 재조회 한 번에 배너가 사라져, 정작 요약이
+    /// 필요했던 사람이 진입점을 놓친다. 그래서 진입 시 한 번만 고정하고 이후로는 건드리지 않는다.
+    /// 개수 비교·구간 자르기에만 쓰는 연산값이라 `Int` 로 들고 있는다.
+    public internal(set) var entryUnreadCount = 0
+    /// 배너를 한 번 닫으면 이 방을 벗어나기 전까지 다시 띄우지 않는다.
+    var isSummaryBannerDismissed = false
+    @ObservationIgnored var hasCapturedEntryUnreadCount = false
+
+    let summarizer: ThreadSummarizing
+
     private let threadId: String
     private let useCase: CommunityThreadRoomUseCaseProtocol
     private let errorHandler: ErrorHandler
@@ -62,6 +82,8 @@ public final class CommunityThreadRoomViewModel {
     // MARK: - Init
 
     /// - Parameters:
+    ///   - summarizer: 온디바이스 대화 요약기. 기본값을 주지 않는다 — 구현체를 기본 인자로
+    ///     숨기면 화면이 DI 컨테이너를 우회해 특정 구현에 묶인다.
     ///   - currentMemberId: 내 메시지 판별용. 메시지 응답에 `isMine` 류 플래그가 없어
     ///     `senderId` 대조가 유일한 방법이다.
     ///   - sendTimeout: 이 시간 안에 `message.created` 도 에러도 오지 않으면 실패로 본다.
@@ -69,12 +91,14 @@ public final class CommunityThreadRoomViewModel {
         threadId: String,
         useCase: CommunityThreadRoomUseCaseProtocol,
         errorHandler: ErrorHandler,
+        summarizer: ThreadSummarizing,
         currentMemberId: String? = AppStorageKey.memberIdString(),
         sendTimeout: Duration = .seconds(15)
     ) {
         self.threadId = threadId
         self.useCase = useCase
         self.errorHandler = errorHandler
+        self.summarizer = summarizer
         self.currentMemberId = currentMemberId
         self.sendTimeout = sendTimeout
     }
@@ -146,6 +170,9 @@ public final class CommunityThreadRoomViewModel {
             hasMore = page.hasMore
             nextBefore = page.nextBefore
             header = .loaded(thread)
+            // 바로 아래 `markRead` 가 미읽음을 지우기 시작한다. 요약 배너가 볼 수치는 그 전에
+            // 확정해야 한다 — 순서가 뒤집히면 배너 조건이 영영 성립하지 않는다.
+            captureEntryUnreadCount(from: thread)
             // 방에 들어온 행위 자체가 읽음이다. 리스트의 미읽음 배지는 이 워터마크가 서버에
             // 닿은 뒤 다음 REST 조회로 정정된다 (스펙 10장 잠정 정책).
             if let newest = messages.last {

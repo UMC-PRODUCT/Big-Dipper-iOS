@@ -15,8 +15,8 @@ import UMCFoundation
 /// 커뮤니티 탭 진입점.
 ///
 /// 자체 `NavigationStack` 을 만들지 않는다 — 탭별 스택은 상위 탭 셸이 소유한다.
-/// 대신 자기 목적지(``CommunityDestination``) 등록을 여기서 해, App 이 커뮤니티 화면 구성을
-/// 알지 못한 채로도 스택이 동작하게 한다.
+/// 자기 목적지(``CommunityDestination``) 등록은 리스트 화면이 하므로(생성 결과를 리스트
+/// ViewModel 에 바로 반영해야 한다) App 은 여전히 커뮤니티 화면 구성을 알 필요가 없다.
 public struct CommunityFeatureView: View {
 
     // MARK: - Property
@@ -45,12 +45,5 @@ public struct CommunityFeatureView: View {
                 )
             }
         )
-        .navigationDestination(for: CommunityDestination.self) { destination in
-            CommunityRoutingView(
-                destination: destination,
-                container: di,
-                errorHandler: errorHandler
-            )
-        }
     }
 }
