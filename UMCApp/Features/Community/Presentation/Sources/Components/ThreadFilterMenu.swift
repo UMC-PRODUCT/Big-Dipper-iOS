@@ -48,9 +48,19 @@ struct ThreadFilterMenu: View {
     private func picker(_ title: String, items: [CommunityThreadFilter]) -> some View {
         Picker(title, selection: $selection) {
             ForEach(items, id: \.self) { item in
-                Text(item.displayName).tag(item)
+                row(item)
             }
         }
         .pickerStyle(.inline)
+    }
+
+    /// 태그는 분기 안쪽에서 붙인다 — 조건부 뷰 바깥에 붙이면 선택이 통째로 풀린다.
+    @ViewBuilder
+    private func row(_ item: CommunityThreadFilter) -> some View {
+        if let symbolName = item.symbolName {
+            Label(item.displayName, systemImage: symbolName).tag(item)
+        } else {
+            Text(item.displayName).tag(item)
+        }
     }
 }

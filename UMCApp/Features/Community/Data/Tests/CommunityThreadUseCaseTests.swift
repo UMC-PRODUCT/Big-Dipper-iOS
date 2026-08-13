@@ -342,7 +342,9 @@ struct CommunityThreadRoomUseCaseTests {
             try await useCase.send(
                 threadId: "thread-1",
                 clientMessageId: "client-1",
-                content: "안녕하세요"
+                content: "안녕하세요",
+                replyToId: nil,
+                mentionedMemberIds: []
             )
         }
     }

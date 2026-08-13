@@ -30,6 +30,16 @@ public enum CommunityThreadCategory: String, CaseIterable, Sendable, Hashable {
         case .free: return "💬"
         }
     }
+
+    /// 메뉴·리스트에 붙는 SF Symbol. 서버 값을 대신하는 `defaultIcon` 과 달리 앱이 정하는 장식이다.
+    public var symbolName: String {
+        switch self {
+        case .study: return "book.closed.fill"
+        case .qna: return "questionmark.square.fill"
+        case .project: return "square.3.layers.3d.down.right"
+        case .free: return "bubble.left.and.bubble.right.fill"
+        }
+    }
 }
 
 public enum ThreadMemberRole: String, Sendable, Hashable {
@@ -75,6 +85,14 @@ public enum CommunityThreadFilter: Hashable, Sendable {
         case .all: return "전체"
         case .unread: return "안읽음"
         case .category(let category): return category.displayName
+        }
+    }
+
+    /// 메뉴 항목에 붙는 심볼. 상태 축은 카테고리와 성격이 달라 심볼 없이 체크마크만 둔다.
+    public var symbolName: String? {
+        switch self {
+        case .all, .unread: return nil
+        case .category(let category): return category.symbolName
         }
     }
 

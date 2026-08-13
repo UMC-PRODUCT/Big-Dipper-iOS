@@ -122,6 +122,16 @@ struct CommunityThreadDomainModelTests {
         )
     }
 
+    @Test("카테고리만 SF Symbol 을 갖고 상태 축은 심볼 없이 체크마크만 둔다")
+    func filterSymbolNames() {
+        for category in CommunityThreadCategory.allCases {
+            #expect(!category.symbolName.isEmpty)
+            #expect(CommunityThreadFilter.category(category).symbolName == category.symbolName)
+        }
+        #expect(CommunityThreadFilter.all.symbolName == nil)
+        #expect(CommunityThreadFilter.unread.symbolName == nil)
+    }
+
     // MARK: - Thread
 
     @Test("icon 이 비면 카테고리 기본 이모지로 폴백한다")
