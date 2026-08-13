@@ -24,7 +24,8 @@ public final class ThreadMemberListViewModel {
     /// 나가기가 확정된 상태. View 가 이걸 보고 커뮤니티 루트로 되돌린다.
     public private(set) var didLeave = false
 
-    private let threadId: String
+    /// 초대 시트가 같은 스레드를 보게 하려면 화면이 이 값을 읽어야 한다 (#1136).
+    public let threadId: String
     private let useCase: CommunityThreadMemberUseCaseProtocol
     private let errorHandler: ErrorHandler
     private let currentMemberId: String?
