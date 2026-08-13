@@ -106,6 +106,27 @@ public actor CommunityThreadRealtimeClient: CommunityThreadRealtimeProtocol {
         )
     }
 
+    public func addReaction(threadId: String, messageId: String, emoji: String) async throws {
+        try await send(
+            destination: ThreadDestination.reactionAdd(threadId, messageId),
+            body: ReactionBody(emoji: emoji)
+        )
+    }
+
+    public func removeReaction(threadId: String, messageId: String, emoji: String) async throws {
+        try await send(
+            destination: ThreadDestination.reactionRemove(threadId, messageId),
+            body: ReactionBody(emoji: emoji)
+        )
+    }
+
+    public func deleteMessage(threadId: String, messageId: String) async throws {
+        try await send(
+            destination: ThreadDestination.deleteMessage(threadId, messageId),
+            body: EmptyCommandBody()
+        )
+    }
+
     // MARK: - Function
 
     /// SEND 프레임 발행.

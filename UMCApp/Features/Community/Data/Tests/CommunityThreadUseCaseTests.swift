@@ -252,6 +252,87 @@ struct CommunityThreadRoomUseCaseTests {
         #expect(await repository.fetchThreadCalls.isEmpty)
     }
 
+    // MARK: - Reaction
+
+    @Test("반응은 add/remove 를 구분해 실시간 채널로 내려보낸다")
+    func routesReactionToRealtime() async throws {
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(realtime: realtime)
+
+        try await useCase.addReaction(threadId: "thread-1", messageId: "message-1", emoji: "👍")
+        try await useCase.removeReaction(threadId: "thread-1", messageId: "message-1", emoji: "👍")
+
+        #expect(await realtime.addReactionCalls == [
+            FakeThreadRealtime.ReactionCall(
+                threadId: "thread-1",
+                messageId: "message-1",
+                emoji: "👍"
+            ),
+        ])
+        #expect(await realtime.removeReactionCalls == [
+            FakeThreadRealtime.ReactionCall(
+                threadId: "thread-1",
+                messageId: "message-1",
+                emoji: "👍"
+            ),
+        ])
+    }
+
+    @Test("여러 코드포인트로 이뤄진 이모지도 grapheme cluster 하나면 통과한다")
+    func acceptsMultiScalarSingleClusterEmoji() async throws {
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(realtime: realtime)
+
+        try await useCase.addReaction(
+            threadId: "thread-1",
+            messageId: "message-1",
+            emoji: "👨‍👩‍👧‍👦"
+        )
+
+        #expect(await realtime.addReactionCalls.count == 1)
+    }
+
+    @Test("빈 값·공백·이모지 여러 개는 실시간 채널에 닿기 전에 막힌다")
+    func rejectsInvalidReactionEmoji() async {
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(realtime: realtime)
+
+        await #expect(throws: AppError.validation(.empty(field: "이모지"))) {
+            try await useCase.addReaction(threadId: "thread-1", messageId: "m", emoji: "")
+        }
+        let invalid = AppError.validation(
+            .invalidValue(field: "이모지", reason: "이모지 하나만 보낼 수 있어요")
+        )
+        await #expect(throws: invalid) {
+            try await useCase.addReaction(threadId: "thread-1", messageId: "m", emoji: " ")
+        }
+        await #expect(throws: invalid) {
+            try await useCase.addReaction(threadId: "thread-1", messageId: "m", emoji: "👍👍")
+        }
+        await #expect(throws: invalid) {
+            try await useCase.removeReaction(threadId: "thread-1", messageId: "m", emoji: "👍 ")
+        }
+
+        #expect(await realtime.addReactionCalls.isEmpty)
+        #expect(await realtime.removeReactionCalls.isEmpty)
+    }
+
+    // MARK: - Delete
+
+    @Test("메시지 삭제도 실시간 채널로 간다 — REST 를 거치지 않는다")
+    func routesDeleteToRealtime() async throws {
+        let repository = FakeThreadRepository()
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(repository: repository, realtime: realtime)
+
+        try await useCase.deleteMessage(threadId: "thread-1", messageId: "message-42")
+
+        #expect(await realtime.deleteCalls == [
+            FakeThreadRealtime.DeleteCall(threadId: "thread-1", messageId: "message-42"),
+        ])
+        #expect(await repository.fetchThreadCalls.isEmpty)
+    }
+
     // MARK: - Realtime Lifecycle
 
     @Test("실시간 시작은 연결 소유자에게 위임한다")
@@ -416,21 +497,37 @@ private actor FakeThreadRealtime: CommunityThreadRealtimeProtocol {
         let lastReadMessageId: String
     }
 
+    struct ReactionCall: Equatable {
+        let threadId: String
+        let messageId: String
+        let emoji: String
+    }
+
+    struct DeleteCall: Equatable {
+        let threadId: String
+        let messageId: String
+    }
+
     // MARK: - Property
 
     private(set) var startCount = 0
     private(set) var stopCount = 0
     private(set) var sendCalls: [SendCall] = []
     private(set) var readCalls: [ReadCall] = []
+    private(set) var addReactionCalls: [ReactionCall] = []
+    private(set) var removeReactionCalls: [ReactionCall] = []
+    private(set) var deleteCalls: [DeleteCall] = []
 
     private let sendError: Error?
+    private let commandError: Error?
     private let stream: AsyncStream<CommunityRealtimeSignal>
     private let continuation: AsyncStream<CommunityRealtimeSignal>.Continuation
 
     // MARK: - Init
 
-    init(sendError: Error? = nil) {
+    init(sendError: Error? = nil, commandError: Error? = nil) {
         self.sendError = sendError
+        self.commandError = commandError
         let made = AsyncStream.makeStream(of: CommunityRealtimeSignal.self)
         self.stream = made.stream
         self.continuation = made.continuation
@@ -473,6 +570,25 @@ private actor FakeThreadRealtime: CommunityThreadRealtimeProtocol {
 
     func updateReadWatermark(threadId: String, lastReadMessageId: String) async throws {
         readCalls.append(ReadCall(threadId: threadId, lastReadMessageId: lastReadMessageId))
+    }
+
+    func addReaction(threadId: String, messageId: String, emoji: String) async throws {
+        addReactionCalls.append(
+            ReactionCall(threadId: threadId, messageId: messageId, emoji: emoji)
+        )
+        if let commandError { throw commandError }
+    }
+
+    func removeReaction(threadId: String, messageId: String, emoji: String) async throws {
+        removeReactionCalls.append(
+            ReactionCall(threadId: threadId, messageId: messageId, emoji: emoji)
+        )
+        if let commandError { throw commandError }
+    }
+
+    func deleteMessage(threadId: String, messageId: String) async throws {
+        deleteCalls.append(DeleteCall(threadId: threadId, messageId: messageId))
+        if let commandError { throw commandError }
     }
 }
 

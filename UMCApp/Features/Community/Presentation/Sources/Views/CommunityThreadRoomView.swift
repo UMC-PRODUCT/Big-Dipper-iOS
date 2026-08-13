@@ -151,7 +151,13 @@ struct CommunityThreadRoomView: View {
                     MessageBubble(
                         message: message,
                         isMine: viewModel.isMine(message),
-                        onRetry: { Task { await viewModel.retry(message) } }
+                        canDelete: viewModel.canDelete(message),
+                        onRetry: { Task { await viewModel.retry(message) } },
+                        onReact: { emoji in
+                            Task { await viewModel.toggleReaction(message, emoji: emoji) }
+                        },
+                        onCopy: { viewModel.copyContent(message) },
+                        onDelete: { viewModel.requestDelete(message) }
                     )
                     .task { await viewModel.loadOlderIfNeeded(currentItem: message) }
                 }

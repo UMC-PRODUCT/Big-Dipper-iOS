@@ -19,11 +19,18 @@ import UMCFoundation
 @MainActor
 private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
 
+    struct ReactionCall: Equatable {
+        let messageId: String
+        let emoji: String
+    }
+
     var thread = makeThread()
     var pages: [String?: ThreadMessagePage] = [:]
     var sendError: Error?
     var loadThreadError: Error?
     var loadMessagesError: Error?
+    var reactionError: Error?
+    var deleteError: Error?
     /// 구독하자마자 흘려보낼 신호. 다 흘리면 스트림이 끝나 `observeRealtime()` 이 반환한다.
     var pendingSignals: [CommunityRealtimeSignal] = []
 
@@ -31,6 +38,9 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     private(set) var sentClientMessageIds: [String] = []
     private(set) var readWatermarks: [String] = []
     private(set) var loadThreadCount = 0
+    private(set) var addedReactions: [ReactionCall] = []
+    private(set) var removedReactions: [ReactionCall] = []
+    private(set) var deletedMessageIds: [String] = []
 
     func loadThread(threadId: String) async throws -> CommunityThread {
         loadThreadCount += 1
@@ -51,6 +61,21 @@ private final class StubRoomUseCase: CommunityThreadRoomUseCaseProtocol {
 
     func markRead(threadId: String, lastReadMessageId: String) async throws {
         readWatermarks.append(lastReadMessageId)
+    }
+
+    func addReaction(threadId: String, messageId: String, emoji: String) async throws {
+        addedReactions.append(ReactionCall(messageId: messageId, emoji: emoji))
+        if let reactionError { throw reactionError }
+    }
+
+    func removeReaction(threadId: String, messageId: String, emoji: String) async throws {
+        removedReactions.append(ReactionCall(messageId: messageId, emoji: emoji))
+        if let reactionError { throw reactionError }
+    }
+
+    func deleteMessage(threadId: String, messageId: String) async throws {
+        deletedMessageIds.append(messageId)
+        if let deleteError { throw deleteError }
     }
 
     func startRealtime() async {}
@@ -105,6 +130,12 @@ private actor GatedRoomUseCase: CommunityThreadRoomUseCaseProtocol {
 
     func markRead(threadId: String, lastReadMessageId: String) async throws {}
 
+    func addReaction(threadId: String, messageId: String, emoji: String) async throws {}
+
+    func removeReaction(threadId: String, messageId: String, emoji: String) async throws {}
+
+    func deleteMessage(threadId: String, messageId: String) async throws {}
+
     func startRealtime() async {}
 
     func signals() async -> AsyncStream<CommunityRealtimeSignal> {
@@ -139,7 +170,11 @@ private actor GatedRoomUseCase: CommunityThreadRoomUseCaseProtocol {
     }
 }
 
-private func makeThread(isJoined: Bool = true, memberCount: String = "3") -> CommunityThread {
+private func makeThread(
+    isJoined: Bool = true,
+    memberCount: String = "3",
+    myRole: ThreadMemberRole = .member
+) -> CommunityThread {
     CommunityThread(
         id: "1",
         title: "스레드",
@@ -152,7 +187,7 @@ private func makeThread(isJoined: Bool = true, memberCount: String = "3") -> Com
         isPinned: false,
         isMuted: false,
         isJoined: isJoined,
-        myRole: .member,
+        myRole: myRole,
         lastMessage: nil,
         createdBy: "1",
         createdAt: Date(timeIntervalSince1970: 0),
@@ -168,6 +203,7 @@ private func makeMessage(
     content: String = "본문",
     clientMessageId: String? = nil,
     senderId: String = "9",
+    reactions: [ThreadMessageReaction] = [],
     createdAt: TimeInterval = 0
 ) -> ThreadMessage {
     ThreadMessage(
@@ -180,7 +216,7 @@ private func makeMessage(
         files: [],
         mentions: [],
         replyTo: nil,
-        reactions: [],
+        reactions: reactions,
         clientMessageId: clientMessageId,
         createdAt: Date(timeIntervalSince1970: createdAt),
         editedAt: nil,
@@ -210,6 +246,22 @@ struct CommunityThreadRoomViewModelTests {
             currentMemberId: currentMemberId,
             sendTimeout: sendTimeout
         )
+    }
+
+    /// 반응·삭제는 이미 서버에 있는 메시지에만 걸린다. 그 상태를 매번 만들지 않게 묶어 둔다.
+    private func makeLoadedViewModel(
+        _ useCase: StubRoomUseCase,
+        with message: ThreadMessage,
+        errorHandler: ErrorHandler = ErrorHandler()
+    ) async -> CommunityThreadRoomViewModel {
+        useCase.pages[nil] = ThreadMessagePage(
+            messages: [message],
+            hasMore: false,
+            nextBefore: nil
+        )
+        let viewModel = makeViewModel(useCase, errorHandler: errorHandler)
+        await viewModel.load()
+        return viewModel
     }
 
     /// 언스트럭처드 `Task`(타임아웃 감시·워터마크 디바운스·멤버십 재확인)를 기다린다.
@@ -492,6 +544,200 @@ struct CommunityThreadRoomViewModelTests {
         #expect(viewModel.canSend == false)
         #expect(useCase.sentContents.isEmpty)
         #expect(viewModel.messages.isEmpty)
+    }
+
+    // MARK: - Reaction
+
+    @Test("반응을 누르면 칩이 즉시 생기고 add 경로로 나간다")
+    func addsReactionOptimistically() async throws {
+        let useCase = StubRoomUseCase()
+        let message = makeMessage(id: "5", createdAt: 500)
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        await viewModel.toggleReaction(message, emoji: "👍")
+
+        #expect(viewModel.messages.first?.reactions == [
+            ThreadMessageReaction(emoji: "👍", count: "1", reactedByMe: true),
+        ])
+        #expect(useCase.addedReactions == [
+            StubRoomUseCase.ReactionCall(messageId: "5", emoji: "👍"),
+        ])
+        #expect(useCase.removedReactions.isEmpty)
+    }
+
+    @Test("남이 이미 누른 반응에 얹으면 카운트만 오른다")
+    func incrementsExistingReaction() async throws {
+        let useCase = StubRoomUseCase()
+        let message = makeMessage(
+            id: "5",
+            reactions: [ThreadMessageReaction(emoji: "👍", count: "2", reactedByMe: false)],
+            createdAt: 500
+        )
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        await viewModel.toggleReaction(message, emoji: "👍")
+
+        #expect(viewModel.messages.first?.reactions == [
+            ThreadMessageReaction(emoji: "👍", count: "3", reactedByMe: true),
+        ])
+    }
+
+    @Test("내가 누른 반응을 다시 누르면 remove 로 나가고 마지막 하나면 칩이 사라진다")
+    func removesOwnReaction() async throws {
+        let useCase = StubRoomUseCase()
+        let message = makeMessage(
+            id: "5",
+            reactions: [ThreadMessageReaction(emoji: "👍", count: "1", reactedByMe: true)],
+            createdAt: 500
+        )
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        await viewModel.toggleReaction(message, emoji: "👍")
+
+        #expect(viewModel.messages.first?.reactions.isEmpty == true)
+        #expect(useCase.removedReactions == [
+            StubRoomUseCase.ReactionCall(messageId: "5", emoji: "👍"),
+        ])
+        #expect(useCase.addedReactions.isEmpty)
+    }
+
+    @Test("전송에 실패하면 반응은 누르기 전 상태로 돌아간다")
+    func rollsBackFailedReaction() async throws {
+        let useCase = StubRoomUseCase()
+        useCase.reactionError = AppError.unknown(message: "notConnected")
+        let original = [ThreadMessageReaction(emoji: "👍", count: "1", reactedByMe: false)]
+        let message = makeMessage(id: "5", reactions: original, createdAt: 500)
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        await viewModel.toggleReaction(message, emoji: "👍")
+
+        #expect(viewModel.messages.first?.reactions == original)
+    }
+
+    /// `reaction.changed` 는 배열을 통째로 교체한다. 낙관적 값 위에 더해지지 않아야 한다.
+    @Test("낙관적 반영 뒤 reaction.changed 가 와도 카운트가 이중으로 늘지 않는다")
+    func serverEventDoesNotDoubleCountReaction() async throws {
+        let useCase = StubRoomUseCase()
+        let message = makeMessage(
+            id: "5",
+            reactions: [ThreadMessageReaction(emoji: "👍", count: "1", reactedByMe: false)],
+            createdAt: 500
+        )
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        await viewModel.toggleReaction(message, emoji: "👍")
+        viewModel.apply(.reactionChanged(
+            threadId: "1",
+            messageId: "5",
+            reactions: [ThreadMessageReaction(emoji: "👍", count: "2", reactedByMe: true)]
+        ))
+
+        #expect(viewModel.messages.first?.reactions == [
+            ThreadMessageReaction(emoji: "👍", count: "2", reactedByMe: true),
+        ])
+    }
+
+    /// 미확정 버블의 id 는 내가 만든 UUID 다. 그대로 보내면 서버에 없는 messageId 가 나간다.
+    @Test("아직 전송 중인 메시지에는 반응을 보내지 않는다")
+    func ignoresReactionOnUnsettledMessage() async throws {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase)
+        await viewModel.load()
+
+        viewModel.draft = "안녕"
+        await viewModel.send()
+        let optimistic = try #require(viewModel.messages.first)
+        await viewModel.toggleReaction(optimistic, emoji: "👍")
+
+        #expect(useCase.addedReactions.isEmpty)
+        #expect(viewModel.messages.first?.reactions.isEmpty == true)
+    }
+
+    // MARK: - Delete
+
+    @Test("남의 메시지는 지울 수 없고, 내 메시지와 운영진 권한에서는 지울 수 있다")
+    func limitsDeleteToOwnMessageOrModerator() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase, currentMemberId: "9")
+        await viewModel.load()
+
+        #expect(viewModel.canDelete(makeMessage(id: "1", senderId: "9")))
+        #expect(viewModel.canDelete(makeMessage(id: "2", senderId: "7")) == false)
+
+        useCase.thread = makeThread(myRole: .owner)
+        await viewModel.load()
+        #expect(viewModel.canDelete(makeMessage(id: "2", senderId: "7")))
+
+        useCase.thread = makeThread(myRole: .admin)
+        await viewModel.load()
+        #expect(viewModel.canDelete(makeMessage(id: "2", senderId: "7")))
+    }
+
+    @Test("서버가 아직 모르는 메시지와 톰스톤에는 삭제를 걸지 않는다")
+    func blocksDeleteForUnsettledOrDeletedMessage() async {
+        let useCase = StubRoomUseCase()
+        let viewModel = makeViewModel(useCase, currentMemberId: "9")
+        await viewModel.load()
+
+        var deleted = makeMessage(id: "2", senderId: "9")
+        deleted.deletedAt = Date(timeIntervalSince1970: 600)
+
+        #expect(viewModel.canDelete(
+            makeMessage(id: "1", senderId: "9").with(deliveryState: .sending)
+        ) == false)
+        #expect(viewModel.canDelete(deleted) == false)
+    }
+
+    @Test("삭제는 확인 알럿을 거쳐야 실행되고, 톰스톤 전환은 서버 이벤트가 맡는다",
+          .timeLimit(.minutes(1)))
+    func deletesOnlyAfterConfirmation() async throws {
+        let useCase = StubRoomUseCase()
+        let message = makeMessage(id: "5", senderId: "9", createdAt: 500)
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        viewModel.requestDelete(message)
+        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
+        #expect(useCase.deletedMessageIds.isEmpty)
+
+        confirm()
+        await waitUntil { useCase.deletedMessageIds.isEmpty == false }
+
+        #expect(useCase.deletedMessageIds == ["5"])
+        // 낙관적 톰스톤을 만들지 않는다 — message.deleted 가 확정한다.
+        #expect(viewModel.messages.first?.isDeleted == false)
+    }
+
+    @Test("남의 메시지에 삭제를 요청해도 알럿조차 뜨지 않는다")
+    func ignoresDeleteRequestWithoutPermission() async {
+        let useCase = StubRoomUseCase()
+        let message = makeMessage(id: "5", senderId: "7", createdAt: 500)
+        let viewModel = await makeLoadedViewModel(useCase, with: message)
+
+        viewModel.requestDelete(message)
+
+        #expect(viewModel.alertPrompt == nil)
+        #expect(useCase.deletedMessageIds.isEmpty)
+    }
+
+    @Test("삭제 전송이 실패하면 전역 Alert 으로 알린다", .timeLimit(.minutes(1)))
+    func reportsDeleteFailure() async throws {
+        let useCase = StubRoomUseCase()
+        useCase.deleteError = AppError.unknown(message: "실패")
+        let errorHandler = ErrorHandler()
+        let message = makeMessage(id: "5", senderId: "9", createdAt: 500)
+        let viewModel = await makeLoadedViewModel(
+            useCase,
+            with: message,
+            errorHandler: errorHandler
+        )
+
+        viewModel.requestDelete(message)
+        let confirm = try #require(viewModel.alertPrompt?.positiveBtnAction)
+
+        confirm()
+        await waitUntil { errorHandler.currentError != nil }
+
+        #expect(errorHandler.currentError != nil)
     }
 
     // MARK: - Realtime

@@ -37,4 +37,17 @@ public protocol CommunityThreadRealtimeProtocol: Sendable {
 
     /// 읽음 워터마크 갱신. 더 작거나 같은 값은 서버가 멱등 no-op 처리한다.
     func updateReadWatermark(threadId: String, lastReadMessageId: String) async throws
+
+    /// 반응 추가. 서버는 토글이 아니라 방향이 정해진 명령을 받으므로 호출자가
+    /// `reactedByMe` 를 보고 add/remove 를 고른다.
+    ///
+    /// - Parameter emoji: 단일 grapheme cluster. 본문에 `emoji` 외 필드가 하나라도 있으면
+    ///   서버가 프레임을 통째로 거절한다.
+    func addReaction(threadId: String, messageId: String, emoji: String) async throws
+
+    /// 반응 제거. 내가 누르지 않은 이모지를 보내면 서버가 no-op 으로 흘린다.
+    func removeReaction(threadId: String, messageId: String, emoji: String) async throws
+
+    /// 메시지 삭제. 결과는 `message.deleted` 이벤트로 돌아오므로 호출자는 응답을 기다리지 않는다.
+    func deleteMessage(threadId: String, messageId: String) async throws
 }
