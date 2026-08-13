@@ -9,7 +9,21 @@ import UMCFoundation
 public protocol CommunityThreadRoomUseCaseProtocol: Sendable {
     func loadThread(threadId: String) async throws -> CommunityThread
     func loadMessages(threadId: String, before: String?) async throws -> ThreadMessagePage
-    func send(threadId: String, clientMessageId: String, content: String) async throws
+
+    /// `@` 자동완성 후보. 참여자 목록 화면(#1135)과 같은 진입점을 쓴다 — 멘션 전용 조회 경로를
+    /// 따로 두면 같은 목록을 두 계약으로 읽게 된다.
+    func loadMembers(threadId: String) async throws -> [ThreadMember]
+
+    /// - Parameters:
+    ///   - replyToId: 답장 대상 messageId. 평범한 메시지면 `nil`.
+    ///   - mentionedMemberIds: 본문에 남아 있는 멘션 대상만 넘긴다(호출자 책임).
+    func send(
+        threadId: String,
+        clientMessageId: String,
+        content: String,
+        replyToId: String?,
+        mentionedMemberIds: [String]
+    ) async throws
     func markRead(threadId: String, lastReadMessageId: String) async throws
     func addReaction(threadId: String, messageId: String, emoji: String) async throws
     func removeReaction(threadId: String, messageId: String, emoji: String) async throws
@@ -88,13 +102,25 @@ public struct CommunityThreadRoomUseCase: CommunityThreadRoomUseCaseProtocol {
         )
     }
 
-    public func send(threadId: String, clientMessageId: String, content: String) async throws {
+    public func loadMembers(threadId: String) async throws -> [ThreadMember] {
+        try await repository.fetchMembers(threadId: threadId)
+    }
+
+    public func send(
+        threadId: String,
+        clientMessageId: String,
+        content: String,
+        replyToId: String?,
+        mentionedMemberIds: [String]
+    ) async throws {
         try Self.validateText(content)
         try await realtime.sendMessage(
             threadId: threadId,
             clientMessageId: clientMessageId,
             content: content,
-            fileMetadataIds: []
+            fileMetadataIds: [],
+            replyToId: replyToId,
+            mentionedMemberIds: mentionedMemberIds
         )
     }
 

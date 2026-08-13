@@ -89,12 +89,16 @@ public actor CommunityThreadRealtimeClient: CommunityThreadRealtimeProtocol {
         threadId: String,
         clientMessageId: String,
         content: String,
-        fileMetadataIds: [String]
+        fileMetadataIds: [String],
+        replyToId: String?,
+        mentionedMemberIds: [String]
     ) async throws {
         let body = SendMessageBody(
             clientMessageId: clientMessageId,
             content: content,
-            fileMetadataIds: fileMetadataIds
+            fileMetadataIds: fileMetadataIds,
+            replyToId: replyToId,
+            mentionedMemberIds: mentionedMemberIds
         )
         try await send(destination: ThreadDestination.messages(threadId), body: body)
     }

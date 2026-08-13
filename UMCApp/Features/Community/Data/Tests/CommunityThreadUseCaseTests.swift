@@ -269,7 +269,9 @@ struct CommunityThreadRoomUseCaseTests {
         try await useCase.send(
             threadId: "thread-1",
             clientMessageId: "3f0a1b2c-0000-4000-8000-000000000000",
-            content: "안녕하세요"
+            content: "안녕하세요",
+            replyToId: nil,
+            mentionedMemberIds: []
         )
 
         #expect(await realtime.sendCalls == [
@@ -277,9 +279,29 @@ struct CommunityThreadRoomUseCaseTests {
                 threadId: "thread-1",
                 clientMessageId: "3f0a1b2c-0000-4000-8000-000000000000",
                 content: "안녕하세요",
-                fileMetadataIds: []
+                fileMetadataIds: [],
+                replyToId: nil,
+                mentionedMemberIds: []
             ),
         ])
+    }
+
+    @Test("답장 대상과 멘션 대상은 손대지 않고 실시간 채널로 넘어간다")
+    func forwardsReplyAndMentions() async throws {
+        let realtime = FakeThreadRealtime()
+        let useCase = makeUseCase(realtime: realtime)
+
+        try await useCase.send(
+            threadId: "thread-1",
+            clientMessageId: "client-1",
+            content: "@김유엠 확인했습니다",
+            replyToId: "42",
+            mentionedMemberIds: ["7", "9"]
+        )
+
+        let call = try #require(await realtime.sendCalls.first)
+        #expect(call.replyToId == "42")
+        #expect(call.mentionedMemberIds == ["7", "9"])
     }
 
     @Test("검증에 걸린 본문은 실시간 채널에 닿기 전에 막힌다")
@@ -288,7 +310,13 @@ struct CommunityThreadRoomUseCaseTests {
         let useCase = makeUseCase(realtime: realtime)
 
         await #expect(throws: AppError.validation(.empty(field: "메시지"))) {
-            try await useCase.send(threadId: "thread-1", clientMessageId: "client-1", content: " ")
+            try await useCase.send(
+                threadId: "thread-1",
+                clientMessageId: "client-1",
+                content: " ",
+                replyToId: nil,
+                mentionedMemberIds: []
+            )
         }
         await #expect(
             throws: AppError.validation(.tooLong(field: "메시지", maxLength: 2_000))
@@ -296,7 +324,9 @@ struct CommunityThreadRoomUseCaseTests {
             try await useCase.send(
                 threadId: "thread-1",
                 clientMessageId: "client-1",
-                content: String(repeating: "가", count: 2_001)
+                content: String(repeating: "가", count: 2_001),
+                replyToId: nil,
+                mentionedMemberIds: []
             )
         }
 
@@ -689,6 +719,8 @@ private actor FakeThreadRealtime: CommunityThreadRealtimeProtocol {
         let clientMessageId: String
         let content: String
         let fileMetadataIds: [String]
+        let replyToId: String?
+        let mentionedMemberIds: [String]
     }
 
     struct ReadCall: Equatable {
@@ -754,14 +786,18 @@ private actor FakeThreadRealtime: CommunityThreadRealtimeProtocol {
         threadId: String,
         clientMessageId: String,
         content: String,
-        fileMetadataIds: [String]
+        fileMetadataIds: [String],
+        replyToId: String?,
+        mentionedMemberIds: [String]
     ) async throws {
         sendCalls.append(
             SendCall(
                 threadId: threadId,
                 clientMessageId: clientMessageId,
                 content: content,
-                fileMetadataIds: fileMetadataIds
+                fileMetadataIds: fileMetadataIds,
+                replyToId: replyToId,
+                mentionedMemberIds: mentionedMemberIds
             )
         )
         if let sendError { throw sendError }
