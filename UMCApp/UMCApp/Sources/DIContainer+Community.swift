@@ -89,6 +89,11 @@ extension DIContainer {
                 repository: self.resolve(CommunityThreadRepositoryProtocol.self)
             )
         }
+        register(CommunityThreadInviteUseCaseProtocol.self) {
+            CommunityThreadInviteUseCase(
+                repository: self.resolve(CommunityThreadRepositoryProtocol.self)
+            )
+        }
     }
 
     // MARK: - On-Device AI

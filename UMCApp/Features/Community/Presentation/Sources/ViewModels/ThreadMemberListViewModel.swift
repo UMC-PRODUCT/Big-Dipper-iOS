@@ -25,7 +25,8 @@ public final class ThreadMemberListViewModel {
     /// "이 스레드가 내 목록에서 사라졌다" 로 같아 플래그를 나누지 않는다.
     public private(set) var didLeave = false
 
-    private let threadId: String
+    /// 초대 시트가 같은 스레드를 보게 하려면 화면이 이 값을 읽어야 한다 (#1136).
+    public let threadId: String
     private let useCase: CommunityThreadMemberUseCaseProtocol
     private let errorHandler: ErrorHandler
     private let currentMemberId: String?

@@ -171,6 +171,11 @@ public final class CommunityThreadRoomViewModel {
         draft.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// 초대 진입점을 열지. 헤더를 받기 전에는 내 역할을 몰라 닫아 둔다 (#1136 완료 조건 1).
+    public var canInvite: Bool {
+        header.value?.myRole == .owner
+    }
+
     // MARK: - Function
 
     /// 내 메시지인지. 발신/수신 버블 정렬의 단일 판정 지점이다 — View 가 각자 판단하면 어긋난다.
@@ -194,6 +199,15 @@ public final class CommunityThreadRoomViewModel {
         case .owner, .admin: return true
         case .member, nil: return false
         }
+    }
+
+    /// 초대 성공을 헤더 멤버 수에 반영한다.
+    ///
+    /// 서버는 초대한 쪽에 실시간 이벤트를 보내지 않으므로(초대받은 사람만 `thread.invited` 를
+    /// 받는다) 여기서 직접 올린다. `load()` 로 다시 읽으면 대화가 최신 페이지로 되감긴다.
+    public func applyInvited(count: Int) {
+        guard count > 0, let thread = header.value else { return }
+        updateMemberCount(String((Int(thread.memberCount) ?? 0) + count))
     }
 
     /// 헤더와 최신 페이지를 병렬로 읽는다. 둘은 서로를 기다릴 이유가 없다.

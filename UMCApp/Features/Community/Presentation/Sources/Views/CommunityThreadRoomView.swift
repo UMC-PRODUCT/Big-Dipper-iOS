@@ -6,6 +6,7 @@
 import SwiftUI
 import CommunityDomain
 import CoreDesignSystem
+import CoreDI
 import CoreUIComponents
 import UMCFoundation
 
@@ -35,8 +36,11 @@ struct CommunityThreadRoomView: View {
 
     @State private var viewModel: CommunityThreadRoomViewModel
 
+    @Environment(\.di) private var di
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+
+    @State private var isInviteSheetPresented = false
 
     /// 최하단 근처를 보고 있는지. `defaultScrollAnchor(.bottom)` 으로 진입 직후는 항상 최하단이고,
     /// 스크롤이 일어나기 전에는 geometry 콜백이 오지 않으므로 초기값이 곧 실제 상태다.
@@ -122,6 +126,9 @@ struct CommunityThreadRoomView: View {
                 ToolbarItem(placement: .principal) { navigationHeader(thread) }
             }
             ToolbarItem(placement: .topBarTrailing) { memberListLink }
+            if viewModel.canInvite {
+                ToolbarItem(placement: .topBarTrailing) { threadMenu }
+            }
         }
         .task { await viewModel.load() }
         .task { await viewModel.observeRealtime() }
@@ -133,12 +140,33 @@ struct CommunityThreadRoomView: View {
         .sheet(item: $viewModel.reportTarget) { _ in
             MessageReportSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $isInviteSheetPresented) {
+            ThreadInviteSheet(
+                viewModel: ThreadInviteViewModel(
+                    threadId: viewModel.threadId,
+                    useCase: di.resolve(CommunityThreadInviteUseCaseProtocol.self)
+                ),
+                onInvited: { viewModel.applyInvited(count: $0) }
+            )
+        }
         // 스펙 6.4: 포그라운드 + 최하단일 때만 워터마크를 올린다. 과거를 읽는 중이거나 앱이
         // 백그라운드인 동안 올리면 안 본 메시지까지 읽음 처리된다.
         .onChange(of: readableMessageId) { _, messageId in
             guard let messageId else { return }
             viewModel.markRead(upTo: messageId)
         }
+    }
+
+    /// 개설자 전용 ⋯ 메뉴. 지금은 초대 하나뿐이지만 시안(#36)의 자리가 여기다.
+    private var threadMenu: some View {
+        Menu {
+            Button("참여자 초대", systemImage: "person.badge.plus") {
+                isInviteSheetPresented = true
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+        }
+        .accessibilityLabel("스레드 메뉴")
     }
 
     /// 참여자 목록 진입점. 목적지 등록은 리스트 화면이 하고 있어 값만 얹으면 된다.

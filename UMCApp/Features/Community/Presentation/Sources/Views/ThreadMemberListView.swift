@@ -6,6 +6,7 @@
 import SwiftUI
 import CommunityDomain
 import CoreDesignSystem
+import CoreDI
 import CoreRouting
 import CoreUIComponents
 import UMCFoundation
@@ -30,7 +31,10 @@ struct ThreadMemberListView: View {
     /// 행이 지워지지만, 그걸 기다리면 루트로 돌아온 직후 잠깐 남아 있는 행이 보인다.
     private let onRemoved: () -> Void
 
+    @Environment(\.di) private var di
     @Environment(PathStore.self) private var pathStore
+
+    @State private var isInviteSheetPresented = false
 
     // MARK: - Init
 
@@ -46,7 +50,22 @@ struct ThreadMemberListView: View {
             .navigationTitle("참여자")
             .navigationBarTitleDisplayMode(.inline)
             .umcDefaultBackground()
+            .toolbar {
+                if viewModel.isOwner {
+                    ToolbarItem(placement: .topBarTrailing) { inviteButton }
+                }
+            }
             .alertPrompt(item: $viewModel.alertPrompt)
+            .sheet(isPresented: $isInviteSheetPresented) {
+                ThreadInviteSheet(
+                    viewModel: ThreadInviteViewModel(
+                        threadId: viewModel.threadId,
+                        useCase: di.resolve(CommunityThreadInviteUseCaseProtocol.self)
+                    ),
+                    // 초대한 쪽에는 실시간 이벤트가 오지 않아 목록을 직접 다시 읽는다.
+                    onInvited: { _ in Task { await viewModel.load() } }
+                )
+            }
             .task { await viewModel.load() }
             .onChange(of: viewModel.didLeave) { _, didLeave in
                 guard didLeave else { return }
@@ -57,6 +76,11 @@ struct ThreadMemberListView: View {
     }
 
     // MARK: - View Component
+
+    /// 초대 진입점. 개설자에게만 열린다 (#1136 완료 조건 1 · 시안 #36 상단 "초대").
+    private var inviteButton: some View {
+        Button("초대") { isInviteSheetPresented = true }
+    }
 
     @ViewBuilder
     private var content: some View {

@@ -22,6 +22,8 @@ public enum CommunityThreadRouter {
     case setPin(threadId: String, isPinned: Bool)
     case setMute(threadId: String, isMuted: Bool)
     case getMembers(threadId: String)
+    case getInvitableMembers(threadId: String)
+    case invite(threadId: String, body: InviteMembersBody)
     case kickMember(threadId: String, memberId: String)
     case changeMemberRole(threadId: String, memberId: String, body: ThreadMemberRoleBody)
     case leave(threadId: String)
@@ -54,6 +56,10 @@ extension CommunityThreadRouter: BaseTargetType {
             return "\(threadsPath)/\(threadId)/mute"
         case .getMembers(let threadId):
             return membersPath(threadId)
+        case .getInvitableMembers(let threadId):
+            return "\(threadsPath)/\(threadId)/invitable"
+        case .invite(let threadId, _):
+            return "\(threadsPath)/\(threadId)/invite"
         case .kickMember(let threadId, let memberId):
             return "\(membersPath(threadId))/\(memberId)"
         case .changeMemberRole(let threadId, let memberId, _):
@@ -67,7 +73,7 @@ extension CommunityThreadRouter: BaseTargetType {
 
     public var method: Moya.Method {
         switch self {
-        case .getThreads, .getThread, .getMessages, .getMembers:
+        case .getThreads, .getThread, .getMessages, .getMembers, .getInvitableMembers:
             return .get
         case .setPin(_, let isPinned):
             return isPinned ? .post : .delete
@@ -77,7 +83,7 @@ extension CommunityThreadRouter: BaseTargetType {
             return .delete
         case .changeMemberRole, .updateThread:
             return .patch
-        case .createThread, .leave, .reportMessage:
+        case .createThread, .invite, .leave, .reportMessage:
             return .post
         }
     }
@@ -98,12 +104,14 @@ extension CommunityThreadRouter: BaseTargetType {
             return .requestJSONEncodable(body)
         case .updateThread(_, let body):
             return .requestJSONEncodable(body)
+        case .invite(_, let body):
+            return .requestJSONEncodable(body)
         case .changeMemberRole(_, _, let body):
             return .requestJSONEncodable(body)
         case .reportMessage(_, let body):
             return .requestJSONEncodable(body)
         case .getThread, .deleteThread, .setPin, .setMute,
-             .getMembers, .kickMember, .leave:
+             .getMembers, .getInvitableMembers, .kickMember, .leave:
             return .requestPlain
         }
     }

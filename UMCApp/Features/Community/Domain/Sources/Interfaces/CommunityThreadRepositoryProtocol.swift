@@ -75,6 +75,17 @@ public protocol CommunityThreadRepositoryProtocol: Sendable {
     /// 참여자 목록·초대(#1136)·`@`멘션 자동완성(#1140)이 함께 쓰는 진입점이다.
     func fetchMembers(threadId: String) async throws -> [ThreadMember]
 
+    /// `GET /threads/{threadId}/invitable`.
+    ///
+    /// 서버가 이미 참여 중인 멤버를 걸러낸 **동아리 전체** 후보를 내려준다 (#1131 결정 3).
+    /// 범위 필터 파라미터는 없다 — 클라이언트가 권한 스코프를 계산하지 않는다.
+    func fetchInvitableMembers(threadId: String) async throws -> [ThreadMember]
+
+    /// `POST /threads/{threadId}/invite`.
+    ///
+    /// `OWNER`/`ADMIN` 만 호출할 수 있다. 빈 배열은 400 이고 한 번에 최대 99명, 중복은 거절된다.
+    func inviteMembers(threadId: String, memberIds: [String]) async throws
+
     /// `DELETE /threads/{threadId}/members/{memberId}`.
     ///
     /// `OWNER`/`ADMIN` 만 호출할 수 있고 `OWNER` 는 대상이 될 수 없다(409 `COMMUNITY-0042`).
