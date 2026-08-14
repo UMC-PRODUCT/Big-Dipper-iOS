@@ -14,6 +14,7 @@ let project = featureProject(
         // 공지 링크 카드 탭이 상위로 넘기는 값이 `NoticeDomain.NoticeDetail` 이다.
         .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),
     ],
+    includesDomainTests: true,
     includesDataTests: true,
     dataTestDependencies: [
         .target(name: "CommunityDomain"),
