@@ -14,25 +14,26 @@ fileprivate enum Constants {
     /// Dynamic Type 을 따라 커지되 여기서 멈춘다. 끝까지 따라가면 타일이 행 너비의 절반을
     /// 차지해 정작 제목이 밀린다.
     static let maxIconSize: CGFloat = 64
-    static let iconCornerRadius: CGFloat = 12
     static let badgeMinWidth: CGFloat = 20
     static let capsuleVerticalPadding: CGFloat = 2
     static let previewLineLimit = 1
     /// 접근성 크기에서는 한 줄로 자르면 제목이 몇 글자만 남아 두 줄까지 허용한다.
     static let accessibilityLineLimit = 2
     static let emptyPreview = "아직 대화가 없어요"
-    /// 이모지는 `foregroundStyle` 이 먹지 않아 색 토큰으로 딤할 수 없다. 읽은 행에서만 낮춘다.
-    static let readIconOpacity: Double = 0.5
-    /// 안읽음 행 배경 틴트. `indigo100` 을 그대로 깔면 목록 전체가 파래져 옅게 쓴다.
-    static let unreadRowTintOpacity: Double = 0.45
+    /// 시스템 블루를 그대로 깔면 칩이 제목보다 튄다. 애플 tinted 버튼과 같은 농도로 낮춘다.
+    static let chipTintOpacity: Double = 0.12
+    /// 시안 그림자 `#0000001A · y 2 · blur 8`. Figma blur 는 SwiftUI radius 의 두 배라 4 로 옮긴다.
+    static let cardShadowOpacity: Double = 0.1
+    static let cardShadowRadius: CGFloat = 4
+    static let cardShadowOffsetY: CGFloat = 2
 }
 
-/// 스레드 리스트 한 행.
+/// 스레드 리스트 한 행. 흰 카드 하나가 곧 한 행이다.
 ///
 /// 위 줄에 이모지·제목·카테고리 칩·상태 아이콘·시각, 아래 줄에 마지막 메시지와 미읽음 배지.
 ///
-/// 안읽음/읽음은 **글자 굵기 · 색 · 아이콘 밝기 · 배경 틴트** 네 축으로 함께 가른다. 색 하나만
-/// 쓰면 색각 이상이나 강한 햇빛 아래에서 두 상태가 붙어 보인다.
+/// 안읽음/읽음은 **미읽음 배지 하나로만** 가른다. 카카오톡·iMessage 와 같은 방식으로, 배경·제목·
+/// 아이콘·미리보기·시각은 두 상태가 완전히 같다.
 struct ThreadListRow: View {
 
     // MARK: - Property
@@ -59,16 +60,10 @@ struct ThreadListRow: View {
                 }
             }
         }
-        .padding(.vertical, DefaultSpacing.spacing8)
-        .contentShape(.rect)
-    }
-
-    // MARK: - Function
-
-    /// 안읽음 행 배경 틴트. 행 안이 아니라 `listRowBackground` 가 칠한다 — 셀 좌우 여백까지
-    /// 덮어야 띠가 끊겨 보이지 않는다.
-    static func rowTint(for thread: CommunityThread) -> Color {
-        thread.isUnread ? Color.indigo100.opacity(Constants.unreadRowTintOpacity) : .clear
+        .padding(.vertical, DefaultSpacing.spacing12)
+        .padding(.horizontal, DefaultSpacing.spacing16)
+        .background { card }
+        .contentShape(.rect(cornerRadius: DefaultConstant.cornerRadius))
     }
 
     // MARK: - Computed Property
@@ -77,42 +72,39 @@ struct ThreadListRow: View {
         dynamicTypeSize.isAccessibilitySize
     }
 
-    private var titleColor: AppColor {
-        thread.isUnread ? .grey900 : .grey600
-    }
-
-    private var previewColor: AppColor {
-        thread.isUnread ? .grey700 : .grey500
-    }
-
     private var lineLimit: Int {
         isCompactMetadata ? Constants.accessibilityLineLimit : 1
     }
 
     // MARK: - View Component
 
+    /// 그림자를 배경 도형에만 건다. 카드 전체에 걸면 글자까지 그림자를 만들어 불필요한
+    /// 오프스크린 렌더링이 늘어난다.
+    private var card: some View {
+        RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
+            .fill(Color.grey000)
+            .shadow(
+                color: .black.opacity(Constants.cardShadowOpacity),
+                radius: Constants.cardShadowRadius,
+                x: 0,
+                y: Constants.cardShadowOffsetY
+            )
+    }
+
     private var icon: some View {
         Text(thread.displayIcon)
             .font(.app(.title2))
-            .opacity(thread.isUnread ? 1 : Constants.readIconOpacity)
             .frame(
                 width: min(scaledIconSize, Constants.maxIconSize),
                 height: min(scaledIconSize, Constants.maxIconSize)
             )
-            .background(
-                thread.isUnread ? Color.indigo100 : Color.grey100,
-                in: .rect(cornerRadius: Constants.iconCornerRadius)
-            )
+            .background(Color.grey100, in: .circle)
     }
 
     private var titleLine: some View {
         HStack(spacing: DefaultSpacing.spacing4) {
             Text(thread.title)
-                .appFont(
-                    .subheadline,
-                    weight: thread.isUnread ? .semibold : .regular,
-                    color: titleColor
-                )
+                .appFont(.subheadline, weight: .semibold, color: .grey900)
                 .lineLimit(lineLimit)
                 // 칩·아이콘이 먼저 자리를 가져가면 제목이 말줄임만 남는다.
                 .layoutPriority(1)
@@ -144,20 +136,22 @@ struct ThreadListRow: View {
         }
     }
 
+    /// 시스템 블루를 쓴다. 다크 모드 대비는 시스템이 맞춰 주므로 별도 토큰을 만들지 않는다.
     private var categoryChip: some View {
         Text(thread.category.displayName)
-            .appFont(.caption2, color: .indigo500)
+            .appFont(.caption2)
+            .foregroundStyle(Color.blue)
             .lineLimit(1)
             .padding(.horizontal, DefaultSpacing.spacing8)
             .padding(.vertical, Constants.capsuleVerticalPadding)
-            .background(Color.indigo100, in: .capsule)
+            .background(Color.blue.opacity(Constants.chipTintOpacity), in: .capsule)
     }
 
     @ViewBuilder
     private var timeLabel: some View {
         if let lastMessage = thread.lastMessage {
             Text(lastMessage.createdAt.relativeListLabel)
-                .appFont(.caption1, color: thread.isUnread ? .grey600 : .grey500)
+                .appFont(.caption1, color: .grey500)
                 .lineLimit(1)
         }
     }
@@ -165,7 +159,7 @@ struct ThreadListRow: View {
     private var previewLine: some View {
         HStack(alignment: .firstTextBaseline, spacing: DefaultSpacing.spacing8) {
             Text(previewText)
-                .appFont(.footnote, color: previewColor)
+                .appFont(.footnote, color: .grey500)
                 .lineLimit(isCompactMetadata ? Constants.accessibilityLineLimit
                                              : Constants.previewLineLimit)
 
@@ -194,8 +188,7 @@ struct ThreadListRow: View {
     }
 
     private var previewText: String {
-        guard let lastMessage = thread.lastMessage else { return Constants.emptyPreview }
-        return "\(lastMessage.senderName): \(lastMessage.preview)"
+        thread.lastMessage?.preview ?? Constants.emptyPreview
     }
 }
 
