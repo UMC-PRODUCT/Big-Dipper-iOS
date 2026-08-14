@@ -290,23 +290,6 @@ public final class CommunityThreadListViewModel {
         }
     }
 
-    /// 스와이프 삭제 확인. 나가기와 달리 스레드 자체가 사라지므로 문구를 따로 쓴다 (#1134).
-    public func confirmDelete(_ thread: CommunityThread) {
-        // 스와이프에 이미 권한 게이팅이 걸려 있지만, 서버 403 을 받기 전 마지막 방어선으로 본다.
-        guard thread.canEdit else { return }
-
-        alertPrompt = AlertPrompt(
-            title: "'\(thread.title)' 스레드를 삭제할까요?",
-            message: "대화 내용과 참여자가 모두 사라져요. 되돌릴 수 없어요.",
-            positiveBtnTitle: "삭제",
-            positiveBtnAction: { [weak self] in
-                Task { await self?.delete(thread) }
-            },
-            negativeBtnTitle: "취소",
-            isPositiveBtnDestructive: true
-        )
-    }
-
     /// 나가기는 되돌릴 수 없어 확인을 먼저 받는다 (절대 규칙 — 파괴적 작업은 AlertPrompt).
     public func confirmLeave(_ thread: CommunityThread) {
         // #1131 결정 2: 개설자는 위임 전까지 나갈 수 없다. 서버 409 를 알림으로 되돌려 주는 것보다
@@ -475,21 +458,6 @@ public final class CommunityThreadListViewModel {
             state = snapshotState
             pinned = snapshotPinned
             errorHandler.handle(error, context: errorContext("leaveThread"))
-        }
-    }
-
-    /// 나가기와 같은 낙관적 제거. 실패하면 스냅샷으로 되돌린다.
-    private func delete(_ thread: CommunityThread) async {
-        let snapshotState = state
-        let snapshotPinned = pinned
-        removeRow(threadId: thread.id)
-
-        do {
-            try await listUseCase.deleteThread(threadId: thread.id)
-        } catch {
-            state = snapshotState
-            pinned = snapshotPinned
-            errorHandler.handle(error, context: errorContext("deleteThread"))
         }
     }
 

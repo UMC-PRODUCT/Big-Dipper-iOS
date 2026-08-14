@@ -165,7 +165,7 @@ struct CommunityThreadDomainModelTests {
         #expect(makeThread(memberCount: "12").memberCountText == "멤버 12명")
     }
 
-    /// 리스트 스와이프의 `편집`·`삭제` 노출 조건이 이 값 하나로 결정된다 (#1134).
+    /// 리스트 스와이프의 `편집` 과 채팅방 ⋯ 메뉴의 `편집`·`삭제` 노출 조건이 이 값 하나로 결정된다.
     @Test("수정·삭제 권한은 개설자와 관리자에게만 열린다")
     func canEditOnlyForOwnerOrAdmin() {
         #expect(makeThread(myRole: .owner).canEdit)

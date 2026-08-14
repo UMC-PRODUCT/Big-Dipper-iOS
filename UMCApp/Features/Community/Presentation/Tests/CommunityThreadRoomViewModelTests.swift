@@ -411,7 +411,7 @@ struct CommunityThreadRoomViewModelTests {
     /// 로컬 로그인 상태에 끌려간다.
     private func makeViewModel(
         _ useCase: StubRoomUseCase,
-        listUseCase: CommunityThreadListUseCaseProtocol = StubThreadListUseCase(),
+        listUseCase: CommunityThreadListUseCaseProtocol? = nil,
         errorHandler: ErrorHandler = ErrorHandler(),
         summarizer: ThreadSummarizing = StubSummarizer(),
         currentMemberId: String? = "9",
@@ -420,7 +420,7 @@ struct CommunityThreadRoomViewModelTests {
         CommunityThreadRoomViewModel(
             threadId: "1",
             useCase: useCase,
-            listUseCase: listUseCase,
+            listUseCase: listUseCase ?? StubThreadListUseCase(),
             errorHandler: errorHandler,
             summarizer: summarizer,
             currentMemberId: currentMemberId,
