@@ -153,7 +153,7 @@ extension UMCAppApp {
             return
         }
         if AuthApi.isKakaoTalkLoginUrl(url) {
-            AuthController.handleOpenUrl(url: url)
+            _ = AuthController.handleOpenUrl(url: url)
             return
         }
         GIDSignIn.sharedInstance.handle(url)
