@@ -122,8 +122,11 @@ struct CommunityThreadRoomView: View {
                 noticeCapsule(notice)
             }
 
-            // 첫 로드가 끝나기 전이거나 실패했으면 보낼 방이 없다.
-            if viewModel.header.value != nil {
+            // 로딩 중에도 자리를 지킨다. 헤더가 온 뒤에 컴포저가 나타나면 메시지 영역이 그
+            // 높이만큼 한 번 더 줄어 뼈대가 아래로 밀린다 — 비활성으로 그려 두면 높이가
+            // 처음부터 같다. 실패는 다르다: 보낼 방을 모르고 재시도 뷰가 화면을 채우므로
+            // 입력창을 그리지 않는다.
+            if viewModel.header.error == nil {
                 MessageComposer(
                     text: $viewModel.draft,
                     canSend: viewModel.canSend,
@@ -133,6 +136,9 @@ struct CommunityThreadRoomView: View {
                     onCancelReply: { viewModel.cancelReply() },
                     onSelectMention: { viewModel.selectMention($0) }
                 )
+                // 헤더가 오기 전에는 어느 방으로 보낼지 모른다. `.disabled` 는 높이를 건드리지
+                // 않으므로 자리는 그대로 두고 손댈 수만 없게 막는다.
+                .disabled(viewModel.header.value == nil)
                 // 초안이 바뀔 때마다 `@` 토큰을 다시 판정한다. `TextField` 는 커서를 넘겨주지
                 // 않으므로 텍스트 변화가 유일한 신호다.
                 .onChange(of: viewModel.draft) { _, _ in viewModel.draftDidChange() }
