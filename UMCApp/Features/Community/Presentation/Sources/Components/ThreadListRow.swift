@@ -10,10 +10,6 @@ import CoreDesignSystem
 // MARK: - Constants
 
 fileprivate enum Constants {
-    static let iconSize: CGFloat = 44
-    /// Dynamic Type 을 따라 커지되 여기서 멈춘다. 끝까지 따라가면 타일이 행 너비의 절반을
-    /// 차지해 정작 제목이 밀린다.
-    static let maxIconSize: CGFloat = 64
     static let badgeMinWidth: CGFloat = 20
     static let capsuleVerticalPadding: CGFloat = 2
     static let previewLineLimit = 1
@@ -22,10 +18,6 @@ fileprivate enum Constants {
     static let emptyPreview = "아직 대화가 없어요"
     /// 시스템 블루를 그대로 깔면 칩이 제목보다 튄다. 애플 tinted 버튼과 같은 농도로 낮춘다.
     static let chipTintOpacity: Double = 0.12
-    /// 시안 그림자 `#0000001A · y 2 · blur 8`. Figma blur 는 SwiftUI radius 의 두 배라 4 로 옮긴다.
-    static let cardShadowOpacity: Double = 0.1
-    static let cardShadowRadius: CGFloat = 4
-    static let cardShadowOffsetY: CGFloat = 2
 }
 
 /// 스레드 리스트 한 행. 흰 카드 하나가 곧 한 행이다.
@@ -42,7 +34,7 @@ struct ThreadListRow: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    @ScaledMetric(relativeTo: .title2) private var scaledIconSize = Constants.iconSize
+    @ScaledMetric(relativeTo: .title2) private var scaledIconSize = ThreadCardMetrics.iconSize
 
     // MARK: - Body
 
@@ -60,9 +52,7 @@ struct ThreadListRow: View {
                 }
             }
         }
-        .padding(.vertical, DefaultSpacing.spacing12)
-        .padding(.horizontal, DefaultSpacing.spacing16)
-        .background { card }
+        .threadCard()
         .contentShape(.rect(cornerRadius: DefaultConstant.cornerRadius))
     }
 
@@ -78,25 +68,12 @@ struct ThreadListRow: View {
 
     // MARK: - View Component
 
-    /// 그림자를 배경 도형에만 건다. 카드 전체에 걸면 글자까지 그림자를 만들어 불필요한
-    /// 오프스크린 렌더링이 늘어난다.
-    private var card: some View {
-        RoundedRectangle(cornerRadius: DefaultConstant.cornerRadius)
-            .fill(Color.grey000)
-            .shadow(
-                color: .black.opacity(Constants.cardShadowOpacity),
-                radius: Constants.cardShadowRadius,
-                x: 0,
-                y: Constants.cardShadowOffsetY
-            )
-    }
-
     private var icon: some View {
         Text(thread.displayIcon)
             .font(.app(.title2))
             .frame(
-                width: min(scaledIconSize, Constants.maxIconSize),
-                height: min(scaledIconSize, Constants.maxIconSize)
+                width: min(scaledIconSize, ThreadCardMetrics.maxIconSize),
+                height: min(scaledIconSize, ThreadCardMetrics.maxIconSize)
             )
             .background(Color.grey100, in: .circle)
     }
