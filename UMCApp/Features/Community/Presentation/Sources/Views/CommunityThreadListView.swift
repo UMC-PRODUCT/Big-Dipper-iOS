@@ -19,14 +19,6 @@ fileprivate enum Constants {
     static let emptyDescription = "첫 스레드를 만들어 대화를 시작해 보세요.\n초대를 받아도 이곳에 표시돼요."
     static let emptyImage = "bubble.left.and.bubble.right"
     static let createThreadTitle = "새 스레드"
-    /// 카드 사이 간격(위아래 4 씩 = 8)과 화면 좌우 여백. 기본 행 인셋으로는 카드가 화면
-    /// 끝에 붙고 그림자가 잘린다.
-    static let cardRowInsets = EdgeInsets(
-        top: DefaultSpacing.spacing4,
-        leading: DefaultConstant.defaultSafeHorizon,
-        bottom: DefaultSpacing.spacing4,
-        trailing: DefaultConstant.defaultSafeHorizon
-    )
 }
 
 /// 커뮤니티 탭 루트 — 스레드 리스트.
@@ -205,9 +197,7 @@ struct CommunityThreadListView: View {
             ThreadListRow(thread: thread)
         }
         .buttonStyle(.plain)
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-        .listRowInsets(Constants.cardRowInsets)
+        .threadCardRow()
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
                 Task { await viewModel.togglePin(thread) }
