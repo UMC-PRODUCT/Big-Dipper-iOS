@@ -38,7 +38,7 @@ public final class NFCTransport: NSObject, NearbyTransportProtocol {
     // MARK: - NearbyTransportProtocol
 
     /// NFC는 광고 개념 없이 탭 시 즉시 교환. 이 메서드는 no-op.
-    public func startAdvertising(payload: BLEAdvertisementPayload) async throws {
+    public func startAdvertising(card: ExchangePayload) async throws {
         // NFC 방식에서는 광고가 아닌 탭 이벤트가 교환 트리거이므로 별도 처리 불필요.
     }
 
