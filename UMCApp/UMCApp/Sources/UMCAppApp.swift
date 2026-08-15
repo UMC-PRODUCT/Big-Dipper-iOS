@@ -5,6 +5,7 @@
 //  Created by euijjang97 on 3/6/26.
 //
 
+import BusinessCardData
 import CoreDesignSystem
 import CoreDI
 import FirebaseCore
@@ -58,6 +59,7 @@ struct UMCAppApp: App {
         container.registerActivityDependencies()
         container.registerCommunityDependencies()
         container.registerMyPageDependencies()
+        container.registerBusinessCardDependencies()
         container.registerMaintenanceDependencies()
         #if DEBUG
         // 카카오 로그인 서버 미등록 기간 한정 stub 세션 (StubSessionMode.swift 단일 토글).
@@ -200,6 +202,7 @@ extension UMCAppApp {
             AITokenDailyUsageRecord.self,
             NoticeHistoryData.self,
             GenerationMappingRecord.self,
+            ReceivedCardRecord.self,
         ])
 
         do {
