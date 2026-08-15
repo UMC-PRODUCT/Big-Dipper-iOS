@@ -19,6 +19,7 @@ let project = Project(
                 .sdk(name: "NearbyInteraction", type: .framework, status: .required),
                 .sdk(name: "ARKit", type: .framework, status: .required),
                 .sdk(name: "RealityKit", type: .framework, status: .required),
+                .sdk(name: "WiFiAware", type: .framework, status: .required),
             ]
         ),
         .target(

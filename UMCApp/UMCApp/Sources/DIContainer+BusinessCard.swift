@@ -15,7 +15,7 @@ import BusinessCardDomain
 import BusinessCardPresentation
 
 // BusinessCard(명함) 의존성 등록 — Repository 4종 + Transport + UseCase Provider.
-// Transport: 실기기는 WiFiAwareTransport(이슈 #1196), 시뮬레이터 DEBUG는 Mock(절대규칙 #5).
+// Transport: 실기기는 WiFiAwareTransport, 시뮬레이터 DEBUG는 Mock(절대규칙 #5).
 //
 // ⚠️ `DIContainer.resolve`는 인스턴스를 캐싱한다 — 여기 등록되는 transport는 앱 수명
 // 싱글톤이다. 그래서 실기기 transport 구현은 세션 상태(교환 완료 플래그·발견 endpoint
@@ -23,8 +23,12 @@ import BusinessCardPresentation
 extension DIContainer {
     func registerBusinessCardDependencies() {
         register(NearbyTransportProtocol.self) {
-            // WiFiAwareTransport는 이슈 #1196 산출물 — 그 전까지는 Mock으로 배선만 세운다.
+            // Wi-Fi Aware는 실기기 전용 — 시뮬레이터 DEBUG는 Mock으로 흐름만 돌린다.
+            #if DEBUG && targetEnvironment(simulator)
             MockNearbyTransport()
+            #else
+            WiFiAwareTransport()
+            #endif
         }
 
         register(BusinessCardRepositoryProtocol.self) {
