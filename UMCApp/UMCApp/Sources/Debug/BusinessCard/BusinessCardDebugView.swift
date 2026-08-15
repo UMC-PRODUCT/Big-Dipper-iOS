@@ -9,6 +9,7 @@
 import CoreDI
 import CoreNearbyExchange
 import SwiftUI
+import VisionKit
 import BusinessCardDomain
 import BusinessCardPresentation
 import UMCFoundation
@@ -23,6 +24,14 @@ struct BusinessCardDebugView: View {
     // MARK: - Property
 
     @State private var viewModel: BusinessCardDebugViewModel
+    @State private var qrMode: QRMode = .deepLink
+    @State private var isScanning = false
+
+    /// 어떤 QR을 보여줄지. 제품 규칙(딥링크)과 검증용(페이로드 전체)을 나눠 본다.
+    enum QRMode: Hashable {
+        case deepLink
+        case payload
+    }
 
     // MARK: - Init
 
@@ -37,6 +46,7 @@ struct BusinessCardDebugView: View {
             myCardSection
             activityStatSection
             qrSection
+            qrScanSection
             receivedCardsSection
             exchangeSection
             payloadSection
@@ -100,17 +110,28 @@ struct BusinessCardDebugView: View {
 
     private var qrSection: some View {
         Section {
-            if let image = viewModel.qrImage {
+            Picker("QR 종류", selection: $qrMode) {
+                Text("제품(딥링크)").tag(QRMode.deepLink)
+                Text("검증(페이로드)").tag(QRMode.payload)
+            }
+            .pickerStyle(.segmented)
+
+            if let image = qrMode == .deepLink ? viewModel.qrImage : viewModel.qrPayloadImage {
                 HStack {
                     Spacer()
                     Image(decorative: image, scale: 1)
                         .interpolation(.none)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 180, height: 180)
+                        .frame(width: 200, height: 200)
+                        .padding(8)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     Spacer()
                 }
-                Text(viewModel.qrPayload)
+                Text(qrMode == .deepLink
+                     ? viewModel.qrPayload
+                     : "ExchangePayload JSON (명함 전체)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -118,9 +139,42 @@ struct BusinessCardDebugView: View {
                     .foregroundStyle(.secondary)
             }
         } header: {
-            Text("#1195 QR — GenerateCardQRUseCase")
+            Text("QR 보여주기 — GenerateCardQRUseCase")
         } footer: {
-            Text("다른 기기 카메라로 스캔하면 umc://card/{memberId}가 읽혀야 한다.")
+            Text("제품 QR은 딥링크만 싣는다(수신 측이 프로필 API로 복원 — 미구현). 검증 QR은 명함 전체를 실어 상대가 스캔하면 실제로 명함첩에 저장된다.")
+        }
+    }
+
+    // MARK: - QR 스캔
+
+    private var qrScanSection: some View {
+        Section {
+            if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
+                Button(isScanning ? "스캔 중지" : "스캔 시작") {
+                    isScanning.toggle()
+                }
+                if isScanning {
+                    QRScannerView { payload in
+                        Task { await viewModel.handleScanned(payload) }
+                    }
+                    .frame(height: 280)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .listRowInsets(EdgeInsets())
+                }
+            } else {
+                Text("이 기기는 카메라 스캔을 지원하지 않는다 (시뮬레이터는 미지원)")
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(Array(viewModel.scanLog.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.caption)
+                    .monospaced()
+            }
+        } header: {
+            Text("QR 스캔 — 상대 명함 받기")
+        } footer: {
+            Text("상대 기기의 「검증(페이로드)」 QR을 찍으면 명함첩에 저장된다. 딥링크 QR은 memberId 파싱까지만 확인된다.")
         }
     }
 
@@ -180,6 +234,14 @@ struct BusinessCardDebugView: View {
         Section {
             labeled("Wi-Fi Aware 지원", "\(WiFiAwareTransport.isSupported)")
             labeled("주입된 transport", viewModel.transportTypeName)
+
+            #if canImport(DeviceDiscoveryUI)
+            NavigationLink {
+                WiFiAwarePairingView()
+            } label: {
+                Label("기기 페어링", systemImage: "dot.radiowaves.left.and.right")
+            }
+            #endif
 
             HStack {
                 Button(viewModel.isExchanging ? "세션 중지" : "교환 세션 시작") {

@@ -11,6 +11,7 @@ import CoreGraphics
 import CoreNearbyExchange
 import Foundation
 import Observation
+import BusinessCardData
 import BusinessCardDomain
 import BusinessCardPresentation
 import UMCFoundation
@@ -30,6 +31,14 @@ final class BusinessCardDebugViewModel {
     private(set) var qrImage: CGImage?
     private(set) var qrPayload: String = "—"
     private(set) var payloadCheck: [String] = []
+
+    /// 명함 전체(ExchangePayload JSON)를 실은 QR.
+    ///
+    /// 제품 QR은 `umc://card/{memberId}` 딥링크만 싣고 수신 측이 프로필 API로 명함을
+    /// 구성하는 설계다. 하지만 그 조회 엔드포인트가 아직 없어서, **교환 왕복 자체를
+    /// 눈으로 보려면** 페이로드를 통째로 실은 QR이 필요하다. 검증 화면 한정이다.
+    private(set) var qrPayloadImage: CGImage?
+    private(set) var scanLog: [String] = []
 
     private(set) var peers: [DiscoveredPeer] = []
     private(set) var eventLog: [String] = []
@@ -196,6 +205,45 @@ final class BusinessCardDebugViewModel {
     private func makeQR(for card: MyCard) {
         qrPayload = card.qrPayload
         qrImage = try? provider.generateCardQRUseCase.execute(for: card)
+        qrPayloadImage = makePayloadQR(for: card)
+    }
+
+    /// 명함 전체를 JSON으로 직렬화해 QR로 만든다 (검증 화면 전용 — 위 프로퍼티 주석 참고).
+    private func makePayloadQR(for card: MyCard) -> CGImage? {
+        guard let payload = try? card.toExchangePayload(cardID: "QR-\(card.memberId)"),
+              let data = try? payload.jsonData(),
+              let json = String(data: data, encoding: .utf8) else { return nil }
+        return try? CoreImageQRCodeGenerator().generate(from: json)
+    }
+
+    /// 스캔한 문자열을 해석한다.
+    ///
+    /// 두 형식을 모두 받는다:
+    /// - `umc://card/{memberId}` — 제품 QR. memberId 파싱까지 확인한다. 프로필 조회
+    ///   엔드포인트가 아직 없어 명함 복원까지는 못 간다.
+    /// - `ExchangePayload` JSON — 검증용 QR. 디코딩해 명함첩에 실제로 저장한다.
+    func handleScanned(_ text: String) async {
+        if let url = URL(string: text), let link = CardLink.parse(url) {
+            scanLog.insert("딥링크 인식: memberId=\(link.memberId) (프로필 조회 API 미구현)", at: 0)
+            return
+        }
+
+        guard let data = text.data(using: .utf8),
+              let payload = try? ExchangePayload.decode(from: data) else {
+            scanLog.insert("해석 실패: 명함 QR이 아님 (\(text.prefix(40))…)", at: 0)
+            return
+        }
+
+        do {
+            let saved = try await provider.saveReceivedCardUseCase.execute(
+                payload: payload,
+                exchangeContext: "QR 스캔"
+            )
+            scanLog.insert("저장 완료: \(saved.profile.name) / \(saved.profile.nickname)", at: 0)
+            await reloadReceivedCards()
+        } catch {
+            scanLog.insert("저장 실패: \(error)", at: 0)
+        }
     }
 
     /// 명함 → 페이로드 → JSON → 디코딩 → 명함 복원을 실제로 돌려 결과를 문자열로 남긴다.

@@ -25,6 +25,7 @@ let project = Project(
                     "NSBluetoothPeripheralUsageDescription": "주변 명함을 교환하기 위해 블루투스를 사용합니다.",
                     "NFCReaderUsageDescription": "NFC로 명함 정보를 주고받습니다.",
                     "NSNearbyInteractionUsageDescription": "근거리에서 정확한 명함 교환을 위해 위치를 사용합니다.",
+                    "NSCameraUsageDescription": "상대의 명함 QR을 스캔하기 위해 카메라를 사용합니다.",
                     // Wi-Fi Aware 명함 교환 서비스 선언.
                     // 서비스명은 WiFiAwareTransport의 Constants.serviceName과 반드시 같아야 한다.
                     // 양방향 교환이라 Publishable(광고)·Subscribable(탐색) 둘 다 선언한다.

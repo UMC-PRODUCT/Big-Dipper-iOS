@@ -33,10 +33,9 @@ public final class WiFiAwareTransport: NearbyTransportProtocol, @unchecked Senda
 
     // MARK: - Constants
 
-    private enum Constants {
-        /// Info.plist `WiFiAwareServices` 선언과 일치해야 한다.
-        static let serviceName = "_umc-card._udp"
-    }
+    /// Info.plist `WiFiAwareServices` 선언과 일치해야 한다.
+    /// 페어링 UI가 같은 서비스를 지목해야 해서 모듈 밖에 노출한다.
+    public static let serviceName = "_umc-card._udp"
 
     private typealias CardConnection =
         NetworkConnection<Coder<ExchangePayload, ExchangePayload, WiFiAwareJSONCoder>>
@@ -355,15 +354,18 @@ public final class WiFiAwareTransport: NearbyTransportProtocol, @unchecked Senda
 
 // MARK: - Service Extensions
 
-private extension WAPublishableService {
+// public인 이유: 페어링 UI(DeviceDiscoveryUI)가 같은 서비스를 지목해야 하는데,
+// 그 UI는 Presentation/App 레이어 몫이라 모듈 밖에서 이 값을 참조한다.
+// Info.plist `WiFiAwareServices` 선언과 이름이 반드시 같아야 한다.
+public extension WAPublishableService {
     static var umcCardPublishable: WAPublishableService {
-        allServices["_umc-card._udp"]!
+        allServices[WiFiAwareTransport.serviceName]!
     }
 }
 
-private extension WASubscribableService {
+public extension WASubscribableService {
     static var umcCardSubscribable: WASubscribableService {
-        allServices["_umc-card._udp"]!
+        allServices[WiFiAwareTransport.serviceName]!
     }
 }
 
