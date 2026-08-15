@@ -59,7 +59,21 @@ struct RootTabView: View {
         // 같은 함수로 받는다. 후자는 이 뷰가 처음 뜨는 시점에 한 번 꺼내면 된다.
         .task { consumePendingDeepLink() }
         .onChange(of: deepLinkStore.pending) { _, _ in consumePendingDeepLink() }
+        #if DEBUG
+        // 실행 인자 `-bcHarness`로 명함 검증 화면에 바로 진입한다.
+        // (탭 조작 없이 시뮬레이터에서 검증을 재현하기 위한 경로 — 제품 동작 아님)
+        .task { openBusinessCardHarnessIfRequested() }
+        #endif
     }
+
+    #if DEBUG
+    /// `-bcHarness` 실행 인자가 있으면 마이페이지 탭의 명함 검증 화면을 연다.
+    private func openBusinessCardHarnessIfRequested() {
+        guard CommandLine.arguments.contains("-bcHarness") else { return }
+        pathStore.selectedTab = .mypage
+        pathStore.push(BusinessCardDebugDestination.harness, on: .mypage)
+    }
+    #endif
 
     // MARK: - Function
 
@@ -102,6 +116,11 @@ struct RootTabView: View {
                         push: { pathStore.push($0, on: tab) }
                     )
                 }
+                #if DEBUG
+                .navigationDestination(for: BusinessCardDebugDestination.self) { _ in
+                    BusinessCardDebugView(container: di)
+                }
+                #endif
         }
     }
 
@@ -159,6 +178,20 @@ struct RootTabView: View {
             )
         case .mypage:
             MyPageFeatureView()
+                #if DEBUG
+                // 명함 기능 계층(#1193~#1196) 검증 화면 진입점.
+                // MyPage 모듈을 건드리지 않으려고 App 셸에서 툴바로만 얹는다.
+                // 제품 진입점(v3 마이페이지)이 붙으면 이 블록을 지운다.
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            pathStore.push(BusinessCardDebugDestination.harness, on: .mypage)
+                        } label: {
+                            Image(systemName: "ladybug")
+                        }
+                    }
+                }
+                #endif
         }
     }
 
