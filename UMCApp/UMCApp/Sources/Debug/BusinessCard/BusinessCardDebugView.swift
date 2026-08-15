@@ -27,6 +27,8 @@ struct BusinessCardDebugView: View {
     @State private var qrMode: QRMode = .deepLink
     @State private var isScanning = false
 
+    private let container: DIContainer
+
     /// 어떤 QR을 보여줄지. 제품 규칙(딥링크)과 검증용(페이로드 전체)을 나눠 본다.
     enum QRMode: Hashable {
         case deepLink
@@ -36,6 +38,7 @@ struct BusinessCardDebugView: View {
     // MARK: - Init
 
     init(container: DIContainer) {
+        self.container = container
         _viewModel = State(initialValue: BusinessCardDebugViewModel(container: container))
     }
 
@@ -48,7 +51,9 @@ struct BusinessCardDebugView: View {
             qrSection
             qrScanSection
             receivedCardsSection
+            CardEditEntrySection(container: container)
             exchangeSection
+            NearbyRangingSection()
             payloadSection
         }
         .navigationTitle("명함 기능 검증")
