@@ -24,6 +24,8 @@ let project = featureProject(
     ],
     includesDataTests: true,
     dataTestDependencies: [
+        // Router 계약 테스트가 Moya.Task 케이스를 직접 검사한다 (Activity 선례).
+        .external(name: "Moya"),
         .target(name: "BusinessCardDomain"),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
