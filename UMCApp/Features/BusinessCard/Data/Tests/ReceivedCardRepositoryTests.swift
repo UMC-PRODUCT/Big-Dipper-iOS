@@ -86,6 +86,40 @@ struct ReceivedCardRepositoryTests {
         #expect(try await repository.search(query: "  ").count == 2)
     }
 
+    /// memberId가 비는 경로: v1 페이로드(cardLink="")나 파싱 불가한 cardLink.
+    /// `MyCard(payload:)`가 `linkedMemberId ?? ""`로 복원하므로 정체성이 없는 레코드가 생긴다.
+    private func insertRecord(cardID: String, memberId: String, name: String) {
+        container.mainContext.insert(
+            ReceivedCardRecord(
+                cardID: cardID, memberId: memberId, name: name, nickname: "\(name)닉",
+                partRaw: "DESIGN", generation: "11", university: "중앙대학교",
+                email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
+                exchangedAt: Date(), exchangeContext: nil, isConnected: false
+            )
+        )
+    }
+
+    @Test("memberId 없는 레코드도 cardID로 CloudKit 중복이 걸러진다")
+    func dedupesIdentitylessRecordsByCardID() async throws {
+        // CloudKit 동기화가 같은 레코드를 두 벌 만든 상황.
+        insertRecord(cardID: "C1", memberId: "", name: "정체불명")
+        insertRecord(cardID: "C1", memberId: "", name: "정체불명")
+        try container.mainContext.save()
+
+        #expect(try await repository.fetchAll().count == 1)
+        #expect(try await repository.count() == 1)
+    }
+
+    @Test("memberId 없는 서로 다른 사람은 하나로 뭉치지 않는다")
+    func keepsDistinctIdentitylessRecords() async throws {
+        // 빈 memberId를 같은 키로 취급하면 서로 다른 사람이 한 명으로 사라진다.
+        insertRecord(cardID: "C1", memberId: "", name: "김하나")
+        insertRecord(cardID: "C2", memberId: "", name: "박두울")
+        try container.mainContext.save()
+
+        #expect(try await repository.fetchAll().count == 2)
+    }
+
     @Test("삭제하면 목록과 카운트에서 빠진다")
     func deleteRemoves() async throws {
         try await repository.save(makeCard(id: "C1", memberId: "1"))

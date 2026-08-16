@@ -29,7 +29,7 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
 
     // MARK: - Function
 
-    /// 교환 시각 내림차순 전체 조회. CloudKit 동기화 중복은 memberId 최신만 남긴다.
+    /// 교환 시각 내림차순 전체 조회. CloudKit 동기화 중복은 `identityKey` 기준 최신만 남긴다.
     public func fetchAll() async throws -> [ReceivedCard] {
         try dedupedRecords().map { $0.toDomain() }
     }
@@ -87,13 +87,29 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
         return try modelContext.fetch(descriptor)
     }
 
-    /// CloudKit 동기화가 만들 수 있는 같은 memberId 중복을 최신 updatedAt만 남기고 걸러낸다.
+    /// CloudKit 동기화가 만들 수 있는 중복을 걸러낸다.
+    /// `fetchRecords()`가 교환 시각 내림차순이라 살아남는 것은 가장 최근 교환분이다.
     private func dedupedRecords() throws -> [ReceivedCardRecord] {
-        var seenMemberIds = Set<String>()
-        return try fetchRecords().filter { record in
-            guard !record.memberId.isEmpty else { return true }
-            return seenMemberIds.insert(record.memberId).inserted
-        }
+        var seenKeys = Set<String>()
+        return try fetchRecords().filter { seenKeys.insert($0.identityKey).inserted }
+    }
+}
+
+// MARK: - Identity
+
+private extension ReceivedCardRecord {
+
+    /// 중복 판정 키. `memberId`(cardLink 파싱값)가 정본이고, **없을 때만** cardID로 대체한다.
+    ///
+    /// 키를 둘로 가르는 이유: v1 페이로드(cardLink="")나 파싱 불가한 cardLink를 받으면
+    /// `MyCard(payload:)`가 memberId를 빈 문자열로 복원한다. 이때
+    /// - 빈 문자열을 하나의 키로 뭉치면 **서로 다른 사람이 한 명으로 사라진다**(데이터 손실)
+    /// - 그렇다고 전부 통과시키면 CloudKit 동기화 중복이 그대로 쌓인다
+    ///
+    /// cardID는 교환마다 새 UUID라 정체성이 없는 상대와 **재교환**하면 여전히 새 행이 생긴다.
+    /// 그건 신원 정보가 없는 이상 원리적으로 막을 수 없다 — 여기서 막는 것은 동기화 중복이다.
+    var identityKey: String {
+        memberId.isEmpty ? "card:\(cardID)" : "member:\(memberId)"
     }
 }
 
