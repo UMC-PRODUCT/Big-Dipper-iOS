@@ -52,11 +52,20 @@ final class BusinessCardDebugViewModel {
     private var isResolvingDeepLink = false
 
     private(set) var peers: [DiscoveredPeer] = []
+
+    /// 이 기기에 페어링된 Wi-Fi Aware 기기 이름. 비어 있으면 교환이 성립할 수 없다.
+    private(set) var pairedDeviceNames: [String] = []
+
+    /// transport가 삼킨 실패 원문. `peers: 0`이 "아무도 없음"인지 "브라우저 실패"인지 가른다.
+    var transportError: String? {
+        (transport as? WiFiAwareTransport)?.lastTransportError
+    }
     private(set) var eventLog: [String] = []
     private(set) var isExchanging = false
 
     let transportTypeName: String
 
+    private let transport: NearbyTransportProtocol
     private let provider: BusinessCardUseCaseProviding
     private let receivedCardRepository: ReceivedCardRepositoryProtocol
     private var exchangeTask: Task<Void, Never>?
@@ -66,14 +75,15 @@ final class BusinessCardDebugViewModel {
     init(container: DIContainer) {
         self.provider = container.resolve(BusinessCardUseCaseProviding.self)
         self.receivedCardRepository = container.resolve(ReceivedCardRepositoryProtocol.self)
-        self.transportTypeName = String(
-            describing: type(of: container.resolve(NearbyTransportProtocol.self))
-        )
+        let resolvedTransport = container.resolve(NearbyTransportProtocol.self)
+        self.transport = resolvedTransport
+        self.transportTypeName = String(describing: type(of: resolvedTransport))
     }
 
     // MARK: - Function
 
     func loadAll() async {
+        await reloadPairedDevices()
         await reloadMyCard(forceRefresh: false)
         await reloadActivityStat()
         await reloadReceivedCards()
@@ -91,6 +101,10 @@ final class BusinessCardDebugViewModel {
         } catch {
             myCard = .failed(.unknown(message: error.localizedDescription))
         }
+    }
+
+    func reloadPairedDevices() async {
+        pairedDeviceNames = await WiFiAwareTransport.pairedDeviceNames()
     }
 
     func reloadActivityStat() async {

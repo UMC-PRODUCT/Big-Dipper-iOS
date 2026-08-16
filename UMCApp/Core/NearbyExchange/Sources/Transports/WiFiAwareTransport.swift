@@ -63,6 +63,17 @@ public final class WiFiAwareTransport: NearbyTransportProtocol, @unchecked Senda
     private var peerContinuation: AsyncStream<DiscoveredPeer>.Continuation?
     private var receiveContinuation: AsyncStream<ExchangePayload>.Continuation?
 
+    /// 마지막 transport 실패 원문.
+    ///
+    /// `startScanning()`이 돌려주는 스트림에는 에러 채널이 없어서, 브라우저가 실패하면
+    /// 스트림이 조용히 끝난다. 그 상태와 "주변에 아무도 없음"이 화면에서 구분되지 않아
+    /// 진단이 불가능했다 — 실패 원문을 여기 남겨 호출부가 읽을 수 있게 한다.
+    private var _lastTransportError: String?
+
+    public var lastTransportError: String? {
+        stateQueue.sync { _lastTransportError }
+    }
+
     // MARK: - Init
 
     public init() {}
@@ -108,6 +119,7 @@ public final class WiFiAwareTransport: NearbyTransportProtocol, @unchecked Senda
                 }
             } catch {
                 // 광고 타임아웃(-11989) 등 — 교환 후라면 정상 수순 (스파이크 ②)
+                self?.recordTransportError("listen", error)
                 self?.handleLinkEnd(error)
             }
         }
@@ -163,7 +175,10 @@ public final class WiFiAwareTransport: NearbyTransportProtocol, @unchecked Senda
                         self?.publish(endpoints: endpoints)
                     }
                 } catch {
-                    // 취소·타임아웃 — 스트림만 닫는다 (스파이크 ④: leak 없이 finish)
+                    // 취소·타임아웃이면 정상 수순이지만, 그 외 실패도 같은 자리로 온다.
+                    // 스트림에 에러 채널이 없으므로 원문만 남기고 스트림은 닫는다
+                    // (스파이크 ④: leak 없이 finish).
+                    self?.recordTransportError("scan", error)
                 }
                 self?.takePeerContinuation()?.finish()
             }
@@ -305,6 +320,28 @@ public final class WiFiAwareTransport: NearbyTransportProtocol, @unchecked Senda
         return false
     }
 
+    /// 이 기기에 페어링된 Wi-Fi Aware 기기 이름 목록.
+    ///
+    /// ``hasPairedDevices()``는 "하나라도 있는가"만 보므로, 다른 용도로 페어링된 기기가
+    /// 있으면 통과한다. 상대 기기와 실제로 페어링됐는지는 이 목록을 눈으로 봐야 안다.
+    public static func pairedDeviceNames() async -> [String] {
+        do {
+            // allDevices는 [ID: WAPairedDevice] 사전을 흘린다 — values를 봐야 한다.
+            for try await devices in WAPairedDevice.allDevices {
+                return devices.values.map {
+                    $0.name ?? $0.pairingInfo?.pairingName ?? "\($0.id)"
+                }
+            }
+        } catch {
+            return ["조회 실패: \(error)"]
+        }
+        return []
+    }
+
+    private func recordTransportError(_ stage: String, _ error: Error) {
+        stateQueue.sync { _lastTransportError = "[\(stage)] \(error)" }
+    }
+
     // MARK: - Continuation Handoff
 
     /// 락 안에서 꺼내고 **락 밖에서** finish하기 위한 인출 헬퍼.
@@ -332,6 +369,9 @@ public final class WiFiAwareTransport: NearbyTransportProtocol, @unchecked Senda
     /// ② `hasExchanged`가 true로 굳어 이후 모든 세션의 실패가 침묵된다.
     private func resetSessionState() {
         stateQueue.sync {
+            // 지난 세션 실패가 남아 있으면 교환에 성공한 뒤에도 화면에 계속 떠서
+            // 현재 상태를 잘못 읽게 만든다.
+            _lastTransportError = nil
             hasExchanged = false
             endpointsByPeerID.removeAll()
             repliedConnectionIDs.removeAll()
@@ -399,6 +439,8 @@ struct WiFiAwareJSONCoder: NetworkCoder {
 /// WiFiAware 미지원 SDK 폴백 — 컴파일만 통과시키고 런타임엔 unsupported를 던진다.
 public final class WiFiAwareTransport: NearbyTransportProtocol, @unchecked Sendable {
     public static var isSupported: Bool { false }
+    public var lastTransportError: String? { "WiFiAware 미지원 SDK" }
+    public static func pairedDeviceNames() async -> [String] { [] }
     public init() {}
     public func startAdvertising(card: ExchangePayload) async throws {
         throw NearbyError.unsupported("Wi-Fi Aware")

@@ -27,6 +27,33 @@ struct DebugExchangeView: View {
                 labeled("Wi-Fi Aware 지원", "\(WiFiAwareTransport.isSupported)")
                 labeled("주입된 transport", viewModel.transportTypeName)
 
+                // "주변에 아무도 없음"과 "브라우저가 실패해 스트림이 닫힘"은 화면에서
+                // 똑같이 peers: 0 으로 보인다. 두 상태를 가르는 값들이다.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("페어링된 기기 \(viewModel.pairedDeviceNames.count)대")
+                        .font(.callout)
+                    ForEach(Array(viewModel.pairedDeviceNames.enumerated()), id: \.offset) { _, name in
+                        Text("· \(name)").font(.caption).foregroundStyle(.secondary)
+                    }
+                    if viewModel.pairedDeviceNames.isEmpty {
+                        Text("없음 — 「기기 페어링」을 먼저 해야 한다")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                }
+
+                Button("페어링 목록 새로고침") {
+                    Task { await viewModel.reloadPairedDevices() }
+                }
+
+                if let error = viewModel.transportError {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("transport 실패").font(.footnote.bold()).foregroundStyle(.red)
+                        Text(error)
+                            .font(.caption2).monospaced()
+                            .textSelection(.enabled)
+                    }
+                }
+
                 #if canImport(DeviceDiscoveryUI)
                 NavigationLink {
                     WiFiAwarePairingView()
