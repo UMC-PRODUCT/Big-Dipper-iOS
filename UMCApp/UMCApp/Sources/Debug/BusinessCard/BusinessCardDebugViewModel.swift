@@ -38,6 +38,13 @@ final class BusinessCardDebugViewModel {
     /// 구성하는 설계다. 하지만 그 조회 엔드포인트가 아직 없어서, **교환 왕복 자체를
     /// 눈으로 보려면** 페이로드를 통째로 실은 QR이 필요하다. 검증 화면 한정이다.
     private(set) var qrPayloadImage: CGImage?
+
+    /// 페이로드 QR에 실제로 실린 JSON 원문. QR 화면이 딥링크와 나란히 비교할 때 쓴다.
+    private(set) var qrPayloadJSON: String?
+
+    /// 위 JSON의 UTF-8 바이트 수. QR 격자 크기를 결정하는 값이라 화면에 그대로 노출한다.
+    private(set) var qrPayloadByteCount = 0
+
     private(set) var scanLog: [String] = []
 
     private(set) var peers: [DiscoveredPeer] = []
@@ -208,10 +215,18 @@ final class BusinessCardDebugViewModel {
     }
 
     /// 명함 전체를 JSON으로 직렬화해 QR로 만든다 (검증 화면 전용 — 위 프로퍼티 주석 참고).
+    ///
+    /// 원문과 바이트 수도 함께 남긴다 — QR 화면이 딥링크와 격자 크기를 비교하는 근거다.
     private func makePayloadQR(for card: MyCard) -> CGImage? {
+        qrPayloadJSON = nil
+        qrPayloadByteCount = 0
+
         guard let payload = try? card.toExchangePayload(cardID: "QR-\(card.memberId)"),
               let data = try? payload.jsonData(),
               let json = String(data: data, encoding: .utf8) else { return nil }
+
+        qrPayloadJSON = json
+        qrPayloadByteCount = data.count
         return try? CoreImageQRCodeGenerator().generate(from: json)
     }
 
