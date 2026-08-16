@@ -8,6 +8,7 @@
 #if DEBUG
 import CoreNearbyExchange
 import SwiftUI
+import UMCFoundation
 
 /// 명함 카드의 「명함 교환」 버튼이 여는 화면 (시안 명함교환 자리).
 ///
@@ -87,6 +88,18 @@ struct DebugExchangeView: View {
                 Text("전송 계층")
             } footer: {
                 Text("Wi-Fi Aware는 페어링된 기기끼리만 연결된다. 먼저 「기기 페어링」으로 상대를 등록해야 한다.")
+            }
+
+            Section {
+                NavigationLink {
+                    DebugNearbyExchangeView(viewModel: viewModel)
+                } label: {
+                    Label("시안 배치로 보기", systemImage: "rectangle.on.rectangle")
+                }
+            } header: {
+                Text("임시 뷰 — 시안 12654:32255 · 32621")
+            } footer: {
+                Text("배치만 시안을 따른다. 색·타이포는 시스템 값이다. 진입하면 교환 세션이 자동 시작된다.")
             }
 
             Section {
