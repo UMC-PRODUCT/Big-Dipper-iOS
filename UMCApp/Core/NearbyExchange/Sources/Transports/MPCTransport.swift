@@ -7,9 +7,28 @@
 
 import Foundation
 import MultipeerConnectivity
-#if canImport(UIKit)
-import UIKit
-#endif
+
+// MARK: - NearbyHandshakeProviding
+
+/// 피어별 핸드셰이크를 만들고 상대 핸드셰이크를 받는 쪽.
+///
+/// **피어마다 달라야 하는 이유**: `NISession` 은 한 번에 한 상대와만 레인징한다
+/// (`NINearbyPeerConfiguration(peerToken:)` 이 상대 토큰 하나를 받는다). 그래서 상대가 늘면
+/// 세션도 늘고, 세션마다 자기 `discoveryToken` 이 다르다. 전역 토큰 하나를 뿌리면
+/// 두 번째 상대부터 엉뚱한 세션의 토큰을 받는다.
+public protocol NearbyHandshakeProviding: AnyObject, Sendable {
+
+    /// 이 피어에게 보낼 핸드셰이크. UWB 미탑재 기기는 `niToken` 을 `nil` 로 채운다.
+    func makeHandshake(forPeerID peerID: String) -> NearbyHandshake?
+
+    /// 상대 핸드셰이크 도착. 여기서 상대 토큰으로 레인징을 시작한다.
+    func didReceiveHandshake(_ handshake: NearbyHandshake, fromPeerID peerID: String)
+
+    /// 피어가 사라졌다. 해당 세션을 정리한다.
+    func didLosePeer(_ peerID: String)
+}
+
+// MARK: - MPCTransport
 
 /// MultipeerConnectivity 기반 근거리 명함 교환 transport.
 ///
@@ -18,8 +37,6 @@ import UIKit
 /// 사람이 목록에 뜨는 화면이다. MPC 는 페어링 없이 주변을 탐색한다.
 ///
 /// ## 3단계 구분
-///
-/// 이 transport 는 **발견 · 연결 · 전송을 명확히 나눈다.** 각 단계에서 오가는 정보가 다르다.
 ///
 /// | 단계 | 오가는 것 | 동의 |
 /// |---|---|---|
@@ -49,9 +66,13 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         /// `discoveryInfo` 는 Bonjour TXT 레코드라 작다. 긴 값은 잘라 넣는다.
         static let maxDiscoveryValueLength = 64
         static let invitationTimeout: TimeInterval = 20
+        /// 세션 식별자 길이. 충돌 확률과 TXT 레코드 크기의 절충.
+        static let sessionIDLength = 12
     }
 
     private enum DiscoveryKey {
+        /// 세션 식별자. **피어를 가르는 유일한 키다** (아래 `localSessionID` 주석 참고).
+        static let sessionID = "s"
         static let name = "n"
         static let nickname = "k"
         static let part = "p"
@@ -63,6 +84,16 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
     public static var isSupported: Bool { true }
 
+    /// 이 실행에서 나를 가리키는 임의 식별자.
+    ///
+    /// `MCPeerID.displayName` 을 키로 쓸 수 없다. **iOS 16부터 `UIDevice.name` 은 별도
+    /// entitlement 없이는 기기 이름을 주지 않고 `"iPhone"` 같은 기종명을 돌려준다.** 그러면
+    /// 주변 기기가 전부 같은 이름이 되어 3대째부터 서로를 구분하지 못한다. 2대로 검증하면
+    /// 각자 상대가 하나뿐이라 이 결함이 드러나지 않는다.
+    ///
+    /// 매 실행 새로 만든다 — 기기를 가로질러 추적할 수 있는 값이 되면 안 된다.
+    private let localSessionID: String
+
     private let stateQueue = DispatchQueue(label: "dev.umc.nearby.mpc")
 
     private let localPeerID: MCPeerID
@@ -70,23 +101,25 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
 
-    /// 내 명함. 상대가 탭해서 요청하면 이걸 보낸다.
+    /// 내 명함. 맞교환 회신에 쓴다.
     private var myCard: ExchangePayload?
-    /// 연결 직후 보낼 핸드셰이크. 호출부가 NI 토큰을 채워 넣는다.
-    private var myHandshake: NearbyHandshake?
 
-    /// 발견된 피어. `MCPeerID.displayName` 이 아니라 우리가 만든 안정 id 로 키를 잡는다.
-    private var peersByID: [String: MCPeerID] = [:]
+    /// 세션 식별자 → MPC 피어.
+    private var peersBySessionID: [String: MCPeerID] = [:]
+    /// MPC 피어 → 세션 식별자. 델리게이트가 `MCPeerID` 로 오므로 역방향도 필요하다.
+    private var sessionIDsByPeer: [MCPeerID: String] = [:]
+    /// 발견 정보 보관 — 연결 이후에도 목록 행을 다시 그릴 수 있어야 한다.
+    private var discoveredPeers: [String: DiscoveredPeer] = [:]
     /// 맞교환 회신을 이미 보낸 피어 — 무한 에코 차단.
-    private var repliedPeerIDs = Set<String>()
+    private var repliedSessionIDs = Set<String>()
     /// `receive()` 구독 전에 도착한 명함.
     private var pendingPayloads: [ExchangePayload] = []
 
     private var peerContinuation: AsyncStream<DiscoveredPeer>.Continuation?
     private var receiveContinuation: AsyncStream<ExchangePayload>.Continuation?
 
-    /// 상대에게서 받은 NI 토큰. 레인징 조율 계층이 꺼내 쓴다.
-    private var handshakesByPeerID: [String: NearbyHandshake] = [:]
+    /// 핸드셰이크를 만들고 받는 쪽 (레인징 조율 계층). 없으면 핸드셰이크를 주고받지 않는다.
+    private weak var handshakeProvider: (any NearbyHandshakeProviding)?
 
     /// 마지막 실패 원문. 스트림에 에러 채널이 없어 여기 남긴다 (Wi-Fi Aware 와 같은 이유).
     private var _lastTransportError: String?
@@ -97,10 +130,12 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
     // MARK: - Init
 
-    /// - Parameter displayName: `MCPeerID` 표시 이름. 기기 이름이 그대로 노출되지 않도록
-    ///   호출부가 익명 값을 넘길 수 있다. 실제 신원은 `discoveryInfo` 가 나른다.
-    public init(displayName: String = NearbyPeerDisplayName.current) {
-        self.localPeerID = MCPeerID(displayName: displayName)
+    public override init() {
+        let sessionID = Self.makeSessionID()
+        self.localSessionID = sessionID
+        // 표시 이름에도 같은 값을 쓴다. 기기 이름을 노출하지 않고, MPC 내부 로그에서도
+        // 피어가 구분된다. 사람이 읽는 이름은 discoveryInfo 가 나른다.
+        self.localPeerID = MCPeerID(displayName: sessionID)
         super.init()
     }
 
@@ -108,10 +143,17 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         tearDown()
     }
 
+    // MARK: - Configuration
+
+    /// 레인징 조율 계층을 연결한다. 설정하지 않으면 거리 없이 발견·교환만 동작한다.
+    public func setHandshakeProvider(_ provider: any NearbyHandshakeProviding) {
+        stateQueue.sync { handshakeProvider = provider }
+    }
+
     // MARK: - Advertising
 
     public func startAdvertising(card: ExchangePayload) async throws {
-        resetSessionState()
+        await stopAdvertising()
 
         let session = MCSession(
             peer: localPeerID,
@@ -122,7 +164,7 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
         let advertiser = MCNearbyServiceAdvertiser(
             peer: localPeerID,
-            discoveryInfo: Self.discoveryInfo(from: card),
+            discoveryInfo: Self.discoveryInfo(from: card, sessionID: localSessionID),
             serviceType: Self.serviceType
         )
         advertiser.delegate = self
@@ -169,10 +211,7 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
                 }
             }
 
-            let browser = MCNearbyServiceBrowser(
-                peer: localPeerID,
-                serviceType: Self.serviceType
-            )
+            let browser = MCNearbyServiceBrowser(peer: localPeerID, serviceType: Self.serviceType)
             browser.delegate = self
             stateQueue.sync { self.browser = browser }
             browser.startBrowsingForPeers()
@@ -182,15 +221,17 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     // MARK: - Data Transfer
 
     /// 명함 전체를 보낸다. **사용자가 행을 탭했을 때만** 호출된다.
+    ///
+    /// 아직 연결되지 않았으면 먼저 초대한다 — 자동 연결은 MPC 동시 세션 한도(8) 안에서만
+    /// 이뤄지므로, 한도 밖 피어는 탭하는 시점에 연결한다. 연결을 기다린 뒤 보낸다.
     public func send(payload: ExchangePayload, to peer: DiscoveredPeer) async throws {
-        let (session, peerID) = stateQueue.sync { (self.session, peersByID[peer.id]) }
+        let (session, peerID) = stateQueue.sync { (self.session, peersBySessionID[peer.id]) }
         guard let session, let peerID else {
             throw NearbyError.invalidPayload("발견되지 않은 피어: \(peer.id)")
         }
-        guard session.connectedPeers.contains(peerID) else {
-            throw NearbyError.transportFailure(
-                underlying: NearbyError.invalidPayload("아직 연결되지 않은 피어")
-            )
+
+        if !session.connectedPeers.contains(peerID) {
+            try await connect(to: peerID, session: session)
         }
         try sendMessage(.card(payload), to: [peerID], session: session)
     }
@@ -213,26 +254,21 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         }
     }
 
-    // MARK: - Handshake
-
-    /// 연결 직후 보낼 핸드셰이크를 설정한다. NI 토큰은 호출부(레인징 조율 계층)가 만든다.
-    public func setHandshake(_ handshake: NearbyHandshake) {
-        stateQueue.sync { myHandshake = handshake }
-    }
-
-    /// 상대에게서 받은 핸드셰이크. 레인징 조율 계층이 NI 토큰을 꺼내 쓴다.
-    public func handshake(forPeerID peerID: String) -> NearbyHandshake? {
-        stateQueue.sync { handshakesByPeerID[peerID] }
-    }
-
     // MARK: - Private Function
+
+    private static func makeSessionID() -> String {
+        String(UUID().uuidString.replacingOccurrences(of: "-", with: "")
+            .prefix(Constants.sessionIDLength))
+            .lowercased()
+    }
 
     /// 명함에서 발견 목록에 필요한 최소 정보만 뽑는다.
     ///
     /// Bonjour TXT 레코드라 크기가 작아 **이메일·외부 링크는 넣지 않는다.** 넣을 자리도 없고,
     /// 동의 전에 흐르는 정보이므로 넣어서도 안 된다.
-    static func discoveryInfo(from card: ExchangePayload) -> [String: String] {
+    static func discoveryInfo(from card: ExchangePayload, sessionID: String) -> [String: String] {
         var info: [String: String] = [
+            DiscoveryKey.sessionID: sessionID,
             DiscoveryKey.name: truncated(card.name),
             DiscoveryKey.nickname: truncated(card.nickname),
             DiscoveryKey.part: truncated(card.part),
@@ -248,24 +284,63 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         String(value.prefix(Constants.maxDiscoveryValueLength))
     }
 
-    /// `discoveryInfo` 를 발견 피어로 옮긴다. 값이 없으면 표시 이름만 남는다.
-    private func makePeer(from peerID: MCPeerID, info: [String: String]?) -> DiscoveredPeer {
-        let name = info?[DiscoveryKey.name]
-        let nickname = info?[DiscoveryKey.nickname]
+    /// `discoveryInfo` 를 발견 피어로 옮긴다.
+    ///
+    /// 세션 식별자가 없는 광고는 우리 앱이 만든 게 아니거나 구버전이므로 무시한다 —
+    /// 식별자 없이는 피어를 구분할 수 없다.
+    private static func makePeer(from info: [String: String]?) -> DiscoveredPeer? {
+        guard let info, let sessionID = info[DiscoveryKey.sessionID], !sessionID.isEmpty else {
+            return nil
+        }
+        let name = info[DiscoveryKey.name]
+        let nickname = info[DiscoveryKey.nickname]
         let displayName: String? = {
-            guard let name, let nickname else { return name ?? peerID.displayName }
+            guard let name else { return nil }
+            guard let nickname, !nickname.isEmpty else { return name }
             return "\(name)/\(nickname)"
         }()
 
         return DiscoveredPeer(
-            id: peerID.displayName,
+            id: sessionID,
             cardUUIDPrefix: Data(),
             version: UInt8(clamping: ExchangePayload.currentVersion),
             flags: 0,
             displayName: displayName,
-            part: info?[DiscoveryKey.part],
-            generation: info?[DiscoveryKey.generation],
-            avatarURL: info?[DiscoveryKey.avatarURL]
+            part: info[DiscoveryKey.part],
+            generation: info[DiscoveryKey.generation],
+            avatarURL: info[DiscoveryKey.avatarURL]
+        )
+    }
+
+    /// 양쪽이 서로를 초대하는 것을 막는다.
+    ///
+    /// 두 기기가 동시에 광고+탐색하므로 A→B, B→A 초대가 겹쳐 중복 연결이 생긴다.
+    /// 식별자가 작은 쪽만 초대하기로 정하면 한 방향만 남는다 — 양쪽이 같은 두 값을 보고
+    /// 같은 결론에 도달하므로 합의가 필요 없다.
+    private func shouldInvite(_ remoteSessionID: String) -> Bool {
+        localSessionID < remoteSessionID
+    }
+
+    /// 연결될 때까지 기다린다. 이미 연결돼 있으면 즉시 반환.
+    private func connect(to peerID: MCPeerID, session: MCSession) async throws {
+        guard let browser = stateQueue.sync(execute: { self.browser }) else {
+            throw NearbyError.transportFailure(
+                underlying: NearbyError.invalidPayload("탐색 중이 아니라 연결할 수 없다")
+            )
+        }
+        browser.invitePeer(
+            peerID, to: session, withContext: nil, timeout: Constants.invitationTimeout
+        )
+
+        // MPC 는 연결 완료를 async 로 알려주지 않는다. 델리게이트가 상태를 바꿀 때까지
+        // 짧게 폴링한다 — 타임아웃은 초대 타임아웃과 같은 값을 쓴다.
+        let deadline = Date().addingTimeInterval(Constants.invitationTimeout)
+        while Date() < deadline {
+            if session.connectedPeers.contains(peerID) { return }
+            try? await Task.sleep(for: .milliseconds(120))
+        }
+        throw NearbyError.transportFailure(
+            underlying: NearbyError.invalidPayload("연결 시간 초과")
         )
     }
 
@@ -308,10 +383,11 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     private func resetSessionState() {
         stateQueue.sync {
             _lastTransportError = nil
-            peersByID.removeAll()
-            repliedPeerIDs.removeAll()
+            peersBySessionID.removeAll()
+            sessionIDsByPeer.removeAll()
+            discoveredPeers.removeAll()
+            repliedSessionIDs.removeAll()
             pendingPayloads.removeAll()
-            handshakesByPeerID.removeAll()
         }
     }
 
@@ -364,31 +440,36 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
         foundPeer peerID: MCPeerID,
         withDiscoveryInfo info: [String: String]?
     ) {
-        let peer = makePeer(from: peerID, info: info)
-        let (session, shouldInvite) = stateQueue.sync { () -> (MCSession?, Bool) in
-            let isNew = peersByID[peer.id] == nil
-            peersByID[peer.id] = peerID
+        guard let peer = Self.makePeer(from: info) else { return }
+
+        let (session, isNew) = stateQueue.sync { () -> (MCSession?, Bool) in
+            let isNew = peersBySessionID[peer.id] == nil
+            peersBySessionID[peer.id] = peerID
+            sessionIDsByPeer[peerID] = peer.id
+            discoveredPeers[peer.id] = peer
             peerContinuation?.yield(peer)
             return (self.session, isNew)
         }
 
         // 발견 즉시 연결한다 — NI 토큰을 주고받으려면 세션이 필요하고, 토큰이 없으면
         // 거리를 잴 수 없다. 명함은 여전히 사용자가 탭해야 나간다.
-        guard shouldInvite, let session else { return }
+        // 식별자가 작은 쪽만 초대해 양방향 중복 연결을 막는다.
+        guard isNew, shouldInvite(peer.id), let session else { return }
         browser.invitePeer(
-            peerID,
-            to: session,
-            withContext: nil,
-            timeout: Constants.invitationTimeout
+            peerID, to: session, withContext: nil, timeout: Constants.invitationTimeout
         )
     }
 
     public func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
-        stateQueue.sync {
-            peersByID[peerID.displayName] = nil
-            handshakesByPeerID[peerID.displayName] = nil
-            repliedPeerIDs.remove(peerID.displayName)
+        let (sessionID, provider) = stateQueue.sync { () -> (String?, (any NearbyHandshakeProviding)?) in
+            guard let sessionID = sessionIDsByPeer[peerID] else { return (nil, handshakeProvider) }
+            peersBySessionID[sessionID] = nil
+            sessionIDsByPeer[peerID] = nil
+            discoveredPeers[sessionID] = nil
+            repliedSessionIDs.remove(sessionID)
+            return (sessionID, handshakeProvider)
         }
+        if let sessionID { provider?.didLosePeer(sessionID) }
     }
 
     public func browser(
@@ -412,8 +493,12 @@ extension MPCTransport: MCSessionDelegate {
         guard state == .connected else { return }
 
         // 연결되면 핸드셰이크를 보낸다. 여기 실리는 건 NI 토큰과 미리보기뿐 — 명함이 아니다.
-        let handshake = stateQueue.sync { myHandshake }
-        guard let handshake else { return }
+        // 토큰은 피어마다 다르므로 그때그때 만든다 (NearbyHandshakeProviding 주석 참고).
+        let (provider, sessionID) = stateQueue.sync {
+            (handshakeProvider, sessionIDsByPeer[peerID])
+        }
+        guard let provider, let sessionID,
+              let handshake = provider.makeHandshake(forPeerID: sessionID) else { return }
         try? sendMessage(.handshake(handshake), to: [peerID], session: session)
     }
 
@@ -427,7 +512,11 @@ extension MPCTransport: MCSessionDelegate {
 
         switch message {
         case .handshake(let handshake):
-            stateQueue.sync { handshakesByPeerID[peerID.displayName] = handshake }
+            let (provider, sessionID) = stateQueue.sync {
+                (handshakeProvider, sessionIDsByPeer[peerID])
+            }
+            guard let provider, let sessionID else { return }
+            provider.didReceiveHandshake(handshake, fromPeerID: sessionID)
 
         case .card(let payload):
             let reply = stateQueue.sync { () -> ExchangePayload? in
@@ -437,7 +526,8 @@ extension MPCTransport: MCSessionDelegate {
                     pendingPayloads.append(payload)   // 구독 전 도착분
                 }
                 // 맞교환은 **연결당 1회**. 빠지면 A→B→A→B 무한 에코가 된다.
-                guard repliedPeerIDs.insert(peerID.displayName).inserted else { return nil }
+                guard let sessionID = sessionIDsByPeer[peerID],
+                      repliedSessionIDs.insert(sessionID).inserted else { return nil }
                 return myCard
             }
             if let reply {
@@ -470,20 +560,3 @@ extension MPCTransport: MCSessionDelegate {
         withError error: (any Error)?
     ) {}
 }
-
-// MARK: - Device Name
-
-/// `MCPeerID` 표시 이름 기본값.
-///
-/// MPC 는 표시 이름을 63바이트로 제한한다. 실제 신원은 `discoveryInfo` 가 나르므로
-/// 이 값은 세션 안에서 피어를 구분하는 용도로만 쓴다.
-public enum NearbyPeerDisplayName {
-    public static var current: String {
-        #if canImport(UIKit)
-        return String(UIDevice.current.name.prefix(63))
-        #else
-        return String(ProcessInfo.processInfo.hostName.prefix(63))
-        #endif
-    }
-}
-

@@ -40,7 +40,7 @@ struct MPCDiscoveryInfoTests {
 
     @Test("시안 행에 필요한 값이 모두 실린다")
     func carriesFieldsTheDesignNeeds() throws {
-        let info = MPCTransport.discoveryInfo(from: try makeCard())
+        let info = MPCTransport.discoveryInfo(from: try makeCard(), sessionID: "abc123")
 
         #expect(info["n"] == "정의찬")
         #expect(info["k"] == "제옹")
@@ -51,7 +51,7 @@ struct MPCDiscoveryInfoTests {
 
     @Test("이메일·외부 링크·딥링크는 실리지 않는다 — 동의 전에 뿌려지는 정보다")
     func omitsPrivateFields() throws {
-        let values = MPCTransport.discoveryInfo(from: try makeCard()).values.joined()
+        let values = MPCTransport.discoveryInfo(from: try makeCard(), sessionID: "abc123").values.joined()
 
         #expect(!values.contains("one@umc.it.kr"))
         #expect(!values.contains("github.com"))
@@ -62,8 +62,8 @@ struct MPCDiscoveryInfoTests {
 
     @Test("아바타가 없으면 키 자체를 넣지 않는다 — TXT 레코드 낭비를 막는다")
     func omitsEmptyAvatar() throws {
-        let withoutAvatar = MPCTransport.discoveryInfo(from: try makeCard(avatarURL: nil))
-        let withEmpty = MPCTransport.discoveryInfo(from: try makeCard(avatarURL: ""))
+        let withoutAvatar = MPCTransport.discoveryInfo(from: try makeCard(avatarURL: nil), sessionID: "abc123")
+        let withEmpty = MPCTransport.discoveryInfo(from: try makeCard(avatarURL: ""), sessionID: "abc123")
 
         #expect(withoutAvatar["a"] == nil)
         #expect(withEmpty["a"] == nil)
@@ -72,10 +72,17 @@ struct MPCDiscoveryInfoTests {
     @Test("긴 값은 잘린다 — Bonjour TXT 레코드는 작다")
     func truncatesLongValues() throws {
         let long = String(repeating: "가", count: 200)
-        let info = MPCTransport.discoveryInfo(from: try makeCard(name: long))
+        let info = MPCTransport.discoveryInfo(from: try makeCard(name: long), sessionID: "abc123")
 
         let name = try #require(info["n"])
         #expect(name.count == 64)
+    }
+
+    @Test("세션 식별자가 실린다 — 이게 없으면 피어를 구분할 수 없다")
+    func carriesSessionID() throws {
+        let info = MPCTransport.discoveryInfo(from: try makeCard(), sessionID: "abc123")
+
+        #expect(info["s"] == "abc123")
     }
 
     @Test("서비스 타입이 MPC 규칙을 지킨다 — 15자 이하·영숫자와 하이픈만")
