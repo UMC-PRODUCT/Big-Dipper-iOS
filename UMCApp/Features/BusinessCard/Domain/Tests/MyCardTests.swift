@@ -21,7 +21,7 @@ struct MyCardTests {
             email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil
         )
 
-        #expect(card.qrPayload == "umc://card/42")
+        #expect(card.qrPayload == CardLink(memberId: "42").urlString)
         #expect(card.qrPayload == card.cardLink.urlString)
     }
 }

@@ -79,7 +79,7 @@ struct ExchangeCardsUseCaseTests {
 
         #expect(transport.sentPayloads.count == 1)
         #expect(transport.sentPayloads.first?.name == "정의찬")
-        #expect(transport.sentPayloads.first?.cardLink == "umc://card/42")
+        #expect(transport.sentPayloads.first?.cardLink == CardLink(memberId: "42").urlString)
     }
 
     @Test("타임아웃이 지나면 sessionExpired failed 이벤트 후 스트림이 끝난다")

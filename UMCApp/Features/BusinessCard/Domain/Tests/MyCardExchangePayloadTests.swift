@@ -34,7 +34,7 @@ struct MyCardExchangePayloadTests {
         #expect(restored.generation == "12")
         #expect(restored.linkedIn == "linkedin.com/in/umc")
         #expect(payload.linkedIn == "linkedin.com/in/umc")
-        #expect(payload.cardLink == "umc://card/42")
+        #expect(payload.cardLink == CardLink(memberId: "42").urlString)
         #expect(payload.version == ExchangePayload.currentVersion)
     }
 

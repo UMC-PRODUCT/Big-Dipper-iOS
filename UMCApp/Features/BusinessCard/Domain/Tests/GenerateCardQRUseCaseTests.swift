@@ -26,7 +26,7 @@ struct GenerateCardQRUseCaseTests {
 
         _ = try sut.execute(for: card)
 
-        #expect(generator.lastPayload == "umc://card/42")
+        #expect(generator.lastPayload == CardLink(memberId: "42").urlString)
         #expect(generator.generateCallCount == 1)
     }
 
