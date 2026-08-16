@@ -53,8 +53,28 @@ final class BusinessCardDebugViewModel {
 
     private(set) var peers: [DiscoveredPeer] = []
 
+    /// 피어별 전송 상태. 임시 뷰가 탭 결과를 보여주지 못하면 실패인지 무반응인지 알 수 없다.
+    private(set) var sendStates: [String: SendState] = [:]
+
+    enum SendState: Equatable {
+        case sending
+        case sent
+        case failed(String)
+    }
+
     /// 이 기기에 페어링된 Wi-Fi Aware 기기 이름. 비어 있으면 교환이 성립할 수 없다.
     private(set) var pairedDeviceNames: [String] = []
+
+    /// transport 연결 수립 로그. MPC 는 초대·수락·연결이 델리게이트로 흩어져 있어
+    /// 어디서 멈췄는지 이것 없이는 볼 수 없다.
+    var transportLog: [String] {
+        (transport as? MPCTransport)?.diagnosticLog ?? []
+    }
+
+    /// 지금 실제로 연결된 피어. 목록에 떴다고 연결된 것은 아니다.
+    var connectedPeerIDs: Set<String> {
+        (transport as? MPCTransport)?.connectedPeerIDs ?? []
+    }
 
     /// transport가 삼킨 실패 원문. `peers: 0`이 "아무도 없음"인지 "브라우저 실패"인지 가른다.
     var transportError: String? {
@@ -180,10 +200,18 @@ final class BusinessCardDebugViewModel {
     }
 
     func send(to peer: DiscoveredPeer) async {
-        guard let card = myCard.value else { return }
+        guard let card = myCard.value else {
+            sendStates[peer.id] = .failed("내 명함이 아직 로드되지 않았다")
+            eventLog.insert("send 불가: 내 명함 없음", at: 0)
+            return
+        }
+        sendStates[peer.id] = .sending
         do {
             try await provider.exchangeCardsUseCase.send(myCard: card, to: peer)
+            sendStates[peer.id] = .sent
         } catch {
+            // 원문을 그대로 남긴다 — 연결 시간 초과인지 미발견인지 여기서 갈린다.
+            sendStates[peer.id] = .failed("\(error)")
             eventLog.insert("send 실패: \(error)", at: 0)
         }
     }
@@ -197,6 +225,7 @@ final class BusinessCardDebugViewModel {
         }
         isExchanging = true
         peers = []
+        sendStates.removeAll()
         eventLog.insert("세션 시작", at: 0)
 
         let stream = provider.exchangeCardsUseCase.start(myCard: card)

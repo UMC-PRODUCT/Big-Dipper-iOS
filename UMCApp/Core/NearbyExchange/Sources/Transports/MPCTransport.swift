@@ -105,9 +105,12 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     private var myCard: ExchangePayload?
 
     /// 세션 식별자 → MPC 피어.
+    ///
+    /// 역방향 딕셔너리는 두지 않는다. `MCPeerID.displayName` 이 곧 세션 식별자이기 때문이다
+    /// (`localPeerID` 를 그렇게 만든다). 딕셔너리로 되찾으면 **발견 경로로만 채워져서**,
+    /// 초대를 수락해 연결된 피어는 조회에 실패한다 — 실기기에서 한쪽만 「연결됨 0」 으로
+    /// 보이던 원인이 이것이었다.
     private var peersBySessionID: [String: MCPeerID] = [:]
-    /// MPC 피어 → 세션 식별자. 델리게이트가 `MCPeerID` 로 오므로 역방향도 필요하다.
-    private var sessionIDsByPeer: [MCPeerID: String] = [:]
     /// 발견 정보 보관 — 연결 이후에도 목록 행을 다시 그릴 수 있어야 한다.
     private var discoveredPeers: [String: DiscoveredPeer] = [:]
     /// 맞교환 회신을 이미 보낸 피어 — 무한 에코 차단.
@@ -124,8 +127,25 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     /// 마지막 실패 원문. 스트림에 에러 채널이 없어 여기 남긴다 (Wi-Fi Aware 와 같은 이유).
     private var _lastTransportError: String?
 
+    /// 연결 수립 과정 로그. MPC 는 초대·수락·연결이 전부 델리게이트로 흩어져 있어
+    /// 어디서 멈췄는지 밖에서 볼 수 없다. 최신순으로 쌓는다.
+    private var _log: [String] = []
+
     public var lastTransportError: String? {
         stateQueue.sync { _lastTransportError }
+    }
+
+    /// 진단 로그 (최신순, 최대 40줄).
+    public var diagnosticLog: [String] {
+        stateQueue.sync { _log }
+    }
+
+    /// 지금 세션에 연결된 피어의 세션 식별자.
+    public var connectedPeerIDs: Set<String> {
+        stateQueue.sync {
+            guard let session else { return [] }
+            return Set(session.connectedPeers.map(\.displayName))
+        }
     }
 
     // MARK: - Init
@@ -153,7 +173,12 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     // MARK: - Advertising
 
     public func startAdvertising(card: ExchangePayload) async throws {
-        await stopAdvertising()
+        // `stopAdvertising()` 을 부르면 안 된다 — 그 안의 `takeReceiveContinuation()?.finish()`
+        // 가 **직전에 등록된 수신 스트림을 닫는다.** UseCase 는 `receive()` 를 먼저 구독하고
+        // 곧바로 여기를 부르므로(선착 페이로드를 놓치지 않으려는 순서다), 여기서 수신
+        // continuation 을 건드리면 상대 명함이 영영 도착하지 않는다.
+        // 전송은 되는데 수신만 안 되는 증상으로 나타난다.
+        tearDownChannels()
 
         let session = MCSession(
             peer: localPeerID,
@@ -230,10 +255,13 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
             throw NearbyError.invalidPayload("발견되지 않은 피어: \(peer.id)")
         }
 
-        if !session.connectedPeers.contains(peerID) {
+        let alreadyConnected = session.connectedPeers.contains(peerID)
+        log("전송 요청 \(peer.id) — 연결됨: \(alreadyConnected)")
+        if !alreadyConnected {
             try await connect(to: peerID, session: session)
         }
         try sendMessage(.card(payload), to: [peerID], session: session)
+        log("명함 전송 완료 \(peer.id)")
     }
 
     public func receive() -> AsyncStream<ExchangePayload> {
@@ -312,15 +340,6 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         )
     }
 
-    /// 양쪽이 서로를 초대하는 것을 막는다.
-    ///
-    /// 두 기기가 동시에 광고+탐색하므로 A→B, B→A 초대가 겹쳐 중복 연결이 생긴다.
-    /// 식별자가 작은 쪽만 초대하기로 정하면 한 방향만 남는다 — 양쪽이 같은 두 값을 보고
-    /// 같은 결론에 도달하므로 합의가 필요 없다.
-    private func shouldInvite(_ remoteSessionID: String) -> Bool {
-        localSessionID < remoteSessionID
-    }
-
     /// 연결될 때까지 기다린다. 이미 연결돼 있으면 즉시 반환.
     private func connect(to peerID: MCPeerID, session: MCSession) async throws {
         guard let browser = stateQueue.sync(execute: { self.browser }) else {
@@ -328,6 +347,7 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
                 underlying: NearbyError.invalidPayload("탐색 중이 아니라 연결할 수 없다")
             )
         }
+        log("탭 초대 \(peerID.displayName) — 연결 대기 시작")
         browser.invitePeer(
             peerID, to: session, withContext: nil, timeout: Constants.invitationTimeout
         )
@@ -361,7 +381,20 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     }
 
     private func recordError(_ stage: String, _ error: Error) {
-        stateQueue.sync { _lastTransportError = "[\(stage)] \(error)" }
+        stateQueue.sync {
+            _lastTransportError = "[\(stage)] \(error)"
+            appendLog("실패 [\(stage)] \(error)")
+        }
+    }
+
+    /// **`stateQueue` 안에서만 호출한다.**
+    private func appendLog(_ line: String) {
+        _log.insert(line, at: 0)
+        if _log.count > 40 { _log.removeLast(_log.count - 40) }
+    }
+
+    private func log(_ line: String) {
+        stateQueue.sync { appendLog(line) }
     }
 
     private func takeReceiveContinuation() -> AsyncStream<ExchangePayload>.Continuation? {
@@ -384,11 +417,27 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         stateQueue.sync {
             _lastTransportError = nil
             peersBySessionID.removeAll()
-            sessionIDsByPeer.removeAll()
             discoveredPeers.removeAll()
             repliedSessionIDs.removeAll()
             pendingPayloads.removeAll()
         }
+    }
+
+    /// 광고·탐색·세션만 정리한다. **수신 continuation 은 건드리지 않는다** (위 주석 참고).
+    private func tearDownChannels() {
+        let (advertiser, browser, session) = stateQueue.sync {
+            (self.advertiser, self.browser, self.session)
+        }
+        advertiser?.stopAdvertisingPeer()
+        browser?.stopBrowsingForPeers()
+        session?.disconnect()
+        stateQueue.sync {
+            self.advertiser = nil
+            self.browser = nil
+            self.session = nil
+            self.myCard = nil
+        }
+        resetSessionState()
     }
 
     private func tearDown() {
@@ -420,6 +469,7 @@ extension MPCTransport: MCNearbyServiceAdvertiserDelegate {
         invitationHandler: @escaping (Bool, MCSession?) -> Void
     ) {
         let session = stateQueue.sync { self.session }
+        log("초대 받음 \(peerID.displayName) — \(session == nil ? "거절(세션 없음)" : "수락")")
         invitationHandler(session != nil, session)
     }
 
@@ -445,7 +495,6 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
         let (session, isNew) = stateQueue.sync { () -> (MCSession?, Bool) in
             let isNew = peersBySessionID[peer.id] == nil
             peersBySessionID[peer.id] = peerID
-            sessionIDsByPeer[peerID] = peer.id
             discoveredPeers[peer.id] = peer
             peerContinuation?.yield(peer)
             return (self.session, isNew)
@@ -454,22 +503,44 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
         // 발견 즉시 연결한다 — NI 토큰을 주고받으려면 세션이 필요하고, 토큰이 없으면
         // 거리를 잴 수 없다. 명함은 여전히 사용자가 탭해야 나간다.
         // 식별자가 작은 쪽만 초대해 양방향 중복 연결을 막는다.
-        guard isNew, shouldInvite(peer.id), let session else { return }
+        guard let session else {
+            // 탐색이 광고보다 먼저 시작되면 여기 걸린다. 초대를 못 보낸 채 끝나면
+            // 자동 연결이 영영 성립하지 않으므로, 재발견 때 다시 시도하도록 기록만 지운다.
+            stateQueue.sync { peersBySessionID[peer.id] = nil }
+            log("발견 \(peer.id) — 세션 없음(광고 미시작). 재발견 시 재시도")
+            return
+        }
+        // 이미 연결돼 있으면 다시 초대하지 않는다. 연결 전이면 재발견마다 다시 시도한다 —
+        // MPC 는 초대가 유실돼도 알려주지 않아 한 번만 보내면 조용히 실패한 채 남는다.
+        guard !session.connectedPeers.contains(peerID) else { return }
+
+        // **한쪽만 초대한다.** 양쪽이 동시에 서로를 초대하면 MPC 가 같은 피어 쌍에 대해
+        // 두 연결 시도를 겹쳐 받고 **둘 다 실패**한다. 실기기에서 확인했다 — 타이브레이크를
+        // 없앴더니 양쪽 모두 「연결됨 0」 이 됐다.
+        //
+        // 식별자가 작은 쪽이 초대를 맡는다. 양쪽이 같은 두 값을 보고 같은 결론에 도달하므로
+        // 합의 절차가 필요 없다. 초대가 유실돼도 MPC 는 알려주지 않으므로 연결될 때까지
+        // 재발견마다 다시 보낸다.
+        guard localSessionID < peer.id else {
+            if isNew { log("발견 \(peer.id) — 상대가 초대할 차례(내 id가 작지 않음)") }
+            return
+        }
+        log("발견 \(peer.id) — 초대 보냄\(isNew ? "" : " (재시도)")")
         browser.invitePeer(
             peerID, to: session, withContext: nil, timeout: Constants.invitationTimeout
         )
     }
 
     public func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
-        let (sessionID, provider) = stateQueue.sync { () -> (String?, (any NearbyHandshakeProviding)?) in
-            guard let sessionID = sessionIDsByPeer[peerID] else { return (nil, handshakeProvider) }
+        let sessionID = peerID.displayName
+        let provider = stateQueue.sync { () -> (any NearbyHandshakeProviding)? in
             peersBySessionID[sessionID] = nil
-            sessionIDsByPeer[peerID] = nil
             discoveredPeers[sessionID] = nil
             repliedSessionIDs.remove(sessionID)
-            return (sessionID, handshakeProvider)
+            return handshakeProvider
         }
-        if let sessionID { provider?.didLosePeer(sessionID) }
+        log("피어 소실 \(sessionID)")
+        provider?.didLosePeer(sessionID)
     }
 
     public func browser(
@@ -490,14 +561,28 @@ extension MPCTransport: MCSessionDelegate {
         peer peerID: MCPeerID,
         didChange state: MCSessionState
     ) {
+        let name: String = {
+            switch state {
+            case .connected:    return "connected"
+            case .connecting:   return "connecting"
+            case .notConnected: return "notConnected"
+            @unknown default:   return "unknown"
+            }
+        }()
+        log("세션 상태 \(peerID.displayName) → \(name)")
+
         guard state == .connected else { return }
 
         // 연결되면 핸드셰이크를 보낸다. 여기 실리는 건 NI 토큰과 미리보기뿐 — 명함이 아니다.
         // 토큰은 피어마다 다르므로 그때그때 만든다 (NearbyHandshakeProviding 주석 참고).
-        let (provider, sessionID) = stateQueue.sync {
-            (handshakeProvider, sessionIDsByPeer[peerID])
+        // 초대를 수락해 연결된 피어는 발견 경로를 안 거쳤을 수 있다. 여기서 매핑을 보강해
+        // 두면 이후 `send(payload:to:)` 가 그 피어를 찾지 못하는 일이 없다.
+        let sessionID = peerID.displayName
+        let provider = stateQueue.sync { () -> (any NearbyHandshakeProviding)? in
+            peersBySessionID[sessionID] = peerID
+            return handshakeProvider
         }
-        guard let provider, let sessionID,
+        guard let provider,
               let handshake = provider.makeHandshake(forPeerID: sessionID) else { return }
         try? sendMessage(.handshake(handshake), to: [peerID], session: session)
     }
@@ -512,11 +597,8 @@ extension MPCTransport: MCSessionDelegate {
 
         switch message {
         case .handshake(let handshake):
-            let (provider, sessionID) = stateQueue.sync {
-                (handshakeProvider, sessionIDsByPeer[peerID])
-            }
-            guard let provider, let sessionID else { return }
-            provider.didReceiveHandshake(handshake, fromPeerID: sessionID)
+            guard let provider = stateQueue.sync(execute: { handshakeProvider }) else { return }
+            provider.didReceiveHandshake(handshake, fromPeerID: peerID.displayName)
 
         case .card(let payload):
             let reply = stateQueue.sync { () -> ExchangePayload? in
@@ -526,8 +608,7 @@ extension MPCTransport: MCSessionDelegate {
                     pendingPayloads.append(payload)   // 구독 전 도착분
                 }
                 // 맞교환은 **연결당 1회**. 빠지면 A→B→A→B 무한 에코가 된다.
-                guard let sessionID = sessionIDsByPeer[peerID],
-                      repliedSessionIDs.insert(sessionID).inserted else { return nil }
+                guard repliedSessionIDs.insert(peerID.displayName).inserted else { return nil }
                 return myCard
             }
             if let reply {

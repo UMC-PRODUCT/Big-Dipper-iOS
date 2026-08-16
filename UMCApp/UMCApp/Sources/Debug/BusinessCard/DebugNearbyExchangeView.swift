@@ -50,6 +50,8 @@ struct DebugNearbyExchangeView: View {
                 peerList
             }
 
+            diagnostics
+
             stopButton
         }
         .navigationTitle("명함 교환")
@@ -125,12 +127,18 @@ struct DebugNearbyExchangeView: View {
         ScrollView {
             LazyVStack(spacing: Constants.listSpacing) {
                 ForEach(viewModel.peers, id: \.id) { peer in
-                    Button {
-                        Task { await viewModel.send(to: peer) }
-                    } label: {
-                        peerRow(peer)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Button {
+                            Task { await viewModel.send(to: peer) }
+                        } label: {
+                            peerRow(peer)
+                        }
+                        .buttonStyle(.plain)
+
+                        if let state = viewModel.sendStates[peer.id] {
+                            sendStatusLabel(state)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, Constants.horizontalPadding)
@@ -171,13 +179,42 @@ struct DebugNearbyExchangeView: View {
     /// 시안 우측 — 신호 막대와 「2.1m」. **둘 다 NI 거리 하나에서 파생된다.**
     private func distanceBlock(_ peer: DiscoveredPeer) -> some View {
         VStack(alignment: .trailing, spacing: Constants.rowTextSpacing) {
-            Image(systemName: signalSymbol(for: peer.distanceMeters))
-                .font(.system(size: 15))
-            Text(peer.distanceMeters.map { String(format: "%.1fm", $0) } ?? "—")
-                .font(.footnote.monospacedDigit())
+            // 거리를 모르면 막대도 그리지 않는다. 꽉 찬 막대를 남기면 신호가 강한 것처럼
+            // 보이는데, 눈앞의 사람을 가려내는 게 이 표시의 목적이라 그 오해가 치명적이다.
+            if let meters = peer.distanceMeters {
+                Image(systemName: signalSymbol(for: meters))
+                    .font(.system(size: 15))
+                Text(String(format: "%.1fm", meters))
+                    .font(.footnote.monospacedDigit())
+            } else {
+                Text("—")
+                    .font(.footnote.monospacedDigit())
+            }
         }
         .foregroundStyle(peer.distanceMeters == nil ? Color.secondary : Color.accentColor)
     }
+
+    /// 탭 결과를 화면에 남긴다. 이게 없으면 실패인지 무반응인지 구분할 수 없다.
+    @ViewBuilder
+    private func sendStatusLabel(_ state: BusinessCardDebugViewModel.SendState) -> some View {
+        switch state {
+        case .sending:
+            Label("전송 중…", systemImage: "arrow.up.circle")
+                .font(.caption).foregroundStyle(.secondary)
+        case .sent:
+            Label("전송 완료 — 명함첩 확인", systemImage: "checkmark.circle.fill")
+                .font(.caption).foregroundStyle(.green)
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 2) {
+                Label("전송 실패", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.bold()).foregroundStyle(.red)
+                Text(message)
+                    .font(.caption2).monospaced()
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+        }
 
     private func avatar(_ peer: DiscoveredPeer) -> some View {
         Group {
@@ -194,6 +231,27 @@ struct DebugNearbyExchangeView: View {
         .frame(width: Constants.avatarSize, height: Constants.avatarSize)
         .clipShape(.circle)
         .accessibilityHidden(true)
+    }
+
+    /// 시안에 없는 진단 영역. MPC 는 초대·수락·연결이 델리게이트로 흩어져 있어
+    /// 이것 없이는 "탭했는데 아무 일도 안 일어남"의 원인을 볼 수 없다.
+    private var diagnostics: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("연결됨 \(viewModel.connectedPeerIDs.count) / 발견 \(viewModel.peers.count)")
+                .font(.caption.bold())
+
+            ForEach(Array(viewModel.transportLog.prefix(8).enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.caption2).monospaced()
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, Constants.horizontalPadding)
+        .padding(.bottom, 8)
     }
 
     private var stopButton: some View {
@@ -217,9 +275,8 @@ struct DebugNearbyExchangeView: View {
             .joined(separator: " ・")
     }
 
-    /// 거리를 막대 칸수로 옮긴다. 값이 없으면 빈 막대.
-    private func signalSymbol(for meters: Double?) -> String {
-        guard let meters else { return "cellularbars" }
+    /// 거리를 막대 칸수로 옮긴다.
+    private func signalSymbol(for meters: Double) -> String {
         switch meters {
         case ..<1:  return "cellularbars"
         case ..<3:  return "chart.bar.fill"
