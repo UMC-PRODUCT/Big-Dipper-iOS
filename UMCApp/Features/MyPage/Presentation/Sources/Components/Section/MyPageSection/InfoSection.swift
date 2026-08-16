@@ -70,7 +70,7 @@ public struct InfoSection: View {
 
             linkRow(
                 systemIcon: "newspaper.fill",
-                title: "UMC Product Tech Blog",
+                title: "UMC PRODUCT 소개",
                 color: .indigo
             ) {
                 open(Constants.techBlogURL)
