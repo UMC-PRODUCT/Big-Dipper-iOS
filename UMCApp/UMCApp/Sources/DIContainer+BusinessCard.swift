@@ -36,6 +36,10 @@ extension DIContainer {
                 memberProfileRepository: self.resolve(MemberProfileRepositoryProtocol.self)
             )
         }
+        // 상대 명함(QR 딥링크)은 캐시 없는 단발 조회라 내 명함과 저장소를 나눈다.
+        register(PeerCardRepositoryProtocol.self) {
+            PeerCardRepository(adapter: self.resolve(MoyaNetworkAdapter.self))
+        }
         register(ReceivedCardRepositoryProtocol.self) {
             ReceivedCardRepository(modelContext: self.resolve(ModelContext.self))
         }
@@ -53,6 +57,7 @@ extension DIContainer {
         register(BusinessCardUseCaseProviding.self) {
             BusinessCardUseCaseProvider(
                 businessCardRepository: self.resolve(BusinessCardRepositoryProtocol.self),
+                peerCardRepository: self.resolve(PeerCardRepositoryProtocol.self),
                 receivedCardRepository: self.resolve(ReceivedCardRepositoryProtocol.self),
                 activityStatRepository: self.resolve(ActivityStatRepositoryProtocol.self),
                 qrGenerator: self.resolve(QRCodeGenerating.self),

@@ -32,4 +32,21 @@ public final class SaveReceivedCardUseCase:
         try await repository.save(card)
         return card
     }
+
+    /// 딥링크 경로 — 서버 조회로 이미 복원된 명함을 그대로 저장한다.
+    public func execute(
+        card: MyCard,
+        cardID: String,
+        exchangeContext: String?
+    ) async throws -> ReceivedCard {
+        let received = ReceivedCard(
+            id: cardID,
+            profile: card,
+            exchangedAt: Date(),
+            exchangeContext: exchangeContext,
+            isConnected: false
+        )
+        try await repository.save(received)
+        return received
+    }
 }

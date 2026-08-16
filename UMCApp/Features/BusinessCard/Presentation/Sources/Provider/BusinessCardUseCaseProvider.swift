@@ -13,6 +13,8 @@ import CoreNearbyExchange
 /// ViewModel이 개별 UseCase 대신 Provider 한 개로 묶어 받는다 (MyPage 패턴).
 public protocol BusinessCardUseCaseProviding {
     var fetchMyCardUseCase: FetchMyCardUseCaseProtocol { get }
+    /// QR 딥링크 스캔이 memberId로 상대 명함을 복원할 때 쓴다.
+    var fetchPeerCardUseCase: FetchPeerCardUseCaseProtocol { get }
     var fetchReceivedCardsUseCase: FetchReceivedCardsUseCaseProtocol { get }
     var saveReceivedCardUseCase: SaveReceivedCardUseCaseProtocol { get }
     var deleteReceivedCardUseCase: DeleteReceivedCardUseCaseProtocol { get }
@@ -26,6 +28,7 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
     // MARK: - Property
 
     public let fetchMyCardUseCase: FetchMyCardUseCaseProtocol
+    public let fetchPeerCardUseCase: FetchPeerCardUseCaseProtocol
     public let fetchReceivedCardsUseCase: FetchReceivedCardsUseCaseProtocol
     public let saveReceivedCardUseCase: SaveReceivedCardUseCaseProtocol
     public let deleteReceivedCardUseCase: DeleteReceivedCardUseCaseProtocol
@@ -37,6 +40,7 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
 
     public init(
         businessCardRepository: BusinessCardRepositoryProtocol,
+        peerCardRepository: PeerCardRepositoryProtocol,
         receivedCardRepository: ReceivedCardRepositoryProtocol,
         activityStatRepository: ActivityStatRepositoryProtocol,
         qrGenerator: QRCodeGenerating,
@@ -44,6 +48,7 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
     ) {
         let save = SaveReceivedCardUseCase(repository: receivedCardRepository)
         self.fetchMyCardUseCase = FetchMyCardUseCase(repository: businessCardRepository)
+        self.fetchPeerCardUseCase = FetchPeerCardUseCase(repository: peerCardRepository)
         self.fetchReceivedCardsUseCase = FetchReceivedCardsUseCase(
             repository: receivedCardRepository
         )

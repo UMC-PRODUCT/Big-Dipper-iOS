@@ -47,6 +47,10 @@ final class BusinessCardDebugViewModel {
 
     private(set) var scanLog: [String] = []
 
+    /// 딥링크 조회가 진행 중인지. 스캐너는 프레임마다 같은 코드를 다시 올리므로 가드가 없으면
+    /// 네트워크 요청이 중복으로 나가고 저장 순서도 보장되지 않는다.
+    private var isResolvingDeepLink = false
+
     private(set) var peers: [DiscoveredPeer] = []
     private(set) var eventLog: [String] = []
     private(set) var isExchanging = false
@@ -238,7 +242,7 @@ final class BusinessCardDebugViewModel {
     /// - `ExchangePayload` JSON — 검증용 QR. 디코딩해 명함첩에 실제로 저장한다.
     func handleScanned(_ text: String) async {
         if let url = URL(string: text), let link = CardLink.parse(url) {
-            scanLog.insert("딥링크 인식: memberId=\(link.memberId) (프로필 조회 API 미구현)", at: 0)
+            await saveFromDeepLink(memberId: link.memberId)
             return
         }
 
@@ -259,6 +263,40 @@ final class BusinessCardDebugViewModel {
             scanLog.insert("저장 실패: \(error)", at: 0)
         }
     }
+
+    /// 딥링크 memberId로 서버에서 상대 명함을 받아 명함첩에 저장한다.
+    ///
+    /// `cardID`는 memberId에서 **결정적으로** 만든다 — 같은 상대를 여러 번 스캔해도 한 장으로
+    /// 합쳐져야 하고, 명함첩의 dedup·삭제가 모두 이 값을 키로 쓴다.
+    private func saveFromDeepLink(memberId: String) async {
+        guard !isResolvingDeepLink else {
+            scanLog.insert("이미 조회 중 — 중복 스캔 무시 (memberId=\(memberId))", at: 0)
+            return
+        }
+        isResolvingDeepLink = true
+        defer { isResolvingDeepLink = false }
+
+        scanLog.insert("딥링크 인식: memberId=\(memberId) → 프로필 조회", at: 0)
+        do {
+            let card = try await provider.fetchPeerCardUseCase.execute(memberId: memberId)
+            let saved = try await provider.saveReceivedCardUseCase.execute(
+                card: card,
+                cardID: Self.deepLinkCardID(memberId: memberId),
+                exchangeContext: "QR 딥링크"
+            )
+            scanLog.insert(
+                "저장 완료: \(saved.profile.name)/\(saved.profile.nickname) "
+                + "· \(saved.profile.part.name) · \(saved.profile.generation)기",
+                at: 0
+            )
+            await reloadReceivedCards()
+        } catch {
+            scanLog.insert("딥링크 저장 실패: \(error)", at: 0)
+        }
+    }
+
+    /// 딥링크로 받은 명함의 명함첩 키. 페이로드 QR(`QR-{memberId}`)과 같은 규칙을 쓴다.
+    static func deepLinkCardID(memberId: String) -> String { "QR-\(memberId)" }
 
     /// 명함 → 페이로드 → JSON → 디코딩 → 명함 복원을 실제로 돌려 결과를 문자열로 남긴다.
     private func runPayloadRoundtrip(for card: MyCard) {
