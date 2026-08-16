@@ -10,7 +10,7 @@ import Foundation
 import SwiftUI
 import UMCFoundation
 
-/// 마이페이지의 인증 관련 섹션 (비밀번호 변경, 로그아웃, 회원탈퇴)
+/// 마이페이지의 인증 관련 섹션 (로그아웃, 회원탈퇴)
 ///
 /// 사용자 인증 관련 작업을 처리하는 섹션으로, AlertPrompt를 통해 확인 다이얼로그를 표시합니다.
 /// 실제 화면 이동·세션 종료·탈퇴 수행은 상위(``MyPageView``)가 주입한 액션이 담당합니다.
@@ -20,7 +20,6 @@ public struct AuthSection: View {
 
     private let sectionType: MyPageSectionType
     @Binding private var alertPrompt: AlertPrompt?
-    private let onChangePassword: () -> Void
     private let onLogout: () -> Void
     private let onDeleteAccount: () -> Void
 
@@ -29,13 +28,11 @@ public struct AuthSection: View {
     public init(
         sectionType: MyPageSectionType = .auth,
         alertPrompt: Binding<AlertPrompt?>,
-        onChangePassword: @escaping () -> Void,
         onLogout: @escaping () -> Void,
         onDeleteAccount: @escaping () -> Void
     ) {
         self.sectionType = sectionType
         self._alertPrompt = alertPrompt
-        self.onChangePassword = onChangePassword
         self.onLogout = onLogout
         self.onDeleteAccount = onDeleteAccount
     }
@@ -76,11 +73,9 @@ public struct AuthSection: View {
 
     /// 인증 타입에 따른 액션을 처리하고, 파괴적 작업은 AlertPrompt로 확인받는다.
     ///
-    /// - Parameter auth: 처리할 인증 타입 (비밀번호 변경, 로그아웃 또는 회원탈퇴)
+    /// - Parameter auth: 처리할 인증 타입 (로그아웃 또는 회원탈퇴)
     private func typeAction(_ auth: AuthType) {
         switch auth {
-        case .changePassword:
-            onChangePassword()
         case .logout:
             alertPrompt = .init(
                 title: "로그아웃",

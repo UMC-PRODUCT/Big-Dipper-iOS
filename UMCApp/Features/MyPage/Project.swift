@@ -20,8 +20,6 @@ let project = featureProject(
         // CoreNetwork의 소셜 로그인 매니저를 사용한다.
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "AuthDomain", path: .relativeToRoot("Features/Auth")),
-        // 회원관리 섹션의 비밀번호 변경 행이 AuthPresentation의 ChangePasswordView로 push 한다.
-        .project(target: "AuthPresentation", path: .relativeToRoot("Features/Auth")),
         .project(target: "BadgeDomain", path: .relativeToRoot("Features/Badge")),
         // 로그아웃/탈퇴가 DI 캐시를 비우기 전에 STOMP 연결을 stop() 해야 한다.
         .project(target: "CommunityDomain", path: .relativeToRoot("Features/Community")),
