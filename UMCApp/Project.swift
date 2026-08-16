@@ -11,7 +11,7 @@ let project = Project(
             product: .app,
             // App Store에 등록된 기존 앱 레코드와 동일해야 한다. 이 값이 바뀌면 별개 앱이 되어
             // 기존 카카오/Firebase/Google OAuth 등록이 전부 무효화된다.
-            bundleId: "com.umc.product",
+            bundleId: "dev.umc.product.debug",
             deploymentTargets: .iOS("26.4"),
             infoPlist: .extendingDefault(
                 with: [
@@ -39,6 +39,15 @@ let project = Project(
                         ],
                     ],
                     "NSLocationWhenInUseUsageDescription": "GPS 기반 스마트 출석 체크를 위해 위치 정보를 사용합니다.",
+                    // MultipeerConnectivity 근거리 명함 교환.
+                    // 이 두 키가 없으면 MPC 는 시작 자체가 되지 않는다(브라우저/광고 모두 실패).
+                    // 서비스 타입은 MPCTransport.serviceType 과 반드시 같아야 한다.
+                    "NSLocalNetworkUsageDescription":
+                        "주변 UMC 멤버를 찾아 명함을 주고받기 위해 로컬 네트워크를 사용합니다.",
+                    "NSBonjourServices": [
+                        "_umc-card._tcp",
+                        "_umc-card._udp",
+                    ],
                     // Secrets/Shared.xcconfig(+ Secrets.xcconfig)에서 주입되는 값.
                     // UMCFoundation의 Config가 이 키들을 읽는다.
                     // (BASE_URL / KAKAO_KEY / TMAP_SECRET_KEY / GOOGLE_CLIENT_ID / GOOGLE_REVERSED_CLIENT_ID)
@@ -138,7 +147,7 @@ let project = Project(
             name: "UMCAppTests",
             destinations: .iOS,
             product: .unitTests,
-            bundleId: "com.umc.product.tests",
+            bundleId: "dev.umc.product.debug.tests",
             deploymentTargets: .iOS("26.4"),
             infoPlist: .default,
             buildableFolders: [

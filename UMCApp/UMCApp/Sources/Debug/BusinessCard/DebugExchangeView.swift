@@ -19,13 +19,35 @@ struct DebugExchangeView: View {
 
     let viewModel: BusinessCardDebugViewModel
 
+    @State private var transportChoice = NearbyTransportChoice.current
+
     // MARK: - Body
 
     var body: some View {
         List {
             Section {
-                labeled("Wi-Fi Aware 지원", "\(WiFiAwareTransport.isSupported)")
+                Picker("전송 방식", selection: $transportChoice) {
+                    ForEach(NearbyTransportChoice.allCases) { choice in
+                        Text(choice.title).tag(choice)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: transportChoice) { _, newValue in
+                    NearbyTransportChoice.select(newValue)
+                }
+
+                Text(transportChoice.caveat)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if transportChoice != viewModel.activeChoice {
+                    Label("앱을 다시 켜야 적용된다", systemImage: "arrow.clockwise.circle.fill")
+                        .font(.footnote.bold())
+                        .foregroundStyle(.orange)
+                }
+
                 labeled("주입된 transport", viewModel.transportTypeName)
+                labeled("Wi-Fi Aware 지원", "\(WiFiAwareTransport.isSupported)")
 
                 // "주변에 아무도 없음"과 "브라우저가 실패해 스트림이 닫힘"은 화면에서
                 // 똑같이 peers: 0 으로 보인다. 두 상태를 가르는 값들이다.

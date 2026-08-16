@@ -58,7 +58,17 @@ final class BusinessCardDebugViewModel {
 
     /// transport가 삼킨 실패 원문. `peers: 0`이 "아무도 없음"인지 "브라우저 실패"인지 가른다.
     var transportError: String? {
-        (transport as? WiFiAwareTransport)?.lastTransportError
+        if let mpc = transport as? MPCTransport { return mpc.lastTransportError }
+        return (transport as? WiFiAwareTransport)?.lastTransportError
+    }
+
+    /// 지금 **실제로 주입된** 방식. 토글 값과 다르면 앱을 다시 켜야 한다는 뜻이다.
+    var activeChoice: NearbyTransportChoice {
+        switch transport {
+        case is MPCTransport:        return .multipeer
+        case is WiFiAwareTransport:  return .wifiAware
+        default:                     return .mock
+        }
     }
     private(set) var eventLog: [String] = []
     private(set) var isExchanging = false

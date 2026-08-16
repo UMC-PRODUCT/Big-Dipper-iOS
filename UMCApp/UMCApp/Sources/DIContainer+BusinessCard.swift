@@ -23,11 +23,16 @@ import BusinessCardPresentation
 extension DIContainer {
     func registerBusinessCardDependencies() {
         register(NearbyTransportProtocol.self) {
-            // Wi-Fi Aware는 실기기 전용 — 시뮬레이터 DEBUG는 Mock으로 흐름만 돌린다.
-            #if DEBUG && targetEnvironment(simulator)
-            MockNearbyTransport()
+            // MPC로 옮기는 중이라 검증 화면에서 고를 수 있게 둔다. Wi-Fi Aware는 실기기
+            // 왕복 교환이 검증된 비교 대상이라, MPC가 그만큼 도는 걸 본 뒤에 정리한다.
+            #if DEBUG
+            switch NearbyTransportChoice.current {
+            case .multipeer: MPCTransport()
+            case .wifiAware: WiFiAwareTransport()
+            case .mock:      MockNearbyTransport()
+            }
             #else
-            WiFiAwareTransport()
+            MPCTransport()
             #endif
         }
 
