@@ -27,14 +27,22 @@ struct NearbyRangingSection: View {
     @State private var angleText = "—"
     @State private var isScanning = false
     @State private var log: [String] = []
+    /// 레인징을 시작했는지. 「거리 —」가 세션 미시작인지 상대 미발견인지 가른다.
+    @State private var isRanging = false
+    /// 마지막 delegate 갱신 시각. 값이 흐르고 있는지 눈으로 확인하는 용도.
+    @State private var lastUpdateAt: Date?
+    @State private var updateCount = 0
 
     // MARK: - Body
 
     var body: some View {
         Section {
             labeled("UWB 지원", "\(NearbyRangingController.isSupported)")
+            labeled("내 토큰", controller == nil ? "없음" : "준비됨")
+            labeled("레인징", isRanging ? "실행 중" : "미시작")
             labeled("거리", distanceText)
             labeled("수평각", angleText)
+            labeled("갱신 수신", updateCount == 0 ? "0회 (상대 미발견)" : "\(updateCount)회")
 
             Button("내 토큰 QR 만들기") { makeToken() }
 
@@ -87,10 +95,20 @@ struct NearbyRangingSection: View {
     // MARK: - Function
 
     private func makeToken() {
+        // 다시 누르면 새 NISession이 만들어져 토큰이 바뀐다. 상대가 이미 스캔했다면
+        // 그 토큰이 통째로 무효가 되고, 레인징은 조용히 성립하지 않는다.
+        // 실기기 검증에서 실제로 이 함정에 걸렸다 — 재생성을 막는다.
+        guard controller == nil else {
+            log.insert("이미 토큰이 있다. 다시 만들려면 「세션 종료」 후 시작해라", at: 0)
+            return
+        }
+
         let controller = NearbyRangingController(
             onUpdate: { update in
                 distanceText = update.distanceMeters.map { String(format: "%.2f m", $0) } ?? "—"
                 angleText = update.horizontalAngleDegrees.map { String(format: "%.0f°", $0) } ?? "—"
+                lastUpdateAt = Date()
+                updateCount += 1
             },
             onEvent: { message in
                 log.insert(message, at: 0)
@@ -114,6 +132,7 @@ struct NearbyRangingSection: View {
             return
         }
         controller?.startRanging(withPeerTokenData: data)
+        isRanging = true
         isScanning = false
     }
 
@@ -123,6 +142,9 @@ struct NearbyRangingSection: View {
         myTokenQR = nil
         distanceText = "—"
         angleText = "—"
+        isRanging = false
+        lastUpdateAt = nil
+        updateCount = 0
         log.insert("세션 종료", at: 0)
     }
 
