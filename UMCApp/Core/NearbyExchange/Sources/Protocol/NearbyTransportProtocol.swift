@@ -27,6 +27,14 @@ public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
     public let part: String?
     /// 표시용 기수. 채널이 제공할 때만 채운다.
     public let generation: String?
+    /// 표시용 아바타 URL. 핸드셰이크로 받은 값.
+    public let avatarURL: String?
+    /// UWB 실측 거리(미터).
+    ///
+    /// **Wi-Fi Aware 는 이 값을 주지 못한다** — 프레임워크에 거리 API 자체가 없다.
+    /// NearbyInteraction 이 채우며, UWB 미탑재 기기나 측정 전에는 `nil` 이다.
+    /// 시안(12654:32621)의 「2.1m」과 신호 막대가 모두 이 값에서 파생된다.
+    public let distanceMeters: Double?
 
     // MARK: - Init
 
@@ -38,7 +46,9 @@ public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
         discoveredAt: Date = Date(),
         displayName: String? = nil,
         part: String? = nil,
-        generation: String? = nil
+        generation: String? = nil,
+        avatarURL: String? = nil,
+        distanceMeters: Double? = nil
     ) {
         self.id = id
         self.cardUUIDPrefix = cardUUIDPrefix
@@ -48,6 +58,40 @@ public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
         self.displayName = displayName
         self.part = part
         self.generation = generation
+        self.avatarURL = avatarURL
+        self.distanceMeters = distanceMeters
+    }
+
+    /// 핸드셰이크로 받은 미리보기를 얹은 사본. 발견은 됐지만 아직 누군지 모르는 행을 채운다.
+    public func applying(_ preview: PeerPreview) -> DiscoveredPeer {
+        DiscoveredPeer(
+            id: id,
+            cardUUIDPrefix: cardUUIDPrefix,
+            version: version,
+            flags: flags,
+            discoveredAt: discoveredAt,
+            displayName: "\(preview.name)/\(preview.nickname)",
+            part: preview.part,
+            generation: preview.generation,
+            avatarURL: preview.avatarURL,
+            distanceMeters: distanceMeters
+        )
+    }
+
+    /// UWB 실측 거리를 얹은 사본. 레인징이 갱신될 때마다 교체한다.
+    public func applying(distanceMeters: Double?) -> DiscoveredPeer {
+        DiscoveredPeer(
+            id: id,
+            cardUUIDPrefix: cardUUIDPrefix,
+            version: version,
+            flags: flags,
+            discoveredAt: discoveredAt,
+            displayName: displayName,
+            part: part,
+            generation: generation,
+            avatarURL: avatarURL,
+            distanceMeters: distanceMeters
+        )
     }
 }
 
