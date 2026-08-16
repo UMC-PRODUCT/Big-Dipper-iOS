@@ -24,6 +24,7 @@ public extension MyCard {
             university: university,
             email: email,
             github: github,
+            linkedIn: linkedIn,
             blog: blog,
             avatarURL: avatarURL,
             cardLink: cardLink.urlString
@@ -45,6 +46,7 @@ public extension MyCard {
             university: payload.university,
             email: payload.email,
             github: payload.github,
+            linkedIn: payload.linkedIn,
             blog: payload.blog,
             avatarURL: payload.avatarURL
         )

@@ -36,7 +36,8 @@ struct ReceivedCardRepositoryTests {
             profile: MyCard(
                 memberId: memberId, name: name, nickname: "\(name)닉",
                 part: .design, generation: "11", university: "중앙대학교",
-                email: nil, github: nil, blog: nil, avatarURL: nil
+                email: nil, github: nil, linkedIn: "linkedin.com/in/\(memberId)",
+                blog: nil, avatarURL: nil
             ),
             exchangedAt: Date(), exchangeContext: "OT에서 교환", isConnected: false
         )
@@ -51,6 +52,7 @@ struct ReceivedCardRepositoryTests {
         #expect(all.count == 1)
         #expect(all.first?.profile.name == "상대")
         #expect(all.first?.profile.part == .design)
+        #expect(all.first?.profile.linkedIn == "linkedin.com/in/7")
     }
 
     @Test("같은 memberId로 다시 저장하면 중복 없이 최신 명함으로 갱신된다")

@@ -16,7 +16,7 @@ struct TransportContractTests {
         try ExchangePayload(
             cardID: "3F2504E0-4F89-11D3-9A0C-0305E82C3301",
             name: "제옹", nickname: "제옹", part: "IOS", generation: "12",
-            university: "한양대학교", email: nil, github: nil, blog: nil,
+            university: "한양대학교", email: nil, github: nil, linkedIn: nil, blog: nil,
             avatarURL: nil, cardLink: "umc://card/42"
         )
     }
@@ -33,7 +33,7 @@ struct TransportContractTests {
     func advertisementDerivationFromNonUUID() throws {
         let card = try ExchangePayload(
             cardID: "abc", name: "제옹", nickname: "", part: "", generation: "",
-            university: "", email: nil, github: nil, blog: nil, avatarURL: nil,
+            university: "", email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
             cardLink: ""
         )
 

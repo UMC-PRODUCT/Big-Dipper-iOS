@@ -31,6 +31,7 @@ public final class ReceivedCardRecord {
     public var university: String = ""
     public var email: String?
     public var github: String?
+    public var linkedIn: String?
     public var blog: String?
     public var avatarURL: String?
     public var exchangedAt: Date = Date()
@@ -50,6 +51,7 @@ public final class ReceivedCardRecord {
         university: String,
         email: String?,
         github: String?,
+        linkedIn: String?,
         blog: String?,
         avatarURL: String?,
         exchangedAt: Date,
@@ -66,6 +68,7 @@ public final class ReceivedCardRecord {
         self.university = university
         self.email = email
         self.github = github
+        self.linkedIn = linkedIn
         self.blog = blog
         self.avatarURL = avatarURL
         self.exchangedAt = exchangedAt

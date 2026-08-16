@@ -41,6 +41,27 @@ struct ProfileToMyCardTests {
         #expect(card.email == "one@umc.dev")
     }
 
+    @Test("외부 링크 3종(github·linkedIn·blog)이 모두 명함으로 넘어온다 — 시안 뒷면 3줄")
+    func mapsAllThreeExternalLinks() {
+        let profile = Profile(
+            memberId: "42", name: "정의찬", nickname: "제옹", generations: [],
+            externalLinks: ProfileExternalLinks(
+                id: "1",
+                linkedIn: "linkedin.com/in/umc",
+                instagram: "instagram.com/umc",
+                github: "github.com/UMC-PRODUCT",
+                blog: "umc.tistory.com",
+                personal: "umc.dev"
+            )
+        )
+
+        let card = profile.toMyCard()
+
+        #expect(card.github == "github.com/UMC-PRODUCT")
+        #expect(card.linkedIn == "linkedin.com/in/umc")
+        #expect(card.blog == "umc.tistory.com")
+    }
+
     @Test("챌린저 기록이 없으면 기수 0·admin 폴백으로도 명함이 만들어진다")
     func fallsBackWithoutRecords() {
         let profile = Profile(memberId: "42", name: "정의찬", nickname: "제옹", generations: [])
@@ -57,7 +78,7 @@ struct ProfileToMyCardTests {
             memberId: "42", name: "정의찬", nickname: "제옹", generations: [],
             email: "",
             externalLinks: ProfileExternalLinks(
-                id: "1", linkedIn: nil, instagram: nil, github: "  ", blog: nil, personal: nil
+                id: "1", linkedIn: "  ", instagram: nil, github: "  ", blog: nil, personal: nil
             )
         )
 
@@ -65,6 +86,7 @@ struct ProfileToMyCardTests {
 
         #expect(card.email == nil)
         #expect(card.github == nil)
+        #expect(card.linkedIn == nil)
     }
 
     private func makeRecord(gisu: String, part: String) -> ProfileChallengerRecord {

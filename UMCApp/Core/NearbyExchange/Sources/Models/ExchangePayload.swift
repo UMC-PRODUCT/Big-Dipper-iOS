@@ -24,6 +24,8 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
     public let university: String
     public let email: String?
     public let github: String?
+    /// v2 도중 추가 — `decodeIfPresent`라 이 필드가 없는 기존 v2 페이로드도 그대로 읽힌다.
+    public let linkedIn: String?
     public let blog: String?
     public let avatarURL: String?
     /// 프로필 딥링크 (`umc://card/{memberId}`). 수신 측이 프로필 API로 최신화할 때 쓴다.
@@ -49,6 +51,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         university: String,
         email: String?,
         github: String?,
+        linkedIn: String?,
         blog: String?,
         avatarURL: String?,
         cardLink: String,
@@ -67,6 +70,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         self.university = university
         self.email = email
         self.github = github
+        self.linkedIn = linkedIn
         self.blog = blog
         self.avatarURL = avatarURL
         self.cardLink = cardLink
@@ -79,7 +83,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case cardID, name, nickname, part, generation, university
-        case email, github, blog, avatarURL, cardLink
+        case email, github, linkedIn, blog, avatarURL, cardLink
         case usdzURL, timestamp, version
         case ownerName // v1 전용
     }
@@ -100,6 +104,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
             university = try container.decode(String.self, forKey: .university)
             email = try container.decodeIfPresent(String.self, forKey: .email)
             github = try container.decodeIfPresent(String.self, forKey: .github)
+            linkedIn = try container.decodeIfPresent(String.self, forKey: .linkedIn)
             blog = try container.decodeIfPresent(String.self, forKey: .blog)
             avatarURL = try container.decodeIfPresent(String.self, forKey: .avatarURL)
             cardLink = try container.decode(String.self, forKey: .cardLink)
@@ -112,6 +117,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
             university = ""
             email = nil
             github = nil
+            linkedIn = nil
             blog = nil
             avatarURL = nil
             cardLink = ""
@@ -128,6 +134,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         try container.encode(university, forKey: .university)
         try container.encodeIfPresent(email, forKey: .email)
         try container.encodeIfPresent(github, forKey: .github)
+        try container.encodeIfPresent(linkedIn, forKey: .linkedIn)
         try container.encodeIfPresent(blog, forKey: .blog)
         try container.encodeIfPresent(avatarURL, forKey: .avatarURL)
         try container.encode(cardLink, forKey: .cardLink)

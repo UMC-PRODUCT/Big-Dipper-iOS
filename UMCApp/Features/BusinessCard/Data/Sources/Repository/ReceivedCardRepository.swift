@@ -112,6 +112,7 @@ private extension ReceivedCardRecord {
             university: card.profile.university,
             email: card.profile.email,
             github: card.profile.github,
+            linkedIn: card.profile.linkedIn,
             blog: card.profile.blog,
             avatarURL: card.profile.avatarURL,
             exchangedAt: card.exchangedAt,
@@ -130,6 +131,7 @@ private extension ReceivedCardRecord {
         university = card.profile.university
         email = card.profile.email
         github = card.profile.github
+        linkedIn = card.profile.linkedIn
         blog = card.profile.blog
         avatarURL = card.profile.avatarURL
         exchangedAt = card.exchangedAt
@@ -150,6 +152,7 @@ private extension ReceivedCardRecord {
                 university: university,
                 email: email,
                 github: github,
+                linkedIn: linkedIn,
                 blog: blog,
                 avatarURL: avatarURL
             ),

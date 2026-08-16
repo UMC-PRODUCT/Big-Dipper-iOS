@@ -17,7 +17,8 @@ struct MyCardExchangePayloadTests {
     private let card = MyCard(
         memberId: "42", name: "정의찬", nickname: "제옹",
         part: .front(type: .ios), generation: "12", university: "한양대학교",
-        email: "one@umc.dev", github: "github.com/UMC-PRODUCT", blog: nil,
+        email: "one@umc.dev", github: "github.com/UMC-PRODUCT",
+        linkedIn: "linkedin.com/in/umc", blog: nil,
         avatarURL: nil
     )
 
@@ -31,6 +32,8 @@ struct MyCardExchangePayloadTests {
         #expect(restored.name == "정의찬")
         #expect(restored.part == .front(type: .ios))
         #expect(restored.generation == "12")
+        #expect(restored.linkedIn == "linkedin.com/in/umc")
+        #expect(payload.linkedIn == "linkedin.com/in/umc")
         #expect(payload.cardLink == "umc://card/42")
         #expect(payload.version == ExchangePayload.currentVersion)
     }
@@ -39,7 +42,7 @@ struct MyCardExchangePayloadTests {
     func unknownPartFallsBackToAdmin() throws {
         let payload = try ExchangePayload(
             cardID: "abc", name: "제옹", nickname: "", part: "정체불명",
-            generation: "12", university: "", email: nil, github: nil, blog: nil,
+            generation: "12", university: "", email: nil, github: nil, linkedIn: nil, blog: nil,
             avatarURL: nil, cardLink: "umc://card/7"
         )
 

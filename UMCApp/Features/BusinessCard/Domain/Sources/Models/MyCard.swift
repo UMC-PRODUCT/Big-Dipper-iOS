@@ -25,6 +25,7 @@ public struct MyCard: Equatable, Hashable, Sendable {
     public let university: String
     public let email: String?
     public let github: String?
+    public let linkedIn: String?
     public let blog: String?
     public let avatarURL: String?
 
@@ -39,6 +40,7 @@ public struct MyCard: Equatable, Hashable, Sendable {
         university: String,
         email: String?,
         github: String?,
+        linkedIn: String?,
         blog: String?,
         avatarURL: String?
     ) {
@@ -50,6 +52,7 @@ public struct MyCard: Equatable, Hashable, Sendable {
         self.university = university
         self.email = email
         self.github = github
+        self.linkedIn = linkedIn
         self.blog = blog
         self.avatarURL = avatarURL
     }

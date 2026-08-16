@@ -24,6 +24,7 @@ struct ExchangePayloadTests {
             university: "한양대학교",
             email: "one@umc.dev",
             github: "github.com/UMC-PRODUCT",
+            linkedIn: "linkedin.com/in/umc",
             blog: nil,
             avatarURL: nil,
             cardLink: "umc://card/42",
@@ -70,7 +71,7 @@ struct ExchangePayloadTests {
         #expect(throws: NearbyError.self) {
             _ = try ExchangePayload(
                 cardID: "abc", name: "제옹", nickname: "", part: "", generation: "",
-                university: "", email: nil, github: nil, blog: nil, avatarURL: nil,
+                university: "", email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
                 cardLink: "",
                 usdzURL: URL(string: "http://insecure.example/card.usdz")
             )

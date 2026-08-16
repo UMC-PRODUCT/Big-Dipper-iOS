@@ -78,6 +78,7 @@ struct BusinessCardDebugView: View {
                 labeled("university", card.university)
                 labeled("email", card.email ?? "—")
                 labeled("github", card.github ?? "—")
+                labeled("linkedIn", card.linkedIn ?? "—")
                 labeled("blog", card.blog ?? "—")
                 labeled("avatarURL", card.avatarURL ?? "—")
                 labeled("cardLink", card.cardLink.urlString)
