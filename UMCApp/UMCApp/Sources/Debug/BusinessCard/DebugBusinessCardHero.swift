@@ -27,34 +27,45 @@ struct DebugBusinessCardHero: View {
 
     @State private var isShowingBack = false
 
+    /// 시안 `명함_l`(I12639:33234) 실측값. 카드 372×205, padding 16.
+    private enum Metrics {
+        static let cardHeight: CGFloat = 205
+        static let cardRadius: CGFloat = 34
+        static let cardPadding: CGFloat = 16
+        /// 정보 블록과 버튼 행 사이.
+        static let blockSpacing: CGFloat = 24
+        /// 헤더 행과 그 아래 정보 사이.
+        static let headerSpacing: CGFloat = 8
+        static let avatarSize: CGFloat = 70
+        /// 아바타와 텍스트 블록 사이 · 이름 행과 칩 행 사이 — 시안은 둘 다 16.
+        static let contentSpacing: CGFloat = 16
+        static let chipSpacing: CGFloat = 5
+        static let chipHeight: CGFloat = 23
+        static let chipRadius: CGFloat = 24
+        static let flipButtonSize: CGFloat = 32
+        static let buttonSpacing: CGFloat = 10
+        static let buttonHeight: CGFloat = 39
+        static let buttonRadius: CGFloat = 40
+        static let linkSpacing: CGFloat = 8
+        static let linkIconSize: CGFloat = 18
+    }
+
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 16) {
-            header
-
-            switch viewModel.myCard {
-            case .idle, .loading:
-                ProgressView()
-                    .tint(.white)
-                    .frame(height: 84)
-            case .loaded(let card):
-                if isShowingBack {
-                    back(card)
-                } else {
-                    front(card)
-                }
-            case .failed(let error):
-                Text("명함 로드 실패: \(error.localizedDescription)")
-                    .font(.footnote)
-                    .foregroundStyle(.white)
-                    .frame(height: 84)
+        // 시안 구조: 카드 안 VStack gap 24 { 정보 블록(헤더 + 내용, gap 8), 버튼 행 }.
+        VStack(spacing: Metrics.blockSpacing) {
+            VStack(alignment: .leading, spacing: Metrics.headerSpacing) {
+                header
+                cardContent
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             actionButtons
         }
-        .padding(16)
+        .padding(Metrics.cardPadding)
         .frame(maxWidth: .infinity)
+        .frame(height: Metrics.cardHeight)
         .background(
             LinearGradient(
                 colors: [Color.blue, Color.indigo],
@@ -62,7 +73,29 @@ struct DebugBusinessCardHero: View {
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: Metrics.cardRadius))
+    }
+
+    @ViewBuilder
+    private var cardContent: some View {
+        switch viewModel.myCard {
+        case .idle, .loading:
+            ProgressView()
+                .tint(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: Metrics.avatarSize)
+        case .loaded(let card):
+            if isShowingBack {
+                back(card)
+            } else {
+                front(card)
+            }
+        case .failed(let error):
+            Text("명함 로드 실패: \(error.localizedDescription)")
+                .font(.footnote)
+                .foregroundStyle(.white)
+                .frame(height: Metrics.avatarSize)
+        }
     }
 
     // MARK: - Front / Back
@@ -81,9 +114,9 @@ struct DebugBusinessCardHero: View {
             Button {
                 withAnimation(.snappy) { isShowingBack.toggle() }
             } label: {
-                Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
-                    .font(.footnote.weight(.semibold))
-                    .padding(6)
+                Image(systemName: "arrow.2.squarepath")
+                    .font(.system(size: 15))
+                    .frame(width: Metrics.flipButtonSize, height: Metrics.flipButtonSize)
                     .background(Color.white.opacity(0.25), in: .circle)
             }
             .accessibilityLabel(isShowingBack ? "앞면 보기" : "뒷면 보기")
@@ -92,19 +125,19 @@ struct DebugBusinessCardHero: View {
     }
 
     private func front(_ card: MyCard) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: Metrics.contentSpacing) {
             avatar(card)
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+            VStack(alignment: .leading, spacing: Metrics.contentSpacing) {
+                HStack(alignment: .firstTextBaseline, spacing: Metrics.linkSpacing) {
                     Text("\(card.name)/\(card.nickname)")
                         .font(.title3.bold())
                     Text(card.university)
-                        .font(.caption)
+                        .font(.footnote)
                         .opacity(0.85)
                 }
 
-                HStack(spacing: 6) {
+                HStack(spacing: Metrics.chipSpacing) {
                     chip(card.part.name)
                     chip("\(card.generation)기")
                 }
@@ -116,25 +149,25 @@ struct DebugBusinessCardHero: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// 시안 12766:98167 — 뒷면은 **아바타 자리에 QR**이 오고 이름·칩 자리에 링크 3줄이 온다.
     private func back(_ card: MyCard) -> some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .top, spacing: Metrics.contentSpacing) {
             if let qrImage = viewModel.qrImage {
                 Image(decorative: qrImage, scale: 1)
                     .interpolation(.none)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 72, height: 72)
-                    .padding(4)
+                    .frame(width: Metrics.avatarSize, height: Metrics.avatarSize)
                     .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Color.white.opacity(0.3))
-                    .frame(width: 80, height: 80)
+                    .frame(width: Metrics.avatarSize, height: Metrics.avatarSize)
                     .overlay { Text("QR 없음").font(.caption2).foregroundStyle(.white) }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Metrics.linkSpacing) {
                 linkRow(systemImage: "chevron.left.forwardslash.chevron.right", value: card.github)
                 linkRow(systemImage: "person.crop.square.filled.and.at.rectangle", value: card.linkedIn)
                 linkRow(systemImage: "link", value: card.blog)
@@ -147,11 +180,11 @@ struct DebugBusinessCardHero: View {
     }
 
     private var actionButtons: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Metrics.buttonSpacing) {
             NavigationLink {
                 DebugExchangeView(viewModel: viewModel)
             } label: {
-                cardButtonLabel(icon: "person.2.wave.2", title: "명함 교환")
+                cardButtonLabel(icon: "shareplay", title: "명함 교환")
             }
 
             NavigationLink {
@@ -180,43 +213,48 @@ struct DebugBusinessCardHero: View {
                     }
             }
         }
-        .frame(width: 64, height: 64)
+        .frame(width: Metrics.avatarSize, height: Metrics.avatarSize)
         .clipShape(.circle)
     }
 
+    /// 시안 39×23 · radius 24. 폭은 라벨에 맡기되 최소 39는 확보한다 — 「PM」처럼 짧은
+    /// 파트명이 시안보다 좁아지면 칩 두 개의 리듬이 깨진다.
     private func chip(_ text: String) -> some View {
         Text(text)
-            .font(.caption2)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
+            .font(.caption)
+            .padding(.horizontal, 8)
+            .frame(minWidth: 39)
+            .frame(height: Metrics.chipHeight)
             .background(Color.white.opacity(0.25))
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: Metrics.chipRadius))
     }
 
     /// 값이 없으면 시안대로 자리는 유지하되 비어 있음을 드러낸다 — 서버 미입력과 매핑 누락을 구분하려고.
     private func linkRow(systemImage: String, value: String?) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Metrics.linkSpacing) {
             Image(systemName: systemImage)
-                .font(.caption)
-                .frame(width: 16)
+                .font(.footnote)
+                .frame(width: Metrics.linkIconSize, height: Metrics.linkIconSize)
             Text(value ?? "—")
-                .font(.caption)
+                .font(.footnote)
                 .lineLimit(1)
                 .opacity(value == nil ? 0.5 : 1)
         }
     }
 
+    /// 시안 165×39 · radius 40 — 두 버튼이 카드 폭을 균등 분할한다.
     private func cardButtonLabel(icon: String, title: String) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Metrics.buttonSpacing) {
             Image(systemName: icon)
-            Text(title).bold()
+                .font(.system(size: 19))
+            Text(title).fontWeight(.semibold)
         }
         .font(.subheadline)
         .foregroundStyle(Color.blue)
         .frame(maxWidth: .infinity)
-        .frame(height: 40)
+        .frame(height: Metrics.buttonHeight)
         .background(Color.white)
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: Metrics.buttonRadius))
     }
 }
 #endif

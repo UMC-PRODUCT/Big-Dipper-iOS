@@ -8,6 +8,27 @@
 #if DEBUG
 import SwiftUI
 
+/// 시안 실측값 — 마이페이지 v3 루트(12630:33563) · 행(12640:36707).
+///
+/// 세 타입(행 · 섹션 카드 · 구분선)이 같이 쓰므로 파일 수준에 둔다. 구분선 들여쓰기가
+/// 아이콘 타일 크기에서 파생되는 것처럼, 값 하나가 어긋나면 나머지가 따라 어긋난다.
+fileprivate enum Metrics {
+    // 행
+    static let rowHeight: CGFloat = 54
+    static let rowSpacing: CGFloat = 16
+    static let valueSpacing: CGFloat = 8
+    static let iconTileSize: CGFloat = 32
+    static let iconTileRadius: CGFloat = 8
+    /// 구분선은 아이콘 타일 오른쪽부터 시작한다 (타일 32 + gap 16 = 48, 실측 폭 290).
+    static let dividerInset: CGFloat = iconTileSize + rowSpacing
+
+    // 섹션
+    static let sectionHeaderSpacing: CGFloat = 16
+    static let cardRadius: CGFloat = 27
+    static let cardHorizontalPadding: CGFloat = 16
+    static let cardVerticalPadding: CGFloat = 4
+}
+
 /// 시안 `item/MypageList`(340×54)에 대응하는 행. 아이콘 · 제목 · 우측 값 · chevron.
 ///
 /// 검증 화면용이라 색·타이포는 시안 토큰이 아니라 시스템 값을 쓴다 — 맞추는 것은 **배치**다.
@@ -29,32 +50,34 @@ struct DebugMyPageRow<Destination: View>: View {
         NavigationLink {
             destination()
         } label: {
-            HStack(spacing: 12) {
-                RoundedRectangle(cornerRadius: 8)
+            // 시안 실측: HStack gap 16, 행 높이 54. 좌우 여백은 카드가 갖는다
+            // (`DebugSectionCard` padding 16) — 행이 또 가지면 340이 아니라 308이 된다.
+            HStack(spacing: Metrics.rowSpacing) {
+                RoundedRectangle(cornerRadius: Metrics.iconTileRadius)
                     .fill(iconTint)
-                    .frame(width: 32, height: 32)
+                    .frame(width: Metrics.iconTileSize, height: Metrics.iconTileSize)
                     .overlay {
                         Image(systemName: icon)
                             .foregroundStyle(.white)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 17))
                     }
 
                 Text(title)
                     .foregroundStyle(.primary)
 
-                Spacer(minLength: 8)
+                Spacer(minLength: Metrics.valueSpacing)
 
-                if let trailingValue {
-                    Text(trailingValue)
-                        .foregroundStyle(.secondary)
+                // 값과 chevron 사이 gap 8 — 시안에서 둘은 한 묶음이다.
+                HStack(spacing: Metrics.valueSpacing) {
+                    if let trailingValue {
+                        Text(trailingValue)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 17))
                 }
-
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 16)
-            .frame(height: 54)
+            .frame(height: Metrics.rowHeight)
         }
         .buttonStyle(.plain)
     }
@@ -71,24 +94,28 @@ struct DebugSectionCard<Content: View>: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        // 시안: 헤더와 카드 사이 16. 헤더는 카드와 같은 폭을 쓴다(들여쓰지 않는다).
+        VStack(alignment: .leading, spacing: Metrics.sectionHeaderSpacing) {
             Text(title)
                 .font(.headline)
-                .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
                 content()
             }
+            // 좌우 16 / 상하 4 — 행 높이 54 두 개 + 상하 4 = 카드 116.
+            .padding(.horizontal, Metrics.cardHorizontalPadding)
+            .padding(.vertical, Metrics.cardVerticalPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: Metrics.cardRadius))
         }
     }
 }
 
-/// 행 사이 구분선 (시안은 아이콘 왼쪽 여백만큼 들여쓴 선).
+/// 행 사이 구분선. 시안은 **첫 행 아래에만** 있고 아이콘 타일 오른쪽부터 시작한다.
 struct DebugRowDivider: View {
     var body: some View {
-        Divider().padding(.leading, 60)
+        Divider().padding(.leading, Metrics.dividerInset)
     }
 }
 #endif

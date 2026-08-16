@@ -27,6 +27,13 @@ struct BusinessCardDebugView: View {
 
     private let container: DIContainer
 
+    /// 시안 마이페이지 v3 루트(12630:33563) 실측값.
+    private enum Constants {
+        static let horizontalPadding: CGFloat = 14
+        static let cardToSectionsSpacing: CGFloat = 24
+        static let sectionSpacing: CGFloat = 23
+    }
+
     // MARK: - Init
 
     init(container: DIContainer) {
@@ -38,13 +45,18 @@ struct BusinessCardDebugView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            // 시안 실측: 콘텐츠 x=14 / w=372. 명함 카드와 섹션 그룹 사이 24, 섹션 그룹
+            // 안쪽 두 섹션 사이 23 — 값이 다르므로 하나의 VStack으로 뭉뚱그리지 않는다.
+            VStack(spacing: Constants.cardToSectionsSpacing) {
                 DebugBusinessCardHero(container: container, viewModel: viewModel)
-                cardManagementSection
-                myActivitySection
-                toolsSection
+
+                VStack(spacing: Constants.sectionSpacing) {
+                    cardManagementSection
+                    myActivitySection
+                    toolsSection
+                }
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, Constants.horizontalPadding)
             .padding(.vertical, 16)
         }
         .background(Color(.systemGroupedBackground))
