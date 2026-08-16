@@ -44,7 +44,8 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
         receivedCardRepository: ReceivedCardRepositoryProtocol,
         activityStatRepository: ActivityStatRepositoryProtocol,
         qrGenerator: QRCodeGenerating,
-        transport: NearbyTransportProtocol
+        transport: NearbyTransportProtocol,
+        ranging: PeerRangingCoordinator? = nil
     ) {
         let save = SaveReceivedCardUseCase(repository: receivedCardRepository)
         self.fetchMyCardUseCase = FetchMyCardUseCase(repository: businessCardRepository)
@@ -63,7 +64,8 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
         self.generateCardQRUseCase = GenerateCardQRUseCase(generator: qrGenerator)
         self.exchangeCardsUseCase = ExchangeCardsUseCase(
             transport: transport,
-            saveReceivedCard: save
+            saveReceivedCard: save,
+            ranging: ranging
         )
     }
 }

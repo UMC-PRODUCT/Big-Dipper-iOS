@@ -103,11 +103,21 @@ struct DebugExchangeView: View {
                     Button {
                         Task { await viewModel.send(to: peer) }
                     } label: {
-                        VStack(alignment: .leading) {
-                            Text(peer.displayName ?? peer.id)
-                            Text("탭하면 내 명함 전송")
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(peer.displayName ?? peer.id)
+                                Text(
+                                    [peer.part, peer.generation.map { "\($0)기" }]
+                                        .compactMap { $0 }.joined(separator: " · ")
+                                )
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            // 시안 12654:32621 의 「2.1m」 자리. UWB 미탑재·범위 밖은 빈다.
+                            Text(peer.distanceMeters.map { String(format: "%.2fm", $0) } ?? "—")
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(peer.distanceMeters == nil ? .tertiary : .primary)
                         }
                     }
                 }

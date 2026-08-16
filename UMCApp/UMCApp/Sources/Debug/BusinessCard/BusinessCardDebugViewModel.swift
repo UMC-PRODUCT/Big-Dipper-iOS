@@ -231,6 +231,10 @@ final class BusinessCardDebugViewModel {
         case .received(let card):
             eventLog.insert("received: \(card.profile.name) (id=\(card.id))", at: 0)
             Task { await reloadReceivedCards() }
+        case .distanceUpdated(let peerID, let meters):
+            // 로그에는 남기지 않는다 — 초당 여러 번 흘러 다른 이벤트를 덮어버린다.
+            guard let index = peers.firstIndex(where: { $0.id == peerID }) else { return }
+            peers[index] = peers[index].applying(distanceMeters: meters)
         case .failed(let error):
             eventLog.insert("failed: \(error.localizedDescription)", at: 0)
         }

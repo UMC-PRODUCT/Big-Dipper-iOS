@@ -57,6 +57,11 @@ extension DIContainer {
         register(QRCodeGenerating.self) {
             CoreImageQRCodeGenerator()
         }
+        // UWB 거리 측정. transport 와 별개 계층인 이유는 NI 가 데이터를 나르지 못하기
+        // 때문이다 — NearbyTransportProtocol 구현체로 두면 영원히 구현할 수 없다.
+        register(PeerRangingCoordinator.self) {
+            PeerRangingCoordinator()
+        }
 
         // ViewModel이 resolve하는 단일 진입점 (MyPage 패턴).
         register(BusinessCardUseCaseProviding.self) {
@@ -66,7 +71,8 @@ extension DIContainer {
                 receivedCardRepository: self.resolve(ReceivedCardRepositoryProtocol.self),
                 activityStatRepository: self.resolve(ActivityStatRepositoryProtocol.self),
                 qrGenerator: self.resolve(QRCodeGenerating.self),
-                transport: self.resolve(NearbyTransportProtocol.self)
+                transport: self.resolve(NearbyTransportProtocol.self),
+                ranging: self.resolve(PeerRangingCoordinator.self)
             )
         }
     }
