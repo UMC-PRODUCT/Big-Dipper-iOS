@@ -167,7 +167,7 @@ struct DebugNearbyExchangeView: View {
                         Circle()
                             .fill(viewModel.connectedPeerIDs.contains(peer.id) ? .green : .orange)
                             .frame(width: 6, height: 6)
-                        Text(peer.id)
+                        Text(viewModel.deviceModel(for: peer) ?? peer.id)
                             .font(.caption2.monospaced())
                             .foregroundStyle(.tertiary)
                     }
@@ -253,6 +253,12 @@ struct DebugNearbyExchangeView: View {
         let tick = viewModel.diagnosticsTick
 
         return VStack(alignment: .leading, spacing: 6) {
+            // 두 대를 나란히 놓고 테스트할 때 "지금 보는 화면이 누구 것인지" 부터 알아야 한다.
+            Text("이 기기 — \(viewModel.localPeerDescription)")
+                .font(.caption2.monospaced())
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+
             HStack(spacing: 6) {
                 Text("연결됨 \(viewModel.connectedPeerIDs.count) / 발견 \(viewModel.peers.count)")
                     .font(.caption.bold())

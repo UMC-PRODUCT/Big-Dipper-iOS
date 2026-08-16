@@ -81,6 +81,8 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         static let part = "p"
         static let generation = "g"
         static let avatarURL = "a"
+        /// 기기 하드웨어 식별자. **검증용이라 DEBUG 에서만 실어 보낸다.**
+        static let device = "d"
     }
 
     // MARK: - Property
@@ -116,6 +118,8 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     private var peersBySessionID: [String: MCPeerID] = [:]
     /// 발견 정보 보관 — 연결 이후에도 목록 행을 다시 그릴 수 있어야 한다.
     private var discoveredPeers: [String: DiscoveredPeer] = [:]
+    /// 피어의 기기 하드웨어 식별자. 검증 화면이 폰과 패드를 가르는 데만 쓴다.
+    private var deviceModels: [String: String] = [:]
     /// 맞교환 회신을 이미 보낸 피어 — 무한 에코 차단.
     private var repliedSessionIDs = Set<String>()
     /// 지금 연결 시도 중인 피어. **초대가 겹치지 않게 막는 값이다** — 이미 시도 중인
@@ -305,6 +309,34 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
     // MARK: - Private Function
 
+    /// 기기 하드웨어 식별자 (`iPhone17,3` · `iPad16,1`).
+    ///
+    /// `UIDevice.name` 을 못 쓰기 때문에 이걸 쓴다 — iOS 16부터 entitlement 없이는 기기
+    /// 이름 대신 기종명만 준다. 하드웨어 식별자는 그 제약을 받지 않는다.
+    ///
+    /// 이걸로는 **같은 기종 두 대를 가르지 못한다.** 그 구분은 세션 식별자가 맡는다.
+    /// 여기서 하려는 건 실기기 검증 중 "지금 보는 행이 폰이냐 패드냐" 하나뿐이다.
+    public static var hardwareModel: String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafePointer(to: &systemInfo.machine) { pointer in
+            pointer.withMemoryRebound(
+                to: CChar.self,
+                capacity: MemoryLayout.size(ofValue: pointer.pointee)
+            ) { String(validatingCString: $0) ?? "unknown" }
+        }
+    }
+
+    /// 이 실행에서 나를 가리키는 식별자. 검증 화면이 "내가 누구인지" 보여줄 때 쓴다.
+    public var localPeerDescription: String {
+        "\(Self.hardwareModel) · \(localSessionID)"
+    }
+
+    /// 발견한 피어의 기기 식별자. DEBUG 광고에만 실리므로 릴리스에서는 항상 `nil`.
+    public func deviceModel(forPeerID peerID: String) -> String? {
+        stateQueue.sync { deviceModels[peerID] }
+    }
+
     private static func makeSessionID() -> String {
         String(UUID().uuidString.replacingOccurrences(of: "-", with: "")
             .prefix(Constants.sessionIDLength))
@@ -326,6 +358,11 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         if let avatarURL = card.avatarURL, !avatarURL.isEmpty {
             info[DiscoveryKey.avatarURL] = truncated(avatarURL)
         }
+        #if DEBUG
+        // 검증 전용. 릴리스 광고에는 싣지 않는다 — 기능에 필요 없는 정보를 주변에
+        // 뿌릴 이유가 없다.
+        info[DiscoveryKey.device] = hardwareModel
+        #endif
         return info
     }
 
@@ -487,6 +524,7 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
             _lastTransportError = nil
             peersBySessionID.removeAll()
             discoveredPeers.removeAll()
+            deviceModels.removeAll()
             repliedSessionIDs.removeAll()
             connectingSessionIDs.removeAll()
             pendingPayloads.removeAll()
@@ -565,6 +603,7 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
         withDiscoveryInfo info: [String: String]?
     ) {
         guard let peer = Self.makePeer(from: info) else { return }
+        let deviceModel = info?[DiscoveryKey.device]
 
         // 발견 즉시 연결을 건다 — NI 토큰을 주고받으려면 세션이 필요하고, 토큰이 없으면
         // 거리를 잴 수 없다. 명함은 여전히 사용자가 탭해야 나간다.
@@ -576,9 +615,14 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
             let isNew = peersBySessionID[peer.id] == nil
             peersBySessionID[peer.id] = peerID
             discoveredPeers[peer.id] = peer
+            deviceModels[peer.id] = deviceModel
             peerContinuation?.yield(peer)
             if isNew {
-                appendLog("발견 \(peer.id)\(localSessionID < peer.id ? "" : " — 상대가 초대 담당")")
+                let who = deviceModel.map { "\($0) " } ?? ""
+                appendLog(
+                    "발견 \(who)\(peer.id)"
+                    + (localSessionID < peer.id ? "" : " — 상대가 초대 담당")
+                )
             }
             inviteIfNeeded(peerID, reason: "발견")
         }
@@ -589,6 +633,7 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
         let provider = stateQueue.sync { () -> (any NearbyHandshakeProviding)? in
             peersBySessionID[sessionID] = nil
             discoveredPeers[sessionID] = nil
+            deviceModels[sessionID] = nil
             repliedSessionIDs.remove(sessionID)
             connectingSessionIDs.remove(sessionID)
             return handshakeProvider

@@ -76,6 +76,18 @@ final class BusinessCardDebugViewModel {
         (transport as? MPCTransport)?.connectedPeerIDs ?? []
     }
 
+    /// 지금 이 기기가 누구인지. 두 대를 나란히 놓고 볼 때 이게 없으면 어느 화면을 보고
+    /// 있는지 알 수 없다 — 세션 식별자는 실행마다 바뀌고 명함 이름은 양쪽이 같다.
+    var localPeerDescription: String {
+        (transport as? MPCTransport)?.localPeerDescription ?? transportTypeName
+    }
+
+    /// 발견한 피어의 기기 모델 (`iPad16,1`). 같은 계정으로 두 대를 켜면 이름·파트·기수가
+    /// 전부 같아서 이것 없이는 행을 가릴 수 없다.
+    func deviceModel(for peer: DiscoveredPeer) -> String? {
+        (transport as? MPCTransport)?.deviceModel(forPeerID: peer.id)
+    }
+
     /// 진단 표시 갱신 신호.
     ///
     /// 위 `transportLog`·`connectedPeerIDs` 는 `@Observable` 이 아닌 transport 를 읽는
