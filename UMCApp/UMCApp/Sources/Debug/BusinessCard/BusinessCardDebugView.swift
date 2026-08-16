@@ -53,15 +53,27 @@ struct BusinessCardDebugView: View {
                 VStack(spacing: Constants.sectionSpacing) {
                     cardManagementSection
                     myActivitySection
-                    toolsSection
                 }
             }
             .padding(.horizontal, Constants.horizontalPadding)
             .padding(.vertical, 16)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("마이페이지 (검증)")
+        .navigationTitle("마이페이지")
         .navigationBarTitleDisplayMode(.large)
+        // 검증 도구는 본문에서 뺀다 — 시안에 없는 섹션이 배치 확인을 방해했다. 다만 NI(UWB)
+        // 레인징이 이 안에 있고 아직 검증이 남아서 없애지는 않고 툴바 뒤로 옮긴다.
+        // 시안의 우상단은 설정(gearshape) 자리인데, 설정 화면 착수 전까지 여기를 빌린다.
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    DebugToolsView(container: container, viewModel: viewModel)
+                } label: {
+                    Image(systemName: "wrench.and.screwdriver")
+                }
+                .accessibilityLabel("검증 도구")
+            }
+        }
         .task { await viewModel.loadAll() }
         // 하위 화면에서 돌아왔을 때 카운트가 따라오도록 한다 (`task`는 재진입 시 다시 돌지 않는다).
         .onAppear { Task { await viewModel.reloadActivityStat() } }
@@ -117,16 +129,5 @@ struct BusinessCardDebugView: View {
         }
     }
 
-    private var toolsSection: some View {
-        DebugSectionCard(title: "검증 도구 (시안에 없음)") {
-            DebugMyPageRow(
-                icon: "wrench.and.screwdriver.fill",
-                iconTint: .gray,
-                title: "QR 스캔 · UWB · 원본 필드"
-            ) {
-                DebugToolsView(container: container, viewModel: viewModel)
-            }
-        }
-    }
 }
 #endif

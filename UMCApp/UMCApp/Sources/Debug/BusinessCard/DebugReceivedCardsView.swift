@@ -19,8 +19,8 @@ import UMCFoundation
 ///
 /// 시안에 iOS 파트 변형이 없다는 점도 그때 정리해야 한다(Figma 7종 vs enum 8종).
 ///
-/// 검증 포인트 두 가지는 하단에 남긴다 — 같은 memberId 재교환 시 갱신되는가(upsert),
-/// 앱을 껐다 켜도 남는가(SwiftData 영속).
+/// 검증 도구(샘플 저장·upsert·영속 확인)는 이 화면에 두지 않는다 — 시안에 없는 것이
+/// 배치 확인을 방해한다. 「검증 도구」 화면으로 옮겼다.
 struct DebugReceivedCardsView: View {
 
     // MARK: - Property
@@ -58,8 +58,6 @@ struct DebugReceivedCardsView: View {
             }
             .padding(.horizontal, Constants.horizontalMargin)
             .padding(.top, Constants.horizontalMargin)
-
-            verificationStrip
         }
         .background(Color(.systemBackground))
         .navigationTitle("받은 명함")
@@ -174,34 +172,5 @@ struct DebugReceivedCardsView: View {
             .background(tint.opacity(0.8), in: .capsule)
     }
 
-    /// 시안에 없는 검증 영역. 이 화면이 존재하는 이유(upsert·영속)를 여기서 확인한다.
-    private var verificationStrip: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Button("샘플 명함 저장") {
-                    Task { await viewModel.saveSampleCard() }
-                }
-                .buttonStyle(.bordered)
-
-                Spacer()
-
-                Text("count: \(viewModel.receivedCardCount)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-
-            Text("같은 memberId로 다시 저장하면 새 행이 아니라 갱신되어야 한다(upsert). "
-                 + "앱을 껐다 켜도 남아야 한다.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .padding(Constants.horizontalMargin)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Color(.secondarySystemBackground),
-            in: RoundedRectangle(cornerRadius: 12)
-        )
-        .padding(Constants.horizontalMargin)
-    }
 }
 #endif

@@ -28,6 +28,7 @@ struct DebugToolsView: View {
 
     var body: some View {
         List {
+            receivedCardsSection
             peerLookupSection
             scanSection
             NearbyRangingSection()
@@ -40,6 +41,19 @@ struct DebugToolsView: View {
     }
 
     // MARK: - Section
+
+    /// 명함첩 검증. 화면 자체는 시안 그리드라 이 도구들을 둘 자리가 없어 여기로 옮겼다.
+    private var receivedCardsSection: some View {
+        Section {
+            Button("샘플 명함 저장") {
+                Task { await viewModel.saveSampleCard() }
+            }
+            LabeledContent("저장된 명함", value: "\(viewModel.receivedCardCount)장")
+        } footer: {
+            Text("같은 memberId로 다시 저장하면 새 행이 아니라 갱신되어야 한다(upsert). "
+                 + "앱을 껐다 켜도 남아야 한다.")
+        }
+    }
 
     /// 카메라 없이 딥링크 조회 경로만 태워 보는 입구. 매핑이 무너지는지 여기서 먼저 걸린다.
     private var peerLookupSection: some View {
