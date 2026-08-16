@@ -14,8 +14,11 @@ import UMCFoundation
 
 /// MyPage 탭 루트 화면.
 ///
-/// 프로필 카드와 ``MyPageSectionType`` 순서의 섹션들을 조립한다. 프로필이 있어야 의미가 있는
+/// ``MyPageSectionType`` 순서의 섹션들을 조립한다. 프로필이 있어야 의미가 있는
 /// 섹션(외부 링크·소셜 연동)은 조회가 끝난 뒤에만 노출한다.
+///
+/// 프로필 조회는 화면에 카드를 띄우지 않아도 계속 필요하다 — 외부 링크·소셜 연동이
+/// 그 결과를 쓰고, 실패 시 재시도 진입점도 여기 하나뿐이다.
 ///
 /// - Important: 자체 `NavigationStack`을 만들지 않는다. 탭별 스택은 상위 탭 셸이 소유한다.
 struct MyPageView: View {
@@ -55,13 +58,6 @@ struct MyPageView: View {
                     alertPrompt: $viewModel.alertPrompt
                 )
             }
-
-            MyActiveLogSection(onSelect: { logType in
-                pathStore.push(
-                    MyPageDestination.myActivePosts(logType: logType),
-                    on: .mypage
-                )
-            })
 
             SettingSection()
             LawSection()
@@ -109,16 +105,9 @@ struct MyPageView: View {
             Progress()
                 .frame(maxWidth: .infinity)
 
-        case .loaded(let profile):
-            ProfileCardSection(
-                profileData: profile,
-                onTap: {
-                    pathStore.push(
-                        MyPageDestination.profile(profileData: profile),
-                        on: .mypage
-                    )
-                }
-            )
+        // v3에서 이 자리는 명함 카드가 차지한다. 조회 성공 시 별도 카드를 두지 않는다.
+        case .loaded:
+            EmptyView()
 
         case .failed(let error):
             RetryContentUnavailableView(
