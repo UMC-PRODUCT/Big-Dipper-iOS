@@ -12,7 +12,7 @@ import SwiftData
 ///
 /// - Note: CloudKit 호환 제약 — 전 필드 기본값 필수·`@Attribute(.unique)` 금지 (Home
 ///   `GenerationMappingRecord` 선례). 중복은 Repository가 memberId 기준으로 정리한다.
-/// - Note: 서버 응답이 아닌 로컬 영속 모델이지만 `generation`·`memberNo`는 도메인 그대로
+/// - Note: 서버 응답이 아닌 로컬 영속 모델이지만 `generation`은 도메인 그대로
 ///   String 보존 (경계 변환 없음). `exchangedAt`/`isConnected`는 로컬 생성 값이라 본래 타입.
 @Model
 public final class ReceivedCardRecord {
@@ -33,7 +33,6 @@ public final class ReceivedCardRecord {
     public var github: String?
     public var blog: String?
     public var avatarURL: String?
-    public var memberNo: String?
     public var exchangedAt: Date = Date()
     public var exchangeContext: String?
     public var isConnected: Bool = false
@@ -53,7 +52,6 @@ public final class ReceivedCardRecord {
         github: String?,
         blog: String?,
         avatarURL: String?,
-        memberNo: String?,
         exchangedAt: Date,
         exchangeContext: String?,
         isConnected: Bool,
@@ -70,7 +68,6 @@ public final class ReceivedCardRecord {
         self.github = github
         self.blog = blog
         self.avatarURL = avatarURL
-        self.memberNo = memberNo
         self.exchangedAt = exchangedAt
         self.exchangeContext = exchangeContext
         self.isConnected = isConnected

@@ -26,19 +26,18 @@ public extension MyCard {
             github: github,
             blog: blog,
             avatarURL: avatarURL,
-            memberNo: memberNo,
             cardLink: cardLink.urlString
         )
     }
 
     /// 수신 페이로드에서 명함을 복원한다.
     ///
-    /// memberId는 cardLink 파싱 → memberNo → 빈 문자열 순으로 복구하고,
+    /// memberId는 `cardLink` 파싱으로만 복구한다 — 페이로드에서 정체성을 나르는 유일한 값이다.
     /// 파싱 불가한 part는 정본 매핑(`Profile.toProfileData`)과 같은 규칙으로 `.admin` 폴백.
     init(payload: ExchangePayload) {
         let linkedMemberId = URL(string: payload.cardLink).flatMap(CardLink.parse)?.memberId
         self.init(
-            memberId: linkedMemberId ?? payload.memberNo ?? "",
+            memberId: linkedMemberId ?? "",
             name: payload.name,
             nickname: payload.nickname,
             part: UMCPartType(apiValue: payload.part) ?? .admin,
@@ -47,8 +46,7 @@ public extension MyCard {
             email: payload.email,
             github: payload.github,
             blog: payload.blog,
-            avatarURL: payload.avatarURL,
-            memberNo: payload.memberNo
+            avatarURL: payload.avatarURL
         )
     }
 }

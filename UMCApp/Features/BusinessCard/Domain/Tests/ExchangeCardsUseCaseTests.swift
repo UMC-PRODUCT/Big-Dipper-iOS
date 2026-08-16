@@ -17,7 +17,7 @@ struct ExchangeCardsUseCaseTests {
     private let myCard = MyCard(
         memberId: "42", name: "정의찬", nickname: "제옹",
         part: .front(type: .ios), generation: "12", university: "한양대학교",
-        email: nil, github: nil, blog: nil, avatarURL: nil, memberNo: "42"
+        email: nil, github: nil, blog: nil, avatarURL: nil
     )
 
     private func makePeer() -> DiscoveredPeer {
@@ -29,7 +29,7 @@ struct ExchangeCardsUseCaseTests {
         try ExchangePayload(
             cardID: "CARD-PEER", name: "상대", nickname: "상대닉", part: "DESIGN",
             generation: "11", university: "중앙대학교", email: nil, github: nil,
-            blog: nil, avatarURL: nil, memberNo: "7", cardLink: "umc://card/7"
+            blog: nil, avatarURL: nil, cardLink: "umc://card/7"
         )
     }
 

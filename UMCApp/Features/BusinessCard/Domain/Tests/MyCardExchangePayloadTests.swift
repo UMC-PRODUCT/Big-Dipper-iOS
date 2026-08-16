@@ -18,7 +18,7 @@ struct MyCardExchangePayloadTests {
         memberId: "42", name: "정의찬", nickname: "제옹",
         part: .front(type: .ios), generation: "12", university: "한양대학교",
         email: "one@umc.dev", github: "github.com/UMC-PRODUCT", blog: nil,
-        avatarURL: nil, memberNo: "42"
+        avatarURL: nil
     )
 
     @Test("명함 → 페이로드 → 명함 왕복에서 정체성 필드가 보존된다")
@@ -40,7 +40,7 @@ struct MyCardExchangePayloadTests {
         let payload = try ExchangePayload(
             cardID: "abc", name: "제옹", nickname: "", part: "정체불명",
             generation: "12", university: "", email: nil, github: nil, blog: nil,
-            avatarURL: nil, memberNo: "7", cardLink: "umc://card/7"
+            avatarURL: nil, cardLink: "umc://card/7"
         )
 
         #expect(MyCard(payload: payload).part == .admin)

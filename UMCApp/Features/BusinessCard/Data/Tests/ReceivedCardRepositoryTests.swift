@@ -36,7 +36,7 @@ struct ReceivedCardRepositoryTests {
             profile: MyCard(
                 memberId: memberId, name: name, nickname: "\(name)닉",
                 part: .design, generation: "11", university: "중앙대학교",
-                email: nil, github: nil, blog: nil, avatarURL: nil, memberNo: memberId
+                email: nil, github: nil, blog: nil, avatarURL: nil
             ),
             exchangedAt: Date(), exchangeContext: "OT에서 교환", isConnected: false
         )

@@ -10,7 +10,7 @@ import UMCFoundation
 
 /// 내 디지털 명함 (마이페이지 v3 명세 MP-F01·F02).
 ///
-/// 서버 유래 정수(`generation`·`memberNo`)는 전 레이어 String (절대규칙 #2).
+/// 서버 유래 정수(`generation`)는 전 레이어 String (절대규칙 #2).
 /// `qrPayload`는 저장 필드가 아니라 `cardLink` 파생 — 서버가 주지 않는 값을 필드로 두면
 /// 빈 상태가 생기므로 computed로 일원화한다 (설계 문서의 의도적 편차).
 public struct MyCard: Equatable, Hashable, Sendable {
@@ -27,8 +27,6 @@ public struct MyCard: Equatable, Hashable, Sendable {
     public let github: String?
     public let blog: String?
     public let avatarURL: String?
-    /// 표시용 멤버 번호. 현재는 memberId와 같고, 서버가 별도 번호를 주면 그 값을 담는다.
-    public let memberNo: String?
 
     // MARK: - Init
 
@@ -42,8 +40,7 @@ public struct MyCard: Equatable, Hashable, Sendable {
         email: String?,
         github: String?,
         blog: String?,
-        avatarURL: String?,
-        memberNo: String?
+        avatarURL: String?
     ) {
         self.memberId = memberId
         self.name = name
@@ -55,7 +52,6 @@ public struct MyCard: Equatable, Hashable, Sendable {
         self.github = github
         self.blog = blog
         self.avatarURL = avatarURL
-        self.memberNo = memberNo
     }
 
     // MARK: - Computed Property

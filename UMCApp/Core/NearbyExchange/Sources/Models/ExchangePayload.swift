@@ -26,8 +26,8 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
     public let github: String?
     public let blog: String?
     public let avatarURL: String?
-    public let memberNo: String?
     /// 프로필 딥링크 (`umc://card/{memberId}`). 수신 측이 프로필 API로 최신화할 때 쓴다.
+    /// **memberId의 유일한 운반 수단** — 수신 측은 이 값을 파싱해 정체성을 복원한다.
     public let cardLink: String
     /// 3D 명함 에셋. v2에서 옵셔널로 완화 — 3D 명함은 후속 트랙.
     public let usdzURL: URL?
@@ -51,7 +51,6 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         github: String?,
         blog: String?,
         avatarURL: String?,
-        memberNo: String?,
         cardLink: String,
         usdzURL: URL? = nil,
         timestamp: Date = Date(),
@@ -70,7 +69,6 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         self.github = github
         self.blog = blog
         self.avatarURL = avatarURL
-        self.memberNo = memberNo
         self.cardLink = cardLink
         self.usdzURL = usdzURL
         self.timestamp = timestamp
@@ -81,7 +79,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case cardID, name, nickname, part, generation, university
-        case email, github, blog, avatarURL, memberNo, cardLink
+        case email, github, blog, avatarURL, cardLink
         case usdzURL, timestamp, version
         case ownerName // v1 전용
     }
@@ -104,7 +102,6 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
             github = try container.decodeIfPresent(String.self, forKey: .github)
             blog = try container.decodeIfPresent(String.self, forKey: .blog)
             avatarURL = try container.decodeIfPresent(String.self, forKey: .avatarURL)
-            memberNo = try container.decodeIfPresent(String.self, forKey: .memberNo)
             cardLink = try container.decode(String.self, forKey: .cardLink)
         } else {
             // v1: 정체성 필드는 ownerName 하나뿐 — 나머지는 빈 값으로 채운다.
@@ -117,7 +114,6 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
             github = nil
             blog = nil
             avatarURL = nil
-            memberNo = nil
             cardLink = ""
         }
     }
@@ -134,7 +130,6 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         try container.encodeIfPresent(github, forKey: .github)
         try container.encodeIfPresent(blog, forKey: .blog)
         try container.encodeIfPresent(avatarURL, forKey: .avatarURL)
-        try container.encodeIfPresent(memberNo, forKey: .memberNo)
         try container.encode(cardLink, forKey: .cardLink)
         try container.encodeIfPresent(usdzURL, forKey: .usdzURL)
         try container.encode(timestamp, forKey: .timestamp)

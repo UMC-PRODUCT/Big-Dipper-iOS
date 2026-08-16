@@ -39,7 +39,6 @@ struct ProfileToMyCardTests {
         #expect(card.university == "한양대학교")
         #expect(card.github == "github.com/UMC-PRODUCT")
         #expect(card.email == "one@umc.dev")
-        #expect(card.memberNo == "42")
     }
 
     @Test("챌린저 기록이 없으면 기수 0·admin 폴백으로도 명함이 만들어진다")

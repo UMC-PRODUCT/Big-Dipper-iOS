@@ -115,7 +115,6 @@ final class BusinessCardDebugViewModel {
                 generation: "1\(index % 3)",
                 university: "테스트대학교",
                 email: nil, github: nil, blog: nil, avatarURL: nil,
-                memberNo: "\(9000 + index)",
                 cardLink: "umc://card/\(9000 + index)"
             )
             _ = try await provider.saveReceivedCardUseCase.execute(

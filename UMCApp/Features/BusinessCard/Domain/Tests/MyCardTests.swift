@@ -18,7 +18,7 @@ struct MyCardTests {
         let card = MyCard(
             memberId: "42", name: "정의찬", nickname: "제옹",
             part: .front(type: .ios), generation: "12", university: "한양대학교",
-            email: nil, github: nil, blog: nil, avatarURL: nil, memberNo: "42"
+            email: nil, github: nil, blog: nil, avatarURL: nil
         )
 
         #expect(card.qrPayload == "umc://card/42")

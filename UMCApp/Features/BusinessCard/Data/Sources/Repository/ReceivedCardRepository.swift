@@ -54,8 +54,7 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
     /// memberId 일치 레코드가 있으면 최신 명함으로 갱신, 없으면 삽입.
     ///
     /// 1차 키는 **memberId**(cardLink `umc://card/{memberId}` 파싱값), 부차 키는 cardID다.
-    /// 수신 페이로드의 memberNo와 cardLink 파싱값이 어긋난 경우(조작·버그 페이로드)
-    /// 결과가 갈리므로 cardLink 파싱값을 정본으로 쓴다.
+    /// cardLink가 페이로드에서 정체성을 나르는 유일한 값이므로 그 파싱값이 정본이다.
     public func save(_ card: ReceivedCard) async throws {
         let records = try fetchRecords()
         if let existing = records.first(where: {
@@ -115,7 +114,6 @@ private extension ReceivedCardRecord {
             github: card.profile.github,
             blog: card.profile.blog,
             avatarURL: card.profile.avatarURL,
-            memberNo: card.profile.memberNo,
             exchangedAt: card.exchangedAt,
             exchangeContext: card.exchangeContext,
             isConnected: card.isConnected
@@ -134,7 +132,6 @@ private extension ReceivedCardRecord {
         github = card.profile.github
         blog = card.profile.blog
         avatarURL = card.profile.avatarURL
-        memberNo = card.profile.memberNo
         exchangedAt = card.exchangedAt
         exchangeContext = card.exchangeContext
         isConnected = card.isConnected
@@ -154,8 +151,7 @@ private extension ReceivedCardRecord {
                 email: email,
                 github: github,
                 blog: blog,
-                avatarURL: avatarURL,
-                memberNo: memberNo
+                avatarURL: avatarURL
             ),
             exchangedAt: exchangedAt,
             exchangeContext: exchangeContext,

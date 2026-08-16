@@ -34,8 +34,7 @@ public extension Profile {
             email: (latestRecord?.email).flatMap(\.nonEmpty) ?? email.nonEmpty,
             github: externalLinks?.github?.nonEmpty,
             blog: externalLinks?.blog?.nonEmpty,
-            avatarURL: latestRecord?.profileImageLink?.nonEmpty ?? profileImageLink?.nonEmpty,
-            memberNo: memberId
+            avatarURL: latestRecord?.profileImageLink?.nonEmpty ?? profileImageLink?.nonEmpty
         )
     }
 }

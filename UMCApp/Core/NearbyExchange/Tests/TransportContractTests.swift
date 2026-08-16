@@ -17,7 +17,7 @@ struct TransportContractTests {
             cardID: "3F2504E0-4F89-11D3-9A0C-0305E82C3301",
             name: "제옹", nickname: "제옹", part: "IOS", generation: "12",
             university: "한양대학교", email: nil, github: nil, blog: nil,
-            avatarURL: nil, memberNo: "42", cardLink: "umc://card/42"
+            avatarURL: nil, cardLink: "umc://card/42"
         )
     }
 
@@ -34,7 +34,7 @@ struct TransportContractTests {
         let card = try ExchangePayload(
             cardID: "abc", name: "제옹", nickname: "", part: "", generation: "",
             university: "", email: nil, github: nil, blog: nil, avatarURL: nil,
-            memberNo: nil, cardLink: ""
+            cardLink: ""
         )
 
         let advertisement = BLEAdvertisementPayload(card: card)

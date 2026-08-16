@@ -17,7 +17,7 @@ struct SaveReceivedCardUseCaseTests {
         try ExchangePayload(
             cardID: "CARD-PEER", name: "상대", nickname: "상대닉", part: "DESIGN",
             generation: "11", university: "중앙대학교", email: nil, github: nil,
-            blog: nil, avatarURL: nil, memberNo: "7", cardLink: "umc://card/7"
+            blog: nil, avatarURL: nil, cardLink: "umc://card/7"
         )
     }
 
