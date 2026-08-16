@@ -160,6 +160,17 @@ struct DebugNearbyExchangeView: View {
                     Text(subtitle(peer))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+
+                    // 시안에 없는 검증용 표시. 같은 사람이 두 행으로 보일 때 어느 쪽이
+                    // 살아 있는 세션인지 이것 없이는 구분할 수 없다 (식별자는 실행마다 바뀐다).
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(viewModel.connectedPeerIDs.contains(peer.id) ? .green : .orange)
+                            .frame(width: 6, height: 6)
+                        Text(peer.id)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
 
@@ -236,11 +247,30 @@ struct DebugNearbyExchangeView: View {
     /// 시안에 없는 진단 영역. MPC 는 초대·수락·연결이 델리게이트로 흩어져 있어
     /// 이것 없이는 "탭했는데 아무 일도 안 일어남"의 원인을 볼 수 없다.
     private var diagnostics: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("연결됨 \(viewModel.connectedPeerIDs.count) / 발견 \(viewModel.peers.count)")
-                .font(.caption.bold())
+        // **이 한 줄이 없으면 아래 값들이 영원히 첫 값에 머문다.** `connectedPeerIDs` 와
+        // `transportLog` 는 `@Observable` 이 아닌 transport 를 읽는 계산 프로퍼티라
+        // SwiftUI 가 변화를 감지하지 못한다. 관측되는 tick 을 읽어 재평가를 유발한다.
+        let tick = viewModel.diagnosticsTick
 
-            ForEach(Array(viewModel.transportLog.prefix(8).enumerated()), id: \.offset) { _, line in
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text("연결됨 \(viewModel.connectedPeerIDs.count) / 발견 \(viewModel.peers.count)")
+                    .font(.caption.bold())
+                Spacer()
+                // 폴링이 살아 있는지 보이게 한다 — 멈춰 있으면 아래 값은 못 믿는다.
+                Text("·\(tick % 10)")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
+
+            if let error = viewModel.transportError {
+                Text(error)
+                    .font(.caption2).monospaced()
+                    .foregroundStyle(.red)
+                    .textSelection(.enabled)
+            }
+
+            ForEach(Array(viewModel.transportLog.prefix(10).enumerated()), id: \.offset) { _, line in
                 Text(line)
                     .font(.caption2).monospaced()
                     .foregroundStyle(.secondary)

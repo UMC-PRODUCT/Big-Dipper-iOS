@@ -76,6 +76,18 @@ final class BusinessCardDebugViewModel {
         (transport as? MPCTransport)?.connectedPeerIDs ?? []
     }
 
+    /// 진단 표시 갱신 신호.
+    ///
+    /// 위 `transportLog`·`connectedPeerIDs` 는 `@Observable` 이 아닌 transport 를 읽는
+    /// **계산 프로퍼티**라 SwiftUI 가 변화를 알 방법이 없다. 값이 바뀌어도 화면은 그대로고,
+    /// 다른 관측 프로퍼티가 바뀔 때만 우연히 다시 그려진다.
+    ///
+    /// 실기기에서 「연결됨 0」 과 멈춘 로그를 보고 *연결이 안 된다*고 판단했던 원인이
+    /// 이것이다 — 고장난 계기를 읽고 있었다. 관측되는 값을 주기적으로 흔들어 다시 읽게 한다.
+    /// 진단 전용 화면이라 폴링으로 충분하다.
+    private(set) var diagnosticsTick = 0
+    private var diagnosticsTask: Task<Void, Never>?
+
     /// transport가 삼킨 실패 원문. `peers: 0`이 "아무도 없음"인지 "브라우저 실패"인지 가른다.
     var transportError: String? {
         if let mpc = transport as? MPCTransport { return mpc.lastTransportError }
@@ -228,6 +240,8 @@ final class BusinessCardDebugViewModel {
         sendStates.removeAll()
         eventLog.insert("세션 시작", at: 0)
 
+        startDiagnosticsPolling()
+
         let stream = provider.exchangeCardsUseCase.start(myCard: card)
         exchangeTask = Task { [weak self] in
             for await event in stream {
@@ -243,7 +257,38 @@ final class BusinessCardDebugViewModel {
         await provider.exchangeCardsUseCase.stop()
         exchangeTask?.cancel()
         exchangeTask = nil
+        diagnosticsTask?.cancel()
+        diagnosticsTask = nil
         isExchanging = false
+    }
+
+    /// 0.5초마다 진단 표시를 다시 읽게 하고, 유령 행을 걷어낸다.
+    private func startDiagnosticsPolling() {
+        diagnosticsTask?.cancel()
+        diagnosticsTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard let self, !Task.isCancelled else { return }
+                self.diagnosticsTick &+= 1
+                self.pruneLostPeers()
+            }
+        }
+    }
+
+    /// transport 가 더 이상 보지 못하는 행을 목록에서 지운다.
+    ///
+    /// transport 는 `lostPeer` 를 받지만 그걸 화면까지 나를 통로가 없었다(`ExchangeEvent` 에
+    /// 소실 케이스가 없다). 그래서 상대 앱을 재실행하면 **옛 세션 식별자의 행이 그대로 남아**
+    /// 기기 한 대에 「발견 2」 가 떴다. 그 유령을 탭하면 없는 기기에게 초대를 보내고
+    /// 연결 타임아웃(20초)을 통째로 태운다.
+    private func pruneLostPeers() {
+        guard let mpc = transport as? MPCTransport else { return }
+        let alive = mpc.discoveredPeerIDs
+        guard peers.contains(where: { !alive.contains($0.id) }) else { return }
+        let removed = peers.filter { !alive.contains($0.id) }.map(\.id)
+        peers.removeAll { !alive.contains($0.id) }
+        removed.forEach { sendStates[$0] = nil }
+        eventLog.insert("피어 소실: \(removed.joined(separator: ", "))", at: 0)
     }
 
     private func handle(_ event: ExchangeEvent) {
@@ -253,8 +298,17 @@ final class BusinessCardDebugViewModel {
         case .scanning:
             eventLog.insert("scanning", at: 0)
         case .peerFound(let peer):
-            peers.append(peer)
-            eventLog.insert("peerFound: \(peer.displayName ?? peer.id)", at: 0)
+            // **덧붙이면 안 된다.** MPC 는 같은 피어를 다시 보고할 수 있고, transport 는
+            // 매번 그대로 흘린다. append 하면 같은 id 의 행이 쌓여 기기 한 대에 「발견 2」 가
+            // 뜬다 — 실기기에서 본 증상이다. 게다가 `ForEach(id: \.id)` 는 중복 id 를
+            // 만나면 행을 잘못 재사용한다.
+            if let index = peers.firstIndex(where: { $0.id == peer.id }) {
+                // 거리는 별도 이벤트로 흐르므로 재발견 때문에 지워지면 안 된다.
+                peers[index] = peer.applying(distanceMeters: peers[index].distanceMeters)
+            } else {
+                peers.append(peer)
+                eventLog.insert("peerFound: \(peer.displayName ?? peer.id)", at: 0)
+            }
         case .sent(let peer):
             eventLog.insert("sent → \(peer.displayName ?? peer.id)", at: 0)
         case .received(let card):

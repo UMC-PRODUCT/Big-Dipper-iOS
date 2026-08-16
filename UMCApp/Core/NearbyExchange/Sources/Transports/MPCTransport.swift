@@ -68,6 +68,9 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         static let invitationTimeout: TimeInterval = 20
         /// 세션 식별자 길이. 충돌 확률과 TXT 레코드 크기의 절충.
         static let sessionIDLength = 12
+        /// 미연결 피어 재초대 주기. `foundPeer` 가 피어당 한 번만 불리므로
+        /// 이것 없이는 유실된 초대를 되살릴 방법이 없다.
+        static let connectRetryInterval: TimeInterval = 3
     }
 
     private enum DiscoveryKey {
@@ -115,6 +118,12 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     private var discoveredPeers: [String: DiscoveredPeer] = [:]
     /// 맞교환 회신을 이미 보낸 피어 — 무한 에코 차단.
     private var repliedSessionIDs = Set<String>()
+    /// 지금 연결 시도 중인 피어. **초대가 겹치지 않게 막는 값이다** — 이미 시도 중인
+    /// 피어를 다시 초대하면 MPC 가 같은 쌍에 두 연결을 겹쳐 받고 둘 다 실패한다.
+    private var connectingSessionIDs = Set<String>()
+    /// 미연결 피어 재초대 타이머. 핸들러가 `stateQueue` 에서 실행되므로 그 안에서는
+    /// `stateQueue.sync` 를 부르면 안 된다 (직렬 큐 재진입 = 데드락).
+    private var connectTimer: DispatchSourceTimer?
     /// `receive()` 구독 전에 도착한 명함.
     private var pendingPayloads: [ExchangePayload] = []
 
@@ -138,6 +147,15 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     /// 진단 로그 (최신순, 최대 40줄).
     public var diagnosticLog: [String] {
         stateQueue.sync { _log }
+    }
+
+    /// 지금 **살아 있다고 보는** 피어의 세션 식별자.
+    ///
+    /// 화면 목록이 여기에 없는 행을 들고 있으면 유령이다. 앱을 강제 종료하면 Bonjour
+    /// goodbye 가 나가지 않아 상대 목록에 옛 광고가 TTL 만큼 남는데, 그 행을 탭하면 없는
+    /// 기기에게 초대를 보내고 타임아웃까지 그대로 태운다.
+    public var discoveredPeerIDs: Set<String> {
+        stateQueue.sync { Set(discoveredPeers.keys) }
     }
 
     /// 지금 세션에 연결된 피어의 세션 식별자.
@@ -200,6 +218,7 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
             self.myCard = card
         }
         advertiser.startAdvertisingPeer()
+        startConnectRetryTimer()
     }
 
     /// 세션 종료 지점. 광고·탐색을 멈추고 수신 스트림을 닫는다.
@@ -212,6 +231,8 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         session?.disconnect()
 
         stateQueue.sync {
+            connectTimer?.cancel()
+            connectTimer = nil
             self.advertiser = nil
             self.browser = nil
             self.session = nil
@@ -258,7 +279,7 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         let alreadyConnected = session.connectedPeers.contains(peerID)
         log("전송 요청 \(peer.id) — 연결됨: \(alreadyConnected)")
         if !alreadyConnected {
-            try await connect(to: peerID, session: session)
+            try await waitForConnection(to: peerID, session: session)
         }
         try sendMessage(.card(payload), to: [peerID], session: session)
         log("명함 전송 완료 \(peer.id)")
@@ -340,17 +361,65 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         )
     }
 
-    /// 연결될 때까지 기다린다. 이미 연결돼 있으면 즉시 반환.
-    private func connect(to peerID: MCPeerID, session: MCSession) async throws {
-        guard let browser = stateQueue.sync(execute: { self.browser }) else {
-            throw NearbyError.transportFailure(
-                underlying: NearbyError.invalidPayload("탐색 중이 아니라 연결할 수 없다")
-            )
-        }
-        log("탭 초대 \(peerID.displayName) — 연결 대기 시작")
+    /// 초대를 보내는 **유일한 지점**. `stateQueue` 안에서만 호출한다.
+    ///
+    /// 경로를 하나로 모은 이유가 핵심이다. 예전에는 발견(`foundPeer`)과 탭(`send`)이 각자
+    /// 초대를 보냈는데, 탭 경로는 타이브레이크를 무시했다. 식별자가 큰 쪽에서 탭하면 상대의
+    /// 자동 초대와 겹쳐 **같은 쌍에 두 연결 시도가 포개지고 둘 다 실패한다.** 실기기에서
+    /// 「첫 탭은 20초 만에 실패, 두 번째 탭은 성공」 으로 나타났던 증상이 이것이다 —
+    /// 두 번째 탭 때는 경쟁하는 초대가 이미 죽어 있어서 통했다.
+    ///
+    /// 세 가지를 모두 통과해야 초대를 보낸다: 아직 연결 안 됨 · 시도 중 아님 · 내가 초대 담당.
+    private func inviteIfNeeded(_ peerID: MCPeerID, reason: String) {
+        guard let session, let browser else { return }
+        let sessionID = peerID.displayName
+
+        guard !session.connectedPeers.contains(peerID) else { return }
+        guard !connectingSessionIDs.contains(sessionID) else { return }
+        // 식별자가 작은 쪽이 초대를 맡는다. 양쪽이 같은 두 값을 보고 같은 결론에 도달하므로
+        // 합의 절차가 필요 없다.
+        guard localSessionID < sessionID else { return }
+
+        connectingSessionIDs.insert(sessionID)
+        appendLog("초대 \(sessionID) — \(reason)")
         browser.invitePeer(
             peerID, to: session, withContext: nil, timeout: Constants.invitationTimeout
         )
+    }
+
+    /// 발견됐지만 연결되지 않은 피어를 다시 초대한다. **`stateQueue` 에서 실행된다.**
+    ///
+    /// `foundPeer` 는 피어당 한 번만 불린다 — "재발견마다 재시도한다"는 예전 주석은 MPC 의
+    /// 실제 동작과 달랐다. 초대가 유실되면 되살릴 경로가 없어 조용히 연결되지 않은 채 남았다.
+    private func retryPendingInvitations() {
+        for peerID in peersBySessionID.values {
+            inviteIfNeeded(peerID, reason: "재시도")
+        }
+    }
+
+    private func startConnectRetryTimer() {
+        let timer = DispatchSource.makeTimerSource(queue: stateQueue)
+        timer.schedule(
+            deadline: .now() + Constants.connectRetryInterval,
+            repeating: Constants.connectRetryInterval
+        )
+        timer.setEventHandler { [weak self] in
+            self?.retryPendingInvitations()   // 이미 stateQueue 위 — sync 금지
+        }
+        stateQueue.sync {
+            connectTimer?.cancel()
+            connectTimer = timer
+        }
+        timer.resume()
+    }
+
+    /// 연결될 때까지 기다린다. 이미 연결돼 있으면 즉시 반환.
+    ///
+    /// **여기서 초대를 보내지 않는다** — `inviteIfNeeded` 를 통해서만 나가고, 내가 초대
+    /// 담당이 아니면 상대가 부를 때까지 기다린다. 상대 쪽 재시도 타이머가 그 역할을 한다.
+    private func waitForConnection(to peerID: MCPeerID, session: MCSession) async throws {
+        stateQueue.sync { inviteIfNeeded(peerID, reason: "탭") }
+        log("연결 대기 \(peerID.displayName)")
 
         // MPC 는 연결 완료를 async 로 알려주지 않는다. 델리게이트가 상태를 바꿀 때까지
         // 짧게 폴링한다 — 타임아웃은 초대 타임아웃과 같은 값을 쓴다.
@@ -419,6 +488,7 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
             peersBySessionID.removeAll()
             discoveredPeers.removeAll()
             repliedSessionIDs.removeAll()
+            connectingSessionIDs.removeAll()
             pendingPayloads.removeAll()
         }
     }
@@ -432,6 +502,8 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         browser?.stopBrowsingForPeers()
         session?.disconnect()
         stateQueue.sync {
+            connectTimer?.cancel()
+            connectTimer = nil
             self.advertiser = nil
             self.browser = nil
             self.session = nil
@@ -442,6 +514,8 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
     private func tearDown() {
         stateQueue.sync {
+            connectTimer?.cancel()
+            connectTimer = nil
             advertiser?.stopAdvertisingPeer()
             browser?.stopBrowsingForPeers()
             session?.disconnect()
@@ -492,43 +566,22 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
     ) {
         guard let peer = Self.makePeer(from: info) else { return }
 
-        let (session, isNew) = stateQueue.sync { () -> (MCSession?, Bool) in
+        // 발견 즉시 연결을 건다 — NI 토큰을 주고받으려면 세션이 필요하고, 토큰이 없으면
+        // 거리를 잴 수 없다. 명함은 여전히 사용자가 탭해야 나간다.
+        //
+        // 광고보다 탐색이 먼저 서면 이 시점에 세션이 없을 수 있다. 그래도 매핑은 **남긴다** —
+        // 재시도 타이머가 세션이 생긴 뒤 초대를 이어받는다. 예전에는 여기서 매핑을 지웠는데,
+        // `foundPeer` 가 피어당 한 번만 불려서 그 피어는 영영 초대받지 못했다.
+        stateQueue.sync {
             let isNew = peersBySessionID[peer.id] == nil
             peersBySessionID[peer.id] = peerID
             discoveredPeers[peer.id] = peer
             peerContinuation?.yield(peer)
-            return (self.session, isNew)
+            if isNew {
+                appendLog("발견 \(peer.id)\(localSessionID < peer.id ? "" : " — 상대가 초대 담당")")
+            }
+            inviteIfNeeded(peerID, reason: "발견")
         }
-
-        // 발견 즉시 연결한다 — NI 토큰을 주고받으려면 세션이 필요하고, 토큰이 없으면
-        // 거리를 잴 수 없다. 명함은 여전히 사용자가 탭해야 나간다.
-        // 식별자가 작은 쪽만 초대해 양방향 중복 연결을 막는다.
-        guard let session else {
-            // 탐색이 광고보다 먼저 시작되면 여기 걸린다. 초대를 못 보낸 채 끝나면
-            // 자동 연결이 영영 성립하지 않으므로, 재발견 때 다시 시도하도록 기록만 지운다.
-            stateQueue.sync { peersBySessionID[peer.id] = nil }
-            log("발견 \(peer.id) — 세션 없음(광고 미시작). 재발견 시 재시도")
-            return
-        }
-        // 이미 연결돼 있으면 다시 초대하지 않는다. 연결 전이면 재발견마다 다시 시도한다 —
-        // MPC 는 초대가 유실돼도 알려주지 않아 한 번만 보내면 조용히 실패한 채 남는다.
-        guard !session.connectedPeers.contains(peerID) else { return }
-
-        // **한쪽만 초대한다.** 양쪽이 동시에 서로를 초대하면 MPC 가 같은 피어 쌍에 대해
-        // 두 연결 시도를 겹쳐 받고 **둘 다 실패**한다. 실기기에서 확인했다 — 타이브레이크를
-        // 없앴더니 양쪽 모두 「연결됨 0」 이 됐다.
-        //
-        // 식별자가 작은 쪽이 초대를 맡는다. 양쪽이 같은 두 값을 보고 같은 결론에 도달하므로
-        // 합의 절차가 필요 없다. 초대가 유실돼도 MPC 는 알려주지 않으므로 연결될 때까지
-        // 재발견마다 다시 보낸다.
-        guard localSessionID < peer.id else {
-            if isNew { log("발견 \(peer.id) — 상대가 초대할 차례(내 id가 작지 않음)") }
-            return
-        }
-        log("발견 \(peer.id) — 초대 보냄\(isNew ? "" : " (재시도)")")
-        browser.invitePeer(
-            peerID, to: session, withContext: nil, timeout: Constants.invitationTimeout
-        )
     }
 
     public func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
@@ -537,6 +590,7 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
             peersBySessionID[sessionID] = nil
             discoveredPeers[sessionID] = nil
             repliedSessionIDs.remove(sessionID)
+            connectingSessionIDs.remove(sessionID)
             return handshakeProvider
         }
         log("피어 소실 \(sessionID)")
@@ -569,7 +623,20 @@ extension MPCTransport: MCSessionDelegate {
             @unknown default:   return "unknown"
             }
         }()
-        log("세션 상태 \(peerID.displayName) → \(name)")
+        // 연결 시도 표식을 여기서 걷는다. `.notConnected` 로 떨어졌는데 표식이 남으면
+        // 재시도 타이머가 그 피어를 영영 건너뛴다.
+        let sessionIDForState = peerID.displayName
+        stateQueue.sync {
+            switch state {
+            case .connecting:
+                connectingSessionIDs.insert(sessionIDForState)
+            case .connected, .notConnected:
+                connectingSessionIDs.remove(sessionIDForState)
+            @unknown default:
+                connectingSessionIDs.remove(sessionIDForState)
+            }
+            appendLog("세션 상태 \(sessionIDForState) → \(name)")
+        }
 
         guard state == .connected else { return }
 
