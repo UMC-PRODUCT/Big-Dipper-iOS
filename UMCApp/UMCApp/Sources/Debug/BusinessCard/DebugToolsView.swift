@@ -6,6 +6,7 @@
 //
 
 #if DEBUG
+import CoreDI
 import SwiftUI
 import VisionKit
 import UMCFoundation
@@ -18,6 +19,7 @@ struct DebugToolsView: View {
 
     // MARK: - Property
 
+    let container: DIContainer
     let viewModel: BusinessCardDebugViewModel
 
     @State private var isScanning = false
@@ -26,6 +28,7 @@ struct DebugToolsView: View {
 
     var body: some View {
         List {
+            peerLookupSection
             scanSection
             NearbyRangingSection()
             myCardRawSection
@@ -37,6 +40,19 @@ struct DebugToolsView: View {
     }
 
     // MARK: - Section
+
+    /// 카메라 없이 딥링크 조회 경로만 태워 보는 입구. 매핑이 무너지는지 여기서 먼저 걸린다.
+    private var peerLookupSection: some View {
+        Section {
+            NavigationLink {
+                DebugPeerLookupView(container: container)
+            } label: {
+                Label("memberId로 명함 조회", systemImage: "person.crop.circle.badge.questionmark")
+            }
+        } footer: {
+            Text("QR을 찍지 않고 딥링크 조회 경로만 확인한다. 세션 모드 전환도 여기서 한다.")
+        }
+    }
 
     private var scanSection: some View {
         Section {

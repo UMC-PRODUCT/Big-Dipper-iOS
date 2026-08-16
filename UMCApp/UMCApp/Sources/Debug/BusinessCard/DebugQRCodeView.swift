@@ -187,10 +187,13 @@ struct DebugQRCodeView: View {
                 }
                 .buttonStyle(.glassProminent)
 
-                Button("이미지 저장") {
+                // 라벨 안쪽에 폭을 줘야 유리 배경이 함께 늘어난다.
+                // 버튼 바깥에 .frame 을 걸면 배경은 글자 크기로 남고 자리만 넓어진다.
+                Button {
                     Task { await saveToPhotos(image) }
+                } label: {
+                    Text("이미지 저장").frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
                 .buttonStyle(.glass)
             } else {
                 Text("QR이 생성되면 공유·저장할 수 있어요")

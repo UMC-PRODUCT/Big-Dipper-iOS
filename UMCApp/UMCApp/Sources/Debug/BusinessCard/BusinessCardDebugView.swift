@@ -112,7 +112,7 @@ struct BusinessCardDebugView: View {
                 iconTint: .gray,
                 title: "QR 스캔 · UWB · 원본 필드"
             ) {
-                DebugToolsView(viewModel: viewModel)
+                DebugToolsView(container: container, viewModel: viewModel)
             }
         }
     }
