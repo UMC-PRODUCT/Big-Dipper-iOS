@@ -15,6 +15,13 @@ import BusinessCardDomain
 /// 서버 명함 API 부재 확정(2026-08-15 조사)으로 로컬 전용. 서버가 생기면 이 구현체만
 /// 교체한다. CloudKit 제약상 unique 불가 → memberId 기준 fetch 후 수동 upsert
 /// (Home `ChallengerGenRepository` 선례).
+///
+/// **모든 `modelContext` 접근은 메인 액터에서 한다.** 주입되는 것은 앱의 `mainContext`
+/// (`UMCAppApp.makeModelContainer` → `DIContainer.configured(modelContext:)`)인데,
+/// 이 타입의 메서드는 액터 격리가 없어 호출부가 `await` 하는 순간 백그라운드 실행자로
+/// 넘어간다. 메인 큐에 묶인 Core Data 컨텍스트를 다른 큐에서 만지는 셈이라
+/// **간헐적으로 멈춘다** — 실기기에서 명함첩 삭제가 무한 로딩으로 걸린 적이 있다
+/// (재현은 못 했다). `MainActor.run` 으로 실행 위치를 컨텍스트가 있는 곳에 맞춘다.
 public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Property
@@ -31,7 +38,7 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
 
     /// 교환 시각 내림차순 전체 조회. CloudKit 동기화 중복은 `identityKey` 기준 최신만 남긴다.
     public func fetchAll() async throws -> [ReceivedCard] {
-        try dedupedRecords().map { $0.toDomain() }
+        try await MainActor.run { try dedupedRecords().map { $0.toDomain() } }
     }
 
     /// 인메모리 필터를 쓰는 이유: `#Predicate`로 걸러내면 CloudKit 중복 dedup이 술어
@@ -41,14 +48,16 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
     public func search(query: String) async throws -> [ReceivedCard] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !needle.isEmpty else { return try await fetchAll() }
-        return try dedupedRecords()
-            .filter {
-                $0.name.localizedStandardContains(needle)
-                    || $0.nickname.localizedStandardContains(needle)
-                    || $0.partRaw.localizedStandardContains(needle)
-                    || $0.university.localizedStandardContains(needle)
-            }
-            .map { $0.toDomain() }
+        return try await MainActor.run {
+            try dedupedRecords()
+                .filter {
+                    $0.name.localizedStandardContains(needle)
+                        || $0.nickname.localizedStandardContains(needle)
+                        || $0.partRaw.localizedStandardContains(needle)
+                        || $0.university.localizedStandardContains(needle)
+                }
+                .map { $0.toDomain() }
+        }
     }
 
     /// memberId 일치 레코드가 있으면 최신 명함으로 갱신, 없으면 삽입.
@@ -56,26 +65,30 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
     /// 1차 키는 **memberId**(cardLink `umc://card/{memberId}` 파싱값), 부차 키는 cardID다.
     /// cardLink가 페이로드에서 정체성을 나르는 유일한 값이므로 그 파싱값이 정본이다.
     public func save(_ card: ReceivedCard) async throws {
-        let records = try fetchRecords()
-        if let existing = records.first(where: {
-            !card.profile.memberId.isEmpty && $0.memberId == card.profile.memberId
-        }) ?? records.first(where: { $0.cardID == card.id }) {
-            existing.apply(card)
-        } else {
-            modelContext.insert(ReceivedCardRecord(card))
+        try await MainActor.run {
+            let records = try fetchRecords()
+            if let existing = records.first(where: {
+                !card.profile.memberId.isEmpty && $0.memberId == card.profile.memberId
+            }) ?? records.first(where: { $0.cardID == card.id }) {
+                existing.apply(card)
+            } else {
+                modelContext.insert(ReceivedCardRecord(card))
+            }
+            try modelContext.save()
         }
-        try modelContext.save()
     }
 
     public func delete(id: String) async throws {
-        for record in try fetchRecords() where record.cardID == id {
-            modelContext.delete(record)
+        try await MainActor.run {
+            for record in try fetchRecords() where record.cardID == id {
+                modelContext.delete(record)
+            }
+            try modelContext.save()
         }
-        try modelContext.save()
     }
 
     public func count() async throws -> Int {
-        try dedupedRecords().count
+        try await MainActor.run { try dedupedRecords().count }
     }
 
     // MARK: - Private Function
