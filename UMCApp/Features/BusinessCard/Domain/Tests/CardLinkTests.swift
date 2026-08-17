@@ -32,9 +32,9 @@ struct CardLinkTests {
         #expect(parsed?.memberId == "42")
     }
 
-    @Test("운영·alpha 호스트를 모두 받는다 — alpha 빌드 QR을 운영 빌드로 스캔하는 경우", arguments: [
+    @Test("운영·dev 호스트를 모두 받는다 — dev 빌드 QR을 운영 빌드로 스캔하는 경우", arguments: [
         "https://api.university.neordinary.com/mypage/card?memberId=42",
-        "https://alpha.api.university.neordinary.com/mypage/card?memberId=42",
+        "https://dev.api.university.neordinary.com/mypage/card?memberId=42",
     ])
     func acceptsBothHosts(urlString: String) throws {
         let url = try #require(URL(string: urlString))
@@ -61,6 +61,9 @@ struct CardLinkTests {
     @Test("호스트·경로·쿼리가 어긋나면 nil", arguments: [
         // 남의 호스트
         "https://evil.com/mypage/card?memberId=42",
+        // 서버가 쓰지 않는 호스트. dev 는 `dev.api…` 로 확정됐고 `alpha.api…` 는 DNS 에
+        // 존재한 적이 없다 — 이 표기의 QR 은 세상에 없으므로 받아주지 않는다.
+        "https://alpha.api.university.neordinary.com/mypage/card?memberId=42",
         // 경로 다름 (커뮤니티 스레드 링크)
         "https://api.university.neordinary.com/community/threads/42",
         // memberId 쿼리 없음

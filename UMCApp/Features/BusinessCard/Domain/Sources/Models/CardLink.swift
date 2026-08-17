@@ -32,8 +32,11 @@ public struct CardLink: Hashable, Sendable {
         static let path = "/mypage/card"
         static let memberIdQueryName = "memberId"
 
+        /// 백엔드가 2026-08-17 확정한 환경별 호스트. 한때 dev 를 `alpha.api…` 로 적어
+        /// 두었는데 그런 DNS 는 존재한 적이 없다 — DEBUG 빌드가 굽는 QR 이 통째로
+        /// 죽어 있었다.
         static let productionHost = "api.university.neordinary.com"
-        static let alphaHost = "alpha.api.university.neordinary.com"
+        static let devHost = "dev.api.university.neordinary.com"
 
         /// 커스텀 스킴 형식(`umc://card/{memberId}`). 굽지는 않고 **읽기만** 한다 —
         /// Android 가 이 형식으로 먼저 검증했고, 예전 QR 이 돌아다닐 수 있다.
@@ -49,11 +52,11 @@ public struct CardLink: Hashable, Sendable {
 
     /// 링크를 **만들 때** 쓰는 호스트. 서버가 환경별로 호스트를 나눠 운영한다.
     ///
-    /// 읽을 때는 ``parse(_:)`` 가 두 호스트를 모두 받는다 — alpha 빌드로 만든 QR 을
+    /// 읽을 때는 ``parse(_:)`` 가 두 호스트를 모두 받는다 — dev 빌드로 만든 QR 을
     /// 운영 빌드로 스캔하는 상황이 검증 중에 흔하다.
     public static var host: String {
         #if DEBUG
-        Constants.alphaHost
+        Constants.devHost
         #else
         Constants.productionHost
         #endif
@@ -91,7 +94,7 @@ public struct CardLink: Hashable, Sendable {
     private static func parseUniversalLink(_ url: URL) -> CardLink? {
         guard url.scheme?.lowercased() == Constants.scheme,
               let host = url.host?.lowercased(),
-              host == Constants.productionHost || host == Constants.alphaHost,
+              host == Constants.productionHost || host == Constants.devHost,
               url.path == Constants.path,
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let identifier = components.queryItems?
