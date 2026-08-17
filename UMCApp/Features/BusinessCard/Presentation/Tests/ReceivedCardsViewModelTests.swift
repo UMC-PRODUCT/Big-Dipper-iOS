@@ -94,6 +94,24 @@ struct ReceivedCardsViewModelTests {
         #expect(sut.cards.value?.map(\.id) == ["2"])
     }
 
+    /// 명함첩은 서버 사본이 없다 — 지우면 그 명함은 다시 교환하기 전까지 복구할 수 없다.
+    /// 그래서 그리드에서 바로 지우지 않고 확인을 한 번 받는다.
+    @Test("삭제를 요청하면 곧바로 지우지 않고 확인 다이얼로그를 띄운다")
+    func requestDeleteAsksFirst() async {
+        let delete = StubDeleteReceivedCard()
+        let sut = makeSUT(
+            fetch: StubFetchReceivedCards(result: [makeCard(id: "1", name: "A")]),
+            delete: delete
+        )
+        await sut.load()
+
+        sut.requestDelete(makeCard(id: "1", name: "A"))
+
+        #expect(sut.alertPrompt?.isPositiveBtnDestructive == true)
+        #expect(delete.deletedIDs.isEmpty)
+        #expect(sut.cards.value?.count == 1)
+    }
+
     /// 실패했는데 행을 지워 버리면 사용자는 지워진 줄 알고 화면을 뜨고, 다음 진입에서
     /// 되살아난 명함을 본다. 실패는 목록을 건드리지 않고 알리기만 한다.
     @Test("삭제가 실패하면 목록을 그대로 두고 에러를 알린다")

@@ -15,6 +15,14 @@ private enum Constants {
     /// 한 글자마다 저장소를 긁지 않으려는 최소 간격 (커뮤니티 스레드 검색과 동일).
     static let searchDebounce: Duration = .milliseconds(300)
     static let feature = "BusinessCard"
+
+    static let deleteTitle = "명함을 삭제할까요?"
+    static let deleteConfirm = "삭제"
+    static let deleteCancel = "취소"
+
+    static func deleteMessage(name: String) -> String {
+        "\(name) 님의 명함을 명함첩에서 지웁니다. 다시 교환하기 전까지 되돌릴 수 없어요."
+    }
 }
 
 /// 명함첩 목록·검색·삭제 (MP-F05).
@@ -28,6 +36,9 @@ public final class ReceivedCardsViewModel {
     // MARK: - Property
 
     public private(set) var cards: Loadable<[ReceivedCard]> = .idle
+
+    /// 삭제 확인 다이얼로그. `.alertPrompt(item:)` 로 화면에 연결한다.
+    public var alertPrompt: AlertPrompt?
 
     /// 검색 필드 바인딩. 값이 바뀌면 디바운스 뒤 스스로 다시 조회한다.
     public var searchText: String = "" {
@@ -80,6 +91,21 @@ public final class ReceivedCardsViewModel {
         } catch {
             cards = .failed(.unknown(message: error.localizedDescription))
         }
+    }
+
+    /// 명함첩은 서버 사본이 없다 — 지우면 다시 교환하기 전까지 복구할 수 없어서
+    /// 그리드에서 바로 지우지 않고 확인을 한 번 받는다.
+    public func requestDelete(_ card: ReceivedCard) {
+        alertPrompt = AlertPrompt(
+            title: Constants.deleteTitle,
+            message: Constants.deleteMessage(name: card.profile.name),
+            positiveBtnTitle: Constants.deleteConfirm,
+            positiveBtnAction: { [weak self] in
+                Task { await self?.delete(id: card.id) }
+            },
+            negativeBtnTitle: Constants.deleteCancel,
+            isPositiveBtnDestructive: true
+        )
     }
 
     /// 실패하면 목록을 건드리지 않는다. 지워진 줄 알고 화면을 뜬 사용자가 다음 진입에서
