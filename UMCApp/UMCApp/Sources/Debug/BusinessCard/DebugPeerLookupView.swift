@@ -136,7 +136,7 @@ struct DebugPeerLookupView: View {
                 field("memberId", card.memberId)
                 field("이름", card.name)
                 field("닉네임", card.nickname)
-                field("파트", card.part.name, isSuspicious: card.part == .admin)
+                field("파트", card.partDisplayName, isSuspicious: card.partRaw != nil)
                 field("기수", card.generation, isSuspicious: card.generation == "0")
                 field("학교", card.university)
                 field("email", card.email ?? "— (서버가 마스킹)")

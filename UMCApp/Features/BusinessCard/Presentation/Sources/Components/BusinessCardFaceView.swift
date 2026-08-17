@@ -164,7 +164,7 @@ public struct BusinessCardFaceView: View {
                 }
 
                 HStack(spacing: Metrics.chipSpacing) {
-                    PartChip(text: card.part.name)
+                    PartChip(text: card.partDisplayName)
                     PartChip(text: "\(card.generation)기")
                 }
             }

@@ -104,7 +104,7 @@ struct DebugToolsView: View {
                 labeled("memberId", card.memberId)
                 labeled("name", card.name)
                 labeled("nickname", card.nickname)
-                labeled("part", "\(card.part.name) / \(card.part.apiValue)")
+                labeled("part", "\(card.partDisplayName) / \(card.partAPIValue)")
                 labeled("generation", card.generation)
                 labeled("university", card.university)
                 labeled("email", card.email ?? "—")

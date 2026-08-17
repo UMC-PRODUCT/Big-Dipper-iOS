@@ -117,7 +117,7 @@ struct DebugReceivedCardsView: View {
                 Spacer(minLength: Constants.chipSpacing)
 
                 HStack(spacing: Constants.chipSpacing) {
-                    chip(card.profile.part.name, tint: tint)
+                    chip(card.profile.partDisplayName, tint: tint)
                     chip("\(card.profile.generation)기", tint: tint)
                 }
             }

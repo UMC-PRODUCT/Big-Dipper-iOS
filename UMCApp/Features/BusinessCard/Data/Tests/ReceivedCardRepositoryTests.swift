@@ -55,6 +55,29 @@ struct ReceivedCardRepositoryTests {
         #expect(all.first?.profile.linkedIn == "linkedin.com/in/7")
     }
 
+    /// 못 읽은 파트를 `ADMIN` 으로 눌러 저장하면 **원본이 영영 사라진다.** 나중에 파싱
+    /// 규칙이 늘어도 되살릴 방법이 없다. 원본 그대로 담기는지 저장·조회 왕복으로 본다.
+    @Test("모르는 파트 문자열은 원본 그대로 저장되고 다시 읽힌다")
+    func unknownPartSurvivesRoundtrip() async throws {
+        let card = ReceivedCard(
+            id: "CARD-RAW",
+            profile: MyCard(
+                memberId: "9", name: "상대", nickname: "닉",
+                part: .admin, generation: "11", university: "중앙대학교",
+                email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
+                partRaw: "RUST"
+            ),
+            exchangedAt: Date(), exchangeContext: nil, isConnected: false
+        )
+        try await repository.save(card)
+
+        let restored = try #require(try await repository.fetchAll().first)
+
+        #expect(restored.profile.partRaw == "RUST")
+        #expect(restored.profile.partDisplayName == "RUST")
+        #expect(restored.profile.part == .admin)
+    }
+
     @Test("같은 memberId로 다시 저장하면 중복 없이 최신 명함으로 갱신된다")
     func upsertByMemberId() async throws {
         try await repository.save(makeCard(id: "CARD-1", name: "상대"))

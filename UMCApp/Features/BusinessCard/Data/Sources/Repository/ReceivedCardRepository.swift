@@ -136,7 +136,7 @@ private extension ReceivedCardRecord {
             memberId: card.profile.memberId,
             name: card.profile.name,
             nickname: card.profile.nickname,
-            partRaw: card.profile.part.apiValue,
+            partRaw: card.profile.partAPIValue,
             generation: card.profile.generation,
             university: card.profile.university,
             email: card.profile.email,
@@ -155,7 +155,7 @@ private extension ReceivedCardRecord {
         memberId = card.profile.memberId
         name = card.profile.name
         nickname = card.profile.nickname
-        partRaw = card.profile.part.apiValue
+        partRaw = card.profile.partAPIValue
         generation = card.profile.generation
         university = card.profile.university
         email = card.profile.email
@@ -169,21 +169,25 @@ private extension ReceivedCardRecord {
         updatedAt = .now
     }
 
+    /// 저장된 문자열이 우리가 아는 파트가 아니면 원본을 되살린다 — 저장 때 원본을 넣었으므로
+    /// 파싱 규칙이 나중에 늘면 재설치 없이 제대로 읽히기 시작한다.
     func toDomain() -> ReceivedCard {
-        ReceivedCard(
+        let parsedPart = UMCPartType(apiValue: partRaw)
+        return ReceivedCard(
             id: cardID,
             profile: MyCard(
                 memberId: memberId,
                 name: name,
                 nickname: nickname,
-                part: UMCPartType(apiValue: partRaw) ?? .admin,
+                part: parsedPart ?? .admin,
                 generation: generation,
                 university: university,
                 email: email,
                 github: github,
                 linkedIn: linkedIn,
                 blog: blog,
-                avatarURL: avatarURL
+                avatarURL: avatarURL,
+                partRaw: (parsedPart == nil && !partRaw.isEmpty) ? partRaw : nil
             ),
             exchangedAt: exchangedAt,
             exchangeContext: exchangeContext,

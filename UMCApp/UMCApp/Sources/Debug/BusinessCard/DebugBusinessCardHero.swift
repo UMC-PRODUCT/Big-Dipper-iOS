@@ -138,7 +138,7 @@ struct DebugBusinessCardHero: View {
                 }
 
                 HStack(spacing: Metrics.chipSpacing) {
-                    chip(card.part.name)
+                    chip(card.partDisplayName)
                     chip("\(card.generation)기")
                 }
             }

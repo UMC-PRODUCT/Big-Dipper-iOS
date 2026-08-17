@@ -122,7 +122,7 @@ struct DebugQRCodeView: View {
                         }
 
                         HStack(spacing: 5) {
-                            chip(card.part.name)
+                            chip(card.partDisplayName)
                             chip("\(card.generation)기")
                         }
                     }

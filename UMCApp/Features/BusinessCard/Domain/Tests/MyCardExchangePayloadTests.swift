@@ -46,7 +46,42 @@ struct MyCardExchangePayloadTests {
             avatarURL: nil, cardLink: "umc://card/7"
         )
 
-        #expect(MyCard(payload: payload).part == .admin)
+        let card = MyCard(payload: payload)
+
+        // 열거형 값은 관례대로 `.admin` 이지만, 화면·전송은 원본을 쓴다. 상대가 다른
+        // 플랫폼일 수 있어 「모르는 파트」를 「운영진」으로 바꿔 보여주면 안 된다.
+        #expect(card.part == .admin)
+        #expect(card.partRaw == "정체불명")
+        #expect(card.partDisplayName == "정체불명")
+        #expect(card.partAPIValue == "정체불명")
+    }
+
+    @Test("파트가 비어 있으면 진짜로 파트가 없는 것이라 원본을 남기지 않는다")
+    func blankPartKeepsAdminWithoutRaw() throws {
+        let payload = try ExchangePayload(
+            cardID: "abc", name: "제옹", nickname: "", part: "  ",
+            generation: "12", university: "", email: nil, github: nil, linkedIn: nil, blog: nil,
+            avatarURL: nil, cardLink: "umc://card/7"
+        )
+
+        let card = MyCard(payload: payload)
+
+        #expect(card.part == .admin)
+        #expect(card.partRaw == nil)
+        #expect(card.partDisplayName == UMCPartType.admin.name)
+    }
+
+    @Test("못 읽은 파트는 되보낼 때도 원본 그대로다 — ADMIN 으로 바꿔 퍼뜨리지 않는다")
+    func unknownPartRoundTripsUnchanged() throws {
+        let payload = try ExchangePayload(
+            cardID: "abc", name: "제옹", nickname: "", part: "RUST",
+            generation: "12", university: "", email: nil, github: nil, linkedIn: nil, blog: nil,
+            avatarURL: nil, cardLink: "umc://card/7"
+        )
+
+        let resent = try MyCard(payload: payload).toExchangePayload()
+
+        #expect(resent.part == "RUST")
     }
 
     @Test("페이로드에서 ReceivedCard를 만들면 cardID가 id가 된다")

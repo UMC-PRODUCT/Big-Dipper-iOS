@@ -477,7 +477,7 @@ final class BusinessCardDebugViewModel {
             }
             scanNote(
                 "저장 완료: \(saved.profile.name)/\(saved.profile.nickname) "
-                + "· \(saved.profile.part.name) · \(saved.profile.generation)기"
+                + "· \(saved.profile.partDisplayName) · \(saved.profile.generation)기"
             )
             await reloadReceivedCards()
         } catch {
