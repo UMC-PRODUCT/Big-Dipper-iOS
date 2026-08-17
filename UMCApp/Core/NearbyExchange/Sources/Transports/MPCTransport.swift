@@ -714,11 +714,19 @@ extension MPCTransport: MCSessionDelegate {
 
         case .card(let payload):
             let reply = stateQueue.sync { () -> ExchangePayload? in
+                let isBuffered = receiveContinuation == nil
                 if let continuation = receiveContinuation {
                     continuation.yield(payload)
                 } else {
                     pendingPayloads.append(payload)   // 구독 전 도착분
                 }
+                // 수신 자체를 남긴다. 이 줄이 없어서 「명함이 도착은 했는데 저장이 안 된
+                // 것」과 「애초에 도착하지 않은 것」을 구분할 수 없었다.
+                // 이름은 남기지 않는다 — 이 버퍼는 릴리스에도 존재한다.
+                appendLog(
+                    "명함 수신 \(peerID.displayName) — cardID \(payload.cardID.prefix(8))"
+                    + (isBuffered ? " (구독 전, 버퍼)" : "")
+                )
                 // 맞교환은 **연결당 1회**. 빠지면 A→B→A→B 무한 에코가 된다.
                 guard repliedSessionIDs.insert(peerID.displayName).inserted else { return nil }
                 return myCard
