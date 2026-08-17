@@ -32,13 +32,20 @@ struct NearbyRangingSection: View {
     /// 마지막 delegate 갱신 시각. 값이 흐르고 있는지 눈으로 확인하는 용도.
     @State private var lastUpdateAt: Date?
     @State private var updateCount = 0
+    /// 토큰 지문. `controller` 안의 값을 그대로 읽으면 화면이 갱신되지 않아 여기로 옮겨 둔다.
+    @State private var myFingerprint: String?
+    @State private var peerFingerprint: String?
 
     // MARK: - Body
 
     var body: some View {
         Section {
             labeled("UWB 지원", "\(NearbyRangingController.isSupported)")
-            labeled("내 토큰", controller == nil ? "없음" : "준비됨")
+            // 두 기기를 맞대보는 값. **A의 「내 토큰」 == B의 「상대 토큰」** 이어야 정상이다.
+            // controller 는 @Observable 이 아니라 그 안의 값을 직접 읽으면 화면이 갱신되지
+            // 않는다 — 값을 @State 로 끌어와 둔다.
+            labeled("내 토큰", myFingerprint ?? "없음")
+            labeled("상대 토큰", peerFingerprint ?? "없음")
             labeled("레인징", isRanging ? "실행 중" : "미시작")
             labeled("거리", distanceText)
             labeled("수평각", angleText)
@@ -123,16 +130,17 @@ struct NearbyRangingSection: View {
         // 토큰은 바이너리라 QR에 싣기 위해 base64로 감싼다 (스파이크 실측 343B).
         let encoded = data.base64EncodedString()
         myTokenQR = try? CoreImageQRCodeGenerator().generate(from: encoded)
-        log.insert("내 토큰 준비 완료 (\(data.count)B)", at: 0)
+        myFingerprint = controller.myTokenFingerprint
     }
 
     private func startRanging(with scanned: String) {
         guard let data = Data(base64Encoded: scanned) else {
-            log.insert("토큰 QR이 아니다", at: 0)
+            log.insert("토큰 QR이 아니다 (\(scanned.prefix(24))…)", at: 0)
             return
         }
-        controller?.startRanging(withPeerTokenData: data)
-        isRanging = true
+        let started = controller?.startRanging(withPeerTokenData: data) ?? false
+        peerFingerprint = controller?.peerTokenFingerprint
+        isRanging = started
         isScanning = false
     }
 
@@ -145,6 +153,8 @@ struct NearbyRangingSection: View {
         isRanging = false
         lastUpdateAt = nil
         updateCount = 0
+        myFingerprint = nil
+        peerFingerprint = nil
         log.insert("세션 종료", at: 0)
     }
 
