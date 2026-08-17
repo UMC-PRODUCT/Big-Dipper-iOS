@@ -32,6 +32,7 @@ enum StubSessionFixtures {
         switch StubPersona.current {
         case .a: return personaAProfile
         case .b: return personaBProfile
+        case .c: return personaCProfile
         }
     }
 
@@ -105,6 +106,44 @@ enum StubSessionFixtures {
             instagram: nil,
             github: "github.com/umc-b",
             blog: "umc-b.velog.io",
+            personal: nil
+        )
+    )
+
+    /// 파트 문자열이 우리가 모르는 값인 신원. 서버가 파트를 추가했는데 앱이 아직
+    /// 모르는 상황을 실기기에서 만들어 본다 — 상대 명함첩에 「운영진」이 아니라
+    /// 「RUST」로 남아야 한다.
+    private static let personaCProfile = Profile(
+        memberId: "3",
+        name: "최러스",
+        nickname: "러스",
+        generations: ["12"],
+        schoolId: "7",
+        schoolName: "홍익대학교",
+        latestChallengerId: "300",
+        latestGisuId: "10",
+        chapterId: "2",
+        chapterName: "GACI",
+        responsiblePart: "RUST",
+        roles: [
+            ProfileRole(
+                id: "3",
+                challengerId: "300",
+                gisu: "12",
+                gisuId: "10",
+                roleType: .schoolPresident,
+                organizationType: .school,
+                organizationId: "7",
+                responsiblePart: "RUST"
+            )
+        ],
+        email: "stub-c@umc.test",
+        externalLinks: ProfileExternalLinks(
+            id: "3",
+            linkedIn: "linkedin.com/in/umc-c",
+            instagram: nil,
+            github: "github.com/umc-c",
+            blog: "umc-c.hashnode.dev",
             personal: nil
         )
     )

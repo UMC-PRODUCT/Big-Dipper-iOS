@@ -24,6 +24,17 @@ public extension Profile {
         let fallbackPart = latestRole?.responsiblePart
             .flatMap { UMCPartType(apiValue: $0) } ?? .admin
 
+        // 서버 파트 문자열도 **못 읽을 수 있다.** 서버가 파트를 추가하면 앱이 갱신되기
+        // 전까지 그렇다. 그때 `.admin` 으로 눌러 버리면 자기 명함이 「운영진」으로 보이고,
+        // 그 값이 그대로 교환 페이로드에 실려 상대에게도 운영진으로 퍼진다.
+        // 「없음」(빈 문자열·레코드 없음)과 「못 읽음」을 가르는 규칙은 수신 경로
+        // (``MyCard/init(payload:)``)와 같다.
+        let rawPart = (latestRecord?.part ?? latestRole?.responsiblePart ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let unrecognizedPart = (!rawPart.isEmpty && UMCPartType(apiValue: rawPart) == nil)
+            ? rawPart
+            : nil
+
         return MyCard(
             memberId: memberId,
             name: latestRecord?.name ?? name,
@@ -35,7 +46,8 @@ public extension Profile {
             github: externalLinks?.github?.nonEmpty,
             linkedIn: externalLinks?.linkedIn?.nonEmpty,
             blog: externalLinks?.blog?.nonEmpty,
-            avatarURL: latestRecord?.profileImageLink?.nonEmpty ?? profileImageLink?.nonEmpty
+            avatarURL: latestRecord?.profileImageLink?.nonEmpty ?? profileImageLink?.nonEmpty,
+            partRaw: unrecognizedPart
         )
     }
 }
