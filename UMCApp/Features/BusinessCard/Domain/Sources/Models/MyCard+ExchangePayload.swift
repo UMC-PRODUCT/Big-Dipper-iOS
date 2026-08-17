@@ -68,8 +68,7 @@ public extension ReceivedCard {
             id: payload.cardID,
             profile: MyCard(payload: payload),
             exchangedAt: exchangedAt,
-            exchangeContext: exchangeContext,
-            isConnected: false
+            exchangeContext: exchangeContext
         )
     }
 }

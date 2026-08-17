@@ -50,8 +50,7 @@ public final class SaveReceivedCardUseCase:
             id: cardID,
             profile: card,
             exchangedAt: Date(),
-            exchangeContext: exchangeContext,
-            isConnected: false
+            exchangeContext: exchangeContext
         )
         try await repository.save(received)
         return received

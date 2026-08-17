@@ -39,7 +39,7 @@ struct ReceivedCardRepositoryTests {
                 email: nil, github: nil, linkedIn: "linkedin.com/in/\(memberId)",
                 blog: nil, avatarURL: nil
             ),
-            exchangedAt: Date(), exchangeContext: "OT에서 교환", isConnected: false
+            exchangedAt: Date(), exchangeContext: "OT에서 교환"
         )
     }
 
@@ -67,7 +67,7 @@ struct ReceivedCardRepositoryTests {
                 email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
                 partRaw: "RUST"
             ),
-            exchangedAt: Date(), exchangeContext: nil, isConnected: false
+            exchangedAt: Date(), exchangeContext: nil
         )
         try await repository.save(card)
 
@@ -117,7 +117,7 @@ struct ReceivedCardRepositoryTests {
                 cardID: cardID, memberId: memberId, name: name, nickname: "\(name)닉",
                 partRaw: "DESIGN", generation: "11", university: "중앙대학교",
                 email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
-                exchangedAt: Date(), exchangeContext: nil, isConnected: false
+                exchangedAt: Date(), exchangeContext: nil
             )
         )
     }

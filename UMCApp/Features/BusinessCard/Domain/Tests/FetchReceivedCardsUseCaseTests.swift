@@ -23,7 +23,6 @@ struct FetchReceivedCardsUseCaseTests {
             ),
             exchangedAt: Date(timeIntervalSince1970: 0),
             exchangeContext: nil,
-            isConnected: false
         )
     }
 

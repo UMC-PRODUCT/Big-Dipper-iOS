@@ -93,6 +93,5 @@ struct MyCardExchangePayloadTests {
         #expect(received.id == "CARD-1")
         #expect(received.profile.name == "정의찬")
         #expect(received.exchangeContext == "OT에서 교환")
-        #expect(received.isConnected == false)
     }
 }
