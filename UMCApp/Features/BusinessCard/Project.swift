@@ -30,5 +30,11 @@ let project = featureProject(
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
+    ],
+    includesPresentationTests: true,
+    presentationTestDependencies: [
+        // ViewModel 테스트가 ReceivedCard·MyCard 와 Loadable·ErrorHandler 를 직접 만든다.
+        .target(name: "BusinessCardDomain"),
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ]
 )
