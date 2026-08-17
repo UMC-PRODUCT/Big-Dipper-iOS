@@ -98,6 +98,8 @@ final class BusinessCardDebugViewModel {
     /// 이것이다 — 고장난 계기를 읽고 있었다. 관측되는 값을 주기적으로 흔들어 다시 읽게 한다.
     /// 진단 전용 화면이라 폴링으로 충분하다.
     private(set) var diagnosticsTick = 0
+    /// 파일로 이미 옮긴 transport 로그의 최신 줄. 여기까지가 기록됐다는 표시다.
+    private var mirroredTransportHead: String?
     private var diagnosticsTask: Task<Void, Never>?
 
     /// transport가 삼킨 실패 원문. `peers: 0`이 "아무도 없음"인지 "브라우저 실패"인지 가른다.
@@ -174,15 +176,21 @@ final class BusinessCardDebugViewModel {
 
     func reloadReceivedCards() async {
         receivedCards = .loading
+        // SwiftData 는 어느 스레드에서 만지는지가 곧 원인이 된다. `ModelContext` 는
+        // 앱의 mainContext 인데 이 함수는 액터 격리가 없어 백그라운드에서 돈다.
+        note("목록 조회 시작 (main=\(Thread.isMainThread))")
         do {
             let query = searchText.isEmpty ? nil : searchText
-            receivedCards = .loaded(
-                try await provider.fetchReceivedCardsUseCase.execute(query: query)
-            )
+            let cards = try await provider.fetchReceivedCardsUseCase.execute(query: query)
+            note("목록 조회 완료 \(cards.count)장")
+            receivedCards = .loaded(cards)
             receivedCardCount = try await receivedCardRepository.count()
+            note("카운트 완료 \(receivedCardCount)장")
         } catch let error as AppError {
+            note("목록 조회 실패: \(error)")
             receivedCards = .failed(error)
         } catch {
+            note("목록 조회 실패: \(error)")
             receivedCards = .failed(.unknown(message: error.localizedDescription))
         }
     }
@@ -210,16 +218,18 @@ final class BusinessCardDebugViewModel {
             )
             await reloadReceivedCards()
         } catch {
-            eventLog.insert("샘플 저장 실패: \(error)", at: 0)
+            note("샘플 저장 실패: \(error)")
         }
     }
 
     func delete(id: String) async {
+        note("삭제 시작 id=\(id.prefix(8)) (main=\(Thread.isMainThread))")
         do {
             try await provider.deleteReceivedCardUseCase.execute(id: id)
+            note("삭제 위임 완료 — 목록 갱신 시작")
             await reloadReceivedCards()
         } catch {
-            eventLog.insert("삭제 실패: \(error)", at: 0)
+            note("삭제 실패: \(error)")
         }
     }
 
@@ -234,7 +244,7 @@ final class BusinessCardDebugViewModel {
     func send(to peer: DiscoveredPeer) async {
         guard let card = myCard.value else {
             sendStates[peer.id] = .failed("내 명함이 아직 로드되지 않았다")
-            eventLog.insert("send 불가: 내 명함 없음", at: 0)
+            note("send 불가: 내 명함 없음")
             return
         }
         sendStates[peer.id] = .sending
@@ -244,21 +254,41 @@ final class BusinessCardDebugViewModel {
         } catch {
             // 원문을 그대로 남긴다 — 연결 시간 초과인지 미발견인지 여기서 갈린다.
             sendStates[peer.id] = .failed("\(error)")
-            eventLog.insert("send 실패: \(error)", at: 0)
+            note("send 실패: \(error)")
         }
     }
 
     // MARK: - Private Function
 
+    /// 화면과 파일에 같이 남긴다.
+    ///
+    /// 화면에만 쌓으면 맥에서 읽을 수가 없어 실기기 확인마다 사람에게 화면을 읽어 달라고
+    /// 부탁하게 된다. 파일은 `devicectl` 로 꺼내 온다 (``DebugFileLog``).
+    private func note(_ message: String) {
+        eventLog.insert(message, at: 0)
+        DebugFileLog.append("[교환] \(message)")
+    }
+
+    private func scanNote(_ message: String) {
+        scanLog.insert(message, at: 0)
+        DebugFileLog.append("[스캔] \(message)")
+    }
+
     private func startExchange() async {
         guard let card = myCard.value else {
-            eventLog.insert("내 명함이 없어 교환을 시작할 수 없다", at: 0)
+            note("내 명함이 없어 교환을 시작할 수 없다")
             return
         }
         isExchanging = true
         peers = []
         sendStates.removeAll()
-        eventLog.insert("세션 시작", at: 0)
+        mirroredTransportHead = nil
+        // 어느 기기의, 어느 시도인지 파일만 보고 갈리게 한다.
+        DebugFileLog.markSessionStart(
+            "교환 세션 시작 · \(localPeerDescription) · 내 memberId=\(card.memberId) "
+            + "· \(card.name)/\(card.nickname)"
+        )
+        note("세션 시작")
 
         startDiagnosticsPolling()
 
@@ -269,7 +299,7 @@ final class BusinessCardDebugViewModel {
                 self.handle(event)
             }
             self?.isExchanging = false
-            self?.eventLog.insert("스트림 종료", at: 0)
+            self?.note("스트림 종료")
         }
     }
 
@@ -282,7 +312,7 @@ final class BusinessCardDebugViewModel {
         isExchanging = false
     }
 
-    /// 0.5초마다 진단 표시를 다시 읽게 하고, 유령 행을 걷어낸다.
+    /// 0.5초마다 진단 표시를 다시 읽게 하고, 유령 행을 걷어내고, 전송 로그를 파일로 옮긴다.
     private func startDiagnosticsPolling() {
         diagnosticsTask?.cancel()
         diagnosticsTask = Task { [weak self] in
@@ -291,8 +321,28 @@ final class BusinessCardDebugViewModel {
                 guard let self, !Task.isCancelled else { return }
                 self.diagnosticsTick &+= 1
                 self.pruneLostPeers()
+                self.mirrorTransportLog()
             }
         }
+    }
+
+    /// transport 의 진단 로그 중 **새로 생긴 줄만** 파일로 옮긴다.
+    ///
+    /// transport 는 자기 로그를 메모리에만 들고 있고(최신 40줄) 화면이 그걸 읽는다.
+    /// 연결이 왜 안 됐는지는 거의 다 이 로그에 있는데, 맥에서 볼 방법이 없었다.
+    private func mirrorTransportLog() {
+        let current = transportLog          // 최신이 앞
+        guard let newest = current.first, newest != mirroredTransportHead else { return }
+
+        let fresh: [String]
+        if let head = mirroredTransportHead, let index = current.firstIndex(of: head) {
+            fresh = Array(current[..<index])
+        } else {
+            fresh = current
+        }
+        mirroredTransportHead = newest
+        // 오래된 것부터 써야 파일이 시간순으로 읽힌다.
+        fresh.reversed().forEach { DebugFileLog.append("[전송] \($0)") }
     }
 
     /// transport 가 더 이상 보지 못하는 행을 목록에서 지운다.
@@ -308,15 +358,15 @@ final class BusinessCardDebugViewModel {
         let removed = peers.filter { !alive.contains($0.id) }.map(\.id)
         peers.removeAll { !alive.contains($0.id) }
         removed.forEach { sendStates[$0] = nil }
-        eventLog.insert("피어 소실: \(removed.joined(separator: ", "))", at: 0)
+        note("피어 소실: \(removed.joined(separator: ", "))")
     }
 
     private func handle(_ event: ExchangeEvent) {
         switch event {
         case .advertising:
-            eventLog.insert("advertising", at: 0)
+            note("advertising")
         case .scanning:
-            eventLog.insert("scanning", at: 0)
+            note("scanning")
         case .peerFound(let peer):
             // **덧붙이면 안 된다.** MPC 는 같은 피어를 다시 보고할 수 있고, transport 는
             // 매번 그대로 흘린다. append 하면 같은 id 의 행이 쌓여 기기 한 대에 「발견 2」 가
@@ -327,19 +377,19 @@ final class BusinessCardDebugViewModel {
                 peers[index] = peer.applying(distanceMeters: peers[index].distanceMeters)
             } else {
                 peers.append(peer)
-                eventLog.insert("peerFound: \(peer.displayName ?? peer.id)", at: 0)
+                note("peerFound: \(peer.displayName ?? peer.id)")
             }
         case .sent(let peer):
-            eventLog.insert("sent → \(peer.displayName ?? peer.id)", at: 0)
+            note("sent → \(peer.displayName ?? peer.id)")
         case .received(let card):
-            eventLog.insert("received: \(card.profile.name) (id=\(card.id))", at: 0)
+            note("received: \(card.profile.name) (id=\(card.id))")
             Task { await reloadReceivedCards() }
         case .distanceUpdated(let peerID, let meters):
             // 로그에는 남기지 않는다 — 초당 여러 번 흘러 다른 이벤트를 덮어버린다.
             guard let index = peers.firstIndex(where: { $0.id == peerID }) else { return }
             peers[index] = peers[index].applying(distanceMeters: meters)
         case .failed(let error):
-            eventLog.insert("failed: \(error.localizedDescription)", at: 0)
+            note("failed: \(error.localizedDescription)")
         }
     }
 
@@ -379,7 +429,7 @@ final class BusinessCardDebugViewModel {
 
         guard let data = text.data(using: .utf8),
               let payload = try? ExchangePayload.decode(from: data) else {
-            scanLog.insert("해석 실패: 명함 QR이 아님 (\(text.prefix(40))…)", at: 0)
+            scanNote("해석 실패: 명함 QR이 아님 (\(text.prefix(40))…)")
             return
         }
 
@@ -390,13 +440,13 @@ final class BusinessCardDebugViewModel {
                 exchangeContext: "QR 스캔"
             )
             guard let saved else {
-                scanLog.insert("내 명함이다 — 명함첩에 넣지 않음", at: 0)
+                scanNote("내 명함이다 — 명함첩에 넣지 않음")
                 return
             }
-            scanLog.insert("저장 완료: \(saved.profile.name) / \(saved.profile.nickname)", at: 0)
+            scanNote("저장 완료: \(saved.profile.name) / \(saved.profile.nickname)")
             await reloadReceivedCards()
         } catch {
-            scanLog.insert("저장 실패: \(error)", at: 0)
+            scanNote("저장 실패: \(error)")
         }
     }
 
@@ -406,13 +456,13 @@ final class BusinessCardDebugViewModel {
     /// 합쳐져야 하고, 명함첩의 dedup·삭제가 모두 이 값을 키로 쓴다.
     private func saveFromDeepLink(memberId: String) async {
         guard !isResolvingDeepLink else {
-            scanLog.insert("이미 조회 중 — 중복 스캔 무시 (memberId=\(memberId))", at: 0)
+            scanNote("이미 조회 중 — 중복 스캔 무시 (memberId=\(memberId))")
             return
         }
         isResolvingDeepLink = true
         defer { isResolvingDeepLink = false }
 
-        scanLog.insert("딥링크 인식: memberId=\(memberId) → 프로필 조회", at: 0)
+        scanNote("딥링크 인식: memberId=\(memberId) → 프로필 조회")
         do {
             let card = try await provider.fetchPeerCardUseCase.execute(memberId: memberId)
             let saved = try await provider.saveReceivedCardUseCase.execute(
@@ -422,17 +472,16 @@ final class BusinessCardDebugViewModel {
                 exchangeContext: "QR 딥링크"
             )
             guard let saved else {
-                scanLog.insert("내 명함이다 — 명함첩에 넣지 않음", at: 0)
+                scanNote("내 명함이다 — 명함첩에 넣지 않음")
                 return
             }
-            scanLog.insert(
+            scanNote(
                 "저장 완료: \(saved.profile.name)/\(saved.profile.nickname) "
-                + "· \(saved.profile.part.name) · \(saved.profile.generation)기",
-                at: 0
+                + "· \(saved.profile.part.name) · \(saved.profile.generation)기"
             )
             await reloadReceivedCards()
         } catch {
-            scanLog.insert("딥링크 저장 실패: \(error)", at: 0)
+            scanNote("딥링크 저장 실패: \(error)")
         }
     }
 

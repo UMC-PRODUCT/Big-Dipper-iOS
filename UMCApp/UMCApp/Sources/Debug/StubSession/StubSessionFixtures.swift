@@ -23,10 +23,19 @@ enum StubSessionFixtures {
 
     /// 부트스트랩 승인 판정(`isApproved` = `generations` 비어있지 않음)을 통과하는 프로필.
     ///
+    /// ``StubPersona`` 로 갈린다 — 명함 교환 검증은 두 기기가 서로 다른 사람이어야 성립한다.
+    ///
     /// - Note: 관리자 UI 테스트가 필요하면 `roles`의 `roleType`을
     ///   `.schoolPresident` 등으로 바꾸면 된다 — `SyncProfileStorageUseCase`(실물)가
     ///   `UserSessionManager.currentRole`에 그대로 반영한다.
-    static let profile = Profile(
+    static var profile: Profile {
+        switch StubPersona.current {
+        case .a: return personaAProfile
+        case .b: return personaBProfile
+        }
+    }
+
+    private static let personaAProfile = Profile(
         memberId: "1",
         name: "김유엠",
         nickname: "유엠",
@@ -50,7 +59,54 @@ enum StubSessionFixtures {
                 responsiblePart: "IOS"
             )
         ],
-        email: "stub@umc.test"
+        email: "stub@umc.test",
+        externalLinks: ProfileExternalLinks(
+            id: "1",
+            linkedIn: "linkedin.com/in/umc-a",
+            instagram: nil,
+            github: "github.com/umc-a",
+            blog: "umc-a.tistory.com",
+            personal: nil
+        )
+    )
+
+    /// 두 번째 신원. **모든 표시 필드가 A와 다르다** — 이름·학교·파트·기수·외부 링크까지.
+    /// 받은 명함이 자기 것인지 상대 것인지 화면만 보고 갈리게 하려는 것이다.
+    private static let personaBProfile = Profile(
+        memberId: "2",
+        name: "박챌린",
+        nickname: "챌린",
+        generations: ["11"],
+        schoolId: "5",
+        schoolName: "중앙대학교",
+        latestChallengerId: "200",
+        latestGisuId: "9",
+        chapterId: "2",
+        chapterName: "GACI",
+        // `UMCPartType(apiValue:)` 가 받는 문자열이어야 한다. 틀리면 조용히 `.admin` 으로
+        // 떨어져 명함이 「운영진」으로 보인다 — 실기기 검증에서 실제로 그랬다.
+        responsiblePart: "SPRINGBOOT",
+        roles: [
+            ProfileRole(
+                id: "2",
+                challengerId: "200",
+                gisu: "11",
+                gisuId: "9",
+                roleType: .schoolPresident,
+                organizationType: .school,
+                organizationId: "5",
+                responsiblePart: "SPRINGBOOT"
+            )
+        ],
+        email: "stub-b@umc.test",
+        externalLinks: ProfileExternalLinks(
+            id: "2",
+            linkedIn: "linkedin.com/in/umc-b",
+            instagram: nil,
+            github: "github.com/umc-b",
+            blog: "umc-b.velog.io",
+            personal: nil
+        )
     )
 
     // MARK: - Home
