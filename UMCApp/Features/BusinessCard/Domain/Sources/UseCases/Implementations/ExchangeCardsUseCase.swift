@@ -82,7 +82,7 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
             let receiveWork = Task { [weak self] in
                 for await payload in receiveStream {
                     guard let self, !Task.isCancelled else { return }
-                    await self.handleReceived(payload)
+                    await self.handleReceived(payload, ownerMemberId: myCard.memberId)
                 }
             }
             stateQueue.sync { self.receiveTask = receiveWork }
@@ -151,9 +151,16 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
 
     // MARK: - Private Function
 
-    private func handleReceived(_ payload: ExchangePayload) async {
+    /// 내 명함이 돌아오면(같은 계정 두 대) 저장도 이벤트도 없다 — 교환 완료 화면이
+    /// 자기 명함을 「받았다」고 띄우는 것보다 아무 일도 없는 게 맞다.
+    private func handleReceived(_ payload: ExchangePayload, ownerMemberId: String) async {
         do {
-            let card = try await saveReceivedCard.execute(payload: payload, exchangeContext: nil)
+            let card = try await saveReceivedCard.execute(
+                payload: payload,
+                ownerMemberId: ownerMemberId,
+                exchangeContext: nil
+            )
+            guard let card else { return }
             yield(.received(card))
         } catch {
             yield(.failed(.transportFailure(underlying: error)))

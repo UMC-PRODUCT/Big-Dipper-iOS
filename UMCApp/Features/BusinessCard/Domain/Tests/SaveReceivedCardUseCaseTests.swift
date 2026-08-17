@@ -28,12 +28,13 @@ struct SaveReceivedCardUseCaseTests {
 
         let saved = try await sut.execute(
             payload: try makePayload(),
+            ownerMemberId: "42",
             exchangeContext: "OT에서 교환"
         )
 
-        #expect(saved.id == "CARD-PEER")
-        #expect(saved.profile.memberId == "7")
-        #expect(saved.exchangeContext == "OT에서 교환")
+        #expect(saved?.id == "CARD-PEER")
+        #expect(saved?.profile.memberId == "7")
+        #expect(saved?.exchangeContext == "OT에서 교환")
         #expect(repository.savedCards.count == 1)
         #expect(repository.savedCards.first?.id == "CARD-PEER")
     }
@@ -46,7 +47,65 @@ struct SaveReceivedCardUseCaseTests {
         let payload = try makePayload()
 
         await #expect(throws: MockError.self) {
-            _ = try await sut.execute(payload: payload, exchangeContext: nil)
+            _ = try await sut.execute(payload: payload, ownerMemberId: "42", exchangeContext: nil)
         }
+    }
+
+    @Test("내 명함은 명함첩에 넣지 않는다 — 자기 QR 스캔·같은 계정 두 대 교환")
+    func skipsOwnCard() async throws {
+        let repository = MockReceivedCardRepository()
+        let sut = SaveReceivedCardUseCase(repository: repository)
+
+        let saved = try await sut.execute(
+            payload: try makePayload(),
+            ownerMemberId: "7",
+            exchangeContext: nil
+        )
+
+        #expect(saved == nil)
+        #expect(repository.savedCards.isEmpty)
+    }
+
+    /// cardLink 가 안 읽히면 `memberId` 가 빈 문자열이 된다. 그때 내 id 까지 비어 있으면
+    /// **모르는 상대를 나 자신으로 오인해 통째로 버린다.** 빈 값끼리는 비교하지 않는다.
+    @Test("memberId를 못 읽은 명함은 거르지 않는다")
+    func keepsCardWithUnreadableMemberId() async throws {
+        let repository = MockReceivedCardRepository()
+        let sut = SaveReceivedCardUseCase(repository: repository)
+        let payload = try ExchangePayload(
+            cardID: "CARD-PEER", name: "상대", nickname: "상대닉", part: "DESIGN",
+            generation: "11", university: "중앙대학교", email: nil, github: nil,
+            linkedIn: nil, blog: nil, avatarURL: nil, cardLink: "not-a-link"
+        )
+
+        let saved = try await sut.execute(
+            payload: payload,
+            ownerMemberId: "",
+            exchangeContext: nil
+        )
+
+        #expect(saved?.profile.memberId == "")
+        #expect(repository.savedCards.count == 1)
+    }
+
+    @Test("딥링크 경로도 내 명함이면 저장하지 않는다")
+    func skipsOwnCardOnDeepLinkPath() async throws {
+        let repository = MockReceivedCardRepository()
+        let sut = SaveReceivedCardUseCase(repository: repository)
+        let mine = MyCard(
+            memberId: "7", name: "나", nickname: "내닉", part: .front(type: .ios),
+            generation: "12", university: "한양대학교", email: nil, github: nil,
+            linkedIn: nil, blog: nil, avatarURL: nil
+        )
+
+        let saved = try await sut.execute(
+            card: mine,
+            cardID: "CARD-7",
+            ownerMemberId: "7",
+            exchangeContext: nil
+        )
+
+        #expect(saved == nil)
+        #expect(repository.savedCards.isEmpty)
     }
 }

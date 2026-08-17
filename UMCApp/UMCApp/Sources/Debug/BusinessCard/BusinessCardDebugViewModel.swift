@@ -143,6 +143,13 @@ final class BusinessCardDebugViewModel {
         await reloadReceivedCards()
     }
 
+    /// 자기 명함이 명함첩에 섞이지 않게 저장 경로에 넘기는 값.
+    /// 아직 내 명함을 못 읽었으면 빈 문자열 — 그 경우 저장 UseCase 가 아무도 거르지 않는다.
+    var ownerMemberId: String {
+        if case .loaded(let card) = myCard { return card.memberId }
+        return ""
+    }
+
     func reloadMyCard(forceRefresh: Bool) async {
         myCard = .loading
         do {
@@ -198,6 +205,7 @@ final class BusinessCardDebugViewModel {
             )
             _ = try await provider.saveReceivedCardUseCase.execute(
                 payload: payload,
+                ownerMemberId: ownerMemberId,
                 exchangeContext: "디버그 저장"
             )
             await reloadReceivedCards()
@@ -378,8 +386,13 @@ final class BusinessCardDebugViewModel {
         do {
             let saved = try await provider.saveReceivedCardUseCase.execute(
                 payload: payload,
+                ownerMemberId: ownerMemberId,
                 exchangeContext: "QR 스캔"
             )
+            guard let saved else {
+                scanLog.insert("내 명함이다 — 명함첩에 넣지 않음", at: 0)
+                return
+            }
             scanLog.insert("저장 완료: \(saved.profile.name) / \(saved.profile.nickname)", at: 0)
             await reloadReceivedCards()
         } catch {
@@ -405,8 +418,13 @@ final class BusinessCardDebugViewModel {
             let saved = try await provider.saveReceivedCardUseCase.execute(
                 card: card,
                 cardID: Self.deepLinkCardID(memberId: memberId),
+                ownerMemberId: ownerMemberId,
                 exchangeContext: "QR 딥링크"
             )
+            guard let saved else {
+                scanLog.insert("내 명함이다 — 명함첩에 넣지 않음", at: 0)
+                return
+            }
             scanLog.insert(
                 "저장 완료: \(saved.profile.name)/\(saved.profile.nickname) "
                 + "· \(saved.profile.part.name) · \(saved.profile.generation)기",
