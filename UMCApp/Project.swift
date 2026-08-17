@@ -21,6 +21,13 @@ let project = Project(
                         "UIColorName": "",
                         "UIImageName": "",
                     ],
+                    // 출시본(AppProduct)이 Debug·Release 양쪽에 갖고 있던
+                    // `INFOPLIST_KEY_UIUserInterfaceStyle = Light` 가 Tuist 이관에서 유실됐다.
+                    // 컬러 토큰 46개에 다크 값이 다 있는데도 출시본이 라이트로 고정해 나갔다 —
+                    // 다크 램프는 Figma 익스포트 잔재고 프로덕션에서 살아있던 적이 없다.
+                    // 시안에도 다크 프레임이 없어서, 검증 안 된 다크를 내보내지 않는다.
+                    // (다크를 정식 지원하려면 시안·시맨틱 별칭 토큰부터 있어야 한다)
+                    "UIUserInterfaceStyle": "Light",
                     "NSBluetoothAlwaysUsageDescription": "주변 명함을 교환하기 위해 블루투스를 사용합니다.",
                     "NSBluetoothPeripheralUsageDescription": "주변 명함을 교환하기 위해 블루투스를 사용합니다.",
                     "NFCReaderUsageDescription": "NFC로 명함 정보를 주고받습니다.",
