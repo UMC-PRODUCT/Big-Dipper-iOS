@@ -16,6 +16,8 @@ let project = featureProject(
         // 전이 의존에 기대지 않고 import하는 모듈을 명시 선언하는 게 이 레포 규약
         // (선례: Features/Community/Project.swift, Features/Auth/Project.swift).
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
+        .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
+        .project(target: "CoreRouting", path: .relativeToRoot("Core/Routing")),
     ],
     includesDomainTests: true,
     domainTestDependencies: [

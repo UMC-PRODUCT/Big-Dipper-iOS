@@ -5,8 +5,6 @@
 //  Created by One on 8/17/26.
 //
 
-import BusinessCardDomain
-
 /// 명함 화면 목적지.
 ///
 /// 명함 화면들은 **마이페이지 탭 스택 위에** 쌓이지만 MyPage 모듈이 소유하지 않는다.
@@ -26,10 +24,4 @@ public enum BusinessCardDestination: Hashable {
 
     /// 근거리 명함 교환 세션 (MP-F06).
     case exchange
-
-    /// 교환 완료 — 방금 받은 명함을 보여준다.
-    ///
-    /// - Parameter card: 교환으로 받은 명함. 완료 화면이 이 값을 그대로 그리므로 목적지가
-    ///   직접 싣는다 — 재조회하면 저장 지연 때문에 빈 화면이 잠깐 보인다.
-    case exchangeCompleted(card: ReceivedCard)
 }
