@@ -12,9 +12,9 @@ import BusinessCardData
 
 /// UWB(Nearby Interaction) 거리·방향 검증 섹션.
 ///
-/// 토큰 교환을 QR로 한다 — 스파이크는 Wi-Fi Aware 연결로 교환했지만, 그러려면 페어링과
-/// entitlement capability가 먼저 갖춰져야 한다. QR로 바꾸면 그 둘 없이도 UWB 자체를
-/// 검증할 수 있다. 제품에서는 Wi-Fi Aware 채널로 교환하는 게 맞다.
+/// 토큰 교환을 QR로 한다 — 스파이크는 Wi-Fi Aware 연결로 교환했지만(현재는 폐기),
+/// 그러려면 페어링과 entitlement capability가 먼저 갖춰져야 한다. QR로 바꾸면 그 둘
+/// 없이도 UWB 자체를 검증할 수 있다. 제품에서는 MPC 채널로 교환한다.
 ///
 /// **두 기기 절차**: 양쪽 다 「내 토큰 QR 만들기」 → 서로 상대 QR을 스캔 → 거리·방향 표시.
 struct NearbyRangingSection: View {
@@ -95,7 +95,7 @@ struct NearbyRangingSection: View {
         } header: {
             Text("UWB — Nearby Interaction 거리·방향")
         } footer: {
-            Text("NI는 명함을 나르지 않는다 — 거리·방향만 준다. 여기서는 토큰을 QR로 교환해 페어링 없이 검증한다. 제품에서는 Wi-Fi Aware 채널로 교환한다.")
+            Text("NI는 명함을 나르지 않는다 — 거리·방향만 준다. 여기서는 토큰을 QR로 교환해 페어링 없이 검증한다. 제품에서는 MPC 채널로 교환한다.")
         }
     }
 

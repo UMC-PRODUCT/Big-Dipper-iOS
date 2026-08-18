@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import CoreNearbyExchange
 
-@Suite("Transport 일반화 — 광고 파생·피어 표시 필드")
+@Suite("Transport 계약 — 피어 표시 필드·Mock 광고")
 struct TransportContractTests {
 
     private func makeCard() throws -> ExchangePayload {
@@ -21,29 +21,7 @@ struct TransportContractTests {
         )
     }
 
-    @Test("BLE 축약 광고는 cardID UUID 앞 8바이트와 version을 파생한다")
-    func advertisementDerivation() throws {
-        let advertisement = BLEAdvertisementPayload(card: try makeCard())
-
-        #expect(advertisement.cardUUIDPrefix.count == 8)
-        #expect(advertisement.version == 2)
-    }
-
-    @Test("cardID가 UUID 문자열이 아니면 UTF-8 앞 8바이트를 0 패딩해 쓴다")
-    func advertisementDerivationFromNonUUID() throws {
-        let card = try ExchangePayload(
-            cardID: "abc", name: "제옹", nickname: "", part: "", generation: "",
-            university: "", email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
-            cardLink: ""
-        )
-
-        let advertisement = BLEAdvertisementPayload(card: card)
-
-        #expect(advertisement.cardUUIDPrefix.count == 8)
-        #expect(advertisement.cardUUIDPrefix.prefix(3) == Data("abc".utf8))
-    }
-
-    @Test("DiscoveredPeer 표시 필드는 기본 nil — BLE 무 PII 정책과 공존한다")
+    @Test("DiscoveredPeer 표시 필드는 기본 nil — 핸드셰이크 전에는 익명이다")
     func peerDisplayFieldsDefaultNil() {
         let peer = DiscoveredPeer(id: "p1", cardUUIDPrefix: Data(), version: 1, flags: 0)
 

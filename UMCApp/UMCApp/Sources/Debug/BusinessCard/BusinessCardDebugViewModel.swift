@@ -62,9 +62,6 @@ final class BusinessCardDebugViewModel {
         case failed(String)
     }
 
-    /// 이 기기에 페어링된 Wi-Fi Aware 기기 이름. 비어 있으면 교환이 성립할 수 없다.
-    private(set) var pairedDeviceNames: [String] = []
-
     /// transport 연결 수립 로그. MPC 는 초대·수락·연결이 델리게이트로 흩어져 있어
     /// 어디서 멈췄는지 이것 없이는 볼 수 없다.
     var transportLog: [String] {
@@ -104,17 +101,12 @@ final class BusinessCardDebugViewModel {
 
     /// transport가 삼킨 실패 원문. `peers: 0`이 "아무도 없음"인지 "브라우저 실패"인지 가른다.
     var transportError: String? {
-        if let mpc = transport as? MPCTransport { return mpc.lastTransportError }
-        return (transport as? WiFiAwareTransport)?.lastTransportError
+        (transport as? MPCTransport)?.lastTransportError
     }
 
     /// 지금 **실제로 주입된** 방식. 토글 값과 다르면 앱을 다시 켜야 한다는 뜻이다.
     var activeChoice: NearbyTransportChoice {
-        switch transport {
-        case is MPCTransport:        return .multipeer
-        case is WiFiAwareTransport:  return .wifiAware
-        default:                     return .mock
-        }
+        transport is MPCTransport ? .multipeer : .mock
     }
     private(set) var eventLog: [String] = []
     private(set) var isExchanging = false
@@ -139,7 +131,6 @@ final class BusinessCardDebugViewModel {
     // MARK: - Function
 
     func loadAll() async {
-        await reloadPairedDevices()
         await reloadMyCard(forceRefresh: false)
         await reloadActivityStat()
         await reloadReceivedCards()
@@ -164,10 +155,6 @@ final class BusinessCardDebugViewModel {
         } catch {
             myCard = .failed(.unknown(message: error.localizedDescription))
         }
-    }
-
-    func reloadPairedDevices() async {
-        pairedDeviceNames = await WiFiAwareTransport.pairedDeviceNames()
     }
 
     func reloadActivityStat() async {

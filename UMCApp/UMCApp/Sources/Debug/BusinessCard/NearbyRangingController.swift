@@ -15,8 +15,8 @@ import simd
 ///
 /// **NI는 데이터 채널이 아니다.** 명함을 나르지 않고 거리·방향만 준다. 그래서 상대의
 /// 디스커버리 토큰을 먼저 다른 경로로 받아야 시작할 수 있다. 스파이크에서는 Wi-Fi Aware
-/// 연결로 토큰을 교환했는데, 검증 화면에서는 **QR로 교환**한다 — 페어링·capability 없이도
-/// UWB 동작을 볼 수 있기 때문이다.
+/// (현재는 폐기) 연결로 토큰을 교환했는데, 검증 화면에서는 **QR로 교환**한다 —
+/// 페어링·capability 없이도 UWB 동작을 볼 수 있기 때문이다.
 ///
 /// - Note: `@unchecked Sendable` — session은 메인에서만 만지고 delegate 콜백은 읽기 전용이다.
 final class NearbyRangingController: NSObject, NISessionDelegate, @unchecked Sendable {

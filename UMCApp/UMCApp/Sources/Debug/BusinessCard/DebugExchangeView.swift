@@ -13,7 +13,7 @@ import UMCFoundation
 /// 명함 카드의 「명함 교환」 버튼이 여는 화면 (시안 명함교환 자리).
 ///
 /// 시뮬레이터에서는 `MockNearbyTransport`가 주입돼 즉시 이벤트가 흐르고, 실기기에서는
-/// Wi-Fi Aware가 붙는다. 페어링된 기기가 없으면 `notPaired`가 뜨는 게 정상이다.
+/// MPC가 붙는다 — 페어링 없이 주변을 탐색하므로 Local Network 권한만 있으면 된다.
 struct DebugExchangeView: View {
 
     // MARK: - Property
@@ -48,26 +48,9 @@ struct DebugExchangeView: View {
                 }
 
                 labeled("주입된 transport", viewModel.transportTypeName)
-                labeled("Wi-Fi Aware 지원", "\(WiFiAwareTransport.isSupported)")
 
                 // "주변에 아무도 없음"과 "브라우저가 실패해 스트림이 닫힘"은 화면에서
-                // 똑같이 peers: 0 으로 보인다. 두 상태를 가르는 값들이다.
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("페어링된 기기 \(viewModel.pairedDeviceNames.count)대")
-                        .font(.callout)
-                    ForEach(Array(viewModel.pairedDeviceNames.enumerated()), id: \.offset) { _, name in
-                        Text("· \(name)").font(.caption).foregroundStyle(.secondary)
-                    }
-                    if viewModel.pairedDeviceNames.isEmpty {
-                        Text("없음 — 「기기 페어링」을 먼저 해야 한다")
-                            .font(.caption).foregroundStyle(.orange)
-                    }
-                }
-
-                Button("페어링 목록 새로고침") {
-                    Task { await viewModel.reloadPairedDevices() }
-                }
-
+                // 똑같이 peers: 0 으로 보인다. 두 상태를 가르는 값이다.
                 if let error = viewModel.transportError {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("transport 실패").font(.footnote.bold()).foregroundStyle(.red)
@@ -76,18 +59,10 @@ struct DebugExchangeView: View {
                             .textSelection(.enabled)
                     }
                 }
-
-                #if canImport(DeviceDiscoveryUI)
-                NavigationLink {
-                    WiFiAwarePairingView()
-                } label: {
-                    Label("기기 페어링", systemImage: "dot.radiowaves.left.and.right")
-                }
-                #endif
             } header: {
                 Text("전송 계층")
             } footer: {
-                Text("Wi-Fi Aware는 페어링된 기기끼리만 연결된다. 먼저 「기기 페어링」으로 상대를 등록해야 한다.")
+                Text("MPC는 페어링 없이 주변을 탐색한다. 실기기에서는 Local Network 권한 팝업을 허용해야 한다.")
             }
 
             Section {

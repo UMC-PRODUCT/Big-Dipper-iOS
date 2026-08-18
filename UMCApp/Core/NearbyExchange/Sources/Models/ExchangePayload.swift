@@ -157,22 +157,3 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         return try decoder.decode(ExchangePayload.self, from: data)
     }
 }
-
-/// BLE 2단계 광고 페이로드 (PRD Q2 결정: Service UUID 16B + cardUUID prefix 8B + version 1B + flags 1B)
-/// 풀 JSON은 GATT 또는 서버 fetch로 수신.
-public struct BLEAdvertisementPayload: Sendable {
-
-    // MARK: - Property
-
-    public let cardUUIDPrefix: Data   // 8 bytes
-    public let version: UInt8         // 1 byte
-    public let flags: UInt8           // 1 byte (기수 6bit, 파트 4bit)
-
-    // MARK: - Init
-
-    public init(cardUUIDPrefix: Data, version: UInt8, flags: UInt8) {
-        self.cardUUIDPrefix = cardUUIDPrefix
-        self.version = version
-        self.flags = flags
-    }
-}

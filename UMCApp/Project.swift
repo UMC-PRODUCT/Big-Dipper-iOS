@@ -28,23 +28,11 @@ let project = Project(
                     // 시안에도 다크 프레임이 없어서, 검증 안 된 다크를 내보내지 않는다.
                     // (다크를 정식 지원하려면 시안·시맨틱 별칭 토큰부터 있어야 한다)
                     "UIUserInterfaceStyle": "Light",
-                    "NSBluetoothAlwaysUsageDescription": "주변 명함을 교환하기 위해 블루투스를 사용합니다.",
-                    "NSBluetoothPeripheralUsageDescription": "주변 명함을 교환하기 위해 블루투스를 사용합니다.",
-                    "NFCReaderUsageDescription": "NFC로 명함 정보를 주고받습니다.",
                     "NSNearbyInteractionUsageDescription": "근거리에서 정확한 명함 교환을 위해 위치를 사용합니다.",
                     "NSCameraUsageDescription": "상대의 명함 QR을 스캔하기 위해 카메라를 사용합니다.",
                     // 명함 QR 화면의 「이미지 저장」(MP-F04). 읽기 없이 추가만 하므로
                     // NSPhotoLibraryUsageDescription(전체 접근)이 아니라 Add 전용 키를 쓴다.
                     "NSPhotoLibraryAddUsageDescription": "내 명함 QR 이미지를 사진 앱에 저장합니다.",
-                    // Wi-Fi Aware 명함 교환 서비스 선언.
-                    // 서비스명은 WiFiAwareTransport의 Constants.serviceName과 반드시 같아야 한다.
-                    // 양방향 교환이라 Publishable(광고)·Subscribable(탐색) 둘 다 선언한다.
-                    "WiFiAwareServices": [
-                        "_umc-card._udp": [
-                            "Publishable": [:],
-                            "Subscribable": [:],
-                        ],
-                    ],
                     "NSLocationWhenInUseUsageDescription": "GPS 기반 스마트 출석 체크를 위해 위치 정보를 사용합니다.",
                     // MultipeerConnectivity 근거리 명함 교환.
                     // 이 두 키가 없으면 MPC 는 시작 자체가 되지 않는다(브라우저/광고 모두 실패).
