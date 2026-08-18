@@ -132,7 +132,7 @@ struct MyPageView: View {
                 systemImage: "person.crop.circle.badge.exclamationmark",
                 description: error.errorDescription ?? "잠시 후 다시 시도해 주세요.",
                 isRetrying: viewModel.myCard.isLoading,
-                retryAction: { await viewModel.loadBusinessCard(forceRefresh: true) }
+                retryAction: { await Self.retryCardAndProfile(viewModel: viewModel) }
             )
         }
     }
@@ -147,6 +147,15 @@ struct MyPageView: View {
     private var cardEditAction: (() -> Void)? {
         guard let profile = viewModel.profileData.value else { return nil }
         return { pathStore.push(MyPageDestination.profile(profileData: profile), on: .mypage) }
+    }
+
+    /// 명함 카드 로드 실패 후 재시도. 진입 시 네트워크 장애로 `profileData`도 함께
+    /// `.failed`가 됐을 수 있다 — 카드만 재시도하면 「명함 편집」 행이 활성 외관인 채
+    /// 무반응으로 남으므로(``cardEditAction``이 `profileData`를 요구) 두 로드를 함께
+    /// 재시도한다. `static`으로 뽑아 뷰 렌더링 없이 테스트한다.
+    static func retryCardAndProfile(viewModel: MyPageViewModel) async {
+        await viewModel.fetchProfile(forceRefresh: true)
+        await viewModel.loadBusinessCard(forceRefresh: true)
     }
 
     // MARK: - Metrics

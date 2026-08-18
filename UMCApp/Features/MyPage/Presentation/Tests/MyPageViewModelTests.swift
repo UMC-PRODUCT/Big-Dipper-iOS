@@ -369,6 +369,33 @@ struct MyPageViewModelLoadBusinessCardTests {
     }
 }
 
+/// 리뷰 지적(Important): `MyPageView`의 카드 retry가 `loadBusinessCard`만 재실행하면,
+/// 진입 시 네트워크 장애로 `profileData`·`myCard`가 함께 `.failed`였을 때 카드만 복구되고
+/// `profileData`는 `.failed`로 남아 「명함 편집」 행이 활성 외관인 채 무반응이 된다
+/// (``MyPageViewModel/isCardEditPending``이 `profileData`만 본다). `MyPageView.retryCardAndProfile`이
+/// 두 로드를 함께 `forceRefresh`로 재시도하는지 뷰 렌더링 없이 고정한다.
+@MainActor
+@Suite("MyPageView.retryCardAndProfile — 카드 retry 시 프로필도 재조회")
+struct MyPageViewRetryCardAndProfileTests {
+
+    @Test("retry는 fetchProfile과 loadBusinessCard를 forceRefresh로 함께 재실행한다")
+    func retryRefetchesBothProfileAndCard() async {
+        let repository = StubRepository(result: .success(makeProfileData(challengeId: 1)))
+        let card = makeMyCard(memberId: "1")
+        let cardRecorder = RecordingFetchMyCardUseCase(result: .success(card))
+        var provider = StubBusinessCardUseCaseProvider(fetchMyCardResult: .success(card))
+        provider.fetchMyCardUseCaseOverride = cardRecorder
+        let viewModel = makeViewModel(repository: repository, businessCardProvider: provider)
+
+        await MyPageView.retryCardAndProfile(viewModel: viewModel)
+
+        #expect(repository.lastForceRefresh == true, "카드만 재시도하면 프로필은 실패 상태로 남는다")
+        #expect(cardRecorder.lastForceRefresh == true)
+        #expect(viewModel.profileData.value?.challengeId == 1)
+        #expect(viewModel.myCard.value == card)
+    }
+}
+
 // MARK: - Helpers
 
 private enum GenericTestError: Error { case boom }
