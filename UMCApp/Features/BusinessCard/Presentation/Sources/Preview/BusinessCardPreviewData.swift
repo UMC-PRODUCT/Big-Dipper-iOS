@@ -42,7 +42,10 @@ public enum BusinessCardPreviewData {
 
     // MARK: - Received Cards
 
-    /// 파트 7종(`UMCPartType.allCases`)이 모두 나오는 명함첩 시드.
+    /// 파트 7종(`UMCPartType.allCases`)에 운영진(`.admin`)까지 모두 나오는 명함첩 시드.
+    ///
+    /// `.admin`은 associated value 제약으로 `allCases` 밖에 있지만 「파트 없는 운영진」
+    /// 이라는 실제 역할이다 — 빼면 admin 배지 렌더 경로가 프리뷰에 전혀 나오지 않는다.
     public static let receivedCards: [ReceivedCard] = zip(UMCPartType.allCases, identities)
         .enumerated()
         .map { index, pair in
@@ -66,6 +69,7 @@ public enum BusinessCardPreviewData {
                 exchangeContext: index == .zero ? "OT에서 교환" : nil
             )
         }
+        + [adminReceivedCard]
 
     /// 단건 프리뷰(교환 완료 화면 등)가 대표로 쓰는 한 장.
     public static var receivedCard: ReceivedCard {
@@ -73,6 +77,26 @@ public enum BusinessCardPreviewData {
     }
 
     // MARK: - Private
+
+    /// 운영진(파트 없음) 명함. `exchangedAt`은 파트 7장(-0h…-6h)에 이어 -7h.
+    private static let adminReceivedCard = ReceivedCard(
+        id: UMCPartType.admin.apiValue,
+        profile: MyCard(
+            memberId: UMCPartType.admin.apiValue,
+            name: "서지우",
+            nickname: "지우",
+            part: .admin,
+            generation: "8",
+            university: "세종대학교",
+            email: nil,
+            github: nil,
+            linkedIn: nil,
+            blog: nil,
+            avatarURL: nil
+        ),
+        exchangedAt: referenceDate.addingTimeInterval(-7 * 3_600),
+        exchangeContext: nil
+    )
 
     /// `name`/`nickname`/`university`/`generation` 더미 묶음.
     private struct Identity {
