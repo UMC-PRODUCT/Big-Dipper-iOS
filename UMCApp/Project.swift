@@ -11,7 +11,7 @@ let project = Project(
             product: .app,
             // App Store에 등록된 기존 앱 레코드와 동일해야 한다. 이 값이 바뀌면 별개 앱이 되어
             // 기존 카카오/Firebase/Google OAuth 등록이 전부 무효화된다.
-            bundleId: "dev.umc.product.debug",
+            bundleId: "com.umc.product",
             deploymentTargets: .iOS("26.4"),
             infoPlist: .extendingDefault(
                 with: [
@@ -154,7 +154,7 @@ let project = Project(
             name: "UMCAppTests",
             destinations: .iOS,
             product: .unitTests,
-            bundleId: "dev.umc.product.debug.tests",
+            bundleId: "com.umc.product.tests",
             deploymentTargets: .iOS("26.4"),
             infoPlist: .default,
             buildableFolders: [
