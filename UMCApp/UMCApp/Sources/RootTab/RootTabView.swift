@@ -8,6 +8,7 @@
 import SwiftUI
 
 import ActivityPresentation
+import BusinessCardPresentation
 import CommunityDomain
 import CommunityPresentation
 import CoreDesignSystem
@@ -116,6 +117,9 @@ struct RootTabView: View {
                         push: { pathStore.push($0, on: tab) }
                     )
                 }
+                .navigationDestination(for: BusinessCardDestination.self) { destination in
+                    BusinessCardRoutingView(destination: destination, container: di)
+                }
                 #if DEBUG
                 .navigationDestination(for: BusinessCardDebugDestination.self) { _ in
                     BusinessCardDebugView(container: di)
@@ -124,14 +128,13 @@ struct RootTabView: View {
         }
     }
 
-    /// 탭별 루트 화면. 실연결된 탭은 Feature 화면을, 아직인 탭은 placeholder를 표시한다.
+    /// 탭별 루트 화면. 5개 탭 모두 실연결된 Feature 화면을 표시한다.
     ///
-    /// Home/Notice/Activity/Community가 실연결 상태다. Activity와 Community는 자기 목적지
-    /// (`ActivityDestination`/`CommunityDestination`) 등록까지 각 Feature 루트가 맡으므로,
-    /// App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다. 반면 Home/Notice는 목적지가
-    /// App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
-    ///
-    /// - Note: MyPage도 이식된 모듈이 있지만, 탭 실연결은 후속 이슈에서 진행한다.
+    /// Activity와 Community는 자기 목적지(`ActivityDestination`/`CommunityDestination`) 등록까지
+    /// 각 Feature 루트가 맡으므로, App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다. 반면
+    /// Home/Notice는 목적지가 App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
+    /// MyPage는 명함 진입만 중립 enum(`BusinessCardEntry`)으로 받아 App 셸이
+    /// `BusinessCardDestination`으로 번역해 push한다.
     @ViewBuilder
     private func tabContent(_ tab: NavigationTab) -> some View {
         switch tab {
@@ -177,21 +180,19 @@ struct RootTabView: View {
                 }
             )
         case .mypage:
-            MyPageFeatureView()
-                #if DEBUG
-                // 명함 기능 계층(#1193~#1196) 검증 화면 진입점.
-                // MyPage 모듈을 건드리지 않으려고 App 셸에서 툴바로만 얹는다.
-                // 제품 진입점(v3 마이페이지)이 붙으면 이 블록을 지운다.
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            pathStore.push(BusinessCardDebugDestination.harness, on: .mypage)
-                        } label: {
-                            Image(systemName: "ladybug")
-                        }
-                    }
-                }
-                #endif
+            MyPageFeatureView { entry in
+                pathStore.push(businessCardDestination(for: entry), on: .mypage)
+            }
+        }
+    }
+
+    /// 마이페이지의 중립 진입 요청을 명함 목적지로 번역한다.
+    /// (Feature끼리 직접 목적지를 넘기지 않는 이 레포 규약 — App 셸이 중개한다.)
+    private func businessCardDestination(for entry: BusinessCardEntry) -> BusinessCardDestination {
+        switch entry {
+        case .receivedCards: .receivedCards
+        case .cardQR: .cardQR
+        case .exchange: .exchange
         }
     }
 
