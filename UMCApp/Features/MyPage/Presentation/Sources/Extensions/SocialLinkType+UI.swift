@@ -5,6 +5,7 @@
 //  Created by euijjang97 on 8/10/26.
 //
 
+import CoreUIComponents
 import MyPageDomain
 import SwiftUI
 
@@ -13,15 +14,19 @@ import SwiftUI
 /// 도메인 열거형은 서버 문자열만 알고, 아이콘·라벨은 Presentation에서 붙인다.
 public extension SocialLinkType {
 
-    /// 링크 종류를 나타내는 SF Symbol 이름
-    var icon: String {
+    /// 링크 종류의 브랜드 아이콘 (컬러, 32×32 라운드 8 틀에 얹는다).
+    ///
+    /// 시안(`Figma 12736:32709` 외부 링크 · `12804:30609` 외부 프로필 링크)이 SF Symbol
+    /// 이 아니라 서비스 브랜드 이미지를 쓴다 — 설정·프로필 수정 두 화면이 같은 에셋을
+    /// 공유한다.
+    var brandIcon: Image {
         switch self {
         case .github:
-            return "chevron.left.forwardslash.chevron.right"
+            return .githubColor
         case .linkedin:
-            return "person.crop.rectangle"
+            return .linkedInColor
         case .blog:
-            return "text.book.closed"
+            return .blogColor
         }
     }
 
@@ -46,18 +51,6 @@ public extension SocialLinkType {
             return "https://linkedin.com/in/yourprofile"
         case .blog:
             return "https://yourblog.com"
-        }
-    }
-
-    /// 아이콘 배경에 사용하는 테마 색상
-    var color: Color {
-        switch self {
-        case .github:
-            return .black
-        case .linkedin:
-            return .blue
-        case .blog:
-            return .brown
         }
     }
 }

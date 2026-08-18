@@ -56,11 +56,11 @@ public struct ProfileLinkSection: View {
         Button(action: {
             open(linkType)
         }, label: {
+            // 시안(12736:32709)은 SF Symbol 타일이 아니라 서비스 브랜드 이미지를 쓴다.
             MyPageSectionRow(
-                systemIcon: linkType.icon,
+                brandIcon: linkType.brandIcon,
                 title: linkType.title,
-                rightImage: "arrow.up.right",
-                iconBackgroundColor: linkType.color
+                rightImage: "arrow.up.right"
             )
         })
         .buttonStyle(.borderless)
