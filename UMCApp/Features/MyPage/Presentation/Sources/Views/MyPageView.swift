@@ -62,7 +62,8 @@ struct MyPageView: View {
                     BusinessCardSection(
                         receivedCardCount: viewModel.activityStat.receivedCardCount,
                         onReceivedCards: { onOpenBusinessCard(.receivedCards) },
-                        onCardEdit: openCardEdit
+                        onCardEdit: cardEditAction,
+                        isCardEditPending: viewModel.isCardEditPending
                     )
 
                     MyActivitySection(studyCount: viewModel.activityStat.studyCount)
@@ -138,14 +139,14 @@ struct MyPageView: View {
 
     // MARK: - Function
 
-    /// 명함 편집(프로필 상세)으로 이동한다.
-    ///
-    /// 재조회하지 않고 루트가 이미 로드해 둔 스냅샷을 싣는다 — `MyPageDestination.profile`의
-    /// 문서 주석과 같은 이유(어긋난 값으로 편집이 시작되는 것을 막기 위함)다. 스냅샷이 아직
-    /// 없으면(로딩 중·실패) 조용히 무시한다 — 편집 화면을 빈 값으로 열 수는 없다.
-    private func openCardEdit() {
-        guard let profile = viewModel.profileData.value else { return }
-        pathStore.push(MyPageDestination.profile(profileData: profile), on: .mypage)
+    /// 명함 편집(프로필 상세)으로 이동하는 액션. 스냅샷이 아직 없으면(로딩 중·실패) `nil` —
+    /// `BusinessCardSection`이 이를 받아 행을 비활성화한다(``MyPageViewModel/isCardEditPending``
+    /// 이 로딩 중인 구간의 진행 표시를 함께 맡는다). `nil`이 아닐 때도 재조회하지 않고 루트가
+    /// 이미 로드해 둔 스냅샷을 싣는다 — `MyPageDestination.profile`의 문서 주석과 같은 이유
+    /// (어긋난 값으로 편집이 시작되는 것을 막기 위함)다.
+    private var cardEditAction: (() -> Void)? {
+        guard let profile = viewModel.profileData.value else { return nil }
+        return { pathStore.push(MyPageDestination.profile(profileData: profile), on: .mypage) }
     }
 
     // MARK: - Metrics

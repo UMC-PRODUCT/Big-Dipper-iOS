@@ -171,6 +171,62 @@ struct MyPageViewModelTests {
     }
 }
 
+/// 리뷰 지적(Important): `myCard`는 프로필 응답 도착 즉시 `.loaded`라 카드가 그려지는데,
+/// `profileData`는 `/member-oauth/me` 왕복까지 끝나야 `.loaded`라 그 사이 「명함 편집」 탭이
+/// 조용히 씹히는 창이 매 진입마다 생겼다. `isCardEditPending`이 그 창을 뷰에 알려 행을
+/// 비활성화(+진행 표시)하게 한다 — 이 스위트는 `profileData`의 4개 상태 전이마다
+/// `isCardEditPending`이 옳은 값을 내는지 고정한다.
+@MainActor
+@Suite("MyPageViewModel — isCardEditPending (명함 편집 무반응 창 방지)")
+struct MyPageViewModelCardEditPendingTests {
+
+    @Test("초기 상태(.idle)에서는 pending")
+    func idleIsPending() {
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1)))
+        )
+        #expect(viewModel.isCardEditPending == true)
+    }
+
+    @Test("fetchProfile 진행 중(.loading)에도 pending")
+    func loadingIsPending() async {
+        let repository = SlowStubRepository(
+            profile: makeProfileData(challengeId: 1),
+            delayNanoseconds: 100_000_000  // 0.1s
+        )
+        let viewModel = makeViewModel(repository: repository)
+
+        let task = Task { await viewModel.fetchProfile() }
+        // fetchProfile이 .loading 세팅까지 진행되도록 양보
+        await Task.yield()
+
+        #expect(viewModel.profileData.isLoading == true)
+        #expect(viewModel.isCardEditPending == true)
+
+        await task.value
+    }
+
+    @Test("fetchProfile 성공(.loaded) 후에는 pending 해제")
+    func loadedResolvesPending() async {
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1)))
+        )
+
+        await viewModel.fetchProfile()
+
+        #expect(viewModel.isCardEditPending == false)
+    }
+
+    @Test("fetchProfile 실패(.failed) 후에는 pending 해제(무한 스피너를 두지 않는다)")
+    func failedResolvesPending() async {
+        let viewModel = makeViewModel(repository: ThrowingRepository(error: GenericTestError.boom))
+
+        await viewModel.fetchProfile()
+
+        #expect(viewModel.isCardEditPending == false)
+    }
+}
+
 @MainActor
 @Suite("MyPageViewModel — loadBusinessCard")
 struct MyPageViewModelLoadBusinessCardTests {

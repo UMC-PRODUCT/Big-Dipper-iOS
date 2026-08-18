@@ -17,24 +17,30 @@ public struct BusinessCardSection: View {
     private let sectionType: MyPageSectionType
     private let receivedCardCount: String
     private let onReceivedCards: () -> Void
-    private let onCardEdit: () -> Void
+    private let onCardEdit: (() -> Void)?
+    private let isCardEditPending: Bool
 
     // MARK: - Init
 
     /// - Parameters:
     ///   - receivedCardCount: 받은 명함 수(서버 정수는 절대규칙 #2에 따라 String).
     ///   - onReceivedCards: 명함첩(받은 명함 그리드)으로 이동.
-    ///   - onCardEdit: 명함 편집(프로필 상세) 으로 이동.
+    ///   - onCardEdit: 명함 편집(프로필 상세)으로 이동. 편집에 필요한 프로필 스냅샷이 아직
+    ///     없으면(로딩 중·실패) `nil` — 행이 죽은 탭 없이 비활성화된다.
+    ///   - isCardEditPending: `true`면 스냅샷 로딩 중이라는 뜻 — 행이 chevron 대신 진행
+    ///     표시를 보여준다(`onCardEdit`이 `nil`이어도 무반응처럼 보이지 않게).
     public init(
         sectionType: MyPageSectionType = .businessCard,
         receivedCardCount: String,
         onReceivedCards: @escaping () -> Void,
-        onCardEdit: @escaping () -> Void
+        onCardEdit: (() -> Void)?,
+        isCardEditPending: Bool = false
     ) {
         self.sectionType = sectionType
         self.receivedCardCount = receivedCardCount
         self.onReceivedCards = onReceivedCards
         self.onCardEdit = onCardEdit
+        self.isCardEditPending = isCardEditPending
     }
 
     // MARK: - Body
@@ -58,7 +64,8 @@ public struct BusinessCardSection: View {
                     systemIcon: "square.and.pencil",
                     iconColor: MyPageListIconColor.blue,
                     title: "명함 편집",
-                    action: onCardEdit
+                    action: onCardEdit,
+                    isPending: isCardEditPending
                 )
             }
         }

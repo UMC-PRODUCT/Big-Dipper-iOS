@@ -29,6 +29,19 @@ public final class MyPageViewModel {
     /// 사용자 프로필 데이터를 담는 Loadable 상태.
     public private(set) var profileData: Loadable<ProfileData> = .idle
 
+    /// 명함 편집 진입이 아직 준비되지 않았다.
+    ///
+    /// `myCard`는 프로필 응답이 도착하는 즉시 `.loaded`가 되지만, `profileData`는 이어지는
+    /// `/member-oauth/me` 왕복(``syncConnectedSocials``)까지 끝나야 `.loaded`가 된다 —
+    /// 그래서 매 진입마다 "명함 카드는 떠 있는데 편집 스냅샷은 아직"인 구간이 생긴다. 이
+    /// 구간에는 명함 편집 행을 비활성화해 조용히 씹히는 탭을 막는다(뷰가 소비).
+    public var isCardEditPending: Bool {
+        switch profileData {
+        case .idle, .loading: return true
+        case .loaded, .failed: return false
+        }
+    }
+
     /// 내 명함(v3 루트 카드). BusinessCardDomain이 정본 프로필 파이프라인에서 파생시킨다.
     public private(set) var myCard: Loadable<MyCard> = .idle
 

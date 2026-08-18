@@ -63,6 +63,10 @@ struct MyPageListDivider: View {
 ///
 /// `action`이 `nil`이면 탭 제스처를 아예 달지 않는다 — 목적지가 없는 행에 죽은 탭을
 /// 만들지 않기 위해서다(나의 활동 섹션이 이 경로를 쓴다).
+///
+/// `isPending`이 `true`면 `action`이 있어도 탭을 막고 chevron 대신 진행 표시를 보여준다 —
+/// 목적지는 있는데 아직 필요한 데이터가 도착하지 않은 경우다(예: 명함 편집이 프로필 스냅샷을
+/// 기다리는 동안). 목적지가 아예 없는 행과 달리 "곧 활성화될 것"이라는 피드백을 준다.
 struct MyPageListRow: View {
 
     private enum Constants {
@@ -73,6 +77,7 @@ struct MyPageListRow: View {
         static let iconGlyphSize: CGFloat = 17
         static let trailingSpacing: CGFloat = 8
         static let chevronSize: CGFloat = 17
+        static let pendingOpacity: CGFloat = 0.6
     }
 
     let systemIcon: String
@@ -80,14 +85,16 @@ struct MyPageListRow: View {
     let title: String
     var value: String? = nil
     var action: (() -> Void)? = nil
+    var isPending: Bool = false
 
     var body: some View {
         Group {
-            if let action {
+            if let action, !isPending {
                 Button(action: action) { rowContent }
                     .buttonStyle(.plain)
             } else {
                 rowContent
+                    .opacity(isPending ? Constants.pendingOpacity : 1)
             }
         }
     }
@@ -107,9 +114,14 @@ struct MyPageListRow: View {
                         .appFont(.callout, color: .grey500)
                 }
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: Constants.chevronSize))
-                    .foregroundStyle(Color.grey500)
+                if isPending {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: Constants.chevronSize))
+                        .foregroundStyle(Color.grey500)
+                }
             }
         }
         .frame(height: Constants.rowHeight)
