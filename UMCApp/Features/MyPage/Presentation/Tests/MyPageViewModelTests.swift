@@ -9,6 +9,8 @@ import Testing
 import Foundation
 import UMCFoundation
 import AuthDomain
+import BusinessCardDomain
+import BusinessCardPresentation
 import CoreDI
 import UMCFoundation
 import CoreDomain
@@ -168,15 +170,178 @@ struct MyPageViewModelTests {
     }
 }
 
+@MainActor
+@Suite("MyPageViewModel — loadBusinessCard")
+struct MyPageViewModelLoadBusinessCardTests {
+
+    @Test("초기 상태는 .idle, activityStat은 .empty")
+    func initialStateIsIdle() {
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1)))
+        )
+        #expect(viewModel.myCard == .idle)
+        #expect(viewModel.activityStat == .empty)
+    }
+
+    @Test("성공 시 .loaded(card)와 activityStat이 함께 채워진다")
+    func loadSuccessFillsCardAndStat() async {
+        let card = makeMyCard(memberId: "7")
+        let stat = ActivityStat(
+            receivedCardCount: "12", studyCount: "3", activityCount: "1", bookmarkCount: "0"
+        )
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: StubBusinessCardUseCaseProvider(
+                fetchMyCardResult: .success(card),
+                activityStat: stat
+            )
+        )
+
+        await viewModel.loadBusinessCard()
+
+        #expect(viewModel.myCard.value == card)
+        #expect(viewModel.activityStat == stat)
+    }
+
+    @Test("AppError 발생 시 .failed로 전이")
+    func appErrorPropagatesToFailed() async {
+        let error = AppError.unknown(message: "boom")
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: StubBusinessCardUseCaseProvider(
+                fetchMyCardResult: .failure(error)
+            )
+        )
+
+        await viewModel.loadBusinessCard()
+
+        #expect(viewModel.myCard.error == error)
+    }
+
+    @Test("일반 Error 발생 시 .failed(.unknown)으로 전이")
+    func genericErrorWrappedAsUnknown() async {
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: StubBusinessCardUseCaseProvider(
+                fetchMyCardResult: .failure(GenericTestError.boom)
+            )
+        )
+
+        await viewModel.loadBusinessCard()
+
+        guard case .failed(let appError) = viewModel.myCard,
+              case .unknown(let message) = appError else {
+            Issue.record("Expected .failed(.unknown), got \(viewModel.myCard)")
+            return
+        }
+        #expect(message.contains("boom") || !message.isEmpty)
+    }
+
+    @Test("forceRefresh: true는 UseCase까지 그대로 전달한다")
+    func forceRefreshIsPassedThroughToUseCase() async {
+        let card = makeMyCard(memberId: "1")
+        let recorder = RecordingFetchMyCardUseCase(result: .success(card))
+        var provider = StubBusinessCardUseCaseProvider(fetchMyCardResult: .success(card))
+        provider.fetchMyCardUseCaseOverride = recorder
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+
+        await viewModel.loadBusinessCard(forceRefresh: true)
+
+        #expect(recorder.lastForceRefresh == true)
+    }
+
+    @Test("로딩 중 중복 호출은 무시 (UseCase 1회만 호출)")
+    func duplicateLoadWhileLoadingIsIgnored() async {
+        let card = makeMyCard(memberId: "1")
+        let recorder = SlowFetchMyCardUseCase(
+            result: .success(card), delayNanoseconds: 100_000_000
+        )
+        var provider = StubBusinessCardUseCaseProvider(fetchMyCardResult: .success(card))
+        provider.fetchMyCardUseCaseOverride = recorder
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+
+        let first = Task { await viewModel.loadBusinessCard() }
+        await Task.yield()
+
+        await viewModel.loadBusinessCard()
+        await first.value
+
+        #expect(recorder.callCount == 1)
+        #expect(viewModel.myCard.value == card)
+    }
+}
+
 // MARK: - Helpers
 
 private enum GenericTestError: Error { case boom }
+
+private func makeMyCard(memberId: String) -> MyCard {
+    MyCard(
+        memberId: memberId,
+        name: "테스트",
+        nickname: "tester",
+        part: .pm,
+        generation: "12",
+        university: "UMC대학교",
+        email: nil,
+        github: nil,
+        linkedIn: nil,
+        blog: nil,
+        avatarURL: nil
+    )
+}
+
+private final class RecordingFetchMyCardUseCase: FetchMyCardUseCaseProtocol, @unchecked Sendable {
+    private let result: Result<MyCard, Error>
+    private(set) var lastForceRefresh: Bool?
+
+    init(result: Result<MyCard, Error>) {
+        self.result = result
+    }
+
+    func execute(forceRefresh: Bool) async throws -> MyCard {
+        lastForceRefresh = forceRefresh
+        return try result.get()
+    }
+}
+
+private final class SlowFetchMyCardUseCase: FetchMyCardUseCaseProtocol, @unchecked Sendable {
+    private let result: Result<MyCard, Error>
+    private let delayNanoseconds: UInt64
+    private let lock = NSLock()
+    private var _callCount = 0
+
+    var callCount: Int {
+        lock.lock(); defer { lock.unlock() }
+        return _callCount
+    }
+
+    init(result: Result<MyCard, Error>, delayNanoseconds: UInt64) {
+        self.result = result
+        self.delayNanoseconds = delayNanoseconds
+    }
+
+    func execute(forceRefresh: Bool) async throws -> MyCard {
+        lock.lock()
+        _callCount += 1
+        lock.unlock()
+        try await Task.sleep(nanoseconds: delayNanoseconds)
+        return try result.get()
+    }
+}
 
 @MainActor
 private func makeViewModel(
     repository: MyPageRepositoryProtocol,
     oauthResult: Result<[MemberOAuth], Error> = .success([]),
-    previewProfileData: ProfileData? = nil
+    previewProfileData: ProfileData? = nil,
+    businessCardProvider: BusinessCardUseCaseProviding = StubBusinessCardUseCaseProvider()
 ) -> MyPageViewModel {
     let container = DIContainer()
     container.register(MyPageRepositoryProtocol.self) { repository }
@@ -190,6 +355,7 @@ private func makeViewModel(
         StubAddMemberOAuthUseCase(result: oauthResult)
     }
     container.register(LoginUseCaseProtocol.self) { StubLoginUseCase() }
+    container.register(BusinessCardUseCaseProviding.self) { businessCardProvider }
     #if DEBUG
     if let preview = previewProfileData {
         return MyPageViewModel(container: container, previewProfileData: preview)

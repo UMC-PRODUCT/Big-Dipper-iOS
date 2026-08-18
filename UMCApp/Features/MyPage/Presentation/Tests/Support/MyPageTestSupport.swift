@@ -9,6 +9,9 @@ import Foundation
 import UIKit
 import UMCFoundation
 import CoreDomain
+import CoreNearbyExchange
+import BusinessCardDomain
+import BusinessCardPresentation
 import MyPageDomain
 @testable import MyPagePresentation
 
@@ -237,4 +240,116 @@ func makeStubImage() -> UIImage {
 /// Mock Repository를 실제 UseCase Provider에 주입합니다.
 func makeUseCaseProvider(_ repository: MockMyPageRepository) -> MyPageUseCaseProvider {
     MyPageUseCaseProvider(repository: repository)
+}
+
+// MARK: - Stub BusinessCard UseCase Provider
+
+/// `BusinessCardUseCaseProviding`의 테스트용 스텁 (Presentation 타깃 전용).
+///
+/// `MyPageViewModel.loadBusinessCard`가 실제로 호출하는 두 UseCase만 동작하는 스텁으로
+/// 채운다. 나머지(교환·QR·명함첩 등)는 명함 화면 전용이라 이 경로에서 호출될 일이 없어
+/// `fatalError`로 오배선을 드러낸다 (``MockMyPageRepository``와 같은 컨벤션).
+struct StubBusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
+    var fetchMyCardResult: Result<MyCard, Error> = .failure(StubBusinessCardError.notStubbed)
+    var activityStat: ActivityStat = .empty
+    /// 호출 기록(횟수·인자)이 필요한 테스트가 기본 스텁 대신 주입한다.
+    var fetchMyCardUseCaseOverride: FetchMyCardUseCaseProtocol?
+
+    var fetchMyCardUseCase: FetchMyCardUseCaseProtocol {
+        fetchMyCardUseCaseOverride ?? StubFetchMyCardUseCase(result: fetchMyCardResult)
+    }
+    var fetchActivityStatUseCase: FetchActivityStatUseCaseProtocol {
+        StubFetchActivityStatUseCase(stat: activityStat)
+    }
+
+    var fetchPeerCardUseCase: FetchPeerCardUseCaseProtocol { NotStubbedFetchPeerCardUseCase() }
+    var fetchReceivedCardsUseCase: FetchReceivedCardsUseCaseProtocol {
+        NotStubbedFetchReceivedCardsUseCase()
+    }
+    var saveReceivedCardUseCase: SaveReceivedCardUseCaseProtocol {
+        NotStubbedSaveReceivedCardUseCase()
+    }
+    var deleteReceivedCardUseCase: DeleteReceivedCardUseCaseProtocol {
+        NotStubbedDeleteReceivedCardUseCase()
+    }
+    var generateCardQRUseCase: GenerateCardQRUseCaseProtocol { NotStubbedGenerateCardQRUseCase() }
+    var exchangeCardsUseCase: ExchangeCardsUseCaseProtocol { NotStubbedExchangeCardsUseCase() }
+}
+
+enum StubBusinessCardError: Error, Equatable {
+    case notStubbed
+}
+
+private struct StubFetchMyCardUseCase: FetchMyCardUseCaseProtocol {
+    let result: Result<MyCard, Error>
+
+    func execute(forceRefresh: Bool) async throws -> MyCard {
+        try result.get()
+    }
+}
+
+private struct StubFetchActivityStatUseCase: FetchActivityStatUseCaseProtocol {
+    let stat: ActivityStat
+
+    func execute() async -> ActivityStat {
+        stat
+    }
+}
+
+private struct NotStubbedFetchPeerCardUseCase: FetchPeerCardUseCaseProtocol {
+    func execute(memberId: String) async throws -> MyCard {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+}
+
+private struct NotStubbedFetchReceivedCardsUseCase: FetchReceivedCardsUseCaseProtocol {
+    func execute(query: String?) async throws -> [ReceivedCard] {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+}
+
+private struct NotStubbedSaveReceivedCardUseCase: SaveReceivedCardUseCaseProtocol {
+    func execute(
+        payload: ExchangePayload,
+        ownerMemberId: String,
+        exchangeContext: String?
+    ) async throws -> ReceivedCard? {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+
+    func execute(
+        card: MyCard,
+        cardID: String,
+        ownerMemberId: String,
+        exchangeContext: String?
+    ) async throws -> ReceivedCard? {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+}
+
+private struct NotStubbedDeleteReceivedCardUseCase: DeleteReceivedCardUseCaseProtocol {
+    func execute(id: String) async throws {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+}
+
+private struct NotStubbedGenerateCardQRUseCase: GenerateCardQRUseCaseProtocol {
+    func execute(for card: MyCard) throws -> CGImage {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+}
+
+private final class NotStubbedExchangeCardsUseCase:
+    ExchangeCardsUseCaseProtocol, @unchecked Sendable {
+    func start(myCard: MyCard) -> AsyncStream<ExchangeEvent> {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+
+    func send(myCard: MyCard, to peer: DiscoveredPeer) async throws {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+
+    func stop() async {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
 }
