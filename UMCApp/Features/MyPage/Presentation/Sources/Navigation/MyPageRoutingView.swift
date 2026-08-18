@@ -36,6 +36,9 @@ struct MyPageRoutingView: View {
 
         case .myActivePosts(let logType):
             MyActivePostsView(container: container, logType: logType)
+
+        case .settings:
+            MyPageSettingsView(container: container)
         }
     }
 }

@@ -68,6 +68,7 @@ public enum NavigationTitle {
     public enum MyPage: String, NavigationTitleRepresentable {
         case root = "마이 페이지"
         case profile = "프로필"
+        case settings = "설정"
         case writtenPosts = "내가 쓴 글"
         case commentedPosts = "댓글 단 글"
         case scrappedPosts = "스크랩"
