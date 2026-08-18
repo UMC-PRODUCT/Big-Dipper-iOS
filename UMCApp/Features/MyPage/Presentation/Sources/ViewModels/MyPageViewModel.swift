@@ -6,6 +6,8 @@
 //
 
 import AuthDomain
+import BusinessCardDomain
+import BusinessCardPresentation
 import CommunityDomain
 import CoreDI
 import CoreDomain
@@ -26,11 +28,19 @@ public final class MyPageViewModel {
     /// 사용자 프로필 데이터를 담는 Loadable 상태.
     public private(set) var profileData: Loadable<ProfileData> = .idle
 
+    /// 내 명함(v3 루트 카드). BusinessCardDomain이 정본 프로필 파이프라인에서 파생시킨다.
+    public private(set) var myCard: Loadable<MyCard> = .idle
+
+    /// v3 루트 행 우측 카운트(받은 명함·스터디·활동·북마크). 조회 실패 소스는 "0"으로
+    /// 채워져 오므로(``ActivityStat/empty``) 별도 실패 상태를 두지 않는다.
+    public private(set) var activityStat: ActivityStat = .empty
+
     /// Alert 표시를 위한 프롬프트 상태 (확인/취소 다이얼로그).
     public var alertPrompt: AlertPrompt?
 
     private let container: DIContainer
     private let myPageProvider: MyPageUseCaseProviding
+    private let businessCardProvider: BusinessCardUseCaseProviding
     private let fetchMyOAuthUseCase: FetchMyOAuthUseCaseProtocol
     private let addMemberOAuthUseCase: AddMemberOAuthUseCaseProtocol
     private let loginUseCase: LoginUseCaseProtocol
@@ -48,6 +58,7 @@ public final class MyPageViewModel {
     ) {
         self.container = container
         self.myPageProvider = container.resolve(MyPageUseCaseProviding.self)
+        self.businessCardProvider = container.resolve(BusinessCardUseCaseProviding.self)
         self.fetchMyOAuthUseCase = container.resolve(FetchMyOAuthUseCaseProtocol.self)
         self.addMemberOAuthUseCase = container.resolve(AddMemberOAuthUseCaseProtocol.self)
         self.loginUseCase = container.resolve(LoginUseCaseProtocol.self)
@@ -97,6 +108,39 @@ public final class MyPageViewModel {
             profileData = previousState
         } catch {
             profileData = .failed(.unknown(message: error.localizedDescription))
+        }
+    }
+
+    /// 내 명함과 v3 루트 행 카운트를 조회합니다.
+    ///
+    /// `fetchProfile`과 별개 상태·별개 UseCase다 — 명함은 같은 정본 프로필 캐시에서 파생되지만
+    /// (``BusinessCardUseCaseProviding``), 화면이 그 캐시를 두 번 조회한다고 왕복이 늘지는 않는다.
+    /// 에러 분기는 `fetchProfile`과 동일한 규칙을 따른다.
+    ///
+    /// - Parameter forceRefresh: `true`이면 프로필 캐시를 우회해 서버 최신으로 갱신한다.
+    @MainActor
+    public func loadBusinessCard(forceRefresh: Bool = false) async {
+        if myCard.isLoading { return }
+
+        let previousState = myCard
+        myCard = .loading
+
+        activityStat = await businessCardProvider.fetchActivityStatUseCase.execute()
+
+        do {
+            let card = try await businessCardProvider.fetchMyCardUseCase.execute(
+                forceRefresh: forceRefresh
+            )
+            myCard = .loaded(card)
+        } catch is CancellationError {
+            myCard = previousState
+        } catch let error as AppError {
+            myCard = .failed(error)
+        } catch let error as NSError
+            where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+            myCard = previousState
+        } catch {
+            myCard = .failed(.unknown(message: error.localizedDescription))
         }
     }
 
