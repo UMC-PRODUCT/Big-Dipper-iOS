@@ -119,6 +119,7 @@ struct MyPageView: View {
             BusinessCardFaceView(
                 card: card,
                 isFlipped: isCardFlipped,
+                qrImage: viewModel.qrImage,
                 onFlip: { isCardFlipped.toggle() },
                 onExchange: { onOpenBusinessCard(.exchange) },
                 onQR: { onOpenBusinessCard(.cardQR) }

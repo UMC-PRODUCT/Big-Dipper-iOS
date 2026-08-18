@@ -12,6 +12,7 @@ import AuthDomain
 import BusinessCardDomain
 import BusinessCardPresentation
 import CoreDI
+import CoreGraphics
 import UMCFoundation
 import CoreDomain
 import MyPageDomain
@@ -203,6 +204,41 @@ struct MyPageViewModelLoadBusinessCardTests {
         #expect(viewModel.activityStat == stat)
     }
 
+    @Test("성공 시 로드한 카드로 QR을 생성해 노출한다")
+    func loadSuccessGeneratesQRImage() async {
+        let card = makeMyCard(memberId: "7")
+        let qrImage = makeStubCGImage()
+        let recorder = RecordingGenerateCardQRUseCase(result: .success(qrImage))
+        var provider = StubBusinessCardUseCaseProvider(fetchMyCardResult: .success(card))
+        provider.generateCardQRUseCaseOverride = recorder
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+
+        await viewModel.loadBusinessCard()
+
+        #expect(viewModel.qrImage === qrImage)
+        #expect(recorder.lastCard == card)
+    }
+
+    @Test("QR 생성 실패해도 카드는 그대로 loaded — qrImage만 nil")
+    func qrGenerationFailureKeepsCardLoaded() async {
+        let card = makeMyCard(memberId: "7")
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: StubBusinessCardUseCaseProvider(
+                fetchMyCardResult: .success(card),
+                generateCardQRResult: .failure(GenericTestError.boom)
+            )
+        )
+
+        await viewModel.loadBusinessCard()
+
+        #expect(viewModel.myCard.value == card)
+        #expect(viewModel.qrImage == nil)
+    }
+
     @Test("AppError 발생 시 .failed로 전이")
     func appErrorPropagatesToFailed() async {
         let error = AppError.unknown(message: "boom")
@@ -307,6 +343,21 @@ private final class RecordingFetchMyCardUseCase: FetchMyCardUseCaseProtocol, @un
 
     func execute(forceRefresh: Bool) async throws -> MyCard {
         lastForceRefresh = forceRefresh
+        return try result.get()
+    }
+}
+
+private final class RecordingGenerateCardQRUseCase:
+    GenerateCardQRUseCaseProtocol, @unchecked Sendable {
+    private let result: Result<CGImage, Error>
+    private(set) var lastCard: MyCard?
+
+    init(result: Result<CGImage, Error>) {
+        self.result = result
+    }
+
+    func execute(for card: MyCard) throws -> CGImage {
+        lastCard = card
         return try result.get()
     }
 }

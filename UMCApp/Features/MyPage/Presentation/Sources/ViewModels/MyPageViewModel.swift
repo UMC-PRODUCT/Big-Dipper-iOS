@@ -11,6 +11,7 @@ import BusinessCardPresentation
 import CommunityDomain
 import CoreDI
 import CoreDomain
+import CoreGraphics
 import CoreNetwork
 import Foundation
 import MyPageDomain
@@ -34,6 +35,10 @@ public final class MyPageViewModel {
     /// v3 루트 행 우측 카운트(받은 명함·스터디·활동·북마크). 조회 실패 소스는 "0"으로
     /// 채워져 오므로(``ActivityStat/empty``) 별도 실패 상태를 두지 않는다.
     public private(set) var activityStat: ActivityStat = .empty
+
+    /// 명함 카드 뒷면 QR. 카드 로드에 성공해도 생성이 실패하면 `nil`로 남는다
+    /// (``CardQRViewModel``과 같은 정책 — QR만 못 만들었다고 카드까지 감출 이유가 없다).
+    public private(set) var qrImage: CGImage?
 
     /// Alert 표시를 위한 프롬프트 상태 (확인/취소 다이얼로그).
     public var alertPrompt: AlertPrompt?
@@ -111,7 +116,7 @@ public final class MyPageViewModel {
         }
     }
 
-    /// 내 명함과 v3 루트 행 카운트를 조회합니다.
+    /// 내 명함과 v3 루트 행 카운트, 카드 뒷면 QR을 조회합니다.
     ///
     /// `fetchProfile`과 별개 상태·별개 UseCase다 — 명함은 같은 정본 프로필 캐시에서 파생되지만
     /// (``BusinessCardUseCaseProviding``), 화면이 그 캐시를 두 번 조회한다고 왕복이 늘지는 않는다.
@@ -124,6 +129,7 @@ public final class MyPageViewModel {
 
         let previousState = myCard
         myCard = .loading
+        qrImage = nil
 
         activityStat = await businessCardProvider.fetchActivityStatUseCase.execute()
 
@@ -132,6 +138,9 @@ public final class MyPageViewModel {
                 forceRefresh: forceRefresh
             )
             myCard = .loaded(card)
+            // QR만 못 만들었다고 카드까지 감출 이유가 없다. 카드는 그대로 두고
+            // QR 자리만 비운다 — 화면이 그 상태를 플레이스홀더로 그린다.
+            qrImage = try? businessCardProvider.generateCardQRUseCase.execute(for: card)
         } catch is CancellationError {
             myCard = previousState
         } catch let error as AppError {
