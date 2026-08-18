@@ -17,7 +17,6 @@ let project = featureProject(
         // (선례: Features/Community/Project.swift, Features/Auth/Project.swift).
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
-        .project(target: "CoreRouting", path: .relativeToRoot("Core/Routing")),
     ],
     includesDomainTests: true,
     domainTestDependencies: [

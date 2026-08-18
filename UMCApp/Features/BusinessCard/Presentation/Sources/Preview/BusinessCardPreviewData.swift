@@ -18,7 +18,7 @@ public enum BusinessCardPreviewData {
 
     // MARK: - 고정값
 
-    /// 프리뷰 기준 시각 (2026-08-10 10:00 KST). 교환 시각 표시를 결정론적으로 만든다.
+    /// 프리뷰 기준 시각 (2026-08-11 11:00 KST). 교환 시각 표시를 결정론적으로 만든다.
     public static let referenceDate = Date(timeIntervalSince1970: 1_786_413_600)
 
     // MARK: - My Card
