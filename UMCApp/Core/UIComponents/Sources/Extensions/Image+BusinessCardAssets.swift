@@ -26,4 +26,21 @@ public extension Image {
     static var umcExchangeCompleted: Image {
         Image("exchangeCompleted", bundle: .module)
     }
+
+    /// 명함 카드 헤더의 UMC 워드마크 47×15.16 (`Figma I12639:33234;12639:33199`).
+    ///
+    /// 흰색 고정 브랜드 로고라 template 렌더링 없이 원본을 그대로 씁니다.
+    static var umcWordmark: Image {
+        Image("umcWordmark", bundle: .module)
+    }
+
+    /// 명함 뒷면의 GitHub 브랜드 아이콘 18×18, 흰색 모노 (`Figma 12766:98577`).
+    static var githubMono: Image {
+        Image("githubMono", bundle: .module)
+    }
+
+    /// 명함 뒷면의 LinkedIn 브랜드 아이콘 18×18, 흰색 모노 (`Figma 12766:98582`).
+    static var linkedInMono: Image {
+        Image("linkedInMono", bundle: .module)
+    }
 }

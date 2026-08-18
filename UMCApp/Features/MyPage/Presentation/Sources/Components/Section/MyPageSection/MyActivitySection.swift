@@ -35,7 +35,8 @@ public struct MyActivitySection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: DefaultSpacing.spacing16) {
-            SectionHeaderView(title: sectionType.rawValue)
+            // 시안 섹션 헤더는 Headline-emphasized(17 semibold) — `Figma 12632:87301`.
+            SectionHeaderView(title: sectionType.rawValue, weight: .semibold)
 
             MyPageListCard {
                 MyPageListRow(

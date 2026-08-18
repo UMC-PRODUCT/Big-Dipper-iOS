@@ -119,10 +119,9 @@ public struct BusinessCardFaceView: View {
     private var header: some View {
         HStack(spacing: 0) {
             HStack(spacing: Metrics.linkSpacing) {
-                // 시안은 UMC 워드마크 SVG(47×15.16)다. 에셋이 아직 카탈로그에 없어
-                // 같은 자리·같은 크기의 텍스트로 대신한다.
-                Text("UMC")
-                    .appFont(.caption2, weight: .semibold, color: Color.white)
+                Image.umcWordmark
+                    .resizable()
+                    .scaledToFit()
                     .frame(width: Metrics.logoWidth, height: Metrics.logoHeight)
 
                 Text("Business card")
@@ -148,13 +147,20 @@ public struct BusinessCardFaceView: View {
         .accessibilityLabel(isFlipped ? "명함 앞면 보기" : "명함 뒷면 보기")
     }
 
+    /// 시안 더미 `이름/닉네임` 규칙 — 닉네임이 비어 있으면 이름만 싣는다
+    /// (명함_m·명함_s 와 같은 규칙).
+    private var displayName: String {
+        let nickname = card.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        return nickname.isEmpty ? card.name : "\(card.name)/\(nickname)"
+    }
+
     private var frontFace: some View {
         HStack(alignment: .top, spacing: Metrics.contentSpacing) {
             avatar
 
             VStack(alignment: .leading, spacing: Metrics.contentSpacing) {
                 HStack(alignment: .lastTextBaseline, spacing: Metrics.nameSpacing) {
-                    Text("\(card.name)/\(card.nickname)")
+                    Text(displayName)
                         .appFont(.title3, weight: .semibold, color: Color.white)
                         .lineLimit(1)
 
@@ -179,13 +185,11 @@ public struct BusinessCardFaceView: View {
             qrThumbnail
 
             VStack(alignment: .leading, spacing: Metrics.linkSpacing) {
-                // 시안의 github·linkedIn 은 브랜드 SVG(18×18)다. 아직 에셋 카탈로그에
-                // 없어 SF Symbol 로 자리를 잡아 둔다 — 세 번째 blog 만 시안과 같은 `link`.
-                linkRow(systemImage: "chevron.left.forwardslash.chevron.right",
-                        value: card.github)
-                linkRow(systemImage: "person.crop.square.filled.and.at.rectangle",
-                        value: card.linkedIn)
-                linkRow(systemImage: "link", value: card.blog)
+                // github·linkedIn 은 시안 브랜드 SVG(18×18, 흰색 모노).
+                // blog 만 시안도 SF Symbol `link` 다.
+                linkRow(value: card.github) { brandIcon(Image.githubMono) }
+                linkRow(value: card.linkedIn) { brandIcon(Image.linkedInMono) }
+                linkRow(value: card.blog) { symbolIcon("link") }
             }
 
             Spacer(minLength: 0)
@@ -233,19 +237,35 @@ public struct BusinessCardFaceView: View {
     /// 값이 없어도 줄을 지운다 — 시안이 3줄 고정이지만 빈 줄은 서버 미입력을
     /// 링크가 있는 것처럼 보이게 한다.
     @ViewBuilder
-    private func linkRow(systemImage: String, value: String?) -> some View {
+    private func linkRow(
+        value: String?,
+        @ViewBuilder icon: () -> some View
+    ) -> some View {
         if let value, !value.isEmpty {
             HStack(alignment: .bottom, spacing: Metrics.linkSpacing) {
-                Image(systemName: systemImage)
-                    .font(.system(size: AppFont.footnote.size))
-                    .foregroundStyle(Color.white)
-                    .frame(width: Metrics.linkIconSize, height: Metrics.linkIconSize)
+                icon()
 
                 Text(value)
                     .appFont(.footnote, color: Color.white)
                     .lineLimit(1)
             }
         }
+    }
+
+    /// 브랜드 SVG 아이콘(에셋 원본이 흰색이라 틴트 없이 크기만 잡는다).
+    private func brandIcon(_ image: Image) -> some View {
+        image
+            .resizable()
+            .scaledToFit()
+            .frame(width: Metrics.linkIconSize, height: Metrics.linkIconSize)
+    }
+
+    /// SF Symbol 아이콘 — 브랜드 아이콘과 같은 18×18 틀에 맞춘다.
+    private func symbolIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: AppFont.footnote.size))
+            .foregroundStyle(Color.white)
+            .frame(width: Metrics.linkIconSize, height: Metrics.linkIconSize)
     }
 
     private var actionButtons: some View {
