@@ -66,6 +66,10 @@ public final class MyPageViewModel {
     /// Alert 표시를 위한 프롬프트 상태 (확인/취소 다이얼로그).
     public var alertPrompt: AlertPrompt?
 
+    /// `loadBusinessCard` 중복 호출 가드. 로드된 카드를 유지한 채 재조회하는 동안에는
+    /// `myCard`가 `.loading`이 아니라서 상태만으로는 인플라이트를 알 수 없다.
+    private var isCardLoadInFlight = false
+
     private let container: DIContainer
     private let myPageProvider: MyPageUseCaseProviding
     private let businessCardProvider: BusinessCardUseCaseProviding
@@ -145,14 +149,23 @@ public final class MyPageViewModel {
     /// (``BusinessCardUseCaseProviding``), 화면이 그 캐시를 두 번 조회한다고 왕복이 늘지는 않는다.
     /// 에러 분기는 `fetchProfile`과 동일한 규칙을 따른다.
     ///
+    /// 이미 로드된 카드가 있으면 그대로 보여 둔 채 재조회한다(stale-while-revalidate) —
+    /// pop 복귀 재조회마다 `.loading`으로 밀면 카드 전체가 깜빡이고, 재조회가 취소되면
+    /// `qrImage`가 빈 채 남는다. 그래서 중복 호출 가드도 상태(`.loading`)가 아니라
+    /// 별도 플래그로 건다. 처음 진입·실패 후 재시도만 로딩 상태를 그린다.
+    ///
     /// - Parameter forceRefresh: `true`이면 프로필 캐시를 우회해 서버 최신으로 갱신한다.
     @MainActor
     public func loadBusinessCard(forceRefresh: Bool = false) async {
-        if myCard.isLoading { return }
+        if isCardLoadInFlight { return }
+        isCardLoadInFlight = true
+        defer { isCardLoadInFlight = false }
 
         let previousState = myCard
-        myCard = .loading
-        qrImage = nil
+        if myCard.value == nil {
+            myCard = .loading
+            qrImage = nil
+        }
 
         activityStat = await businessCardProvider.fetchActivityStatUseCase.execute()
 

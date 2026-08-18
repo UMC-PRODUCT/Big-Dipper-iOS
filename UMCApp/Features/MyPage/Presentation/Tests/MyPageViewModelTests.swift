@@ -468,6 +468,80 @@ struct MyPageViewModelCardRetryInFlightTests {
     }
 }
 
+/// 리뷰 지적(후속) 2건: ① 취소 경로가 `myCard`만 복원하고 `qrImage`는 진입 시 비운 `nil`
+/// 그대로 남긴다 — 카드는 돌아왔는데 뒷면 QR만 빈다. ② pop 복귀 재조회가 로드된 카드를
+/// `.loading`으로 밀어 카드 전체가 사라졌다 나타난다(깜빡임). 로드된 카드가 있으면 그대로
+/// 보여 둔 채 재조회하고(stale-while-revalidate), 그 결과 취소도 카드·QR을 함께 보존한다.
+@MainActor
+@Suite("MyPageViewModel — loadBusinessCard 재조회·취소 상태 보존")
+struct MyPageViewModelReloadPreservationTests {
+
+    @Test("재조회가 취소돼도 카드와 QR이 함께 남는다")
+    func cancellationKeepsCardAndQR() async {
+        let card = makeMyCard(memberId: "1")
+        let qr = makeStubCGImage()
+        let sequenced = SequencedFetchMyCardUseCase(results: [
+            .success(card),
+            .failure(CancellationError()),
+        ])
+        var provider = StubBusinessCardUseCaseProvider(generateCardQRResult: .success(qr))
+        provider.fetchMyCardUseCaseOverride = sequenced
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+        await viewModel.loadBusinessCard()
+
+        await viewModel.loadBusinessCard(forceRefresh: true)
+
+        #expect(viewModel.myCard.value == card)
+        #expect(viewModel.qrImage === qr, "카드만 복원되고 QR이 빈 채 남으면 안 된다")
+    }
+
+    @Test("로드된 카드가 있는 동안의 재조회는 카드를 숨기지 않는다(깜빡임 방지)")
+    func reloadKeepsLoadedCardVisible() async {
+        let card = makeMyCard(memberId: "1")
+        let qr = makeStubCGImage()
+        let slow = SlowFetchMyCardUseCase(result: .success(card), delayNanoseconds: 100_000_000)
+        var provider = StubBusinessCardUseCaseProvider(generateCardQRResult: .success(qr))
+        provider.fetchMyCardUseCaseOverride = slow
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+        await viewModel.loadBusinessCard()
+
+        let task = Task { await viewModel.loadBusinessCard(forceRefresh: true) }
+        await Task.yield()
+
+        #expect(viewModel.myCard.value == card, "재조회 중에도 카드가 그대로 보여야 한다")
+        #expect(viewModel.qrImage === qr, "재조회 중에도 QR이 그대로 보여야 한다")
+
+        await task.value
+        #expect(viewModel.myCard.value == card)
+    }
+
+    @Test("로드된 상태의 재조회도 중복 호출은 무시된다 (UseCase 호출 수 유지)")
+    func reloadStillDeduplicatesConcurrentCalls() async {
+        let card = makeMyCard(memberId: "1")
+        let slow = SlowFetchMyCardUseCase(result: .success(card), delayNanoseconds: 100_000_000)
+        var provider = StubBusinessCardUseCaseProvider(fetchMyCardResult: .success(card))
+        provider.fetchMyCardUseCaseOverride = slow
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+        await viewModel.loadBusinessCard()          // 1회
+
+        let reload = Task { await viewModel.loadBusinessCard(forceRefresh: true) }  // 2회
+        await Task.yield()
+        await viewModel.loadBusinessCard()          // 진행 중 — 무시돼야 한다
+        await reload.value
+
+        #expect(slow.callCount == 2)
+    }
+}
+
 // MARK: - Helpers
 
 private enum GenericTestError: Error { case boom }
@@ -486,6 +560,20 @@ private func makeMyCard(memberId: String) -> MyCard {
         blog: nil,
         avatarURL: nil
     )
+}
+
+/// 호출 순서대로 준비된 결과를 꺼내 쓰는 스텁 — "1회차 성공 → 2회차 취소" 같은
+/// 재조회 시나리오를 만든다.
+private final class SequencedFetchMyCardUseCase: FetchMyCardUseCaseProtocol, @unchecked Sendable {
+    private var results: [Result<MyCard, Error>]
+
+    init(results: [Result<MyCard, Error>]) {
+        self.results = results
+    }
+
+    func execute(forceRefresh: Bool) async throws -> MyCard {
+        try results.removeFirst().get()
+    }
 }
 
 private final class RecordingFetchMyCardUseCase: FetchMyCardUseCaseProtocol, @unchecked Sendable {
