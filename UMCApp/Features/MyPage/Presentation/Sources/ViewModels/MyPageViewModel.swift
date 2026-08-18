@@ -45,6 +45,16 @@ public final class MyPageViewModel {
     /// 내 명함(v3 루트 카드). BusinessCardDomain이 정본 프로필 파이프라인에서 파생시킨다.
     public private(set) var myCard: Loadable<MyCard> = .idle
 
+    /// 카드 실패 화면의 재시도가 진행 중이다.
+    ///
+    /// retry(`MyPageView.retryCardAndProfile`)는 프로필 재조회를 먼저 기다린 뒤 카드를
+    /// 다시 읽는다 — 그 앞 구간에는 `myCard`가 여전히 `.failed`라 `myCard.isLoading`만
+    /// 보면 스피너가 늦게 돈다(버튼이 씹힌 것처럼 보인다). 두 로드 중 어느 쪽이 돌아도
+    /// 재시도 중으로 본다. `.failed` 분기의 재시도 UI만 소비한다.
+    public var isCardRetryInFlight: Bool {
+        myCard.isLoading || profileData.isLoading
+    }
+
     /// v3 루트 행 우측 카운트(받은 명함·스터디·활동·북마크). 조회 실패 소스는 "0"으로
     /// 채워져 오므로(``ActivityStat/empty``) 별도 실패 상태를 두지 않는다.
     public private(set) var activityStat: ActivityStat = .empty

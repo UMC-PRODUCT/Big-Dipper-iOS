@@ -396,6 +396,78 @@ struct MyPageViewRetryCardAndProfileTests {
     }
 }
 
+/// 리뷰 지적(후속): retry 스피너가 카드 로드 단계만 표시된다 — `retryCardAndProfile`은
+/// 프로필 재조회를 먼저 기다리는데, 그 구간에는 `myCard`가 여전히 `.failed`라
+/// `myCard.isLoading`만 보는 뷰에는 아무 진행 표시가 없다(재시도 버튼이 씹힌 것처럼 보인다).
+/// `isCardRetryInFlight`가 두 로드 중 어느 쪽이 돌아도 켜지는지 고정한다.
+@MainActor
+@Suite("MyPageViewModel — isCardRetryInFlight (retry 스피너 공백 방지)")
+struct MyPageViewModelCardRetryInFlightTests {
+
+    @Test("초기 상태에서는 꺼져 있다")
+    func idleIsNotInFlight() {
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1)))
+        )
+        #expect(viewModel.isCardRetryInFlight == false)
+    }
+
+    @Test("retry의 프로필 재조회 구간 — 카드 로드가 시작되기 전에도 켜져 있다")
+    func profilePhaseKeepsSpinnerOn() async {
+        let repository = SlowStubRepository(
+            profile: makeProfileData(challengeId: 1),
+            delayNanoseconds: 100_000_000  // 0.1s
+        )
+        let provider = StubBusinessCardUseCaseProvider(
+            fetchMyCardResult: .failure(GenericTestError.boom)
+        )
+        let viewModel = makeViewModel(repository: repository, businessCardProvider: provider)
+        await viewModel.loadBusinessCard()  // 진입 실패 상태(.failed) 재현
+
+        let task = Task { await MyPageView.retryCardAndProfile(viewModel: viewModel) }
+        await Task.yield()
+
+        #expect(viewModel.myCard.isLoading == false, "카드 로드는 아직 시작 전이다")
+        #expect(viewModel.isCardRetryInFlight == true)
+
+        await task.value
+    }
+
+    @Test("카드 로드 구간에도 켜져 있다")
+    func cardPhaseKeepsSpinnerOn() async {
+        let card = makeMyCard(memberId: "1")
+        let slow = SlowFetchMyCardUseCase(result: .success(card), delayNanoseconds: 100_000_000)
+        var provider = StubBusinessCardUseCaseProvider(fetchMyCardResult: .success(card))
+        provider.fetchMyCardUseCaseOverride = slow
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+
+        let task = Task { await viewModel.loadBusinessCard() }
+        await Task.yield()
+
+        #expect(viewModel.isCardRetryInFlight == true)
+
+        await task.value
+    }
+
+    @Test("retry 완료 후에는 꺼진다")
+    func settledTurnsOff() async {
+        let card = makeMyCard(memberId: "1")
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: StubBusinessCardUseCaseProvider(
+                fetchMyCardResult: .success(card)
+            )
+        )
+
+        await MyPageView.retryCardAndProfile(viewModel: viewModel)
+
+        #expect(viewModel.isCardRetryInFlight == false)
+    }
+}
+
 // MARK: - Helpers
 
 private enum GenericTestError: Error { case boom }

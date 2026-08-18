@@ -131,7 +131,7 @@ struct MyPageView: View {
                 title: "명함을 불러오지 못했어요",
                 systemImage: "person.crop.circle.badge.exclamationmark",
                 description: error.errorDescription ?? "잠시 후 다시 시도해 주세요.",
-                isRetrying: viewModel.myCard.isLoading,
+                isRetrying: viewModel.isCardRetryInFlight,
                 retryAction: { await Self.retryCardAndProfile(viewModel: viewModel) }
             )
         }
