@@ -40,9 +40,8 @@ struct BusinessCardSummaryView: View {
     private enum Palette {
         /// 시안 `linear-gradient(126.738deg, rgba(114,142,253,0.9) 7.53%, #5468FC 95.75%)`.
         /// 명함_l 은 각도 112.185°, 시작 알파 0.8 로 **다르다** — 옮겨 쓰지 말 것.
-        static let gradientStart = Color(red: 114 / 255, green: 142 / 255, blue: 253 / 255)
-            .opacity(0.9)
-        static let gradientEnd = Color(red: 84 / 255, green: 104 / 255, blue: 252 / 255)
+        static let gradientStart = BusinessCardPalette.cardGradientStart.opacity(0.9)
+        static let gradientEnd = BusinessCardPalette.indigo
 
         static let gradientStartLocation: Double = 0.0753
         static let gradientEndLocation: Double = 0.9575

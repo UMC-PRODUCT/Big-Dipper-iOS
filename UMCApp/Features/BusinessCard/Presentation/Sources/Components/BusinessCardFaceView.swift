@@ -62,9 +62,9 @@ public struct BusinessCardFaceView: View {
     /// 카드 배경. 시안에 대응하는 토큰이 없어 실측 색을 그대로 쓴다
     /// (`linear-gradient(112.185deg, rgba(114,142,253,0.8), #5468FC)`).
     private enum Palette {
-        static let gradientStart = Color(red: 114 / 255, green: 142 / 255, blue: 253 / 255)
-        static let gradientEnd = Color(red: 84 / 255, green: 104 / 255, blue: 252 / 255)
-        static let qrBorder = Color(red: 229 / 255, green: 232 / 255, blue: 237 / 255)
+        static let gradientStart = BusinessCardPalette.cardGradientStart
+        static let gradientEnd = BusinessCardPalette.indigo
+        static let qrBorder = BusinessCardPalette.hairline
     }
 
     // MARK: - Init

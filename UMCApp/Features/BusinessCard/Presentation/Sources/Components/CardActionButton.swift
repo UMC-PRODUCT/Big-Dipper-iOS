@@ -23,24 +23,27 @@ struct CardActionButton: View {
     enum Role {
         case primary
         case secondary
+        /// 시안 Apple `Buttons` Destructive 변형 (교환 중지).
+        case destructive
 
         var background: Color {
             switch self {
             case .primary:
-                // 시안 Main Color/Indigo500 = #5468FC. 토큰 `indigo500` 은 #4869F0 로
-                // 다르다 — 바로 위 명함 카드 그라디언트가 #5468FC 라 같은 값을 써야
-                // 40pt 떨어진 두 요소가 다른 파랑으로 보이지 않는다.
-                return Color(red: 84 / 255, green: 104 / 255, blue: 252 / 255)
+                return BusinessCardPalette.indigo
             case .secondary:
                 // iOS Fills/Secondary = rgba(120,120,128,0.16).
                 return Color(uiColor: .secondarySystemFill)
+            case .destructive:
+                // 시안은 Apple 스톡 컴포넌트라 hex 가 없다. 시맨틱 토큰이 그 톤에 맞는다.
+                return .red100
             }
         }
 
         var foreground: Color {
             switch self {
-            case .primary:   return .white
-            case .secondary: return .grey900
+            case .primary:     return .white
+            case .secondary:   return .grey900
+            case .destructive: return .red500
             }
         }
     }

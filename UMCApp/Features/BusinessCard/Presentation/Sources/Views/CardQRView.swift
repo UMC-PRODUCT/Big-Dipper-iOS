@@ -48,8 +48,7 @@ private enum Metrics {
 }
 
 private enum Palette {
-    /// 시안 QR 박스 테두리 #E5E8ED.
-    static let qrBoxBorder = Color(red: 229 / 255, green: 232 / 255, blue: 237 / 255)
+    static let qrBoxBorder = BusinessCardPalette.hairline
     /// 시안 그림자 rgba(26,31,51,0.08).
     static let qrBoxShadow = Color(red: 26 / 255, green: 31 / 255, blue: 51 / 255).opacity(0.08)
 }

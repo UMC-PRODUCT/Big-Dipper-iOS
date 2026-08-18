@@ -36,5 +36,7 @@ let project = featureProject(
         // ViewModel 테스트가 ReceivedCard·MyCard 와 Loadable·ErrorHandler 를 직접 만든다.
         .target(name: "BusinessCardDomain"),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        // 교환 세션 테스트가 DiscoveredPeer·NearbyError 를 직접 만든다.
+        .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
     ]
 )
