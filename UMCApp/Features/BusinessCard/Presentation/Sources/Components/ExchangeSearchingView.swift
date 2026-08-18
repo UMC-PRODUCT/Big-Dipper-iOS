@@ -1,0 +1,156 @@
+//
+//  ExchangeSearchingView.swift
+//  BusinessCardPresentation
+//
+//  Created by One on 8/19/26.
+//
+
+import SwiftUI
+import CoreDesignSystem
+import CoreUIComponents
+
+/// 교환 탐색 중 상태 — 시안 `마이페이지_명함교환_wifi` (`Figma 12654:32255`).
+///
+/// 배지·레이더·문구의 배치와 치수는 시안 실측 그대로다. 다만 시안 문구는 Wi-Fi Aware 를
+/// 전제하는데 transport 는 MPC 로 확정됐다(2026-08-17, Wi-Fi Aware 폐기) — 기술명이
+/// 화면에 남으면 거짓이 되므로 배지는 「근거리 탐색」, 안내문의 강조 스팬은 상대가 실제로
+/// 누르는 버튼명 「명함 교환」으로 바꿔 싣는다.
+struct ExchangeSearchingView: View {
+
+    // MARK: - Property
+
+    /// 레이더 중앙에 실을 내 아바타 (시안 더미는 UMC 로고). 없으면 플레이스홀더가 뜬다.
+    let avatarURL: String?
+
+    // MARK: - Constants
+
+    private enum Constants {
+        static let badgeIcon = "wifi"
+        static let badgeTitle = "근거리 탐색"
+        static let title = "주변 UMC 멤버를 찾는 중…"
+        static let captionPrefix = "상대방도 ‘"
+        static let captionEmphasis = "명함 교환"
+        static let captionSuffix = "’을 누르면 여기에 나타나요"
+    }
+
+    private enum Metrics {
+        /// 시안 12654:32590 — 배지 · 레이더 · 문구 사이 간격 40, 툴바 아래 여백.
+        static let sectionSpacing: CGFloat = 40
+        static let topPadding: CGFloat = 20
+
+        static let badgeSpacing: CGFloat = 8
+        static let badgeIconBox: CGFloat = 27
+        static let badgeIconGlyph: CGFloat = 17
+        static let badgeHorizontalPadding: CGFloat = 12
+        static let badgeVerticalPadding: CGFloat = 8
+        static let badgeCornerRadius: CGFloat = 27
+        /// 시안 그림자 0 2 8 rgba(0,0,0,0.1). CSS 흐림 반경은 SwiftUI 의 약 두 배다.
+        static let badgeShadowRadius: CGFloat = 4
+        static let badgeShadowY: CGFloat = 2
+        static let badgeShadowOpacity: Double = 0.1
+
+        static let radarSize: CGFloat = 364
+        static let avatarSize: CGFloat = 80
+
+        static let captionWidth: CGFloat = 266
+        static let captionSpacing: CGFloat = 5
+    }
+
+    /// 시안 레이더 원 4개 (바깥→안). 색은 코어 `indigo500`(#4869F0) — 시안 SVG 원값과 같다.
+    /// 두 번째 원만 면(fill), 나머지는 1pt 선(stroke)이다.
+    private static let rings: [(size: CGFloat, opacity: Double, isFilled: Bool)] = [
+        (364, 0.10, false),
+        (300, 0.05, true),
+        (230, 0.15, false),
+        (160, 0.15, false),
+    ]
+
+    // MARK: - Body
+
+    var body: some View {
+        VStack(spacing: Metrics.sectionSpacing) {
+            badge
+            radar
+            caption
+        }
+        .padding(.top, Metrics.topPadding)
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - View Component
+
+    private var badge: some View {
+        HStack(spacing: Metrics.badgeSpacing) {
+            Image(systemName: Constants.badgeIcon)
+                .font(.system(size: Metrics.badgeIconGlyph))
+                .foregroundStyle(BusinessCardPalette.indigo)
+                .frame(width: Metrics.badgeIconBox, height: Metrics.badgeIconBox)
+
+            Text(Constants.badgeTitle)
+                .appFont(.subheadline, weight: .semibold, color: .black)
+        }
+        .padding(.horizontal, Metrics.badgeHorizontalPadding)
+        .padding(.vertical, Metrics.badgeVerticalPadding)
+        .background(
+            Color.grey000,
+            in: RoundedRectangle(cornerRadius: Metrics.badgeCornerRadius)
+        )
+        .shadow(
+            color: .black.opacity(Metrics.badgeShadowOpacity),
+            radius: Metrics.badgeShadowRadius,
+            y: Metrics.badgeShadowY
+        )
+    }
+
+    private var radar: some View {
+        ZStack {
+            ForEach(Self.rings, id: \.size) { ring in
+                if ring.isFilled {
+                    Circle()
+                        .fill(Color.indigo500.opacity(ring.opacity))
+                        .frame(width: ring.size, height: ring.size)
+                } else {
+                    Circle()
+                        .stroke(Color.indigo500.opacity(ring.opacity), lineWidth: 1)
+                        .frame(width: ring.size, height: ring.size)
+                }
+            }
+
+            RemoteImage(
+                urlString: avatarURL ?? "",
+                size: CGSize(width: Metrics.avatarSize, height: Metrics.avatarSize),
+                cornerRadius: Metrics.avatarSize / 2
+            )
+        }
+        .frame(width: Metrics.radarSize, height: Metrics.radarSize)
+    }
+
+    private var caption: some View {
+        VStack(spacing: Metrics.captionSpacing) {
+            Text(Constants.title)
+                .appFont(.title3, weight: .semibold, color: .black)
+
+            Text("\(Constants.captionPrefix)\(emphasizedButtonName)\(Constants.captionSuffix)")
+                .appFont(.subheadline, color: .grey500)
+        }
+        .multilineTextAlignment(.center)
+        .frame(width: Metrics.captionWidth)
+    }
+
+    /// 안내문 속 강조 스팬 — 시안이 버튼명만 Bold 로 싣는다(AppFontWeight 에 bold 가
+    /// 없어 semibold, 명함_l 과 같은 처리). 바깥 `appFont` 는 환경 폰트라 이 명시 폰트가 이긴다.
+    private var emphasizedButtonName: Text {
+        Text(Constants.captionEmphasis).font(.app(.subheadline, weight: .semibold))
+    }
+}
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("교환 탐색 중") {
+    VStack {
+        ExchangeSearchingView(avatarURL: nil)
+        Spacer()
+    }
+}
+#endif

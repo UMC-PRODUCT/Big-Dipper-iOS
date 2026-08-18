@@ -18,9 +18,6 @@ private enum Constants {
     static let title = "명함 교환"
     static let stopTitle = "교환 중지"
 
-    static let searchingTitle = "주변 멤버를 찾고 있어요"
-    static let searchingDescription = "상대도 「명함 교환」을 열어야 서로 보입니다."
-
     static let failedTitle = "교환을 시작할 수 없어요"
     static let failedDescription = "블루투스와 로컬 네트워크 권한을 확인해 주세요."
     static let failedImage = "antenna.radiowaves.left.and.right.slash"
@@ -37,7 +34,7 @@ private enum Metrics {
     static let bottomMargin: CGFloat = 16
 }
 
-/// 근거리 명함 교환 (시안 `12654:32621`).
+/// 근거리 명함 교환 (시안 목록 `12654:32621` · 탐색 중 `12654:32255`).
 ///
 /// 행을 누르면 그 상대에게 내 명함을 보낸다. 상대 명함이 도착하면 완료 화면이 덮는다 —
 /// 시안의 완료 화면에 뒤로가기가 없어 모달 전제다.
@@ -109,7 +106,11 @@ public struct CardExchangeView: View {
                 description: Text(Constants.failedDescription)
             )
         } else if viewModel.peers.isEmpty {
-            searching
+            // 시안 12654:32255 — 아직 아무도 발견하지 못한 동안의 레이더 화면.
+            ScrollView {
+                ExchangeSearchingView(avatarURL: viewModel.myCard.value?.avatarURL)
+            }
+            .scrollBounceBehavior(.basedOnSize)
         } else {
             peerList
         }
@@ -132,17 +133,4 @@ public struct CardExchangeView: View {
         }
     }
 
-    /// 시안에 빈 상태가 없다. 목록이 비어 있는 동안 화면이 완전히 비면 사용자는 앱이
-    /// 멈춘 걸로 읽는다 — 찾는 중이라는 것과, 상대도 화면을 열어야 한다는 걸 알린다.
-    private var searching: some View {
-        ContentUnavailableView {
-            Label {
-                Text(Constants.searchingTitle)
-            } icon: {
-                ProgressView()
-            }
-        } description: {
-            Text(Constants.searchingDescription)
-        }
-    }
 }
