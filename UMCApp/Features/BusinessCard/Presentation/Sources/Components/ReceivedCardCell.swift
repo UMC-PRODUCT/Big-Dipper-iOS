@@ -167,34 +167,13 @@ struct ReceivedCardCell: View {
 
 #if DEBUG
 #Preview("파트별 명함_s") {
-    let parts: [UMCPartType] = [
-        .admin, .design, .pm, .front(type: .web),
-        .front(type: .android), .front(type: .ios),
-        .server(type: .spring), .server(type: .node),
-    ]
-
     ScrollView {
         LazyVGrid(columns: Array(repeating: GridItem(spacing: 8), count: 2), spacing: 8) {
-            ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
-                ReceivedCardCell(card: .preview(part: part))
+            ForEach(BusinessCardPreviewData.receivedCards) { card in
+                ReceivedCardCell(card: card)
             }
         }
         .padding(16)
-    }
-}
-
-private extension ReceivedCard {
-    static func preview(part: UMCPartType) -> ReceivedCard {
-        ReceivedCard(
-            id: part.apiValue,
-            profile: MyCard(
-                memberId: part.apiValue, name: "이름", nickname: "닉네임",
-                part: part, generation: "10", university: "oo대학교",
-                email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil
-            ),
-            exchangedAt: Date(timeIntervalSince1970: .zero),
-            exchangeContext: nil
-        )
     }
 }
 #endif

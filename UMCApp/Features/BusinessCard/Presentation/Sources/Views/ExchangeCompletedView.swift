@@ -100,16 +100,7 @@ struct ExchangeCompletedView: View {
 #if DEBUG
 #Preview("교환 완료") {
     ExchangeCompletedView(
-        card: ReceivedCard(
-            id: "1",
-            profile: MyCard(
-                memberId: "7", name: "박의정", nickname: "의정",
-                part: .design, generation: "11", university: "중앙대학교",
-                email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil
-            ),
-            exchangedAt: Date(timeIntervalSince1970: .zero),
-            exchangeContext: nil
-        ),
+        card: BusinessCardPreviewData.receivedCard,
         onContinue: {},
         onFinish: {}
     )

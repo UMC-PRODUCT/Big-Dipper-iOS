@@ -134,13 +134,7 @@ struct BusinessCardSummaryView: View {
 #if DEBUG
 #Preview("명함_m") {
     VStack(spacing: 16) {
-        BusinessCardSummaryView(
-            card: MyCard(
-                memberId: "1", name: "이름/닉네임", nickname: "닉네임",
-                part: .pm, generation: "12", university: "oo대학교",
-                email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil
-            )
-        )
+        BusinessCardSummaryView(card: BusinessCardPreviewData.myCard)
     }
     .padding(16)
 }

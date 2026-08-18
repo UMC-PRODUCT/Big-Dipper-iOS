@@ -283,31 +283,15 @@ public struct BusinessCardFaceView: View {
 }
 
 #if DEBUG
-private extension MyCard {
-    static let preview = MyCard(
-        memberId: "42",
-        name: "김유엠",
-        nickname: "유엠디",
-        part: .front(type: .ios),
-        generation: "12",
-        university: "한양대학교",
-        email: "umc@example.com",
-        github: "github.com/umc",
-        linkedIn: "linkedin.com/in/umc",
-        blog: "umc.blog",
-        avatarURL: nil
-    )
-}
-
 #Preview("앞면") {
-    BusinessCardFaceView(card: .preview)
+    BusinessCardFaceView(card: BusinessCardPreviewData.myCard)
         .padding(.horizontal, 14)
         .frame(maxHeight: .infinity)
         .background(Color.grey100)
 }
 
 #Preview("뒷면") {
-    BusinessCardFaceView(card: .preview, isFlipped: true)
+    BusinessCardFaceView(card: BusinessCardPreviewData.myCard, isFlipped: true)
         .padding(.horizontal, 14)
         .frame(maxHeight: .infinity)
         .background(Color.grey100)
