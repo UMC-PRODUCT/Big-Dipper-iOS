@@ -35,7 +35,7 @@ public struct LawSection: View {
         Section(content: {
             sectionContent
         }, header: {
-            SectionHeaderView(title: sectionType.rawValue)
+            SectionHeaderView(title: sectionType.rawValue, weight: .semibold)
         })
     }
 

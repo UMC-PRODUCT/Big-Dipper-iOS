@@ -76,7 +76,7 @@ public struct InfoSection: View {
                 open(Constants.techBlogURL)
             }
         }, header: {
-            SectionHeaderView(title: sectionType.rawValue)
+            SectionHeaderView(title: sectionType.rawValue, weight: .semibold)
         })
     }
 

@@ -31,7 +31,7 @@ struct ReadOnlyTextField: View, Equatable {
             TextField("", text: .constant(""), prompt: Text(placeholder))
                 .disabled(true)
         }, header: {
-            SectionHeaderView(title: header)
+            SectionHeaderView(title: header, weight: .semibold)
         })
     }
 }

@@ -47,7 +47,7 @@ struct ProfileLinkEditSection: View, Equatable {
                 linkField(type)
             }
         }, header: {
-            SectionHeaderView(title: header)
+            SectionHeaderView(title: header, weight: .semibold)
         })
     }
 
