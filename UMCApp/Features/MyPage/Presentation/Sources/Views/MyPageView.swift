@@ -73,8 +73,10 @@ struct MyPageView: View {
             .padding(.top, DefaultSpacing.spacing16)
             .padding(.bottom, DefaultSpacing.spacing24)
         }
-        // 시안(12766:98169 Toolbar-Top)은 SF Pro Bold 34 좌측 정렬 — 표준 Large Title이다.
-        .navigation(naviTitle: NavigationTitle.MyPage.root, displayMode: .large)
+        // 시안(12766:98169)은 34pt 타이틀과 ⚙ 버튼이 **한 행**이다 — Toolbar-Top 하나가
+        // Title 과 Trailing 을 나란히 담는다. `.large` 는 타이틀을 바 아래 별도 행으로
+        // 내려 둘이 위아래로 갈리므로 `.inlineLarge`(툴바 안의 큰 타이틀)를 쓴다.
+        .navigationInlineLarge(naviTitle: NavigationTitle.MyPage.root)
         .umcDefaultBackground()
         .alertPrompt(item: $viewModel.alertPrompt)
         .toolbar {
