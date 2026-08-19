@@ -45,7 +45,10 @@ struct ExchangeCompletedView: View {
     // MARK: - Property
 
     let card: ReceivedCard
-    let onContinue: () -> Void
+
+    /// 「계속 교환하기」. 근거리 교환에서만 의미가 있어 QR 링크 경로는 `nil` 로 감춘다 —
+    /// 링크로 받은 사람에게는 이어서 교환할 세션이 없다.
+    let onContinue: (() -> Void)?
     let onFinish: () -> Void
 
     // MARK: - Body
@@ -87,8 +90,18 @@ struct ExchangeCompletedView: View {
 
     private var buttons: some View {
         VStack(spacing: Metrics.buttonSpacing) {
-            CardActionButton(title: Constants.continueTitle, role: .primary, action: onContinue)
-            CardActionButton(title: Constants.finishTitle, role: .secondary, action: onFinish)
+            if let onContinue {
+                CardActionButton(
+                    title: Constants.continueTitle,
+                    role: .primary,
+                    action: onContinue
+                )
+                CardActionButton(title: Constants.finishTitle, role: .secondary, action: onFinish)
+            } else {
+                // 버튼이 하나뿐이면 그게 주 동작이다 — 회색 버튼만 남기면 유일한 이탈
+                // 경로가 부차적으로 보인다.
+                CardActionButton(title: Constants.finishTitle, role: .primary, action: onFinish)
+            }
         }
         .padding(.horizontal, Metrics.horizontalMargin)
         .padding(.bottom, Metrics.bottomMargin)

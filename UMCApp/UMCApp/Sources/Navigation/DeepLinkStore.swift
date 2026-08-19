@@ -6,8 +6,6 @@
 import Foundation
 import Observation
 
-import CommunityDomain
-
 /// 아직 열지 못한 딥링크 한 개.
 ///
 /// `onOpenURL` 은 앱이 부트스트랩·로그인 화면에 있을 때도 들어온다. 그 시점에는 탭 셸이
@@ -22,7 +20,7 @@ final class DeepLinkStore {
 
     // MARK: - Property
 
-    var pending: MessageLink?
+    var pending: AppDeepLink?
 
     // MARK: - Function
 
@@ -32,13 +30,13 @@ final class DeepLinkStore {
     ///   처리할 URL 이다.
     @discardableResult
     func receive(_ url: URL) -> Bool {
-        guard let link = MessageLink.parse(url) else { return false }
+        guard let link = AppDeepLink.parse(url) else { return false }
         pending = link
         return true
     }
 
     /// 세워 둔 링크를 꺼내 비운다.
-    func take() -> MessageLink? {
+    func take() -> AppDeepLink? {
         defer { pending = nil }
         return pending
     }
