@@ -79,7 +79,7 @@ public struct AuthSection: View {
         case .logout:
             alertPrompt = .init(
                 title: "로그아웃",
-                message: "정말 로그아웃 하시겠습니까?",
+                message: "정말 로그아웃을 하시겠습니까?",
                 positiveBtnTitle: "로그아웃",
                 positiveBtnAction: onLogout,
                 negativeBtnTitle: "취소",

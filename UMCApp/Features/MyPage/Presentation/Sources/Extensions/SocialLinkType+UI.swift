@@ -42,6 +42,20 @@ public extension SocialLinkType {
         }
     }
 
+    /// ``title`` 뒤에 붙는 목적격 조사.
+    ///
+    /// 시안(`12736:32900`·`33150`·`33400`)의 알럿 제목이 「Github**를**」/「LinkedIn**을**」
+    /// 처럼 조사를 가려 쓴다. 표기는 영문이지만 조사는 한글 발음의 종성을 따르므로
+    /// (`LinkedIn` → 「인」의 ㄴ 받침) 문자열로는 판별할 수 없어 종류별로 못박는다.
+    var objectParticle: String {
+        switch self {
+        case .github, .blog:
+            return "를"
+        case .linkedin:
+            return "을"
+        }
+    }
+
     /// 링크 입력 필드에 노출할 예시 URL
     var placeholder: String {
         switch self {
