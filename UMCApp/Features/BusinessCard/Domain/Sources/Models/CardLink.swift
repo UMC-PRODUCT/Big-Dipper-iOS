@@ -9,73 +9,57 @@ import Foundation
 
 /// 명함 프로필 딥링크 — 생성과 파싱을 한 타입에 모은다.
 ///
-/// 정본 형식은 **Universal Link** 다:
+/// 굽는 정본은 **Android 가 실제로 굽는 형식**에 맞춘다 (2026-08-20 팀 결정):
 /// ```
-/// https://api.university.neordinary.com/mypage/card?memberId={memberId}
+/// umc://card?memberId={memberId}
 /// ```
-/// 서버·Android 와 **합의한** 크로스 플랫폼 계약이라 iOS 가 임의로 바꾸지 않는다. 다만
-/// 합의일 뿐 아직 아무도 구현하지 않았다 (2026-08-19 확인) — Android 매니페스트에는 명함
-/// intent-filter 자체가 없고(`autoVerify` 0건, Firebase·런처·카카오 OAuth 뿐), 서버에도
-/// `assetlinks.json`·`apple-app-site-association` 이 없다. 「Android 는 이미 받는다」고
-/// 적어 두었던 이전 주석은 계획을 현재형으로 쓴 것이었다.
+/// Android(`develop-compose`) QR 화면이 이 문자열을 굽고, 매니페스트의 `umc://card`
+/// 필터와 NavHost 의 `umc://card?memberId={memberId}` 패턴이 이걸 받는다. 우리도 같은
+/// 값을 구우면 **어느 쪽 폰의 카메라로 찍어도 서로의 앱이 열린다** — 커스텀 스킴은
+/// AASA·assetlinks 검증이 없어서 서버 배포 없이 지금 동작한다는 것이 이 형식의 핵심이다.
+/// (한때 정본이던 `https://…/mypage/card?memberId=` Universal Link 는 서버에 AASA 가
+/// 없어 카메라 스캔이 사파리로 빠졌고, Android 는 그 경로를 등록조차 안 했다.)
 ///
-/// QR 페이로드(MP-F02 뒷면·MP-F04)·공유 링크(MP-F03)·수신 딥링크 해석이 전부 이 타입을 본다.
+/// QR 페이로드(MP-F02 뒷면·MP-F04)·수신 딥링크 해석이 전부 이 타입을 본다.
 /// Community 의 `MessageLink` 와 같은 이유(생성·해석 표 일치)로 한 몸이며, CommunityDomain
 /// 역의존을 피하려고 BusinessCardDomain 이 별도로 소유한다.
 ///
-/// - Note: **이 타입의 파싱 자체는 AASA 와 무관하다.** 앱이 이미 손에 쥔 문자열을 해석할
-///   뿐이라, 인앱 스캐너가 카메라로 읽어 넘겨 주면 서버 없이도 동작한다. AASA 가 필요한 건
-///   **밖에서 링크를 눌러 앱이 열리는 경로**다 — 카메라 앱 스캔·사파리·메신저. 시안에는
-///   인앱 스캐너 화면이 없어(「스캔」 문구는 QR 화면 캡션 한 곳뿐) 시안대로라면 그 경로가
-///   유일하고, 그래서 서버의 AASA 배포가 전제가 된다.
-///   Android 도 12 부터는 검증되지 않은 https intent-filter 를 앱에 넘기지 않으므로
-///   `assetlinks.json` 이 똑같이 필요하다 — iOS 만의 제약이 아니다.
+/// - Important: Android 는 memberId 를 무가드 `toLong()` 으로 받는다
+///   (`MycardScreen` LaunchedEffect) — **숫자가 아닌 id 를 구우면 저쪽이 크래시한다.**
+///   서버 memberId 는 숫자 문자열이라 실값으로는 안전하지만, 스텁·프리뷰 데이터도
+///   숫자만 쓸 것.
+/// - Note: 읽기는 굽기보다 넓다. 과거 정본이던 Universal Link 두 경로와 경로형 커스텀
+///   스킴(`umc://card/{id}`)도 계속 해석한다 — 이미 구워진 QR 이미지는 회수할 수 없다.
 public struct CardLink: Hashable, Sendable {
 
     // MARK: - Constants
 
     private enum Constants {
-        static let scheme = "https"
-        static let path = "/mypage/card"
+        /// 커스텀 스킴 — **굽는 정본.** Android QR 화면(`QrCodeViewModel`)이 굽는
+        /// 형식과 문자 그대로 같다. 질의형(`?memberId=`)이 정본인 이유는 저쪽 NavHost
+        /// 패턴이 질의형으로 등록돼 있어서다. 경로형(`umc://card/42`)은 읽기만 한다.
+        static let cardScheme = "umc"
+        static let cardHost = "card"
         static let memberIdQueryName = "memberId"
 
-        /// Android(`develop-compose`)가 등록한 경로. 우리와 다르다 — 저쪽은 스레드 딥링크
-        /// 필터를 복제해 만들어 명함이 `/community/threads` 아래에 있다. 어느 쪽이 정본인지
-        /// 정해지기 전까지 **읽기만** 한다: 상대 QR 을 못 읽는 것보다 낫다.
-        static let androidPath = "/community/threads/card"
+        /// 과거 정본이던 Universal Link 표기 — **읽기 전용.** 서버에 AASA 가 없어 굽기를
+        /// 접었지만, 이 표기로 구워진 검증기 QR 이 남아 있을 수 있다.
+        static let webScheme = "https"
+        static let webPath = "/mypage/card"
 
-        /// 백엔드가 2026-08-17 확정한 환경별 호스트. 한때 dev 를 `alpha.api…` 로 적어
-        /// 두었는데 그런 DNS 는 존재한 적이 없다 — DEBUG 빌드가 굽는 QR 이 통째로
-        /// 죽어 있었다.
+        /// Android 가 등록한 https 경로 — **읽기 전용.** 저쪽은 스레드 딥링크 필터를
+        /// 복제해 만들어 명함이 `/community/threads` 아래에 있다.
+        static let androidWebPath = "/community/threads/card"
+
+        /// 환경별 호스트. 한때 dev 를 `alpha.api…` 로 적어 두었는데 그런 DNS 는 존재한
+        /// 적이 없다 — DEBUG 빌드가 굽는 QR 이 통째로 죽어 있었다.
         static let productionHost = "api.university.neordinary.com"
         static let devHost = "dev.api.university.neordinary.com"
-
-        /// 커스텀 스킴. 굽지는 않고 **읽기만** 한다 — 두 표기가 다 돌아다닌다.
-        /// - `umc://card/{memberId}` 경로형
-        /// - `umc://card?memberId={memberId}` 질의형 — Android 가 **실제로 굽는** 형식이다
-        ///   (`QrCodeViewModel.generateMyUserCardQr`). 저쪽은 `intent://` 표준 규격을
-        ///   쓰려다 테스트가 막혀 이 형식으로 내려앉았다.
-        static let legacyScheme = "umc"
-        static let legacyHost = "card"
     }
 
     // MARK: - Property
 
     public let memberId: String
-
-    // MARK: - Static Property
-
-    /// 링크를 **만들 때** 쓰는 호스트. 서버가 환경별로 호스트를 나눠 운영한다.
-    ///
-    /// 읽을 때는 ``parse(_:)`` 가 두 호스트를 모두 받는다 — dev 빌드로 만든 QR 을
-    /// 운영 빌드로 스캔하는 상황이 검증 중에 흔하다.
-    public static var host: String {
-        #if DEBUG
-        Constants.devHost
-        #else
-        Constants.productionHost
-        #endif
-    }
 
     // MARK: - Init
 
@@ -85,9 +69,9 @@ public struct CardLink: Hashable, Sendable {
 
     // MARK: - Computed Property
 
-    /// 공유·QR 용 정규 링크 문자열.
+    /// QR 에 굽는 정규 문자열 — `umc://card?memberId={id}`. Android 와 같은 값이다.
     public var urlString: String {
-        "\(Constants.scheme)://\(Self.host)\(Constants.path)"
+        "\(Constants.cardScheme)://\(Constants.cardHost)"
             + "?\(Constants.memberIdQueryName)=\(memberId)"
     }
 
@@ -99,18 +83,18 @@ public struct CardLink: Hashable, Sendable {
 
     /// 명함 딥링크 URL 을 해석한다. 명함 링크가 아니면 `nil`.
     ///
-    /// Universal Link 를 먼저 보고, 아니면 커스텀 스킴을 시도한다.
+    /// 정본인 커스텀 스킴을 먼저 보고, 아니면 과거 표기(Universal Link)를 시도한다.
     public static func parse(_ url: URL) -> CardLink? {
-        parseUniversalLink(url) ?? parseCustomScheme(url)
+        parseCustomScheme(url) ?? parseUniversalLink(url)
     }
 
     // MARK: - Private Static Function
 
     private static func parseUniversalLink(_ url: URL) -> CardLink? {
-        guard url.scheme?.lowercased() == Constants.scheme,
+        guard url.scheme?.lowercased() == Constants.webScheme,
               let host = url.host?.lowercased(),
               host == Constants.productionHost || host == Constants.devHost,
-              url.path == Constants.path || url.path == Constants.androidPath,
+              url.path == Constants.webPath || url.path == Constants.androidWebPath,
               let identifier = memberIdQuery(in: url),
               isValidIdentifier(identifier)
         else { return nil }
@@ -119,8 +103,8 @@ public struct CardLink: Hashable, Sendable {
     }
 
     private static func parseCustomScheme(_ url: URL) -> CardLink? {
-        guard url.scheme?.lowercased() == Constants.legacyScheme,
-              url.host?.lowercased() == Constants.legacyHost else { return nil }
+        guard url.scheme?.lowercased() == Constants.cardScheme,
+              url.host?.lowercased() == Constants.cardHost else { return nil }
 
         // 경로형(`umc://card/42`)과 질의형(`umc://card?memberId=42`) 둘 다 받는다.
         let segments = url.pathComponents.filter { $0 != "/" }

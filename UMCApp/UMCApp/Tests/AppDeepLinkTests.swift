@@ -13,9 +13,18 @@ struct AppDeepLinkTests {
 
     // MARK: - Card
 
-    /// QR 이 굽는 정본 표기. 이 해석이 없으면 스캔이 아무 일도 하지 않는다.
+    /// QR 이 굽는 정본 표기 — Android 와 같은 값이다. 이 해석이 없으면 스캔이 아무 일도
+    /// 하지 않는다.
+    @Test("정본 커스텀 스킴 명함 링크를 읽는다")
+    func parsesCardCanonicalScheme() {
+        let url = URL(string: "umc://card?memberId=42")!
+
+        #expect(AppDeepLink.parse(url) == .card(memberId: "42"))
+    }
+
+    /// 과거 정본이던 Universal Link 표기 — 이 표기로 구워진 검증기 QR 이 남아 있을 수 있다.
     @Test(
-        "명함 Universal Link 를 명함 링크로 읽는다",
+        "과거 Universal Link 표기도 명함 링크로 읽는다",
         arguments: [
             "https://api.university.neordinary.com/mypage/card?memberId=42",
             "https://dev.api.university.neordinary.com/mypage/card?memberId=42",
@@ -25,8 +34,7 @@ struct AppDeepLinkTests {
         #expect(AppDeepLink.parse(URL(string: raw)!) == .card(memberId: "42"))
     }
 
-    /// Android 가 먼저 검증한 표기라 예전 QR 이 돌아다닐 수 있다.
-    @Test("커스텀 스킴 명함 링크도 읽는다")
+    @Test("경로형 커스텀 스킴도 읽는다")
     func parsesCardCustomScheme() {
         let url = URL(string: "umc://card/42")!
 

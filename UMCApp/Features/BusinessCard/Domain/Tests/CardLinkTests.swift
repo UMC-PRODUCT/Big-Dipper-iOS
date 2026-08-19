@@ -9,18 +9,16 @@ import Foundation
 import Testing
 @testable import BusinessCardDomain
 
-/// 명함 딥링크는 **Android·서버와 합의한 크로스 플랫폼 계약**이다. 두 앱이 같은 QR 을
+/// 명함 딥링크는 **Android 와 맞춘 크로스 플랫폼 계약**이다. 두 앱이 같은 QR 을
 /// 읽어야 하므로 형식이 바뀌면 여기서 먼저 깨져야 한다.
-@Suite("CardLink — Universal Link 생성·파싱")
+@Suite("CardLink — 명함 딥링크 생성·파싱")
 struct CardLinkTests {
 
-    @Test("urlString은 합의된 Universal Link 형식이다 — /mypage/card?memberId=")
+    /// Android `QrCodeViewModel` 이 굽는 문자열과 **문자 그대로** 같아야 한다 — 저쪽
+    /// NavHost 패턴(`umc://card?memberId={memberId}`)이 이 형식만 명함 화면에 매칭한다.
+    @Test("urlString은 Android와 같은 커스텀 스킴 질의형이다 — umc://card?memberId=")
     func urlStringFormat() {
-        let urlString = CardLink(memberId: "42").urlString
-
-        #expect(urlString.hasPrefix("https://"))
-        #expect(urlString.hasSuffix("/mypage/card?memberId=42"))
-        #expect(urlString.contains("api.university.neordinary.com"))
+        #expect(CardLink(memberId: "42").urlString == "umc://card?memberId=42")
     }
 
     @Test("생성한 URL을 다시 파싱하면 같은 memberId가 나온다")
@@ -32,7 +30,8 @@ struct CardLinkTests {
         #expect(parsed?.memberId == "42")
     }
 
-    @Test("운영·dev 호스트를 모두 받는다 — dev 빌드 QR을 운영 빌드로 스캔하는 경우", arguments: [
+    /// 과거 정본이던 Universal Link 표기 — 이 표기로 구워진 검증기 QR 이 남아 있을 수 있다.
+    @Test("과거 Universal Link 표기도 운영·dev 호스트 모두 읽는다", arguments: [
         "https://api.university.neordinary.com/mypage/card?memberId=42",
         "https://dev.api.university.neordinary.com/mypage/card?memberId=42",
     ])
@@ -51,23 +50,20 @@ struct CardLinkTests {
         #expect(CardLink.parse(url)?.memberId == "42")
     }
 
-    @Test("커스텀 스킴 umc://card/{id}도 계속 읽는다 — Android가 먼저 검증한 형식")
+    @Test("경로형 커스텀 스킴 umc://card/{id}도 계속 읽는다 — 과거 우리 검증기가 굽던 형식")
     func stillReadsCustomScheme() throws {
         let url = try #require(URL(string: "umc://card/42"))
 
         #expect(CardLink.parse(url)?.memberId == "42")
     }
 
-    /// Android(`develop-compose`)가 **실제로 굽는** 형식이다 — `QrCodeViewModel` 이
-    /// `umc://card?memberId=` 를 QR 로 만들고, `MainNavHost` 는 그것과
-    /// `/community/threads/card?memberId=` 를 딥링크로 등록해 뒀다. 우리 표기와 달라서
-    /// 받아주지 않으면 **UMC iOS 가 UMC Android 명함을 못 읽는다.**
-    @Test("Android 표기도 읽는다 — 질의형 커스텀 스킴·community/threads/card 경로", arguments: [
-        "umc://card?memberId=42",
+    /// Android `MainNavHost` 가 등록해 둔 https 경로다 — 저쪽 매니페스트 필터가 이
+    /// 경로만 알아서, 언젠가 이 표기로 구워진 링크가 돌아다닐 수 있다.
+    @Test("Android가 등록한 community/threads/card 경로도 읽는다", arguments: [
         "https://api.university.neordinary.com/community/threads/card?memberId=42",
         "https://dev.api.university.neordinary.com/community/threads/card?memberId=42",
     ])
-    func readsAndroidFormats(urlString: String) throws {
+    func readsAndroidWebPath(urlString: String) throws {
         let url = try #require(URL(string: urlString))
 
         #expect(CardLink.parse(url)?.memberId == "42")
