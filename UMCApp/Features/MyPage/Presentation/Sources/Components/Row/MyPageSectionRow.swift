@@ -86,6 +86,20 @@ public struct MyPageSectionRow: View {
         self.iconBackgroundColor = nil
         self.titleColor = titleColor
     }
+
+    /// 브랜드 이미지 아이콘과 오른쪽 텍스트를 사용하는 Row 생성자 (소셜계정 연동 행).
+    /// - Parameters:
+    ///   - brandIcon: 왼쪽에 표시할 브랜드 이미지
+    ///   - title: 중앙에 표시할 타이틀
+    ///   - rightText: 오른쪽에 표시할 텍스트
+    ///   - titleColor: 타이틀 텍스트 색상 (기본값: .black)
+    public init(brandIcon: Image, title: String, rightText: String, titleColor: Color = .black) {
+        self.icon = .brand(brandIcon)
+        self.title = title
+        self.rightContent = .text(rightText)
+        self.iconBackgroundColor = nil
+        self.titleColor = titleColor
+    }
     
     /// ImageResource 아이콘과 오른쪽 텍스트를 사용하는 Row 생성자
     /// - Parameters:

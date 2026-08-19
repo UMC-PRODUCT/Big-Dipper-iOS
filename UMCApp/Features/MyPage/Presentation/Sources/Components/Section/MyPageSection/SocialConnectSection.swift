@@ -46,7 +46,8 @@ public struct SocialConnectSection: View {
             Section(content: {
                 sectionContent
             }, header: {
-                SectionHeaderView(title: sectionType.rawValue)
+                // 시안 섹션 헤더는 Headline-emphasized(17 semibold) — `Figma 12736:32831`.
+                SectionHeaderView(title: sectionType.rawValue, weight: .semibold)
             })
         }
     }
@@ -63,14 +64,24 @@ public struct SocialConnectSection: View {
         Button(action: {
             onConnect(social)
         }, label: {
+            // 시안(12736:32832)은 SF Symbol 타일이 아니라 서비스 브랜드 타일 이미지를 쓴다.
             MyPageSectionRow(
-                systemIcon: "link",
+                brandIcon: brandIcon(for: social),
                 title: social.displayName,
-                rightText: connectingSocial == social ? "연동 중" : "연동하기",
-                iconBackgroundColor: social.color
+                rightText: connectingSocial == social ? "연동 중" : "연동하기"
             )
         })
         .buttonStyle(.borderless)
         .disabled(connectingSocial != nil)
+    }
+
+    /// 소셜별 시안 타일 이미지. 구글은 연동 대상이 아니라(``SocialType/appConnectableCases``)
+    /// 시안 타일이 없다 — 도달하지 않는 분기지만 switch 완전성을 위해 로그인 글리프로 채운다.
+    private func brandIcon(for social: SocialType) -> Image {
+        switch social {
+        case .kakao:  return .kakaoColor
+        case .apple:  return .appleColor
+        case .google: return social.image
+        }
     }
 }

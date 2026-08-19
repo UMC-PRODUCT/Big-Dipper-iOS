@@ -33,4 +33,17 @@ public extension Image {
     static var blogColor: Image {
         Image("blogColor", bundle: .module)
     }
+
+    /// 소셜계정 연동 행의 카카오 아이콘 — 노란 타일에 말풍선 (`Figma 12736:32834`).
+    ///
+    /// 로그인 버튼의 글리프(``SocialType/image``)와 달리 배경까지 구운 타일판이라
+    /// 리스트 행에 그대로 얹는다.
+    static var kakaoColor: Image {
+        Image("kakaoColor", bundle: .module)
+    }
+
+    /// 소셜계정 연동 행의 Apple 아이콘 — 검은 타일에 흰 사과 (`Figma 12736:32841`).
+    static var appleColor: Image {
+        Image("appleColor", bundle: .module)
+    }
 }
