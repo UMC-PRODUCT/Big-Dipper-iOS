@@ -17,7 +17,7 @@ import CoreUIComponents
 /// - Example:
 /// ```swift
 /// // 브랜드 이미지 + 오른쪽 이미지 (외부 링크 행)
-/// MyPageSectionRow(brandIcon: .githubColor, title: "GitHub", rightImage: "arrow.up.right")
+/// MyPageSectionRow(brandIcon: .githubColor, title: "Github", rightImage: "arrow.up.right")
 ///
 /// // SF Symbol + 오른쪽 텍스트 (기본 배경색)
 /// MyPageSectionRow(systemIcon: "info.circle", title: "버전", rightText: "1.0.0")

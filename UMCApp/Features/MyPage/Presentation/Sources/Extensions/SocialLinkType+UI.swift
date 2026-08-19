@@ -30,11 +30,14 @@ public extension SocialLinkType {
         }
     }
 
-    /// 행에 노출할 서비스 이름
+    /// 행에 노출할 서비스 이름.
+    ///
+    /// GitHub 의 공식 표기는 「GitHub」지만 시안은 설정·명함편집 6곳 전부와 알럿까지
+    /// 「Github」로 쓴다 — 정본을 시안으로 맞춘다.
     var title: String {
         switch self {
         case .github:
-            return "GitHub"
+            return "Github"
         case .linkedin:
             return "LinkedIn"
         case .blog:
