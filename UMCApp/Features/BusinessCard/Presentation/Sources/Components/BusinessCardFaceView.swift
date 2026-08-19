@@ -123,6 +123,8 @@ public struct BusinessCardFaceView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: Metrics.logoWidth, height: Metrics.logoHeight)
+                    // 옆의 "Business card" 텍스트가 같은 뜻을 말한다 — 중복 낭독 방지.
+                    .accessibilityHidden(true)
 
                 Text("Business card")
                     .appFont(.caption2, color: Color.white)
@@ -253,11 +255,15 @@ public struct BusinessCardFaceView: View {
     }
 
     /// 브랜드 SVG 아이콘(에셋 원본이 흰색이라 틴트 없이 크기만 잡는다).
+    ///
+    /// VoiceOver 에는 숨긴다 — 링크 값 텍스트가 바로 옆에 있어 에셋 이름까지 읽으면
+    /// "githubMono, github.com/umc" 처럼 겹쳐 들린다.
     private func brandIcon(_ image: Image) -> some View {
         image
             .resizable()
             .scaledToFit()
             .frame(width: Metrics.linkIconSize, height: Metrics.linkIconSize)
+            .accessibilityHidden(true)
     }
 
     /// SF Symbol 아이콘 — 브랜드 아이콘과 같은 18×18 틀에 맞춘다.

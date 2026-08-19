@@ -102,27 +102,55 @@ struct ExchangeSearchingView: View {
         )
     }
 
+    /// 시안 실측은 364pt 고정이지만 화면 폭이 그보다 좁으면(SE 320) 바깥 링이 양옆으로
+    /// 잘린다. 정사각 컨테이너가 남는 폭까지만 차지하게 두고(최대 364) 링·아바타를 그 비율로
+    /// 줄여, 어느 기기에서도 원이 온전히 들어오고 세로 여백도 함께 줄어들게 한다.
     private var radar: some View {
-        ZStack {
-            ForEach(Self.rings, id: \.size) { ring in
-                if ring.isFilled {
-                    Circle()
-                        .fill(Color.indigo500.opacity(ring.opacity))
-                        .frame(width: ring.size, height: ring.size)
-                } else {
-                    Circle()
-                        .stroke(Color.indigo500.opacity(ring.opacity), lineWidth: 1)
-                        .frame(width: ring.size, height: ring.size)
+        Color.clear
+            .frame(maxWidth: Metrics.radarSize)
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                GeometryReader { proxy in
+                    let scale = proxy.size.width / Metrics.radarSize
+
+                    ZStack {
+                        ForEach(Self.rings, id: \.size) { ring in
+                            ringShape(ring, scale: scale)
+                        }
+
+                        avatar(scale: scale)
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
                 }
             }
+    }
 
-            RemoteImage(
-                urlString: avatarURL ?? "",
-                size: CGSize(width: Metrics.avatarSize, height: Metrics.avatarSize),
-                cornerRadius: Metrics.avatarSize / 2
-            )
+    @ViewBuilder
+    private func ringShape(
+        _ ring: (size: CGFloat, opacity: Double, isFilled: Bool),
+        scale: CGFloat
+    ) -> some View {
+        let diameter = ring.size * scale
+
+        if ring.isFilled {
+            Circle()
+                .fill(Color.indigo500.opacity(ring.opacity))
+                .frame(width: diameter, height: diameter)
+        } else {
+            Circle()
+                .stroke(Color.indigo500.opacity(ring.opacity), lineWidth: 1)
+                .frame(width: diameter, height: diameter)
         }
-        .frame(width: Metrics.radarSize, height: Metrics.radarSize)
+    }
+
+    private func avatar(scale: CGFloat) -> some View {
+        let size = Metrics.avatarSize * scale
+
+        return RemoteImage(
+            urlString: avatarURL ?? "",
+            size: CGSize(width: size, height: size),
+            cornerRadius: size / 2
+        )
     }
 
     private var caption: some View {

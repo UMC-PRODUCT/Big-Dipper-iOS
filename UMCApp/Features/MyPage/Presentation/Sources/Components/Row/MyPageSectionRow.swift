@@ -146,7 +146,12 @@ public struct MyPageSectionRow: View {
     
     public var body: some View {
         HStack(spacing: DefaultSpacing.spacing8) {
+            // 세 아이콘 종류(브랜드 32 · SF Symbol 타일 30 · 리소스 30)가 한 `Form` 안에
+            // 섞이면 타이틀 시작 x가 아이콘 폭을 따라 어긋난다. 바깥 틀을 시안 값(32)으로
+            // 통일해 어떤 행이 와도 텍스트가 같은 자리에서 시작하게 한다.
             iconView
+                .frame(width: Constants.brandIconSize, height: Constants.brandIconSize)
+
             Text(title)
                 .appFont(.subheadline, weight: .medium, color: titleColor)
 
@@ -171,6 +176,9 @@ public struct MyPageSectionRow: View {
                 .aspectRatio(contentMode: .fill)
                 .frame(width: Constants.brandIconSize, height: Constants.brandIconSize)
                 .clipShape(.rect(cornerRadius: Constants.brandIconRadius))
+                // 옆 타이틀과 완전히 중복되는 장식이다. 숨기지 않으면 VoiceOver 가
+                // 에셋 이름("githubColor")을 버튼 레이블 앞에 그대로 읽는다.
+                .accessibilityHidden(true)
         case .system(let systemName):
             ZStack {
                 RoundedRectangle(cornerRadius: Constants.cornerRadius)

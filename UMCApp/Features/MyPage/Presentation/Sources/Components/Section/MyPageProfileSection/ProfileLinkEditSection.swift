@@ -62,6 +62,8 @@ struct ProfileLinkEditSection: View, Equatable {
                 .aspectRatio(contentMode: .fill)
                 .frame(width: Constants.iconSize, height: Constants.iconSize)
                 .clipShape(.rect(cornerRadius: Constants.iconRadius))
+                // 장식 — 입력 필드 placeholder 가 이미 어떤 링크인지 말한다.
+                .accessibilityHidden(true)
 
             TextField("", text: binding(for: type), prompt: Text(type.placeholder))
                 .textInputAutocapitalization(.never)
