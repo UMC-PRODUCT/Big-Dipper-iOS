@@ -140,7 +140,7 @@ struct CardExchangeViewModelTests {
 
     @Test("세션이 실패 이벤트를 흘리면 화면에 남긴다")
     func sessionFailureIsSurfaced() async {
-        let sut = makeSUT(exchange: StubExchangeCards(events: [.failed(.notPaired)]))
+        let sut = makeSUT(exchange: StubExchangeCards(events: [.failed(.transportFailure(underlying: NearbyError.invalidPayload("연결 시간 초과")))]))
 
         await sut.start()
 

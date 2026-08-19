@@ -19,8 +19,10 @@ private enum Constants {
     static let stopTitle = "교환 중지"
 
     static let failedTitle = "교환을 시작할 수 없어요"
-    static let failedDescription = "블루투스와 로컬 네트워크 권한을 확인해 주세요."
-    static let failedImage = "antenna.radiowaves.left.and.right.slash"
+    /// 블루투스는 더 이상 쓰지 않는다(BLE transport 폐기) — 권한 항목 자체가 없어
+    /// 「블루투스를 확인하라」는 안내는 찾을 수 없는 설정을 가리킨다.
+    static let failedDescription = "설정에서 이 앱의 로컬 네트워크 권한을 켜 주세요."
+    static let failedImage = "wifi.exclamationmark"
 
     static let cardFailureTitle = "내 명함을 불러올 수 없어요"
     static let cardFailureDescription = "명함이 있어야 상대에게 보낼 수 있어요."

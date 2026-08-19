@@ -12,8 +12,9 @@ import Foundation
 /// 발견 목록 한 줄을 그리는 데 필요한 최소 정보.
 ///
 /// 시안(Figma 12654:32621)의 행은 아바타·이름/닉네임·파트·기수를 보여준다. 그런데 이 값들은
-/// **명함을 교환하기 전에** 필요하다 — 누군지 봐야 탭할지 정하기 때문이다. Wi-Fi Aware 가
-/// 발견 시점에 주는 건 기기 이름(「홍길동의 iPhone」)뿐이라 이 미리보기를 따로 주고받는다.
+/// **명함을 교환하기 전에** 필요하다 — 누군지 봐야 탭할지 정하기 때문이다. MPC 는 발견 시점의
+/// `discoveryInfo` 로 그중 일부를 이미 싣지만, Bonjour TXT 레코드는 크기가 빠듯하고 NI 토큰은
+/// 거기 실을 수 없다. 그래서 연결 직후 핸드셰이크로 미리보기와 토큰을 함께 주고받는다.
 ///
 /// 명함 본체(``ExchangePayload``)와 분리한 이유: 미리보기는 **동의 없이** 오간다. 사용자가
 /// 행을 탭해야 비로소 명함이 건너가므로, 그 전에 흐르는 정보는 최소여야 한다.
@@ -61,7 +62,7 @@ public struct NearbyHandshake: Codable, Sendable, Equatable {
     /// `NIDiscoveryToken` 을 `NSKeyedArchiver` 로 직렬화한 값 (실측 343B).
     ///
     /// **NearbyInteraction 은 이 토큰을 스스로 나르지 못한다.** 거리·방향만 주는 API 라,
-    /// 세션을 시작하려면 다른 채널로 토큰을 먼저 주고받아야 한다 — 그 채널이 Wi-Fi Aware 다.
+    /// 세션을 시작하려면 다른 채널로 토큰을 먼저 주고받아야 한다 — 그 채널이 MPC 다.
     ///
     /// UWB 미탑재 기기(아이패드·구형 아이폰)는 `nil`. 그 경우 목록에 거리 없이 행만 그린다.
     public let niToken: Data?
@@ -76,7 +77,7 @@ public struct NearbyHandshake: Codable, Sendable, Equatable {
 
 // MARK: - NearbyMessage
 
-/// Wi-Fi Aware 연결 위로 오가는 메시지 봉투.
+/// MPC 세션 위로 오가는 메시지 봉투.
 ///
 /// 전에는 ``ExchangePayload`` 만 오갔다. 그래서 미리보기도 NI 토큰도 실을 자리가 없었고,
 /// 상대가 누군지 보려면 명함을 먼저 받아야 하는 순서 역전이 있었다.
