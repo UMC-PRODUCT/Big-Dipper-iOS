@@ -58,6 +58,21 @@ struct CardLinkTests {
         #expect(CardLink.parse(url)?.memberId == "42")
     }
 
+    /// Android(`develop-compose`)가 **실제로 굽는** 형식이다 — `QrCodeViewModel` 이
+    /// `umc://card?memberId=` 를 QR 로 만들고, `MainNavHost` 는 그것과
+    /// `/community/threads/card?memberId=` 를 딥링크로 등록해 뒀다. 우리 표기와 달라서
+    /// 받아주지 않으면 **UMC iOS 가 UMC Android 명함을 못 읽는다.**
+    @Test("Android 표기도 읽는다 — 질의형 커스텀 스킴·community/threads/card 경로", arguments: [
+        "umc://card?memberId=42",
+        "https://api.university.neordinary.com/community/threads/card?memberId=42",
+        "https://dev.api.university.neordinary.com/community/threads/card?memberId=42",
+    ])
+    func readsAndroidFormats(urlString: String) throws {
+        let url = try #require(URL(string: urlString))
+
+        #expect(CardLink.parse(url)?.memberId == "42")
+    }
+
     @Test("호스트·경로·쿼리가 어긋나면 nil", arguments: [
         // 남의 호스트
         "https://evil.com/mypage/card?memberId=42",
@@ -75,6 +90,10 @@ struct CardLinkTests {
         // 커스텀 스킴이지만 host가 다름
         "umc://thread/42",
         "umc://card/",
+        // Android 경로지만 memberId 가 없다
+        "https://api.university.neordinary.com/community/threads/card",
+        // 질의형인데 값이 비었다
+        "umc://card?memberId=",
     ])
     func rejectsInvalid(urlString: String) throws {
         let url = try #require(URL(string: urlString))

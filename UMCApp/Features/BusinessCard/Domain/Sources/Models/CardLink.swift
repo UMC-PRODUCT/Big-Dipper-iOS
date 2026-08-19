@@ -39,14 +39,22 @@ public struct CardLink: Hashable, Sendable {
         static let path = "/mypage/card"
         static let memberIdQueryName = "memberId"
 
+        /// Android(`develop-compose`)가 등록한 경로. 우리와 다르다 — 저쪽은 스레드 딥링크
+        /// 필터를 복제해 만들어 명함이 `/community/threads` 아래에 있다. 어느 쪽이 정본인지
+        /// 정해지기 전까지 **읽기만** 한다: 상대 QR 을 못 읽는 것보다 낫다.
+        static let androidPath = "/community/threads/card"
+
         /// 백엔드가 2026-08-17 확정한 환경별 호스트. 한때 dev 를 `alpha.api…` 로 적어
         /// 두었는데 그런 DNS 는 존재한 적이 없다 — DEBUG 빌드가 굽는 QR 이 통째로
         /// 죽어 있었다.
         static let productionHost = "api.university.neordinary.com"
         static let devHost = "dev.api.university.neordinary.com"
 
-        /// 커스텀 스킴 형식(`umc://card/{memberId}`). 굽지는 않고 **읽기만** 한다 —
-        /// Android 가 이 형식으로 먼저 검증했고, 예전 QR 이 돌아다닐 수 있다.
+        /// 커스텀 스킴. 굽지는 않고 **읽기만** 한다 — 두 표기가 다 돌아다닌다.
+        /// - `umc://card/{memberId}` 경로형
+        /// - `umc://card?memberId={memberId}` 질의형 — Android 가 **실제로 굽는** 형식이다
+        ///   (`QrCodeViewModel.generateMyUserCardQr`). 저쪽은 `intent://` 표준 규격을
+        ///   쓰려다 테스트가 막혀 이 형식으로 내려앉았다.
         static let legacyScheme = "umc"
         static let legacyHost = "card"
     }
@@ -102,10 +110,8 @@ public struct CardLink: Hashable, Sendable {
         guard url.scheme?.lowercased() == Constants.scheme,
               let host = url.host?.lowercased(),
               host == Constants.productionHost || host == Constants.devHost,
-              url.path == Constants.path,
-              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let identifier = components.queryItems?
-                  .first(where: { $0.name == Constants.memberIdQueryName })?.value,
+              url.path == Constants.path || url.path == Constants.androidPath,
+              let identifier = memberIdQuery(in: url),
               isValidIdentifier(identifier)
         else { return nil }
 
@@ -116,11 +122,20 @@ public struct CardLink: Hashable, Sendable {
         guard url.scheme?.lowercased() == Constants.legacyScheme,
               url.host?.lowercased() == Constants.legacyHost else { return nil }
 
+        // 경로형(`umc://card/42`)과 질의형(`umc://card?memberId=42`) 둘 다 받는다.
         let segments = url.pathComponents.filter { $0 != "/" }
-        guard let identifier = segments.first, segments.count == 1,
-              isValidIdentifier(identifier) else { return nil }
+        let identifier = segments.count == 1 ? segments[0] : memberIdQuery(in: url)
+
+        guard let identifier, isValidIdentifier(identifier) else { return nil }
 
         return CardLink(memberId: identifier)
+    }
+
+    private static func memberIdQuery(in url: URL) -> String? {
+        URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == Constants.memberIdQueryName })?
+            .value
     }
 
     /// 영숫자·하이픈·언더스코어만 허용 (서버 memberId 표현 범위).
