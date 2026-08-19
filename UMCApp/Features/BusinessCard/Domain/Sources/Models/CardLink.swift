@@ -13,16 +13,23 @@ import Foundation
 /// ```
 /// https://api.university.neordinary.com/mypage/card?memberId={memberId}
 /// ```
-/// 서버·Android 와 합의한 크로스 플랫폼 계약이라 iOS 가 임의로 바꾸지 않는다. Android 는
-/// 같은 URL 을 `autoVerify` intent-filter 로 받고, 두 앱이 **같은 QR** 을 읽는다.
+/// 서버·Android 와 **합의한** 크로스 플랫폼 계약이라 iOS 가 임의로 바꾸지 않는다. 다만
+/// 합의일 뿐 아직 아무도 구현하지 않았다 (2026-08-19 확인) — Android 매니페스트에는 명함
+/// intent-filter 자체가 없고(`autoVerify` 0건, Firebase·런처·카카오 OAuth 뿐), 서버에도
+/// `assetlinks.json`·`apple-app-site-association` 이 없다. 「Android 는 이미 받는다」고
+/// 적어 두었던 이전 주석은 계획을 현재형으로 쓴 것이었다.
 ///
 /// QR 페이로드(MP-F02 뒷면·MP-F04)·공유 링크(MP-F03)·수신 딥링크 해석이 전부 이 타입을 본다.
 /// Community 의 `MessageLink` 와 같은 이유(생성·해석 표 일치)로 한 몸이며, CommunityDomain
 /// 역의존을 피하려고 BusinessCardDomain 이 별도로 소유한다.
 ///
-/// - Note: **QR 스캔은 Universal Link 등록(AASA)과 무관하게 동작한다.** 앱이 카메라로 읽은
-///   문자열을 여기서 직접 파싱하기 때문이다. AASA 는 사파리·메신저에서 링크를 눌렀을 때
-///   앱이 열리게 하는 용도라 「명함 공유하기」에만 필요하다.
+/// - Note: **이 타입의 파싱 자체는 AASA 와 무관하다.** 앱이 이미 손에 쥔 문자열을 해석할
+///   뿐이라, 인앱 스캐너가 카메라로 읽어 넘겨 주면 서버 없이도 동작한다. AASA 가 필요한 건
+///   **밖에서 링크를 눌러 앱이 열리는 경로**다 — 카메라 앱 스캔·사파리·메신저. 시안에는
+///   인앱 스캐너 화면이 없어(「스캔」 문구는 QR 화면 캡션 한 곳뿐) 시안대로라면 그 경로가
+///   유일하고, 그래서 서버의 AASA 배포가 전제가 된다.
+///   Android 도 12 부터는 검증되지 않은 https intent-filter 를 앱에 넘기지 않으므로
+///   `assetlinks.json` 이 똑같이 필요하다 — iOS 만의 제약이 아니다.
 public struct CardLink: Hashable, Sendable {
 
     // MARK: - Constants
