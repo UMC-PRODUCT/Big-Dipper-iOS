@@ -180,13 +180,33 @@ public final class MyPageViewModel {
         } catch is CancellationError {
             myCard = previousState
         } catch let error as AppError {
-            myCard = .failed(error)
+            myCard = Self.failureState(error, previous: previousState)
         } catch let error as NSError
             where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
             myCard = previousState
         } catch {
-            myCard = .failed(.unknown(message: error.localizedDescription))
+            myCard = Self.failureState(
+                .unknown(message: error.localizedDescription),
+                previous: previousState
+            )
         }
+    }
+
+    /// 재조회 실패를 어떤 상태로 실을지 정한다.
+    ///
+    /// 보여줄 카드가 이미 있으면 실패로 덮지 않는다 — 실패한 건 **갱신**이지 카드가 아니다.
+    /// 화면 전체를 재시도 뷰로 바꾸면 pop 복귀 재조회 중 네트워크가 한 번 흔들린 것만으로
+    /// 멀쩡히 보이던 카드가 사라진다. 오래된 값을 그대로 두는 쪽이 stale-while-revalidate의
+    /// 나머지 반쪽이다(취소 경로만 보존하면 계약이 절반만 성립한다).
+    ///
+    /// - Note: 그 대가로 **갱신 실패가 조용해진다.** 카드가 낡은 채 남고 화면에 실패 표시가
+    ///   없다. 다음 진입·pop 복귀가 다시 조회하므로 스스로 회복하며, 보여줄 카드가 아예
+    ///   없을 때(처음 진입·실패 후 재시도)는 그대로 `.failed`로 전이해 사용자가 재시도할 수 있다.
+    static func failureState(
+        _ error: AppError,
+        previous: Loadable<MyCard>
+    ) -> Loadable<MyCard> {
+        previous.value == nil ? .failed(error) : previous
     }
 
     /// 소셜 계정 연동을 수행합니다.

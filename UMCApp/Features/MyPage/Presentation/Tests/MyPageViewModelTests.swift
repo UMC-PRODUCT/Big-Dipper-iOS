@@ -521,6 +521,64 @@ struct MyPageViewModelReloadPreservationTests {
         #expect(viewModel.myCard.value == card)
     }
 
+    @Test("로드된 카드가 있으면 재조회가 AppError로 실패해도 카드를 버리지 않는다")
+    func reloadFailureKeepsLoadedCard() async {
+        let card = makeMyCard(memberId: "1")
+        let qr = makeStubCGImage()
+        let sequenced = SequencedFetchMyCardUseCase(results: [
+            .success(card),
+            .failure(AppError.unknown(message: "재조회 실패")),
+        ])
+        var provider = StubBusinessCardUseCaseProvider(generateCardQRResult: .success(qr))
+        provider.fetchMyCardUseCaseOverride = sequenced
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+        await viewModel.loadBusinessCard()
+
+        await viewModel.loadBusinessCard(forceRefresh: true)
+
+        #expect(viewModel.myCard.value == card, "갱신이 실패한 것이지 카드가 사라진 게 아니다")
+        #expect(viewModel.myCard.error == nil, "화면 전체가 재시도 뷰로 바뀌면 안 된다")
+        #expect(viewModel.qrImage === qr)
+    }
+
+    @Test("보여줄 카드가 없으면 실패는 그대로 .failed로 전이한다(재시도 경로 보존)")
+    func firstLoadFailureStillSurfacesError() async {
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: StubBusinessCardUseCaseProvider(
+                fetchMyCardResult: .failure(AppError.unknown(message: "첫 조회 실패"))
+            )
+        )
+
+        await viewModel.loadBusinessCard()
+
+        #expect(viewModel.myCard.error != nil)
+        #expect(viewModel.myCard.value == nil)
+    }
+
+    @Test("로드된 카드가 있으면 일반 Error 재조회 실패도 카드를 남긴다")
+    func reloadGenericFailureKeepsLoadedCard() async {
+        let card = makeMyCard(memberId: "1")
+        let sequenced = SequencedFetchMyCardUseCase(results: [
+            .success(card),
+            .failure(GenericTestError.boom),
+        ])
+        var provider = StubBusinessCardUseCaseProvider(fetchMyCardResult: .success(card))
+        provider.fetchMyCardUseCaseOverride = sequenced
+        let viewModel = makeViewModel(
+            repository: StubRepository(result: .success(makeProfileData(challengeId: 1))),
+            businessCardProvider: provider
+        )
+        await viewModel.loadBusinessCard()
+
+        await viewModel.loadBusinessCard(forceRefresh: true)
+
+        #expect(viewModel.myCard.value == card)
+    }
+
     @Test("로드된 상태의 재조회도 중복 호출은 무시된다 (UseCase 호출 수 유지)")
     func reloadStillDeduplicatesConcurrentCalls() async {
         let card = makeMyCard(memberId: "1")
