@@ -600,8 +600,8 @@
 | `Presentation/Components/Section/MypageSection/HelpSection.swift` | **이식 제외(dead)** — 레거시 호출처 0건(`HelpSection()` 을 그리는 화면이 없음) |
 | `Presentation/Components/Section/MypageSection/LawSection.swift` | MyPagePresentation |
 | `Presentation/Components/Section/MypageSection/LinkSection.swift` | MyPagePresentation (`ProfileLinkSection` 으로 개명) |
-| `Presentation/Components/Section/MypageSection/MyActiveLogSection.swift` | MyPagePresentation |
-| `Presentation/Components/Section/MypageSection/ProfileCardSection.swift` | MyPagePresentation |
+| `Presentation/Components/Section/MypageSection/MyActiveLogSection.swift` | MyPagePresentation · **dormant** — 이식 완료됐으나 마이페이지 v3 재편(#1196)으로 소비자 0건. 루트의 활동 요약은 신규 `MyActivitySection` 이 대체. 라우팅 enum `MyActiveLogsType` 은 계속 사용 중이므로 enum 까지 지우지 말 것. 삭제 금지(의도적 존치) |
+| `Presentation/Components/Section/MypageSection/ProfileCardSection.swift` | MyPagePresentation · **dormant** — 이식 완료됐으나 마이페이지 v3 재편(#1196)으로 루트가 명함 카드(`BusinessCardSection`)로 교체되며 소비자 0건. 삭제 금지(의도적 존치) |
 | `Presentation/Components/Section/MypageSection/SettingSection.swift` | MyPagePresentation |
 | `Presentation/Components/Section/MypageSection/SocialSection.swift` | MyPagePresentation (`SocialConnectSection` 으로 개명) |
 | `Presentation/Enum/AuthType.swift` | MyPagePresentation |
