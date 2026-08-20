@@ -15,6 +15,8 @@ public enum NearbyError: Error, Sendable {
     case invalidPayload(String)
     case transportFailure(underlying: Error)
     case sessionExpired
+    /// Wi-Fi Aware: 페어링된 기기가 없어 광고/탐색을 시작할 수 없음
+    case notPaired
 
     public var localizedDescription: String {
         switch self {
@@ -30,6 +32,8 @@ public enum NearbyError: Error, Sendable {
             return "전송 중 오류가 발생했습니다: \(underlying.localizedDescription)"
         case .sessionExpired:
             return "교환 세션이 만료되었습니다."
+        case .notPaired:
+            return "페어링된 기기가 없습니다. 상대 기기와 먼저 페어링해 주세요."
         }
     }
 }

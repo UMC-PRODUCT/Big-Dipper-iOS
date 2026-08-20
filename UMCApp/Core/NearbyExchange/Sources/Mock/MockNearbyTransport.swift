@@ -7,12 +7,15 @@
 
 import Foundation
 
+#if DEBUG
+
 // MARK: - MockNearbyTransport
 
 /// 테스트/SwiftUI 프리뷰용 NearbyTransport 목(Mock) 구현체.
 ///
 /// 실제 BLE/NFC 하드웨어 없이 교환 흐름 전체를 시뮬레이션할 수 있다.
 /// DIContainer에서 Mock Repository로 교체하는 것과 동일한 패턴으로 주입.
+/// 릴리스 빌드에는 포함하지 않는다 (절대 규칙 #5).
 public final class MockNearbyTransport: NearbyTransportProtocol {
 
     // MARK: - Property
@@ -22,6 +25,8 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
     public private(set) var didStartAdvertising = false
     public private(set) var didStopAdvertising = false
     public private(set) var sentPayloads: [ExchangePayload] = []
+    /// 광고에 실린 명함 기록 — 광고 API 일반화 이후 무엇을 퍼블리시했는지 검증한다.
+    public private(set) var advertisedCards: [ExchangePayload] = []
 
     // MARK: - Init
 
@@ -35,8 +40,9 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
 
     // MARK: - NearbyTransportProtocol
 
-    public func startAdvertising(payload: BLEAdvertisementPayload) async throws {
+    public func startAdvertising(card: ExchangePayload) async throws {
         didStartAdvertising = true
+        advertisedCards.append(card)
     }
 
     public func stopAdvertising() async {
@@ -67,3 +73,5 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
         }
     }
 }
+
+#endif

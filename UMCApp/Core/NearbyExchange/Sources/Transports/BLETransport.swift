@@ -48,7 +48,7 @@ public final class BLETransport: NSObject, NearbyTransportProtocol {
 
     // MARK: - NearbyTransportProtocol
 
-    public func startAdvertising(payload: BLEAdvertisementPayload) async throws {
+    public func startAdvertising(card: ExchangePayload) async throws {
         guard !isAdvertising else { return }
 
         // PeripheralManager를 메인 큐가 아닌 전용 큐에서 초기화해 UI를 블로킹하지 않음
@@ -58,6 +58,7 @@ public final class BLETransport: NSObject, NearbyTransportProtocol {
 
         // TODO: PeripheralManager 상태가 .poweredOn이 될 때까지 대기 후 광고 시작.
         // 현재는 보일러플레이트 구조만 수립; 실제 광고 데이터 구성은 후속 이슈.
+        // 축약 광고는 `BLEAdvertisementPayload(card: card)`로 파생해 쓴다.
         // 광고 데이터 형식: [CBAdvertisementDataServiceUUIDsKey: [serviceUUID],
         //                    CBAdvertisementDataLocalNameKey: "UMC-\(cardUUIDPrefix.hex)"]
 

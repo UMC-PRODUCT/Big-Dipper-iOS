@@ -20,6 +20,17 @@ let project = Project(
                 .sdk(name: "ARKit", type: .framework, status: .required),
                 .sdk(name: "RealityKit", type: .framework, status: .required),
             ]
-        )
+        ),
+        .target(
+            name: "CoreNearbyExchangeTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "dev.umc.core.nearbyexchange.tests",
+            deploymentTargets: .iOS("26.4"),
+            sources: ["Tests/**"],
+            dependencies: [
+                .target(name: "CoreNearbyExchange"),
+            ]
+        ),
     ]
 )

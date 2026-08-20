@@ -31,7 +31,7 @@ public final class UWBTransport: NSObject, NearbyTransportProtocol {
 
     // MARK: - NearbyTransportProtocol
 
-    public func startAdvertising(payload: BLEAdvertisementPayload) async throws {
+    public func startAdvertising(card: ExchangePayload) async throws {
         throw NearbyError.notImplemented
     }
 

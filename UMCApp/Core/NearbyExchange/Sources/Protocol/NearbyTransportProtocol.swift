@@ -21,15 +21,33 @@ public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
     public let version: UInt8
     public let flags: UInt8
     public let discoveredAt: Date
+    /// 스캔 UI 표시용 이름. Wi-Fi Aware는 페어링 정보로 채우고, BLE는 무 PII 정책(PRD Q2)상 nil.
+    public let displayName: String?
+    /// 표시용 파트 apiValue. 채널이 제공할 때만 채운다.
+    public let part: String?
+    /// 표시용 기수. 채널이 제공할 때만 채운다.
+    public let generation: String?
 
     // MARK: - Init
 
-    public init(id: String, cardUUIDPrefix: Data, version: UInt8, flags: UInt8, discoveredAt: Date = Date()) {
+    public init(
+        id: String,
+        cardUUIDPrefix: Data,
+        version: UInt8,
+        flags: UInt8,
+        discoveredAt: Date = Date(),
+        displayName: String? = nil,
+        part: String? = nil,
+        generation: String? = nil
+    ) {
         self.id = id
         self.cardUUIDPrefix = cardUUIDPrefix
         self.version = version
         self.flags = flags
         self.discoveredAt = discoveredAt
+        self.displayName = displayName
+        self.part = part
+        self.generation = generation
     }
 }
 
@@ -47,9 +65,13 @@ public protocol NearbyTransportProtocol: Sendable {
     // MARK: - Advertising
 
     /// 명함 교환 광고 시작. PRD Q4 결정: "교환 시작" 버튼 탭 시 호출.
-    /// 5분 타이머, 화면 이탈 시 `stopAdvertising()` 호출 책임은 호출자에게 있음.
-    func startAdvertising(payload: BLEAdvertisementPayload) async throws
+    ///
+    /// 광고 포맷 변환(BLE 축약 광고 파생·Wi-Fi Aware 서비스 퍼블리시)은 각 transport
+    /// 내부 책임이다. 5분 타이머, 화면 이탈 시 `stopAdvertising()` 호출 책임은 호출자에게 있음.
+    func startAdvertising(card: ExchangePayload) async throws
 
+    /// 광고 중지. 세션 정리 지점이기도 하다 — 수신 스트림을 여는 transport는
+    /// 여기서 스트림을 닫아 소비자가 영구 대기하지 않게 한다.
     func stopAdvertising() async
 
     // MARK: - Scanning
