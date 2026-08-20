@@ -209,7 +209,7 @@ extension PeerRangingCoordinator: NearbyHandshakeProviding {
         }
         session?.invalidate()
         #endif
-        stateQueue.sync { continuation?.yield(PeerDistance(peerID: peerID, meters: nil)) }
+        stateQueue.sync { _ = continuation?.yield(PeerDistance(peerID: peerID, meters: nil)) }
     }
 }
 
@@ -250,7 +250,7 @@ extension PeerRangingCoordinator: NISessionDelegate {
         }
         record("NI 세션 종료(\(peerID ?? "?")): \(error.localizedDescription)")
         guard let peerID else { return }
-        stateQueue.sync { continuation?.yield(PeerDistance(peerID: peerID, meters: nil)) }
+        stateQueue.sync { _ = continuation?.yield(PeerDistance(peerID: peerID, meters: nil)) }
     }
 
     /// 앱이 백그라운드로 가면 NI 가 멈춘다. 값이 굳지 않도록 비운다.

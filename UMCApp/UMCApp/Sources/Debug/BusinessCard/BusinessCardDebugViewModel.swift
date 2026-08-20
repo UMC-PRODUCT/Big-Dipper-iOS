@@ -165,7 +165,7 @@ final class BusinessCardDebugViewModel {
         receivedCards = .loading
         // SwiftData 는 어느 스레드에서 만지는지가 곧 원인이 된다. `ModelContext` 는
         // 앱의 mainContext 인데 이 함수는 액터 격리가 없어 백그라운드에서 돈다.
-        note("목록 조회 시작 (main=\(Thread.isMainThread))")
+        note("목록 조회 시작 (main=\(pthread_main_np() != 0))")
         do {
             let query = searchText.isEmpty ? nil : searchText
             let cards = try await provider.fetchReceivedCardsUseCase.execute(query: query)
@@ -210,7 +210,7 @@ final class BusinessCardDebugViewModel {
     }
 
     func delete(id: String) async {
-        note("삭제 시작 id=\(id.prefix(8)) (main=\(Thread.isMainThread))")
+        note("삭제 시작 id=\(id.prefix(8)) (main=\(pthread_main_np() != 0))")
         do {
             try await provider.deleteReceivedCardUseCase.execute(id: id)
             note("삭제 위임 완료 — 목록 갱신 시작")
