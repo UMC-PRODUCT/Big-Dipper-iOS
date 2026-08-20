@@ -22,10 +22,10 @@ let project = featureProject(
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
     ],
-    // Data 테스트 타겟은 Data/Tests 디렉터리가 생기는 시점(이슈 #1195)에 켠다 —
-    // Tuist는 존재하지 않는 소스 글롭을 에러로 막는다.
-    includesDataTests: false,
+    includesDataTests: true,
     dataTestDependencies: [
+        // Router 계약 테스트가 Moya.Task 케이스를 직접 검사한다 (Activity 선례).
+        .external(name: "Moya"),
         .target(name: "BusinessCardDomain"),
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
