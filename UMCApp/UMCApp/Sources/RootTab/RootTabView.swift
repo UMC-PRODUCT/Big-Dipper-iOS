@@ -8,6 +8,7 @@
 import SwiftUI
 
 import ActivityPresentation
+import BusinessCardPresentation
 import CommunityDomain
 import CommunityPresentation
 import CoreDesignSystem
@@ -35,6 +36,9 @@ struct RootTabView: View {
 
     @State private var pathStore = PathStore()
 
+    /// 딥링크로 받은 명함 링크의 `memberId`. 수신 모디파이어가 처리 후 비운다.
+    @State private var pendingCardMemberId: String?
+
     @Environment(\.di) private var di
     @Environment(DeepLinkStore.self) private var deepLinkStore
 
@@ -55,11 +59,28 @@ struct RootTabView: View {
             RootTabAccessoryView(pathStore: pathStore)
         }
         .environment(pathStore)
+        // 명함 링크는 탭을 옮기는 것으로 끝나지 않는다 — 서버 조회·저장·완료 화면까지가
+        // 한 동작이라 탭 셸 바깥(모달)에 붙인다.
+        .businessCardLinkReceiver(memberId: $pendingCardMemberId, container: di)
         // 앱이 켜져 있는 동안 도착한 링크와, 로그인 화면에 머무는 사이 밀려 있던 링크를
         // 같은 함수로 받는다. 후자는 이 뷰가 처음 뜨는 시점에 한 번 꺼내면 된다.
         .task { consumePendingDeepLink() }
         .onChange(of: deepLinkStore.pending) { _, _ in consumePendingDeepLink() }
+        #if DEBUG
+        // 실행 인자 `-bcHarness`로 명함 검증 화면에 바로 진입한다.
+        // (탭 조작 없이 시뮬레이터에서 검증을 재현하기 위한 경로 — 제품 동작 아님)
+        .task { openBusinessCardHarnessIfRequested() }
+        #endif
     }
+
+    #if DEBUG
+    /// `-bcHarness` 실행 인자가 있으면 마이페이지 탭의 명함 검증 화면을 연다.
+    private func openBusinessCardHarnessIfRequested() {
+        guard CommandLine.arguments.contains("-bcHarness") else { return }
+        pathStore.selectedTab = .mypage
+        pathStore.push(BusinessCardDebugDestination.harness, on: .mypage)
+    }
+    #endif
 
     // MARK: - Function
 
@@ -102,17 +123,24 @@ struct RootTabView: View {
                         push: { pathStore.push($0, on: tab) }
                     )
                 }
+                .navigationDestination(for: BusinessCardDestination.self) { destination in
+                    BusinessCardRoutingView(destination: destination, container: di)
+                }
+                #if DEBUG
+                .navigationDestination(for: BusinessCardDebugDestination.self) { _ in
+                    BusinessCardDebugView(container: di)
+                }
+                #endif
         }
     }
 
-    /// 탭별 루트 화면. 실연결된 탭은 Feature 화면을, 아직인 탭은 placeholder를 표시한다.
+    /// 탭별 루트 화면. 5개 탭 모두 실연결된 Feature 화면을 표시한다.
     ///
-    /// Home/Notice/Activity/Community가 실연결 상태다. Activity와 Community는 자기 목적지
-    /// (`ActivityDestination`/`CommunityDestination`) 등록까지 각 Feature 루트가 맡으므로,
-    /// App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다. 반면 Home/Notice는 목적지가
-    /// App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
-    ///
-    /// - Note: MyPage도 이식된 모듈이 있지만, 탭 실연결은 후속 이슈에서 진행한다.
+    /// Activity와 Community는 자기 목적지(`ActivityDestination`/`CommunityDestination`) 등록까지
+    /// 각 Feature 루트가 맡으므로, App은 그 화면 구성을 알지 못한 채 진입점만 걸어 준다. 반면
+    /// Home/Notice는 목적지가 App 소유(`NavigationDestination`)라 push 클로저를 여기서 넘긴다.
+    /// MyPage는 명함 진입만 중립 enum(`BusinessCardEntry`)으로 받아 App 셸이
+    /// `BusinessCardDestination`으로 번역해 push한다.
     @ViewBuilder
     private func tabContent(_ tab: NavigationTab) -> some View {
         switch tab {
@@ -158,7 +186,19 @@ struct RootTabView: View {
                 }
             )
         case .mypage:
-            MyPageFeatureView()
+            MyPageFeatureView { entry in
+                pathStore.push(businessCardDestination(for: entry), on: .mypage)
+            }
+        }
+    }
+
+    /// 마이페이지의 중립 진입 요청을 명함 목적지로 번역한다.
+    /// (Feature끼리 직접 목적지를 넘기지 않는 이 레포 규약 — App 셸이 중개한다.)
+    private func businessCardDestination(for entry: BusinessCardEntry) -> BusinessCardDestination {
+        switch entry {
+        case .receivedCards: .receivedCards
+        case .cardQR: .cardQR
+        case .exchange: .exchange
         }
     }
 
@@ -171,13 +211,23 @@ struct RootTabView: View {
     /// - Note: 공지 링크(`umc://notice/{id}`)는 딥링크로 들어오지 않는다. 메시지 안의 링크
     ///   카드로만 열리고, 그 경로는 `CommunityFeatureView` 가 맡는다.
     private func consumePendingDeepLink() {
-        guard case .thread(let threadId)? = deepLinkStore.take() else { return }
+        switch deepLinkStore.take() {
+        case .message(.thread(let threadId)):
+            pathStore.selectedTab = .community
+            pathStore.push(
+                CommunityDestination.threadRoom(threadId: threadId, title: ""),
+                on: .community
+            )
 
-        pathStore.selectedTab = .community
-        pathStore.push(
-            CommunityDestination.threadRoom(threadId: threadId, title: ""),
-            on: .community
-        )
+        case .card(let memberId):
+            // 저장 결과는 마이페이지(명함첩이 사는 탭)에서 알리는 게 맥락이 맞다.
+            // 조회·저장·완료 화면은 `businessCardLinkReceiver` 가 맡는다.
+            pathStore.selectedTab = .mypage
+            pendingCardMemberId = memberId
+
+        case .message(.notice), .none:
+            return
+        }
     }
 
     /// 탭별 독립 `NavigationStack` path 바인딩을 `PathStore`에 위임한다.

@@ -19,11 +19,10 @@ struct FetchReceivedCardsUseCaseTests {
             profile: MyCard(
                 memberId: "7", name: "상대", nickname: "상대닉",
                 part: .admin, generation: "11", university: "중앙대학교",
-                email: nil, github: nil, blog: nil, avatarURL: nil, memberNo: "7"
+                email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil
             ),
             exchangedAt: Date(timeIntervalSince1970: 0),
             exchangeContext: nil,
-            isConnected: false
         )
     }
 

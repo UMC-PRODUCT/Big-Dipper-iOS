@@ -23,6 +23,8 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
     private let transport: NearbyTransportProtocol
     private let saveReceivedCard: SaveReceivedCardUseCaseProtocol
     private let sessionTimeout: Duration
+    /// UWB 거리 측정. 없으면 거리 없이 발견·교환만 동작한다 (구형 기기·시뮬레이터).
+    private let ranging: PeerRangingCoordinator?
 
     private let stateQueue = DispatchQueue(label: "dev.umc.businesscard.exchange")
     private var continuation: AsyncStream<ExchangeEvent>.Continuation?
@@ -31,17 +33,27 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
     /// 수신 루프. 세션 종료 시 반드시 취소한다 — 비구조 Task로 두면 sessionTask 취소가
     /// 전파되지 않아 transport(→self)를 강참조한 채 영원히 남는다 (스파이크 ④).
     private var receiveTask: Task<Void, Never>?
+    /// 거리 갱신 루프. 수신 루프와 같은 이유로 세션 종료 시 취소한다.
+    private var rangingTask: Task<Void, Never>?
 
     // MARK: - Init
 
     public init(
         transport: NearbyTransportProtocol,
         saveReceivedCard: SaveReceivedCardUseCaseProtocol,
-        sessionTimeout: Duration = .seconds(5 * 60)
+        sessionTimeout: Duration = .seconds(5 * 60),
+        ranging: PeerRangingCoordinator? = nil
     ) {
         self.transport = transport
         self.saveReceivedCard = saveReceivedCard
         self.sessionTimeout = sessionTimeout
+        self.ranging = ranging
+
+        // transport 가 연결마다 핸드셰이크를 물어보게 한다. 토큰은 피어마다 달라야 해서
+        // 전역으로 미리 만들어 둘 수 없다 (PeerRangingCoordinator 주석 참고).
+        if let ranging, let mpc = transport as? MPCTransport {
+            mpc.setHandshakeProvider(ranging)
+        }
     }
 
     // MARK: - Function
@@ -56,6 +68,11 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
         // 놓칠 수 있다 (스파이크 ③은 순서가 아니라 구조로 보장해야 한다).
         let receiveStream = transport.receive()
 
+        // 거리 스트림도 같은 이유로 여기서 동기 구독한다 — 연결 직후 핸드셰이크가 오가면
+        // 곧바로 갱신이 흐르기 시작하므로, Task 안에서 열면 초기 값을 놓친다.
+        ranging?.start(preview: myCard.toPeerPreview())
+        let distanceStream = ranging?.distances()
+
         return AsyncStream { continuation in
             stateQueue.sync { self.continuation = continuation }
             continuation.onTermination = { [weak self] _ in
@@ -65,10 +82,22 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
             let receiveWork = Task { [weak self] in
                 for await payload in receiveStream {
                     guard let self, !Task.isCancelled else { return }
-                    await self.handleReceived(payload)
+                    await self.handleReceived(payload, ownerMemberId: myCard.memberId)
                 }
             }
             stateQueue.sync { self.receiveTask = receiveWork }
+
+            if let distanceStream {
+                let rangingWork = Task { [weak self] in
+                    for await distance in distanceStream {
+                        guard let self, !Task.isCancelled else { return }
+                        self.yield(
+                            .distanceUpdated(peerID: distance.peerID, meters: distance.meters)
+                        )
+                    }
+                }
+                stateQueue.sync { self.rangingTask = rangingWork }
+            }
 
             let sessionWork = Task { [weak self] in
                 guard let self else { return }
@@ -122,9 +151,16 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
 
     // MARK: - Private Function
 
-    private func handleReceived(_ payload: ExchangePayload) async {
+    /// 내 명함이 돌아오면(같은 계정 두 대) 저장도 이벤트도 없다 — 교환 완료 화면이
+    /// 자기 명함을 「받았다」고 띄우는 것보다 아무 일도 없는 게 맞다.
+    private func handleReceived(_ payload: ExchangePayload, ownerMemberId: String) async {
         do {
-            let card = try await saveReceivedCard.execute(payload: payload, exchangeContext: nil)
+            let card = try await saveReceivedCard.execute(
+                payload: payload,
+                ownerMemberId: ownerMemberId,
+                exchangeContext: nil
+            )
+            guard let card else { return }
             yield(.received(card))
         } catch {
             yield(.failed(.transportFailure(underlying: error)))
@@ -157,6 +193,10 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
             timeoutTask = nil
             receiveTask?.cancel()   // 비구조 Task라 sessionTask 취소로는 안 닿는다
             receiveTask = nil
+            rangingTask?.cancel()
+            rangingTask = nil
         }
+        // NI 세션은 락 밖에서 정리한다 — invalidate 가 델리게이트를 동기 호출할 수 있다.
+        ranging?.stopAll()
     }
 }

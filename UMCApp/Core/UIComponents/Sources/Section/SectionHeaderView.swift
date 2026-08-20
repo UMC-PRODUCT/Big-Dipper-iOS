@@ -25,16 +25,21 @@ public struct SectionHeaderView: View {
 
     /// 섹션 헤더에 표시할 타이틀 텍스트
     private let title: String
-    
+
+    /// 타이틀 굵기. 시안이 Headline-emphasized(semibold)를 요구하는 화면(마이페이지 v3)과
+    /// 기존 regular 화면이 공존해 호출부가 고른다. 기본값은 기존 화면 유지용 regular.
+    private let weight: AppFontWeight
+
     // MARK: - Function
-    public init(title: String) {
+    public init(title: String, weight: AppFontWeight = .regular) {
         self.title = title
+        self.weight = weight
     }
-    
+
     // MARK: - Body
-    
+
     public var body: some View {
         Text(title)
-            .appFont(.body, color: .black)
+            .appFont(.body, weight: weight, color: .black)
     }
 }

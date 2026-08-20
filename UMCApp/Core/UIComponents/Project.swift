@@ -22,5 +22,8 @@ let project = coreProject(
     includesTests: true,
     testDependencies: [
         .project(target: "CoreDesignSystem", path: .relativeToRoot("Core/DesignSystem")),
+        // 시드 컬러 테스트가 UMCPartType 을 직접 나열한다. 전이 의존에 기대지 않고
+        // import 하는 모듈을 명시 선언하는 게 이 레포 규약.
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ]
 )

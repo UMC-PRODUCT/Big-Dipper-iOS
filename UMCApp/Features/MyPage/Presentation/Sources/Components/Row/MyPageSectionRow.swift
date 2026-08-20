@@ -16,8 +16,8 @@ import CoreUIComponents
 ///
 /// - Example:
 /// ```swift
-/// // 이미지 리소스 + 오른쪽 이미지
-/// MyPageSectionRow(icon: .github, title: "GitHub", rightImage: "arrow.up.right")
+/// // 브랜드 이미지 + 오른쪽 이미지 (외부 링크 행)
+/// MyPageSectionRow(brandIcon: .githubColor, title: "Github", rightImage: "arrow.up.right")
 ///
 /// // SF Symbol + 오른쪽 텍스트 (기본 배경색)
 /// MyPageSectionRow(systemIcon: "info.circle", title: "버전", rightText: "1.0.0")
@@ -69,6 +69,37 @@ public struct MyPageSectionRow: View {
         self.iconBackgroundColor = iconBackgroundColor
         self.titleColor = titleColor
     }
+
+    /// 브랜드 이미지 아이콘과 오른쪽 이미지를 사용하는 Row 생성자
+    ///
+    /// SF Symbol 타일과 달리 배경 없이 이미지를 시안 틀(32×32, 라운드 8 —
+    /// `Figma item/MypageList`)에 그대로 얹는다. 외부 링크 행이 이 경로를 쓴다.
+    /// - Parameters:
+    ///   - brandIcon: 왼쪽에 표시할 브랜드 이미지
+    ///   - title: 중앙에 표시할 타이틀
+    ///   - rightImage: 오른쪽에 표시할 SF Symbol 이름
+    ///   - titleColor: 타이틀 텍스트 색상 (기본값: .black)
+    public init(brandIcon: Image, title: String, rightImage: String, titleColor: Color = .black) {
+        self.icon = .brand(brandIcon)
+        self.title = title
+        self.rightContent = .image(rightImage)
+        self.iconBackgroundColor = nil
+        self.titleColor = titleColor
+    }
+
+    /// 브랜드 이미지 아이콘과 오른쪽 텍스트를 사용하는 Row 생성자 (소셜계정 연동 행).
+    /// - Parameters:
+    ///   - brandIcon: 왼쪽에 표시할 브랜드 이미지
+    ///   - title: 중앙에 표시할 타이틀
+    ///   - rightText: 오른쪽에 표시할 텍스트
+    ///   - titleColor: 타이틀 텍스트 색상 (기본값: .black)
+    public init(brandIcon: Image, title: String, rightText: String, titleColor: Color = .black) {
+        self.icon = .brand(brandIcon)
+        self.title = title
+        self.rightContent = .text(rightText)
+        self.iconBackgroundColor = nil
+        self.titleColor = titleColor
+    }
     
     /// ImageResource 아이콘과 오른쪽 텍스트를 사용하는 Row 생성자
     /// - Parameters:
@@ -106,13 +137,21 @@ public struct MyPageSectionRow: View {
         static let concentric: Edge.Corner.Style = 10
         static let rectangleSize: CGFloat = 30
         static let imageSize: CGFloat = 16
+        /// 브랜드 이미지 아이콘 틀 (`Figma item/MypageList` 실측 32×32, 라운드 8).
+        static let brandIconSize: CGFloat = 32
+        static let brandIconRadius: CGFloat = 8
     }
     
     // MARK: - Body
     
     public var body: some View {
         HStack(spacing: DefaultSpacing.spacing8) {
+            // 세 아이콘 종류(브랜드 32 · SF Symbol 타일 30 · 리소스 30)가 한 `Form` 안에
+            // 섞이면 타이틀 시작 x가 아이콘 폭을 따라 어긋난다. 바깥 틀을 시안 값(32)으로
+            // 통일해 어떤 행이 와도 텍스트가 같은 자리에서 시작하게 한다.
             iconView
+                .frame(width: Constants.brandIconSize, height: Constants.brandIconSize)
+
             Text(title)
                 .appFont(.subheadline, weight: .medium, color: titleColor)
 
@@ -131,6 +170,15 @@ public struct MyPageSectionRow: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: Constants.linkIcon, height: Constants.linkIcon)
                 .clipShape(.rect(corners: .concentric(minimum: Constants.concentric), isUniform: true))
+        case .brand(let image):
+            image
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: Constants.brandIconSize, height: Constants.brandIconSize)
+                .clipShape(.rect(cornerRadius: Constants.brandIconRadius))
+                // 옆 타이틀과 완전히 중복되는 장식이다. 숨기지 않으면 VoiceOver 가
+                // 에셋 이름("githubColor")을 버튼 레이블 앞에 그대로 읽는다.
+                .accessibilityHidden(true)
         case .system(let systemName):
             ZStack {
                 RoundedRectangle(cornerRadius: Constants.cornerRadius)
@@ -168,6 +216,8 @@ internal enum RowIconType {
     case resource(ImageResource)
     /// SF Symbol 시스템 이미지
     case system(String)
+    /// 다른 모듈 번들의 브랜드 이미지 (배경 타일 없이 시안 틀에 그대로 얹는다)
+    case brand(Image)
 }
 
 

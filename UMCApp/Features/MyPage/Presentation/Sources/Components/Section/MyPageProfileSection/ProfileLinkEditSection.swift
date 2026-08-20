@@ -21,7 +21,9 @@ struct ProfileLinkEditSection: View, Equatable {
     private let header: String
 
     private enum Constants {
-        static let iconSize: CGFloat = 24
+        /// 시안 아이콘 틀 (`Figma item/MypageModify/link` 실측 32×32, 라운드 8).
+        static let iconSize: CGFloat = 32
+        static let iconRadius: CGFloat = 8
     }
 
     // MARK: - Init
@@ -45,7 +47,7 @@ struct ProfileLinkEditSection: View, Equatable {
                 linkField(type)
             }
         }, header: {
-            SectionHeaderView(title: header)
+            SectionHeaderView(title: header, weight: .semibold)
         })
     }
 
@@ -53,11 +55,15 @@ struct ProfileLinkEditSection: View, Equatable {
 
     private func linkField(_ type: SocialLinkType) -> some View {
         HStack(spacing: DefaultSpacing.spacing8) {
-            Image(systemName: type.icon)
+            // 시안(12804:30609)은 SF Symbol 틴트가 아니라 서비스 브랜드 이미지를 쓴다 —
+            // 설정 화면 외부 링크 행(ProfileLinkSection)과 같은 에셋.
+            type.brandIcon
                 .resizable()
-                .aspectRatio(contentMode: .fit)
+                .aspectRatio(contentMode: .fill)
                 .frame(width: Constants.iconSize, height: Constants.iconSize)
-                .foregroundStyle(type.color)
+                .clipShape(.rect(cornerRadius: Constants.iconRadius))
+                // 장식 — 입력 필드 placeholder 가 이미 어떤 링크인지 말한다.
+                .accessibilityHidden(true)
 
             TextField("", text: binding(for: type), prompt: Text(type.placeholder))
                 .textInputAutocapitalization(.never)

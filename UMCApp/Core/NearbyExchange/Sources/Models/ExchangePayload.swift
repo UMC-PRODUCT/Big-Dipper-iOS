@@ -24,10 +24,12 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
     public let university: String
     public let email: String?
     public let github: String?
+    /// v2 도중 추가 — `decodeIfPresent`라 이 필드가 없는 기존 v2 페이로드도 그대로 읽힌다.
+    public let linkedIn: String?
     public let blog: String?
     public let avatarURL: String?
-    public let memberNo: String?
     /// 프로필 딥링크 (`umc://card/{memberId}`). 수신 측이 프로필 API로 최신화할 때 쓴다.
+    /// **memberId의 유일한 운반 수단** — 수신 측은 이 값을 파싱해 정체성을 복원한다.
     public let cardLink: String
     /// 3D 명함 에셋. v2에서 옵셔널로 완화 — 3D 명함은 후속 트랙.
     public let usdzURL: URL?
@@ -49,9 +51,9 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         university: String,
         email: String?,
         github: String?,
+        linkedIn: String?,
         blog: String?,
         avatarURL: String?,
-        memberNo: String?,
         cardLink: String,
         usdzURL: URL? = nil,
         timestamp: Date = Date(),
@@ -68,9 +70,9 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         self.university = university
         self.email = email
         self.github = github
+        self.linkedIn = linkedIn
         self.blog = blog
         self.avatarURL = avatarURL
-        self.memberNo = memberNo
         self.cardLink = cardLink
         self.usdzURL = usdzURL
         self.timestamp = timestamp
@@ -81,7 +83,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case cardID, name, nickname, part, generation, university
-        case email, github, blog, avatarURL, memberNo, cardLink
+        case email, github, linkedIn, blog, avatarURL, cardLink
         case usdzURL, timestamp, version
         case ownerName // v1 전용
     }
@@ -102,9 +104,9 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
             university = try container.decode(String.self, forKey: .university)
             email = try container.decodeIfPresent(String.self, forKey: .email)
             github = try container.decodeIfPresent(String.self, forKey: .github)
+            linkedIn = try container.decodeIfPresent(String.self, forKey: .linkedIn)
             blog = try container.decodeIfPresent(String.self, forKey: .blog)
             avatarURL = try container.decodeIfPresent(String.self, forKey: .avatarURL)
-            memberNo = try container.decodeIfPresent(String.self, forKey: .memberNo)
             cardLink = try container.decode(String.self, forKey: .cardLink)
         } else {
             // v1: 정체성 필드는 ownerName 하나뿐 — 나머지는 빈 값으로 채운다.
@@ -115,9 +117,9 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
             university = ""
             email = nil
             github = nil
+            linkedIn = nil
             blog = nil
             avatarURL = nil
-            memberNo = nil
             cardLink = ""
         }
     }
@@ -132,9 +134,9 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         try container.encode(university, forKey: .university)
         try container.encodeIfPresent(email, forKey: .email)
         try container.encodeIfPresent(github, forKey: .github)
+        try container.encodeIfPresent(linkedIn, forKey: .linkedIn)
         try container.encodeIfPresent(blog, forKey: .blog)
         try container.encodeIfPresent(avatarURL, forKey: .avatarURL)
-        try container.encodeIfPresent(memberNo, forKey: .memberNo)
         try container.encode(cardLink, forKey: .cardLink)
         try container.encodeIfPresent(usdzURL, forKey: .usdzURL)
         try container.encode(timestamp, forKey: .timestamp)
@@ -153,24 +155,5 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(ExchangePayload.self, from: data)
-    }
-}
-
-/// BLE 2단계 광고 페이로드 (PRD Q2 결정: Service UUID 16B + cardUUID prefix 8B + version 1B + flags 1B)
-/// 풀 JSON은 GATT 또는 서버 fetch로 수신.
-public struct BLEAdvertisementPayload: Sendable {
-
-    // MARK: - Property
-
-    public let cardUUIDPrefix: Data   // 8 bytes
-    public let version: UInt8         // 1 byte
-    public let flags: UInt8           // 1 byte (기수 6bit, 파트 4bit)
-
-    // MARK: - Init
-
-    public init(cardUUIDPrefix: Data, version: UInt8, flags: UInt8) {
-        self.cardUUIDPrefix = cardUUIDPrefix
-        self.version = version
-        self.flags = flags
     }
 }

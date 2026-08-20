@@ -29,7 +29,7 @@ public struct SettingSection: View {
         Section(content: {
             sectionRow
         }, header: {
-            SectionHeaderView(title: sectionType.rawValue)
+            SectionHeaderView(title: sectionType.rawValue, weight: .semibold)
         })
     }
     

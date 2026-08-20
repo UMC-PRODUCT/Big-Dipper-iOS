@@ -87,7 +87,7 @@ UMCApp/
 │   ├── Activity/
 │   ├── Auth/
 │   ├── Badge/
-│   ├── BusinessCard/              # 전자명함 (3D 렌더링 캡슐화 경계 모듈)
+│   ├── BusinessCard/              # 전자명함 (2D 카드 UI · QR · 근거리 교환)
 │   ├── Community/
 │   ├── Home/
 │   ├── MyPage/
@@ -111,7 +111,7 @@ Core Modules          (Foundation / Network / DesignSystem / UIComponents / DI)
 External Packages     (Moya 15.0.3 / Kingfisher 8.6.1)
 ```
 
-> **경계 정책 — BusinessCard**: `Model3D`/`RealityView` 등 RealityKit 렌더링은 `BusinessCardPresentation` 내부에만 캡슐화한다. MyPage·Home·Community·Activity·Auth 등 명함을 노출하는 Feature는 `BusinessCardPresentation`만 링크하며, RealityKit을 직접 링크하지 않는다.
+> **경계 정책 — BusinessCard**: MyPage·Home·Community·Activity·Auth 등 명함을 노출하는 Feature는 `BusinessCardPresentation`만 링크해 카드 UI(`BusinessCardFaceView` 등)를 재사용하며, 카드 화면을 자체 구현하지 않는다. 렌더링은 2D SwiftUI로 확정 — 초기 구상이던 RealityKit(3D) 렌더링은 폐기됐고(#1196에서 ARKit·RealityKit 링크 해제) UMCApp에 RealityKit 참조가 없다.
 
 > **경계 정책 — 일정(Schedule) (#981 확정)**: 전용 Schedule Feature 모듈은 **신설하지 않는다.**
 > 일정 도메인의 단일 소유자는 `HomeDomain`(모델·Repository/UseCase Protocol) + `HomeData`(`ScheduleV2Router`·`ScheduleRepository`·일정 DTO) + `HomePresentation`(일정 화면)이다.

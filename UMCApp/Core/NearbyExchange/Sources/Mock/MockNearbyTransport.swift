@@ -13,7 +13,7 @@ import Foundation
 
 /// 테스트/SwiftUI 프리뷰용 NearbyTransport 목(Mock) 구현체.
 ///
-/// 실제 BLE/NFC 하드웨어 없이 교환 흐름 전체를 시뮬레이션할 수 있다.
+/// 실제 무선 하드웨어 없이 교환 흐름 전체를 시뮬레이션할 수 있다.
 /// DIContainer에서 Mock Repository로 교체하는 것과 동일한 패턴으로 주입.
 /// 릴리스 빌드에는 포함하지 않는다 (절대 규칙 #5).
 public final class MockNearbyTransport: NearbyTransportProtocol {

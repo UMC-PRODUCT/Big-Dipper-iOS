@@ -18,8 +18,6 @@ public struct ReceivedCard: Identifiable, Equatable, Hashable, Sendable {
     public let exchangedAt: Date
     /// 교환 맥락 표시 문구 (예: "OT에서 교환").
     public let exchangeContext: String?
-    /// 연결(친구) 상태. 서버 연동 전까지는 로컬 관리 값.
-    public let isConnected: Bool
 
     // MARK: - Init
 
@@ -27,13 +25,11 @@ public struct ReceivedCard: Identifiable, Equatable, Hashable, Sendable {
         id: String,
         profile: MyCard,
         exchangedAt: Date,
-        exchangeContext: String?,
-        isConnected: Bool
+        exchangeContext: String?
     ) {
         self.id = id
         self.profile = profile
         self.exchangedAt = exchangedAt
         self.exchangeContext = exchangeContext
-        self.isConnected = isConnected
     }
 }

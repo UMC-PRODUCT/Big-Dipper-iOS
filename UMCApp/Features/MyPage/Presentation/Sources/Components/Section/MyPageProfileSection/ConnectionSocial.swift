@@ -27,7 +27,7 @@ public struct ConnectionSocial: View {
             Section(content: {
                 socialTags
             }, header: {
-                SectionHeaderView(title: sectionType.rawValue)
+                SectionHeaderView(title: sectionType.rawValue, weight: .semibold)
             })
         }
     }

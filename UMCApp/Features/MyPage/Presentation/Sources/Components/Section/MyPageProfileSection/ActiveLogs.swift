@@ -58,7 +58,7 @@ struct ActiveLogs: View {
             }
         }, header: {
             HStack {
-                SectionHeaderView(title: header)
+                SectionHeaderView(title: header, weight: .semibold)
                 Spacer()
                 addButton
             }

@@ -27,6 +27,9 @@ enum MyPageDestination: Hashable {
     /// - Parameter logType: 진입 시 처음 보여줄 활동 종류. 화면 안에서 세 종류를 전환할 수 있다.
     case myActivePosts(logType: MyActiveLogsType)
 
-    /// 비밀번호 변경. 화면은 `AuthPresentation` 이 소유한다.
-    case changePassword
+    /// 설정 화면 (프로필 링크·시스템 설정·약관·앱 정보·소셜 연동·인증·UMC 채널).
+    ///
+    /// 프로필이 있어야 의미가 있는 섹션(외부 링크·소셜 연동)은 화면이 직접 조회하므로
+    /// 목적지는 스냅샷을 싣지 않는다 — 탭 루트(``MyPageView``)와 같은 방식이다.
+    case settings
 }

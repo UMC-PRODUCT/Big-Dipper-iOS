@@ -14,6 +14,13 @@ public protocol FetchMyCardUseCaseProtocol: Sendable {
     func execute(forceRefresh: Bool) async throws -> MyCard
 }
 
+/// 상대 명함 조회 (QR 딥링크 스캔).
+///
+/// 딥링크는 memberId만 싣는다 — 명함 내용은 서버에서 받아 온다.
+public protocol FetchPeerCardUseCaseProtocol: Sendable {
+    func execute(memberId: String) async throws -> MyCard
+}
+
 /// 명함첩 목록·검색 (MP-F05).
 public protocol FetchReceivedCardsUseCaseProtocol: Sendable {
     /// query가 nil·공백이면 전체 목록.
@@ -21,8 +28,34 @@ public protocol FetchReceivedCardsUseCaseProtocol: Sendable {
 }
 
 /// 수신 페이로드를 명함첩에 저장 (교환·QR 스캔 공용 진입점).
+///
+/// `ownerMemberId` 를 두 경로 모두에서 **필수**로 받는다. 옵셔널로 두면 호출부가 조용히
+/// 빼먹고, 그러면 자기 명함이 명함첩에 섞인다 — 같은 계정 두 대로 교환하거나 자기 QR 을
+/// 찍었을 때 실제로 그랬다.
 public protocol SaveReceivedCardUseCaseProtocol: Sendable {
-    func execute(payload: ExchangePayload, exchangeContext: String?) async throws -> ReceivedCard
+
+    /// - Returns: 저장한 명함. 상대가 **나 자신**이면 저장하지 않고 `nil`.
+    func execute(
+        payload: ExchangePayload,
+        ownerMemberId: String,
+        exchangeContext: String?
+    ) async throws -> ReceivedCard?
+
+    /// 이미 복원된 명함을 저장한다 (QR 딥링크 경로).
+    ///
+    /// 딥링크는 서버 조회로 ``MyCard``를 바로 얻으므로 ``ExchangePayload``를 거칠 이유가 없다.
+    /// 페이로드는 근거리 전송(``CoreNearbyExchange``)의 스키마인데, 전송이 개입하지 않는
+    /// 경로까지 그 타입을 끌어들이면 경계가 흐려진다.
+    ///
+    /// - Parameter cardID: 명함첩 중복 판정에 쓰는 키. 같은 상대를 다시 스캔했을 때 한 장으로
+    ///   합쳐지도록 **memberId에서 결정적으로** 만들어야 한다.
+    /// - Returns: 저장한 명함. 상대가 **나 자신**이면 저장하지 않고 `nil`.
+    func execute(
+        card: MyCard,
+        cardID: String,
+        ownerMemberId: String,
+        exchangeContext: String?
+    ) async throws -> ReceivedCard?
 }
 
 /// 명함첩 항목 삭제.

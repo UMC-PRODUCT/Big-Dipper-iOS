@@ -14,11 +14,9 @@ let project = Project(
             sources: ["Sources/**"],
             dependencies: [
                 .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
-                .sdk(name: "CoreBluetooth", type: .framework, status: .required),
-                .sdk(name: "CoreNFC", type: .framework, status: .required),
+                // MultipeerConnectivity(MPCTransport)는 자동 링크. NI는 거리 측정
+                // (PeerRangingCoordinator) 전용 — transport가 아니다.
                 .sdk(name: "NearbyInteraction", type: .framework, status: .required),
-                .sdk(name: "ARKit", type: .framework, status: .required),
-                .sdk(name: "RealityKit", type: .framework, status: .required),
             ]
         ),
         .target(

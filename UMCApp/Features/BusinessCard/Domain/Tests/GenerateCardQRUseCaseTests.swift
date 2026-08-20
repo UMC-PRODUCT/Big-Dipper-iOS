@@ -16,7 +16,7 @@ struct GenerateCardQRUseCaseTests {
     private let card = MyCard(
         memberId: "42", name: "정의찬", nickname: "제옹",
         part: .front(type: .ios), generation: "12", university: "한양대학교",
-        email: nil, github: nil, blog: nil, avatarURL: nil, memberNo: "42"
+        email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil
     )
 
     @Test("명함의 qrPayload를 생성기에 그대로 넘긴다")
@@ -26,7 +26,7 @@ struct GenerateCardQRUseCaseTests {
 
         _ = try sut.execute(for: card)
 
-        #expect(generator.lastPayload == "umc://card/42")
+        #expect(generator.lastPayload == CardLink(memberId: "42").urlString)
         #expect(generator.generateCallCount == 1)
     }
 

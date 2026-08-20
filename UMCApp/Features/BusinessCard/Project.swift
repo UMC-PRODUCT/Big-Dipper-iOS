@@ -16,6 +16,7 @@ let project = featureProject(
         // 전이 의존에 기대지 않고 import하는 모듈을 명시 선언하는 게 이 레포 규약
         // (선례: Features/Community/Project.swift, Features/Auth/Project.swift).
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
+        .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
     ],
     includesDomainTests: true,
     domainTestDependencies: [
@@ -30,5 +31,13 @@ let project = featureProject(
         .project(target: "CoreNetwork", path: .relativeToRoot("Core/Network")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
+    ],
+    includesPresentationTests: true,
+    presentationTestDependencies: [
+        // ViewModel 테스트가 ReceivedCard·MyCard 와 Loadable·ErrorHandler 를 직접 만든다.
+        .target(name: "BusinessCardDomain"),
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        // 교환 세션 테스트가 DiscoveredPeer·NearbyError 를 직접 만든다.
+        .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
     ]
 )
