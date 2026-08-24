@@ -6,7 +6,7 @@
 
 UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합하는 iOS 클라이언트
 
-[![Release](https://img.shields.io/github/v/release/UMC-PRODUCT/umc-product-iOS?label=release&color=blue)](https://github.com/UMC-PRODUCT/umc-product-iOS/releases)
+[![Release](https://img.shields.io/github/v/release/UMC-PRODUCT/Big-Dipper-iOS?label=release&color=blue)](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/releases)
 [![Swift](https://img.shields.io/badge/Swift-6.3-orange.svg)]()
 [![Xcode](https://img.shields.io/badge/Xcode-26.2-1575F9.svg)]()
 [![iOS](https://img.shields.io/badge/iOS-26.0+-black.svg)]()
@@ -42,32 +42,32 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 
 </div>
 
-> 기수별 팀원 구성(사진·역할·GitHub)은 [Wiki › Team](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Team)에서,
-> 신규 기능·운영 기록은 [Wiki › Release History](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Release-History)에서 확인하세요.
+> 기수별 팀원 구성(사진·역할·GitHub)은 [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team)에서,
+> 신규 기능·운영 기록은 [Wiki › Release History](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Release-History)에서 확인하세요.
 
 ## 📚 개발 문서 (Wiki)
 
-아키텍처·코딩 컨벤션·빌드 방법 등 상세 가이드는 모두 **[Wiki](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki)** 로 이관했습니다.
+아키텍처·코딩 컨벤션·빌드 방법 등 상세 가이드는 모두 **[Wiki](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki)** 로 이관했습니다.
 
 | 주제 | 문서 |
 |------|------|
-| 🏗️ 아키텍처 | [Architecture](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Architecture) |
-| 📐 절대 규칙 & 코딩 컨벤션 | [Coding Conventions](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Coding-Conventions) |
-| ⚠️ 에러 처리 | [Error Handling](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Error-Handling) |
-| 🌐 네트워크 & DTO 디코딩 | [Networking](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Networking) |
-| 🎨 디자인 시스템 | [Design System](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Design-System) |
-| 🧱 모듈 구조 (Tuist) | [Module Structure](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Module-Structure) |
-| ⚙️ 빌드 & 실행 | [Build & Run](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Build-and-Run) |
-| 🔀 Git 워크플로우 | [Git Workflow](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Git-Workflow) |
-| 🛰️ API 커버리지 (Stella) | [Stella](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Stella) |
+| 🏗️ 아키텍처 | [Architecture](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Architecture) |
+| 📐 절대 규칙 & 코딩 컨벤션 | [Coding Conventions](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Coding-Conventions) |
+| ⚠️ 에러 처리 | [Error Handling](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Error-Handling) |
+| 🌐 네트워크 & DTO 디코딩 | [Networking](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Networking) |
+| 🎨 디자인 시스템 | [Design System](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Design-System) |
+| 🧱 모듈 구조 (Tuist) | [Module Structure](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Module-Structure) |
+| ⚙️ 빌드 & 실행 | [Build & Run](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Build-and-Run) |
+| 🔀 Git 워크플로우 | [Git Workflow](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Git-Workflow) |
+| 🛰️ API 커버리지 (Stella) | [Stella](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Stella) |
 
-> 신규 합류자는 [Wiki Home](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki) → **빌드 & 실행** 순서로 시작하세요.
+> 신규 합류자는 [Wiki Home](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki) → **빌드 & 실행** 순서로 시작하세요.
 
 ## 🔑 시크릿 설정
 
 - `Secrets.xcconfig`(`BASE_URL`, `KAKAO_KEY`)와 `GoogleService-Info.plist`는 **팀 내부 채널**에서 수령합니다.
 - 실제 키·설정 파일은 원격 저장소에 커밋하지 않습니다.
-- 상세 절차: [Build & Run › 시크릿 설정](https://github.com/UMC-PRODUCT/umc-product-iOS/wiki/Build-and-Run)
+- 상세 절차: [Build & Run › 시크릿 설정](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Build-and-Run)
 
 ---
 

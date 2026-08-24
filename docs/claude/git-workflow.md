@@ -7,6 +7,12 @@ Git Flow + **연속 브랜치 파생** 지원
 
 ## 브랜치 전략
 
+- **브랜치명은 `{타입}/{이슈번호}`** — 타입은 이슈 템플릿과 1:1(`feat`/`bug`/`design`/`refac`/`docs`/`chore`),
+  base·PR 대상은 `develop`. 예: `docs/1203`, `feat/1195`. 설명형 브랜치명 금지.
+  - 대응 이슈가 없으면 **브랜치를 만들기 전에 이슈부터 생성**한다 (아래 "이슈 생성 규칙").
+  - PR 제목 끝에 `(#이슈번호)`, 본문에 `Closes #이슈번호`.
+  - 푸시한 브랜치명을 고쳐야 하면 GitHub 브랜치 rename API가 **열려 있던 PR을 닫아버린다.**
+    rename 후 새 PR을 만들고, 닫힌 PR에 후속 PR 번호를 코멘트로 남긴다.
 - **연속 브랜치**: feature에서 다음 feature 파생 가능 (티켓 단위 분리)
 - **PR 대기 중 작업**: 승인 대기 중 이전 브랜치에서 다음 브랜치 생성 가능
 - **동기화**: develop에서 merge 대신 `fetch + rebase` 사용
@@ -66,7 +72,7 @@ Git Flow + **연속 브랜치 파생** 지원
 - **이슈 Type** (조직 레벨): 현재 `Task` / `Bug` / `Feature` 3종만 존재 → Bug/Feature 외 템플릿은 `Task`로 매핑.
   `gh issue create`엔 `--type` 플래그가 없으므로(gh 2.83.1) **생성 직후 REST로 설정**한다:
   ```bash
-  gh api --method PATCH repos/UMC-PRODUCT/umc-product-iOS/issues/{번호} -f type=Feature
+  gh api --method PATCH repos/UMC-PRODUCT/Big-Dipper-iOS/issues/{번호} -f type=Feature
   ```
 - **보드 #3 + `우선순위`(Projects v2)**: 생성 시 **기본으로 보드 추가 + 우선순위 설정**. 단 `project` 스코프 필요 —
   없을 때만 이 부분을 건너뛰고(Type/라벨은 적용) `gh auth refresh -s project` 후 재적용.
