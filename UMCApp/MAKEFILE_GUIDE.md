@@ -233,7 +233,7 @@ make generate
 ## 8. 파일 구조 참고
 
 ```
-umc-product-iOS/
+Big-Dipper-iOS/
 ├── UMCApp/
 │   ├── Makefile              # ← 이 가이드가 설명하는 파일
 │   ├── MAKEFILE_GUIDE.md     # ← 이 문서
