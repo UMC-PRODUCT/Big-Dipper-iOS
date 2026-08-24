@@ -16,6 +16,9 @@ let project = Project(
             infoPlist: .extendingDefault(
                 with: [
                     "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+                    // 출시본의 INFOPLIST_KEY_CFBundleDisplayName = UMC 가 Tuist 이관에서
+                    // 유실돼 홈 화면에 "UMCApp" 으로 표시되고 있었다.
+                    "CFBundleDisplayName": "UMC",
                     "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                     "UILaunchScreen": [
                         "UIColorName": "",

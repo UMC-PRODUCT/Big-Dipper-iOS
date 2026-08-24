@@ -32,6 +32,9 @@ public func widgetExtensionProject(
                 infoPlist: .extendingDefault(
                     with: [
                         "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+                        // 위젯 갤러리에 표시되는 이름. 앱 익스텐션은 이 키가 없으면
+                        // App Store Connect 업로드가 거부된다(ITMS-90360).
+                        "CFBundleDisplayName": "UMC",
                         // 앱 익스텐션의 CFBundleVersion은 호스트 앱과 반드시 일치해야 한다.
                         // 어긋나면 App Store Connect 업로드가 거부된다.
                         "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
