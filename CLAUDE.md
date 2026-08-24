@@ -53,6 +53,14 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
    - 실수로 `AppProduct/`가 변경되면 즉시 `git restore --source=v2.2.0 -- AppProduct/<경로>` 로 릴리즈 상태로 되돌린다.
    - 유일한 예외: 메인테이너가 **명시적으로 AppProduct 수정을 지시한 경우에만** 진행. 그 외에는 예외 없음.
 
+10. **작업 브랜치명은 `{타입}/{이슈번호}` — 이슈를 먼저 만들고 그 번호를 쓴다.**
+    타입은 이슈 템플릿과 1:1로 맞춘다: `feat` · `bug` · `design` · `refac` · `docs` · `chore`.
+    (예: `docs/1203`, `feat/1195`) 설명형 브랜치명(`docs/repo-rename-links` 등) 금지.
+    - 대응 이슈가 없으면 **브랜치를 만들기 전에 이슈부터 생성**한다 (제목 접두사·라벨·Type·Priority/Effort까지 채워서 — 상세: `docs/claude/git-workflow.md`).
+    - PR 제목 끝에 `(#이슈번호)`, 본문에 `Closes #이슈번호`를 넣어 이슈와 연결한다.
+    - 이미 푸시한 브랜치명을 고쳐야 하면 GitHub 브랜치 rename API는 **열려 있던 PR을 닫아버리므로**, rename 후 새 PR을 만들고 닫힌 PR에 후속 PR 번호를 코멘트로 남긴다.
+    - 배포 브랜치는 예외: `testFlight/{번호}` · `release/{번호}` (순차 번호, 이슈번호 아님).
+
 ## 코딩 스타일 (요약)
 
 - 들여쓰기 4 spaces(탭 금지) · 줄 길이 최대 99자 · 외부 불필요 상태는 `private`
