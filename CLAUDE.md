@@ -57,7 +57,10 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
     타입은 이슈 템플릿과 1:1로 맞춘다: `feat` · `bug` · `design` · `refac` · `docs` · `chore`.
     (예: `docs/1203`, `feat/1195`) 설명형 브랜치명(`docs/repo-rename-links` 등) 금지.
     - 대응 이슈가 없으면 **브랜치를 만들기 전에 이슈부터 생성**한다 (제목 접두사·라벨·Type·Priority/Effort까지 채워서 — 상세: `docs/claude/git-workflow.md`).
-    - PR 제목 끝에 `(#이슈번호)`, 본문에 `Closes #이슈번호`를 넣어 이슈와 연결한다.
+    - **PR 제목은 `{이모지} [Type] {작업 내용} (#이슈번호)`** — 분류는 반드시 `[대괄호]`, 끝에 이슈번호.
+      (예: `✨ [Feat] 명함 도메인 계층 — MyCard · 명함첩 · 교환 세션 UseCase (#1194)`)
+      **이슈 제목 형식(`📄 Docs: …` — 콜론)을 PR 제목에 쓰지 않는다.** `[Docs]:`처럼 대괄호 뒤 콜론도 금지.
+      본문에는 `Closes #이슈번호`를 넣어 이슈와 연결한다. (이모지·Type 매핑표: `docs/claude/git-workflow.md`)
     - 이미 푸시한 브랜치명을 고쳐야 하면 GitHub 브랜치 rename API는 **열려 있던 PR을 닫아버리므로**, rename 후 새 PR을 만들고 닫힌 PR에 후속 PR 번호를 코멘트로 남긴다.
     - 배포 브랜치는 예외: `testFlight/{번호}` · `release/{번호}` (순차 번호, 이슈번호 아님).
 
@@ -113,3 +116,13 @@ iOS 26 프레임워크 API — 신규 Apple API를 다룰 때:
 | 모음 | 인덱스 | 언제 읽나 |
 |------|--------|----------|
 | iOS 26 프레임워크 가이드(20종) | `docs/claude/ios26-frameworks/INDEX.md` | Liquid Glass, FoundationModels, SwiftData 상속, 신규 SwiftUI/Concurrency API 등 |
+
+백엔드(서버) — API 연동·서버 상태 확인이 필요할 때:
+
+| 대상 | 위치 | 언제 참고하나 |
+|------|------|--------------|
+| Cygnus 서버 레포 | https://github.com/UMC-PRODUCT/cygnus-server/tree/main | API 엔드포인트·요청/응답 스펙 확인, 서버 구현/배포 상태 점검, iOS DTO와 실제 응답이 어긋날 때 원인 추적 |
+
+- 조회 수단: `gh` CLI(`gh api repos/UMC-PRODUCT/cygnus-server/contents/...`, `gh search code --repo UMC-PRODUCT/cygnus-server ...`) 또는 `WebFetch`.
+- **읽기 전용으로만 사용** — 서버 레포에 커밋·PR·이슈를 만들지 않는다(메인테이너가 명시적으로 지시한 경우 제외).
+- 스펙 추측 금지: 필드명·타입·nullable 여부는 서버의 컨트롤러/DTO 실제 코드로 확인한 뒤 iOS Response DTO에 반영한다(절대 규칙 #2·#3과 함께 적용).
