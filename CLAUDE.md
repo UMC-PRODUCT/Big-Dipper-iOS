@@ -113,3 +113,13 @@ iOS 26 프레임워크 API — 신규 Apple API를 다룰 때:
 | 모음 | 인덱스 | 언제 읽나 |
 |------|--------|----------|
 | iOS 26 프레임워크 가이드(20종) | `docs/claude/ios26-frameworks/INDEX.md` | Liquid Glass, FoundationModels, SwiftData 상속, 신규 SwiftUI/Concurrency API 등 |
+
+백엔드(서버) — API 연동·서버 상태 확인이 필요할 때:
+
+| 대상 | 위치 | 언제 참고하나 |
+|------|------|--------------|
+| Cygnus 서버 레포 | https://github.com/UMC-PRODUCT/cygnus-server/tree/main | API 엔드포인트·요청/응답 스펙 확인, 서버 구현/배포 상태 점검, iOS DTO와 실제 응답이 어긋날 때 원인 추적 |
+
+- 조회 수단: `gh` CLI(`gh api repos/UMC-PRODUCT/cygnus-server/contents/...`, `gh search code --repo UMC-PRODUCT/cygnus-server ...`) 또는 `WebFetch`.
+- **읽기 전용으로만 사용** — 서버 레포에 커밋·PR·이슈를 만들지 않는다(메인테이너가 명시적으로 지시한 경우 제외).
+- 스펙 추측 금지: 필드명·타입·nullable 여부는 서버의 컨트롤러/DTO 실제 코드로 확인한 뒤 iOS Response DTO에 반영한다(절대 규칙 #2·#3과 함께 적용).
