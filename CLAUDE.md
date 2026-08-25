@@ -57,7 +57,10 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
     타입은 이슈 템플릿과 1:1로 맞춘다: `feat` · `bug` · `design` · `refac` · `docs` · `chore`.
     (예: `docs/1203`, `feat/1195`) 설명형 브랜치명(`docs/repo-rename-links` 등) 금지.
     - 대응 이슈가 없으면 **브랜치를 만들기 전에 이슈부터 생성**한다 (제목 접두사·라벨·Type·Priority/Effort까지 채워서 — 상세: `docs/claude/git-workflow.md`).
-    - PR 제목 끝에 `(#이슈번호)`, 본문에 `Closes #이슈번호`를 넣어 이슈와 연결한다.
+    - **PR 제목은 `{이모지} [Type] {작업 내용} (#이슈번호)`** — 분류는 반드시 `[대괄호]`, 끝에 이슈번호.
+      (예: `✨ [Feat] 명함 도메인 계층 — MyCard · 명함첩 · 교환 세션 UseCase (#1194)`)
+      **이슈 제목 형식(`📄 Docs: …` — 콜론)을 PR 제목에 쓰지 않는다.** `[Docs]:`처럼 대괄호 뒤 콜론도 금지.
+      본문에는 `Closes #이슈번호`를 넣어 이슈와 연결한다. (이모지·Type 매핑표: `docs/claude/git-workflow.md`)
     - 이미 푸시한 브랜치명을 고쳐야 하면 GitHub 브랜치 rename API는 **열려 있던 PR을 닫아버리므로**, rename 후 새 PR을 만들고 닫힌 PR에 후속 PR 번호를 코멘트로 남긴다.
     - 배포 브랜치는 예외: `testFlight/{번호}` · `release/{번호}` (순차 번호, 이슈번호 아님).
 
