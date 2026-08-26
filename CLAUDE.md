@@ -117,6 +117,20 @@ iOS 26 프레임워크 API — 신규 Apple API를 다룰 때:
 |------|--------|----------|
 | iOS 26 프레임워크 가이드(20종) | `docs/claude/ios26-frameworks/INDEX.md` | Liquid Glass, FoundationModels, SwiftData 상속, 신규 SwiftUI/Concurrency API 등 |
 
+기획·설계 문서 — **별도 레포로 분리되어 있다**:
+
+| 대상 | 위치 | 언제 참고하나 |
+|------|------|--------------|
+| 기획 문서 레포 | https://github.com/UMC-PRODUCT/Mobile_Planning_Repo (private) | 기능 설계 스펙·구현 계획·서버 전달용 명세를 읽거나 **새로 쓸 때** |
+
+- 폴더: `server/`(서버팀 전달용 API·푸시 명세) · `specs/`(기능 설계 스펙, PRD) · `plans/`(구현 계획)
+- 파일명: `YYYY-MM-DD-{주제}.md`, 설계 스펙은 `-design` 접미사.
+- **새 기획·설계 문서는 이 레포에 쓴다** — 코드 레포(`docs/`)에 만들지 않는다.
+  과거 `docs/superpowers/` 는 `.gitignore` 에 걸려 있어 문서가 버전 관리 밖에 방치됐고,
+  그래서 문서 축을 아예 분리했다. 그 ignore 규칙은 재발 방지용으로 남겨 둔다.
+- 조회 수단: `gh api repos/UMC-PRODUCT/Mobile_Planning_Repo/contents/...` 또는 로컬 클론.
+- 코드 레벨 규약(아키텍처·코딩 스타일·빌드)은 분리 대상이 아니다 — `docs/claude/` 에 그대로 있다.
+
 백엔드(서버) — API 연동·서버 상태 확인이 필요할 때:
 
 | 대상 | 위치 | 언제 참고하나 |
