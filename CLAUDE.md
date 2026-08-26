@@ -124,7 +124,9 @@ iOS 26 프레임워크 API — 신규 Apple API를 다룰 때:
 | 기획 문서 레포 | https://github.com/UMC-PRODUCT/Mobile_Planning_Repo (private) | 기능 설계 스펙·구현 계획·서버 전달용 명세를 읽거나 **새로 쓸 때** |
 
 - 폴더: `server/`(서버팀 전달용 API·푸시 명세) · `specs/`(기능 설계 스펙, PRD) · `plans/`(구현 계획)
-- 파일명: `YYYY-MM-DD-{주제}.md`, 설계 스펙은 `-design` 접미사.
+- 파일명: `YYYY-MM-DD-{한글 주제}.md` — 목록에서 바로 읽히도록 주제는 한글로 적는다.
+  접미사로 종류를 구분: `-설계` · `-PRD` · `-구현계획` · `-설계리뷰`.
+  고유명사·API 이름(`macOS`, `CommandAPI`, `NavigationTitle`)은 원문 표기를 유지한다.
 - **새 기획·설계 문서는 이 레포에 쓴다** — 코드 레포(`docs/`)에 만들지 않는다.
   과거 `docs/superpowers/` 는 `.gitignore` 에 걸려 있어 문서가 버전 관리 밖에 방치됐고,
   그래서 문서 축을 아예 분리했다. 그 ignore 규칙은 재발 방지용으로 남겨 둔다.
