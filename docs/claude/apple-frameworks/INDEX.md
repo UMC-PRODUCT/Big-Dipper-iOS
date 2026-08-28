@@ -4,6 +4,10 @@
 > 출처: [artemnovichkov/xcode-27-system-prompts](https://github.com/artemnovichkov/xcode-27-system-prompts)
 > (이전 출처였던 `xcode-26-system-prompts` 는 더 이상 갱신되지 않는다.)
 >
+> **동기화 기준 커밋**: [`75f3b2ae`](https://github.com/artemnovichkov/xcode-27-system-prompts/commit/75f3b2ae68d9eab87c0b1fad3dce75931e0bddcf) (2026-08-25)
+> — 여기 있는 파일은 전부 이 커밋에서 무손실 복사한 것이다.
+> 다음 갱신 때 이 SHA를 기준으로 `git diff` 하면 무엇이 바뀌었는지 바로 나온다 (§5).
+>
 > **사용법**: Apple 프레임워크 API를 다룰 때 아래 해당 문서를 `Read` 로 열어
 > 정확한 API 시그니처/패턴/가용성을 확인한 뒤 코드를 작성한다.
 > 이 문서들은 컨텍스트 절약을 위해 **자동 로드하지 않고 필요 시에만** 읽는다.
@@ -228,9 +232,17 @@ C 코드용 경계 안전성 언어 확장. 이 프로젝트는 순수 Swift라 
 업스트림이 다시 바뀌면 아래를 실행한 뒤 이 인덱스의 표를 손본다.
 
 ```bash
-git clone --depth 1 https://github.com/artemnovichkov/xcode-27-system-prompts.git /tmp/x27
+PINNED=75f3b2ae68d9eab87c0b1fad3dce75931e0bddcf   # 현재 반영된 커밋 (문서 상단과 동일하게 유지할 것)
 SRC=/tmp/x27
 DEST=docs/claude/apple-frameworks
+
+git clone https://github.com/artemnovichkov/xcode-27-system-prompts.git "$SRC"   # --depth 1 금지: diff 를 위해 전체 히스토리 필요
+
+# 1) 무엇이 바뀌었는지 먼저 확인 — 신규 스킬팩/삭제/개명을 여기서 잡는다
+git -C "$SRC" diff --stat "$PINNED"..HEAD
+git -C "$SRC" diff --name-status "$PINNED"..HEAD
+
+# 2) 복사
 
 cp "$SRC"/AdditionalDocumentation/*.md "$DEST"/
 
@@ -255,4 +267,9 @@ done
 
 - `.idechatprompttemplate` → `SKILL.md`, `<스킬>-ref-<이름>.md.packaged` → `references/<이름>.md` 로 정규화한다.
   (확장자만 바꾼 것이고 내용은 무손실 복사)
+- **작업 후 이 문서 상단의 "동기화 기준 커밋"과 위 `PINNED` 값을 새 SHA로 갱신한다.**
+  이걸 빼먹으면 다음 사람이 diff 기준점을 잃는다.
+- 위 루프는 `-ref-` 동반 파일이 있는 것만 스킬팩으로 본다. 업스트림이 reference 없는 단일 스킬을
+  추가하면 자동으로 누락되므로, 1)의 `--name-status` 출력을 눈으로 확인할 것.
 - Xcode 28 이 나오면 업스트림 저장소 이름도 `xcode-28-system-prompts` 로 바뀔 가능성이 높다.
+  그 경우 `PINNED` 는 새 저장소의 최초 반영 커밋으로 다시 잡는다.
