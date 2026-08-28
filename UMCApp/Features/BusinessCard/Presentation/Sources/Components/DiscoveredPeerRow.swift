@@ -152,7 +152,7 @@ struct DiscoveredPeerRow: View {
 
         DiscoveredPeerRow(
             peer: DiscoveredPeer(
-                id: "c", cardUUIDPrefix: Data(), version: 1, flags: 0,
+                id: "c",
                 displayName: "보낸 상대", part: "IOS", generation: "10"
             ),
             hasSent: true
