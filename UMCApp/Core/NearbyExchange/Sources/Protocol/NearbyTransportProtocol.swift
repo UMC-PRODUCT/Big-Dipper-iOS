@@ -119,7 +119,10 @@ public protocol NearbyTransportProtocol: Sendable {
     // MARK: - Scanning
 
     /// 주변 피어를 지속 스캔. 화면이 살아있는 동안 구독 유지.
-    func startScanning() -> AsyncStream<DiscoveredPeer>
+    ///
+    /// 발견뿐 아니라 **소실**도 같은 채널로 흐른다 — 목록에서 행을 지우려면 소실 신호가
+    /// 제품 화면까지 닿아야 한다 (``NearbyDiscoveryEvent`` 주석 참고).
+    func startScanning() -> AsyncStream<NearbyDiscoveryEvent>
 
     // MARK: - Data Transfer
 

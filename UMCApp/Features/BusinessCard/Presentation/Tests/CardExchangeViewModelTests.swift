@@ -48,6 +48,35 @@ struct CardExchangeViewModelTests {
         #expect(sut.peers.first?.displayName == "새 이름")
     }
 
+    /// 상대가 앱을 끄면 목록에 유령 행이 남는다. 그 행을 탭하면 없는 기기에게 초대를
+    /// 보내고 연결 타임아웃(20초)을 통째로 태운다.
+    @Test("피어가 사라지면 목록에서 그 행을 지운다")
+    func lostPeerIsRemoved() async {
+        let exchange = StubExchangeCards(events: [
+            .peerFound(makePeer(id: "a")),
+            .peerFound(makePeer(id: "b")),
+            .peerLost(peerID: "a"),
+        ])
+        let sut = makeSUT(exchange: exchange)
+
+        await sut.start()
+
+        #expect(sut.peers.map(\.id) == ["b"])
+    }
+
+    @Test("모르는 피어의 소실은 남은 목록을 건드리지 않는다")
+    func lostUnknownPeerKeepsList() async {
+        let exchange = StubExchangeCards(events: [
+            .peerFound(makePeer(id: "a")),
+            .peerLost(peerID: "ghost"),
+        ])
+        let sut = makeSUT(exchange: exchange)
+
+        await sut.start()
+
+        #expect(sut.peers.map(\.id) == ["a"])
+    }
+
     /// 거리는 교환과 무관하게 계속 흐른다. 새 피어를 만들지 않고 그 행의 값만 갱신해야 한다.
     @Test("거리 갱신은 새 행을 만들지 않고 그 행의 값만 바꾼다")
     func distanceUpdatesInPlace() async {
@@ -113,6 +142,22 @@ struct CardExchangeViewModelTests {
         #expect(exchange.sentPeerIDs == ["a"])
     }
 
+    /// `.sent` 는 「내 명함이 상대에게 갔다」는 유일한 신호인데 `.advertising`/`.scanning`
+    /// 과 함께 버려졌다. 사용자는 받기만 확인할 수 있고 보내기는 확인할 수 없었다.
+    @Test("전송이 끝난 상대를 기억해 행에 표시한다")
+    func sentPeerIsRemembered() async {
+        let exchange = StubExchangeCards(events: [
+            .peerFound(makePeer(id: "a")),
+            .peerFound(makePeer(id: "b")),
+            .sent(makePeer(id: "a")),
+        ])
+        let sut = makeSUT(exchange: exchange)
+
+        await sut.start()
+
+        #expect(sut.sentPeerIDs == ["a"])
+    }
+
     @Test("전송이 실패하면 에러를 알린다")
     func sendFailureIsReported() async {
         let errorHandler = ErrorHandler()
@@ -138,13 +183,66 @@ struct CardExchangeViewModelTests {
         #expect(exchange.startCount == .zero)
     }
 
-    @Test("세션이 실패 이벤트를 흘리면 화면에 남긴다")
+    /// 릴리스 빌드에서도 사유가 화면까지 닿아야 한다 — 예전에는 검증용 디버그 화면만
+    /// 원문을 볼 수 있었고 제품 화면은 실패 여부조차 몰랐다.
+    @Test("세션이 실패 이벤트를 흘리면 사유까지 화면에 남긴다")
     func sessionFailureIsSurfaced() async {
-        let sut = makeSUT(exchange: StubExchangeCards(events: [.failed(.transportFailure(underlying: NearbyError.invalidPayload("연결 시간 초과")))]))
+        let sut = makeSUT(exchange: StubExchangeCards(events: [.failed(.permissionDenied)]))
 
         await sut.start()
 
-        #expect(sut.sessionFailed)
+        #expect(sut.failure == .permissionDenied)
+    }
+
+    /// 만료된 사용자에게 「권한을 켜라」고 하면 켤 것이 없어 막힌다.
+    @Test("만료와 저장 실패는 서로 다른 사유로 남는다")
+    func failureReasonsAreDistinct() async {
+        let expired = makeSUT(exchange: StubExchangeCards(events: [.failed(.sessionExpired)]))
+        let saveFailed = makeSUT(
+            exchange: StubExchangeCards(events: [.failed(.saveFailed(reason: "디스크"))])
+        )
+
+        await expired.start()
+        await saveFailed.start()
+
+        #expect(expired.failure == .sessionExpired)
+        #expect(saveFailed.failure == .saveFailed(reason: "디스크"))
+    }
+
+    // MARK: - Scene Phase
+
+    /// 백그라운드에서 MPC 세션은 조용히 죽는다. 복귀 시 다시 열지 않으면 목록에
+    /// 옛 피어가 남은 채 아무도 새로 발견되지 않는다.
+    @Test("백그라운드에서 돌아오면 끊긴 세션을 다시 연다")
+    func resumeReopensDeadSession() async {
+        let exchange = StubExchangeCards(events: [])
+        let sut = makeSUT(exchange: exchange)
+        await sut.start()
+        await sut.stop()
+
+        await sut.resumeIfNeeded()
+
+        #expect(exchange.startCount == 2)
+    }
+
+    /// 확인 없이 다시 열면 이전 세션이 도는 채로 광고가 겹쳐 붙는다.
+    @Test("세션이 살아 있으면 복귀해도 다시 열지 않는다")
+    func resumeSkipsLiveSession() async {
+        let exchange = StubExchangeCards(events: [], keepsStreamOpen: true)
+        let sut = makeSUT(exchange: exchange)
+        let session = Task { await sut.start() }
+        var spins = 0
+        while !sut.isSessionRunning && spins < 1_000 {
+            await Task.yield()
+            spins += 1
+        }
+        #expect(sut.isSessionRunning)
+
+        await sut.resumeIfNeeded()
+
+        #expect(exchange.startCount == 1)
+        await sut.stop()
+        _ = await session.result
     }
 
     // MARK: - Teardown
@@ -234,13 +332,18 @@ private final class StubExchangeCards: ExchangeCardsUseCaseProtocol, @unchecked 
 
     private let events: [ExchangeEvent]
     private let sendError: Error?
+    /// 실제 세션처럼 스트림을 열어 둔다 — 닫아 버리면 「세션이 살아 있는 동안」을
+    /// 재현할 수 없다.
+    private let keepsStreamOpen: Bool
+    private var openContinuation: AsyncStream<ExchangeEvent>.Continuation?
     private(set) var sentPeerIDs: [String] = []
     private(set) var startCount = 0
     private(set) var stopCount = 0
 
-    init(events: [ExchangeEvent], sendError: Error? = nil) {
+    init(events: [ExchangeEvent], sendError: Error? = nil, keepsStreamOpen: Bool = false) {
         self.events = events
         self.sendError = sendError
+        self.keepsStreamOpen = keepsStreamOpen
     }
 
     func start(myCard: MyCard) -> AsyncStream<ExchangeEvent> {
@@ -249,7 +352,11 @@ private final class StubExchangeCards: ExchangeCardsUseCaseProtocol, @unchecked 
             for event in events {
                 continuation.yield(event)
             }
-            continuation.finish()
+            if keepsStreamOpen {
+                openContinuation = continuation
+            } else {
+                continuation.finish()
+            }
         }
     }
 
@@ -260,5 +367,7 @@ private final class StubExchangeCards: ExchangeCardsUseCaseProtocol, @unchecked 
 
     func stop() async {
         stopCount += 1
+        openContinuation?.finish()
+        openContinuation = nil
     }
 }

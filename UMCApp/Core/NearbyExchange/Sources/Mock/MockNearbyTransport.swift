@@ -22,6 +22,11 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
 
     public let stubbedPeers: [DiscoveredPeer]
     public let stubbedPayloads: [ExchangePayload]
+    /// 발견 이후에 흘릴 이벤트 — 소실·실패 전파를 테스트에서 그대로 재현한다.
+    public let stubbedDiscoveryEvents: [NearbyDiscoveryEvent]
+    /// 앞에서 몇 번의 전송을 실패시킬지. 재시도 동작을 재현한다.
+    public let sendFailures: Int
+    public let sendFailureError: NearbyError
     // 기록용 상태. 목이 Sendable 이라 mutable 저장 프로퍼티는 컴파일러가 막는다.
     // 테스트·프리뷰에서만 단일 스레드로 쓰므로 검사만 끈다.
     public nonisolated(unsafe) private(set) var didStartAdvertising = false
@@ -29,15 +34,25 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
     public nonisolated(unsafe) private(set) var sentPayloads: [ExchangePayload] = []
     /// 광고에 실린 명함 기록 — 광고 API 일반화 이후 무엇을 퍼블리시했는지 검증한다.
     public nonisolated(unsafe) private(set) var advertisedCards: [ExchangePayload] = []
+    /// 성공·실패를 합친 전송 시도 횟수.
+    public nonisolated(unsafe) private(set) var sendAttempts = 0
 
     // MARK: - Init
 
     public init(
         stubbedPeers: [DiscoveredPeer] = [],
-        stubbedPayloads: [ExchangePayload] = []
+        stubbedPayloads: [ExchangePayload] = [],
+        stubbedDiscoveryEvents: [NearbyDiscoveryEvent] = [],
+        sendFailures: Int = 0,
+        sendFailureError: NearbyError = .transportFailure(
+            underlying: NSError(domain: "MockNearbyTransport", code: 1)
+        )
     ) {
         self.stubbedPeers = stubbedPeers
         self.stubbedPayloads = stubbedPayloads
+        self.stubbedDiscoveryEvents = stubbedDiscoveryEvents
+        self.sendFailures = sendFailures
+        self.sendFailureError = sendFailureError
     }
 
     // MARK: - NearbyTransportProtocol
@@ -51,17 +66,19 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
         didStopAdvertising = true
     }
 
-    public func startScanning() -> AsyncStream<DiscoveredPeer> {
-        let peers = stubbedPeers
+    public func startScanning() -> AsyncStream<NearbyDiscoveryEvent> {
+        let events = stubbedPeers.map { NearbyDiscoveryEvent.found($0) } + stubbedDiscoveryEvents
         return AsyncStream { continuation in
-            for peer in peers {
-                continuation.yield(peer)
+            for event in events {
+                continuation.yield(event)
             }
             continuation.finish()
         }
     }
 
     public func send(payload: ExchangePayload, to peer: DiscoveredPeer) async throws {
+        sendAttempts += 1
+        if sendAttempts <= sendFailures { throw sendFailureError }
         sentPayloads.append(payload)
     }
 

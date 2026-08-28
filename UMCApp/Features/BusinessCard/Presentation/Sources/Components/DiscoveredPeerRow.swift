@@ -17,12 +17,16 @@ struct DiscoveredPeerRow: View {
     // MARK: - Property
 
     let peer: DiscoveredPeer
+    /// 이 상대에게 이미 내 명함을 보냈는지.
+    var hasSent: Bool = false
 
     // MARK: - Constants
 
     private enum Constants {
         static let unknownName = "이름 없는 멤버"
         static let signalImage = "cellularbars"
+        static let sentTitle = "보냈어요"
+        static let sentImage = "checkmark.circle.fill"
         /// 파트와 기수를 잇는 구분자. 시안 표기 `iOS ・10기`.
         static let separator = " ・"
     }
@@ -82,7 +86,11 @@ struct DiscoveredPeerRow: View {
 
             Spacer(minLength: Metrics.contentSpacing)
 
-            signal
+            if hasSent {
+                sentBadge
+            } else {
+                signal
+            }
         }
         .padding(Metrics.padding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -96,6 +104,19 @@ struct DiscoveredPeerRow: View {
     }
 
     // MARK: - View Component
+
+    /// 전송이 끝난 행은 신호 세기 대신 결과를 보여 준다 — 막대만 계속 그리면
+    /// 눌렀다는 사실이 화면 어디에도 남지 않는다.
+    private var sentBadge: some View {
+        HStack(spacing: Metrics.textSpacing) {
+            Image(systemName: Constants.sentImage)
+                .font(.system(size: Metrics.signalSize))
+
+            Text(Constants.sentTitle)
+                .appFont(.footnote)
+        }
+        .foregroundStyle(BusinessCardPalette.indigo)
+    }
 
     /// 거리는 UWB(NearbyInteraction)가 잰다. 미탑재 기기이거나 아직 못 쟀으면 `nil` 이라
     /// 막대만 두고 숫자를 비운다 — 「0.0m」로 채우면 옆에 있다는 거짓말이 된다.
@@ -128,6 +149,14 @@ struct DiscoveredPeerRow: View {
         DiscoveredPeerRow(peer: DiscoveredPeer(
             id: "b"
         ))
+
+        DiscoveredPeerRow(
+            peer: DiscoveredPeer(
+                id: "c", cardUUIDPrefix: Data(), version: 1, flags: 0,
+                displayName: "보낸 상대", part: "IOS", generation: "10"
+            ),
+            hasSent: true
+        )
     }
     .padding(16)
 }
