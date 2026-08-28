@@ -209,6 +209,42 @@ struct CardExchangeViewModelTests {
         #expect(saveFailed.failure == .saveFailed(reason: "디스크"))
     }
 
+    // MARK: - Scene Phase
+
+    /// 백그라운드에서 MPC 세션은 조용히 죽는다. 복귀 시 다시 열지 않으면 목록에
+    /// 옛 피어가 남은 채 아무도 새로 발견되지 않는다.
+    @Test("백그라운드에서 돌아오면 끊긴 세션을 다시 연다")
+    func resumeReopensDeadSession() async {
+        let exchange = StubExchangeCards(events: [])
+        let sut = makeSUT(exchange: exchange)
+        await sut.start()
+        await sut.stop()
+
+        await sut.resumeIfNeeded()
+
+        #expect(exchange.startCount == 2)
+    }
+
+    /// 확인 없이 다시 열면 이전 세션이 도는 채로 광고가 겹쳐 붙는다.
+    @Test("세션이 살아 있으면 복귀해도 다시 열지 않는다")
+    func resumeSkipsLiveSession() async {
+        let exchange = StubExchangeCards(events: [], keepsStreamOpen: true)
+        let sut = makeSUT(exchange: exchange)
+        let session = Task { await sut.start() }
+        var spins = 0
+        while !sut.isSessionRunning && spins < 1_000 {
+            await Task.yield()
+            spins += 1
+        }
+        #expect(sut.isSessionRunning)
+
+        await sut.resumeIfNeeded()
+
+        #expect(exchange.startCount == 1)
+        await sut.stop()
+        _ = await session.result
+    }
+
     // MARK: - Teardown
 
     @Test("화면을 떠나면 세션을 멈춘다")
@@ -299,13 +335,18 @@ private final class StubExchangeCards: ExchangeCardsUseCaseProtocol, @unchecked 
 
     private let events: [ExchangeEvent]
     private let sendError: Error?
+    /// 실제 세션처럼 스트림을 열어 둔다 — 닫아 버리면 「세션이 살아 있는 동안」을
+    /// 재현할 수 없다.
+    private let keepsStreamOpen: Bool
+    private var openContinuation: AsyncStream<ExchangeEvent>.Continuation?
     private(set) var sentPeerIDs: [String] = []
     private(set) var startCount = 0
     private(set) var stopCount = 0
 
-    init(events: [ExchangeEvent], sendError: Error? = nil) {
+    init(events: [ExchangeEvent], sendError: Error? = nil, keepsStreamOpen: Bool = false) {
         self.events = events
         self.sendError = sendError
+        self.keepsStreamOpen = keepsStreamOpen
     }
 
     func start(myCard: MyCard) -> AsyncStream<ExchangeEvent> {
@@ -314,7 +355,11 @@ private final class StubExchangeCards: ExchangeCardsUseCaseProtocol, @unchecked 
             for event in events {
                 continuation.yield(event)
             }
-            continuation.finish()
+            if keepsStreamOpen {
+                openContinuation = continuation
+            } else {
+                continuation.finish()
+            }
         }
     }
 
@@ -325,5 +370,7 @@ private final class StubExchangeCards: ExchangeCardsUseCaseProtocol, @unchecked 
 
     func stop() async {
         stopCount += 1
+        openContinuation?.finish()
+        openContinuation = nil
     }
 }

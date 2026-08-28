@@ -42,6 +42,9 @@ public final class CardExchangeViewModel {
     /// 원인과 무관한 안내를 하게 된다 — 실제로 만료된 사용자에게 권한을 켜라고 했다.
     public private(set) var failure: BusinessCardError?
 
+    /// 세션이 지금 돌고 있는지. 백그라운드 복귀 시 재개 여부를 이 값으로 가른다.
+    public private(set) var isSessionRunning = false
+
     /// 내 명함을 이미 보낸 상대. 행에 「보냈어요」를 달아 준다.
     ///
     /// 전송은 성공해도 화면이 그대로였다 — 상대가 아직 안 받았는지 내가 잘못 눌렀는지
@@ -89,9 +92,21 @@ public final class CardExchangeViewModel {
             return
         }
 
+        isSessionRunning = true
         for await event in exchangeCards.start(myCard: card) {
             apply(event)
         }
+        isSessionRunning = false
+    }
+
+    /// 포그라운드 복귀. 세션이 이미 살아 있으면 아무 것도 하지 않는다.
+    ///
+    /// 확인 없이 다시 `start()` 하면 이전 세션이 도는 채로 광고가 겹쳐 붙는다.
+    /// 화면에 처음 들어올 때도 `.active` 전이가 오므로 이 가드가 없으면 `.task` 가
+    /// 연 세션 위에 하나가 더 얹힌다.
+    public func resumeIfNeeded() async {
+        guard !isSessionRunning else { return }
+        await start()
     }
 
     public func send(to peer: DiscoveredPeer) async {
@@ -102,7 +117,11 @@ public final class CardExchangeViewModel {
         } catch {
             errorHandler.handle(
                 error,
-                context: ErrorContext(feature: Constants.feature, action: "sendCard")
+                context: ErrorContext(
+                    feature: Constants.feature,
+                    action: "sendCard",
+                    retryAction: { [weak self] in await self?.send(to: peer) }
+                )
             )
         }
     }
@@ -110,6 +129,7 @@ public final class CardExchangeViewModel {
     /// 화면 이탈·「교환 중지」. 광고를 끄고 스트림을 닫아 ``start()`` 의 루프를 끝낸다.
     public func stop() async {
         await exchangeCards.stop()
+        isSessionRunning = false
     }
 
     public func dismissCompletion() {

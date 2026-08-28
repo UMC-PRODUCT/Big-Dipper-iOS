@@ -46,6 +46,8 @@ public struct CardExchangeView: View {
 
     @State private var viewModel: CardExchangeViewModel
 
+    @Environment(\.scenePhase) private var scenePhase
+
     // MARK: - Init
 
     public init(viewModel: CardExchangeViewModel) {
@@ -73,6 +75,21 @@ public struct CardExchangeView: View {
         }
         .onDisappear {
             Task { await viewModel.stop() }
+        }
+        // 백그라운드에서 MPC 세션은 조용히 죽는데 화면은 그 사실을 모른다 — 복귀하면
+        // 목록에 옛 피어가 남은 채 아무도 새로 발견되지 않는다. 나갈 때 확실히 걷고
+        // 돌아올 때 다시 연다.
+        //
+        // `.inactive` 는 알림 센터·앱 스위처·전화 수신처럼 곧 돌아올 상태라 그대로 둔다.
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                Task { await viewModel.stop() }
+            case .active:
+                Task { await viewModel.resumeIfNeeded() }
+            default:
+                break
+            }
         }
         .fullScreenCover(item: Binding(
             get: { viewModel.completedCard },
