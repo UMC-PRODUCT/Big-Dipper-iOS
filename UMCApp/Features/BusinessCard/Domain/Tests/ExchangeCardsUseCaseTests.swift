@@ -127,4 +127,24 @@ struct ExchangeCardsUseCaseTests {
 
         await sut.stop()
     }
+
+    /// 발견은 「근처에 있다」까지고, 명함첩에 들어가는 건 상대가 실제로 명함을 보냈을 때다.
+    /// 이 경계가 무너지면 스쳐 지나간 사람이 전부 명함첩에 쌓인다.
+    @Test("피어를 발견하기만 하면 명함첩에 아무것도 저장하지 않는다")
+    func discoveryAloneSavesNothing() async {
+        let received = MockReceivedCardRepository()
+        let sut = ExchangeCardsUseCase(
+            transport: MockNearbyTransport(stubbedPeers: [makePeer()], stubbedPayloads: []),
+            saveReceivedCard: SaveReceivedCardUseCase(repository: received),
+            sessionTimeout: .milliseconds(100)
+        )
+
+        var sawPeer = false
+        for await event in sut.start(myCard: myCard) {
+            if case .peerFound = event { sawPeer = true }
+        }
+
+        #expect(sawPeer, "피어는 발견됐어야 비교가 성립한다")
+        #expect(received.savedCards.isEmpty)
+    }
 }

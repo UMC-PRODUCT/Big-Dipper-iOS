@@ -111,13 +111,15 @@ struct ReceivedCardRepositoryTests {
 
     /// memberId가 비는 경로: v1 페이로드(cardLink="")나 파싱 불가한 cardLink.
     /// `MyCard(payload:)`가 `linkedMemberId ?? ""`로 복원하므로 정체성이 없는 레코드가 생긴다.
-    private func insertRecord(cardID: String, memberId: String, name: String) {
+    private func insertRecord(
+        cardID: String, memberId: String, name: String, exchangedAt: Date = Date()
+    ) {
         container.mainContext.insert(
             ReceivedCardRecord(
                 cardID: cardID, memberId: memberId, name: name, nickname: "\(name)닉",
                 partRaw: "DESIGN", generation: "11", university: "중앙대학교",
                 email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
-                exchangedAt: Date(), exchangeContext: nil
+                exchangedAt: exchangedAt, exchangeContext: nil
             )
         )
     }
@@ -151,5 +153,30 @@ struct ReceivedCardRepositoryTests {
 
         #expect(try await repository.fetchAll().isEmpty)
         #expect(try await repository.count() == 0)
+    }
+
+    /// **알려진 결함 — #1218. 프로덕션 코드는 이번 PR(#1240)에서 고치지 않는다.**
+    ///
+    /// 목록에 보일 한 장을 고르는 키는 `identityKey`(memberId 우선)인데 삭제 키는 cardID다.
+    /// CloudKit 동기화가 같은 사람을 서로 다른 cardID 로 두 벌 만들어 두면, 화면에 보이던
+    /// 한 장을 지워도 숨어 있던 다른 벌이 그 자리로 올라온다 — 사용자에게는 **지운 명함이
+    /// 되살아난 것**으로 보인다.
+    @Test("삭제한 명함은 같은 사람의 중복본이 있어도 되살아나지 않는다")
+    func deleteRemovesAllRecordsOfSamePerson() async throws {
+        let now = Date()
+        insertRecord(cardID: "C-NEW", memberId: "7", name: "상대", exchangedAt: now)
+        insertRecord(
+            cardID: "C-OLD", memberId: "7", name: "상대",
+            exchangedAt: now.addingTimeInterval(-3600)
+        )
+        try container.mainContext.save()
+
+        let visible = try #require(try await repository.fetchAll().first)
+        try await repository.delete(id: visible.id)
+        let remaining = try await repository.fetchAll()
+
+        withKnownIssue("#1218 — 중복 제거 키(memberId)와 삭제 키(cardID) 불일치") {
+            #expect(remaining.isEmpty)
+        }
     }
 }
