@@ -90,4 +90,21 @@ public struct MyCard: Equatable, Hashable, Sendable {
     public var qrPayload: String {
         cardLink.urlString
     }
+
+    // MARK: - Function
+
+    /// 명함으로 쓸 수 있는 최소 조건을 확인한다.
+    ///
+    /// 기수가 비었다는 건 서버가 `roles`·`challengerRecords` 를 주지 않았거나, v1 교환
+    /// 페이로드처럼 정체성 필드가 아예 없다는 뜻이다. 예전에는 그 자리를 `.admin`·`"0"`
+    /// 으로 메워 「운영진 · 0기」 명함이 **에러 없이** 만들어지고 명함첩에 그대로
+    /// 저장됐다 (#1223). 조회·저장 양쪽이 이 한 규칙을 부른다.
+    ///
+    /// 파트는 검사하지 않는다 — 파트 없는 `.admin` 은 진짜 운영진의 정상 상태라 그것만으로는
+    /// 「서버가 아무것도 안 줬다」와 구분되지 않는다. 그 신호는 기수 쪽에만 남는다.
+    public func validate() throws {
+        guard !generation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw AppError.domain(.custom(message: "명함 정보를 불러오지 못했어요."))
+        }
+    }
 }

@@ -46,7 +46,7 @@ struct ExchangeCardsUseCaseTests {
         let sut = ExchangeCardsUseCase(
             transport: transport,
             saveReceivedCard: save,
-            sessionTimeout: .milliseconds(200)
+            idleTimeout: .milliseconds(200)
         )
 
         var events: [ExchangeEvent] = []
@@ -65,6 +65,69 @@ struct ExchangeCardsUseCaseTests {
         #expect(card.id == "CARD-PEER")
         #expect(received.savedCards.count == 1)
         #expect(transport.advertisedCards.count == 1)
+    }
+
+    /// transport 가 소실을 알아도 UseCase 가 흘리지 않으면 화면은 유령 행을 못 지운다.
+    @Test("transport 소실 신호는 peerLost 이벤트로 흐른다")
+    func lostPeerIsForwarded() async {
+        let transport = MockNearbyTransport(
+            stubbedPeers: [makePeer()],
+            stubbedDiscoveryEvents: [.lost(peerID: "peer-1")]
+        )
+        let sut = ExchangeCardsUseCase(
+            transport: transport,
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
+            idleTimeout: .milliseconds(200)
+        )
+
+        var events: [ExchangeEvent] = []
+        for await event in sut.start(myCard: myCard) {
+            events.append(event)
+        }
+
+        #expect(events.contains(.peerLost(peerID: "peer-1")))
+    }
+
+    /// 탐색이 서지 못한 것과 「주변에 아무도 없음」은 화면에서 똑같이 빈 목록이다.
+    /// 사유가 흐르지 않으면 사용자는 5분을 기다린 뒤 원인과 무관한 안내를 받는다.
+    @Test("transport 시작 실패는 failed 이벤트로 흐른다")
+    func startFailureIsForwarded() async {
+        let transport = MockNearbyTransport(
+            stubbedDiscoveryEvents: [.failed(.permissionDenied)]
+        )
+        let sut = ExchangeCardsUseCase(
+            transport: transport,
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
+            idleTimeout: .milliseconds(200)
+        )
+
+        var failures: [BusinessCardError] = []
+        for await event in sut.start(myCard: myCard) {
+            if case .failed(let error) = event { failures.append(error) }
+        }
+
+        #expect(failures.contains(.permissionDenied))
+    }
+
+    /// 저장 실패를 전송 실패로 감싸면 화면이 「연결하지 못했어요」를 띄운다 — 교환은
+    /// 성공했고 명함첩에 넣는 데만 실패했다.
+    @Test("저장 실패는 전송 실패와 다른 사유로 흐른다")
+    func saveFailureIsDistinct() async throws {
+        let repository = MockReceivedCardRepository()
+        repository.saveError = NSError(domain: "SwiftData", code: 1)
+        let sut = ExchangeCardsUseCase(
+            transport: MockNearbyTransport(stubbedPayloads: [try makePeerPayload()]),
+            saveReceivedCard: SaveReceivedCardUseCase(repository: repository),
+            idleTimeout: .milliseconds(200)
+        )
+
+        var failures: [BusinessCardError] = []
+        for await event in sut.start(myCard: myCard) {
+            if case .failed(let error) = event { failures.append(error) }
+        }
+
+        #expect(failures.contains { if case .saveFailed = $0 { return true }; return false })
+        #expect(!failures.contains { if case .exchangeFailed = $0 { return true }; return false })
     }
 
     @Test("send는 transport에 내 명함 페이로드를 전달한다")
@@ -87,7 +150,7 @@ struct ExchangeCardsUseCaseTests {
         let sut = ExchangeCardsUseCase(
             transport: MockNearbyTransport(),
             saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
-            sessionTimeout: .milliseconds(50)
+            idleTimeout: .milliseconds(50)
         )
 
         var sawExpired = false
@@ -113,12 +176,68 @@ struct ExchangeCardsUseCaseTests {
         #expect(transport.didStopAdvertising)
     }
 
+    /// 순간적인 연결 흔들림에 교환 전체가 실패하던 지점. MPC 는 시도마다 초대·연결을
+    /// 다시 태우므로 재시도가 실제로 다른 결과를 낸다.
+    @Test("전송이 흔들리면 재시도해서 성공시킨다")
+    func sendRetriesTransientFailure() async throws {
+        let transport = MockNearbyTransport(sendFailures: 2)
+        let sut = ExchangeCardsUseCase(
+            transport: transport,
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository())
+        )
+
+        try await sut.send(myCard: myCard, to: makePeer())
+
+        #expect(transport.sendAttempts == 3)
+        #expect(transport.sentPayloads.count == 1)
+    }
+
+    /// 상대가 이미 사라졌으면 재시도는 손해다 — 없는 기기에게 건 초대는 연결
+    /// 타임아웃(20초)을 통째로 태운 뒤에야 실패한다. 3회면 1분을 버린다.
+    @Test("사라진 피어에게는 재시도하지 않는다")
+    func sendSkipsRetryForMissingPeer() async {
+        let transport = MockNearbyTransport(sendFailures: 5, sendFailureError: .peerUnavailable)
+        let sut = ExchangeCardsUseCase(
+            transport: transport,
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository())
+        )
+
+        await #expect(throws: BusinessCardError.peerUnavailable) {
+            try await sut.send(myCard: myCard, to: self.makePeer())
+        }
+        #expect(transport.sendAttempts == 1)
+    }
+
+    /// 절대 시간으로 자르면 활발히 교환하는 중에도 세션이 끊긴다. 전송이 있었으면
+    /// 타이머는 처음부터 다시 걸려야 한다.
+    @Test("전송이 있으면 idle 타이머가 다시 걸린다")
+    func activityResetsIdleTimer() async throws {
+        let idle = Duration.milliseconds(300)
+        let sut = ExchangeCardsUseCase(
+            transport: MockNearbyTransport(),
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
+            idleTimeout: idle
+        )
+
+        let started = ContinuousClock.now
+        let send = Task {
+            try await Task.sleep(for: .milliseconds(150))
+            try await sut.send(myCard: self.myCard, to: self.makePeer())
+        }
+
+        for await _ in sut.start(myCard: myCard) {}
+        try await send.value
+
+        // 리셋이 없으면 300ms 에 끝난다. 150ms 에 전송했으므로 450ms 근처여야 한다.
+        #expect(ContinuousClock.now - started > .milliseconds(380))
+    }
+
     @Test("start를 다시 부르면 이전 세션 스트림이 먼저 종료된다")
     func restartFinishesPreviousStream() async {
         let sut = ExchangeCardsUseCase(
             transport: MockNearbyTransport(),
             saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
-            sessionTimeout: .milliseconds(50)
+            idleTimeout: .milliseconds(50)
         )
 
         let first = sut.start(myCard: myCard)
@@ -136,7 +255,7 @@ struct ExchangeCardsUseCaseTests {
         let sut = ExchangeCardsUseCase(
             transport: MockNearbyTransport(stubbedPeers: [makePeer()], stubbedPayloads: []),
             saveReceivedCard: SaveReceivedCardUseCase(repository: received),
-            sessionTimeout: .milliseconds(100)
+            idleTimeout: .milliseconds(100)
         )
 
         var sawPeer = false

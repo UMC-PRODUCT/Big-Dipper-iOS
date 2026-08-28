@@ -201,4 +201,8 @@ private final class StubDeleteReceivedCard:
         deletedIDs.append(id)
         if let error { throw error }
     }
+
+    func executeAll() async throws {
+        if let error { throw error }
+    }
 }

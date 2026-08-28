@@ -25,4 +25,8 @@ public final class DeleteReceivedCardUseCase:
     public func execute(id: String) async throws {
         try await repository.delete(id: id)
     }
+
+    public func executeAll() async throws {
+        try await repository.deleteAll()
+    }
 }

@@ -80,96 +80,88 @@ struct MPCTransportDiscoveryTests {
     // MARK: - 결손 광고 (makePeer)
 
     @Test("광고 정보가 아예 없으면 행을 만들지 않는다")
-    func rejectsMissingDiscoveryInfo() {
-        let transport = MPCTransport()
-
-        feed(nil, to: transport)
-
-        #expect(transport.discoveredPeerIDs.isEmpty)
+    func rejectsMissingDiscoveryInfo() async {
+        #expect(await scannedPeers(feeding: [(nil, "peer-id")]).isEmpty)
     }
 
     @Test("세션 식별자가 없는 광고는 무시한다 — 식별자 없이는 피어를 구분할 수 없다")
-    func rejectsAdvertisementWithoutSessionID() {
-        let transport = MPCTransport()
-
-        feed(["n": "정의찬", "k": "제옹"], to: transport)
-
-        #expect(transport.discoveredPeerIDs.isEmpty)
+    func rejectsAdvertisementWithoutSessionID() async {
+        #expect(await scannedPeers(feeding: [(["n": "정의찬", "k": "제옹"], "peer-id")]).isEmpty)
     }
 
     @Test("세션 식별자가 빈 문자열인 광고도 무시한다")
-    func rejectsEmptySessionID() {
-        let transport = MPCTransport()
-
-        feed(["s": "", "n": "정의찬"], to: transport)
-
-        #expect(transport.discoveredPeerIDs.isEmpty)
+    func rejectsEmptySessionID() async {
+        #expect(await scannedPeers(feeding: [(["s": "", "n": "정의찬"], "peer-id")]).isEmpty)
     }
 
     @Test("세션 식별자만 있으면 이름이 없어도 행은 만든다 — 익명 행이 정상 상태다")
-    func acceptsSessionIDOnlyAdvertisement() {
-        let transport = MPCTransport()
+    func acceptsSessionIDOnlyAdvertisement() async {
+        let peers = await scannedPeers(
+            feeding: [(["s": "abc123abc123"], "abc123abc123")]
+        )
 
-        feed(["s": "abc123abc123"], peerID: "abc123abc123", to: transport)
-
-        #expect(transport.discoveredPeerIDs == ["abc123abc123"])
+        #expect(peers.map(\.id) == ["abc123abc123"])
     }
 
-    @Test("같은 피어를 다시 발견해도 목록이 늘지 않는다")
-    func rediscoveryDoesNotDuplicate() {
-        let transport = MPCTransport()
+    /// 재발견은 걸러내지 않고 **같은 id 로 다시 흘린다** — 광고 정보가 갱신됐을 수 있어서다.
+    /// 목록이 늘지 않는 근거는 소비자가 id 로 갱신한다는 것이고(`CardExchangeViewModel.upsert`),
+    /// 그게 성립하려면 두 이벤트의 id 가 같아야 한다.
+    @Test("같은 피어를 다시 발견하면 같은 id로 흘러 목록이 늘지 않는다")
+    func rediscoveryReusesSameIdentifier() async {
+        let advert = (["s": "abc123abc123", "n": "정의찬"], "abc123abc123")
+        let peers = await scannedPeers(feeding: [advert, advert])
 
-        feed(["s": "abc123abc123", "n": "정의찬"], peerID: "abc123abc123", to: transport)
-        feed(["s": "abc123abc123", "n": "정의찬"], peerID: "abc123abc123", to: transport)
-
-        #expect(transport.discoveredPeerIDs.count == 1)
+        #expect(peers.map(\.id) == ["abc123abc123", "abc123abc123"])
     }
 
     @Test("이름·닉네임이 모두 있으면 「이름/닉네임」 으로 합친다")
     func composesDisplayNameFromBothFields() async throws {
-        let peer = try await firstScannedPeer(
-            info: ["s": "abc123abc123", "n": "정의찬", "k": "제옹", "p": "IOS", "g": "12"],
-            peerID: "abc123abc123"
+        let peer = try #require(
+            await scannedPeers(
+                feeding: [(
+                    ["s": "abc123abc123", "n": "정의찬", "k": "제옹", "p": "IOS", "g": "12"],
+                    "abc123abc123"
+                )]
+            ).first
         )
 
-        #expect(peer?.displayName == "정의찬/제옹")
-        #expect(peer?.part == "IOS")
-        #expect(peer?.generation == "12")
+        #expect(peer.displayName == "정의찬/제옹")
+        #expect(peer.part == "IOS")
+        #expect(peer.generation == "12")
     }
 
     @Test("닉네임이 비면 이름만 쓴다 — 「정의찬/」 같은 행이 나오면 안 된다")
-    func fallsBackToNameWhenNicknameMissing() async throws {
-        let onlyName = try await firstScannedPeer(
-            info: ["s": "abc123abc123", "n": "정의찬"],
-            peerID: "abc123abc123"
-        )
-        let emptyNickname = try await firstScannedPeer(
-            info: ["s": "def456def456", "n": "정의찬", "k": ""],
-            peerID: "def456def456"
+    func fallsBackToNameWhenNicknameMissing() async {
+        let peers = await scannedPeers(
+            feeding: [
+                (["s": "abc123abc123", "n": "정의찬"], "abc123abc123"),
+                (["s": "def456def456", "n": "정의찬", "k": ""], "def456def456")
+            ]
         )
 
-        #expect(onlyName?.displayName == "정의찬")
-        #expect(emptyNickname?.displayName == "정의찬")
+        #expect(peers.map(\.displayName) == ["정의찬", "정의찬"])
     }
 
     @Test("이름 없이 닉네임만 온 광고는 표시 이름을 비운다")
     func leavesDisplayNameEmptyWithoutName() async throws {
-        let peer = try await firstScannedPeer(
-            info: ["s": "abc123abc123", "k": "제옹"],
-            peerID: "abc123abc123"
+        let peer = try #require(
+            await scannedPeers(
+                feeding: [(["s": "abc123abc123", "k": "제옹"], "abc123abc123")]
+            ).first
         )
 
-        #expect(peer?.displayName == nil)
+        #expect(peer.displayName == nil)
     }
 
     @Test("발견 시점에는 거리를 모른다 — 거리는 NI 가 따로 채운다")
     func discoveryCarriesNoDistance() async throws {
-        let peer = try await firstScannedPeer(
-            info: ["s": "abc123abc123", "n": "정의찬"],
-            peerID: "abc123abc123"
+        let peer = try #require(
+            await scannedPeers(
+                feeding: [(["s": "abc123abc123", "n": "정의찬"], "abc123abc123")]
+            ).first
         )
 
-        #expect(peer?.distanceMeters == nil)
+        #expect(peer.distanceMeters == nil)
     }
 
     // MARK: - 초대 타이브레이크
@@ -271,30 +263,28 @@ struct MPCTransportDiscoveryTests {
 
     // MARK: - Private Function
 
-    /// 탐색 스트림을 열고 광고 하나를 흘려 첫 행을 받는다.
+    /// 탐색 스트림을 열고 광고를 순서대로 흘려 발견된 행을 모은다.
     ///
     /// 세션(광고)을 열지 않으므로 초대는 나가지 않는다 — 발견 해석만 본다.
-    /// 스트림을 연 **직후 동기적으로** 델리게이트를 부르므로, 브라우징 실패 콜백(비동기)이
-    /// 사이에 끼어들 수 없고 `AsyncStream` 은 이미 쌓인 값을 스트림이 닫힌 뒤에도 내보낸다.
-    private func firstScannedPeer(
-        info: [String: String],
-        peerID: String
-    ) async throws -> DiscoveredPeer? {
+    /// 마지막에 브라우징 실패 콜백으로 스트림을 닫는다. `AsyncStream` 은 닫힌 뒤에도 이미
+    /// 쌓인 값을 내보내므로, 「더 안 오나」를 타임아웃으로 기다릴 필요가 없다.
+    private func scannedPeers(
+        feeding adverts: [(info: [String: String]?, peerID: String)]
+    ) async -> [DiscoveredPeer] {
         let transport = MPCTransport()
         let stream = transport.startScanning()
-        feed(info, peerID: peerID, to: transport)
-
-        var iterator = stream.makeAsyncIterator()
-        return await withTaskGroup(of: DiscoveredPeer?.self) { group in
-            group.addTask { await iterator.next() }
-            group.addTask {
-                // 값이 오지 않아도 스위트 전체가 멈추지 않게 하는 안전장치.
-                try? await Task.sleep(for: .milliseconds(500))
-                return nil
-            }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first
+        for advert in adverts {
+            feed(advert.info, peerID: advert.peerID, to: transport)
         }
+        transport.browser(
+            makeProbeBrowser(),
+            didNotStartBrowsingForPeers: NSError(domain: "MPCTransportDiscoveryTests", code: 1)
+        )
+
+        var peers: [DiscoveredPeer] = []
+        for await event in stream {
+            if case .found(let peer) = event { peers.append(peer) }
+        }
+        return peers
     }
 }

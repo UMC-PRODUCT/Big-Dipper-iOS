@@ -11,14 +11,15 @@ import Moya
 import CoreDomain
 import CoreNetwork
 import UMCFoundation
+import BusinessCardDomain
 @testable import BusinessCardData
 
 /// QR 딥링크가 서버 공개 프로필로 상대 명함을 복원하는 경로의 계약.
 ///
-/// 이 경로는 **조용히 무너질 수 있다** — 응답에 `roles`·`challengerRecords`가 없으면
-/// 변환이 에러를 던지지 않고 `part = .admin`, `generation = "0"`인 명함을 만든다.
-/// 서버 마스킹 정책이 바뀌면 잘못된 명함이 명함첩에 그대로 저장되므로, 여기서 그 동작을
-/// 계약으로 고정해 변화를 감지한다.
+/// 이 경로는 **조용히 무너졌었다** — 응답에 `roles`·`challengerRecords`가 없으면 변환이
+/// 에러를 던지지 않고 `part = .admin`, `generation = "0"`인 명함을 만들어 그대로 저장했다.
+/// 지금은 실패로 돌린다 (#1223). 서버 마스킹 정책이 바뀌면 사용자가 안내를 보고, 잘못된
+/// 명함이 명함첩에 남지 않는다.
 @Suite("PeerCardRepository — 딥링크 명함 복원")
 struct PeerCardRepositoryTests {
 
@@ -109,10 +110,10 @@ struct PeerCardRepositoryTests {
         #expect(card.part == .front(type: .ios))
     }
 
-    // MARK: - 무너지는 방식을 고정한다
+    // MARK: - 빈 프로필은 실패다 (#1223)
 
-    @Test("roles·challengerRecords가 비면 에러 없이 part=admin·generation=0으로 복원된다")
-    func silentlyDegradesWhenRecordsMissing() async throws {
+    @Test("roles·challengerRecords가 비면 「운영진·0기」 폴백 대신 실패한다")
+    func failsWhenRecordsMissing() async throws {
         let stub = StubRequesting()
         stub.responsesByPath[Self.profilePath] = Data("""
         {"success":true,"code":"200","message":"ok","result":{
@@ -122,12 +123,10 @@ struct PeerCardRepositoryTests {
         """.utf8)
         let sut = PeerCardRepository(networkRequesting: stub)
 
-        let card = try await sut.fetchCard(memberId: "42")
-
-        // 던지지 않는다는 것 자체가 이 경로의 위험이다. 값이 바뀌면 서버 응답이 달라졌다는 신호.
-        #expect(card.part == .admin)
-        #expect(card.generation == "0")
-        #expect(card.name == "정의찬")
+        // 사용자가 보는 문장까지 고정한다 — 조용한 성공이 아니라 안내가 떠야 한다.
+        await #expect(throws: AppError.domain(.custom(message: "명함 정보를 불러오지 못했어요."))) {
+            _ = try await sut.fetchCard(memberId: "42")
+        }
     }
 
     @Test("빈 memberId는 네트워크를 타지 않고 즉시 실패한다")
@@ -135,7 +134,7 @@ struct PeerCardRepositoryTests {
         let stub = StubRequesting()
         let sut = PeerCardRepository(networkRequesting: stub)
 
-        await #expect(throws: AppError.self) {
+        await #expect(throws: BusinessCardError.invalidCardLink) {
             _ = try await sut.fetchCard(memberId: "")
         }
         #expect(stub.requestedPaths.isEmpty)
