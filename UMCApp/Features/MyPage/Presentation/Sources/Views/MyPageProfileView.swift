@@ -17,6 +17,10 @@ import UMCFoundation
 /// 마이페이지 정보 Write & Read 화면입니다.
 ///
 /// 사용자의 프로필 이미지, 닉네임, 학교, 활동 로그, 소셜 링크 등을 확인하고 수정할 수 있습니다.
+///
+/// 사용자에게는 **「명함 편집」**으로 보인다 — 시안 `12804:30498` 의 필드가 이 폼과 1:1 로
+/// 같아서(#1232) 화면을 새로 만들지 않고 타이틀만 시안에 맞췄다. 이름·학교·기수는 읽기 전용
+/// (프로필이 원본), 실제로 수정되는 값은 사진·외부 링크·활동 이력·연동 계정이다.
 public struct MyPageProfileView: View {
 
     // MARK: - Property
@@ -59,7 +63,7 @@ public struct MyPageProfileView: View {
         Form {
             sectionContent($viewModel.profileData)
         }
-        .navigation(naviTitle: NavigationTitle.MyPage.profile, displayMode: .inline)
+        .navigation(naviTitle: NavigationTitle.MyPage.cardEdit, displayMode: .inline)
         .umcDefaultBackground()
         .toolbar {
             ToolBarCollection.ConfirmBtn(
