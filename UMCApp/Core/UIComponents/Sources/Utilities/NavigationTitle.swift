@@ -67,7 +67,8 @@ public enum NavigationTitle {
     /// 마이페이지 화면용 타이틀
     public enum MyPage: String, NavigationTitleRepresentable {
         case root = "마이페이지"
-        case profile = "프로필"
+        /// 「명함 관리 › 명함 편집」이 여는 프로필 편집 폼 — 시안 `12804:30498` 의 타이틀.
+        case cardEdit = "명함 편집"
         case settings = "설정"
         case writtenPosts = "내가 쓴 글"
         case commentedPosts = "댓글 단 글"

@@ -5,6 +5,7 @@
 
 import Foundation
 import Testing
+import BusinessCardDomain
 import CommunityDomain
 @testable import UMCApp
 
@@ -19,7 +20,7 @@ struct AppDeepLinkTests {
     func parsesCardCanonicalScheme() {
         let url = URL(string: "umc://card?memberId=42")!
 
-        #expect(AppDeepLink.parse(url) == .card(memberId: "42"))
+        #expect(AppDeepLink.parse(url) == .card(CardLink(memberId: "42")))
     }
 
     /// 과거 정본이던 Universal Link 표기 — 이 표기로 구워진 검증기 QR 이 남아 있을 수 있다.
@@ -31,14 +32,14 @@ struct AppDeepLinkTests {
         ]
     )
     func parsesCardUniversalLink(_ raw: String) {
-        #expect(AppDeepLink.parse(URL(string: raw)!) == .card(memberId: "42"))
+        #expect(AppDeepLink.parse(URL(string: raw)!) == .card(CardLink(memberId: "42")))
     }
 
     @Test("경로형 커스텀 스킴도 읽는다")
     func parsesCardCustomScheme() {
         let url = URL(string: "umc://card/42")!
 
-        #expect(AppDeepLink.parse(url) == .card(memberId: "42"))
+        #expect(AppDeepLink.parse(url) == .card(CardLink(memberId: "42")))
     }
 
     // MARK: - Message

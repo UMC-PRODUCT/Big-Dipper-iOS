@@ -86,7 +86,10 @@ public struct MyCard: Equatable, Hashable, Sendable {
         CardLink(memberId: memberId)
     }
 
-    /// QR에 싣는 문자열. MP-F02 뒷면과 MP-F04가 반드시 같은 값을 쓴다.
+    /// 명함 딥링크 문자열 — **만료가 없는 정체용 값이다.**
+    ///
+    /// 실제로 QR 에 굽는 값은 여기에 만료를 붙인 ``GenerateCardQRUseCase`` 의 결과다 (#1226).
+    /// 근거리 교환 페이로드·명함첩 저장값처럼 시간이 지나도 상하면 안 되는 자리는 이 값을 쓴다.
     public var qrPayload: String {
         cardLink.urlString
     }

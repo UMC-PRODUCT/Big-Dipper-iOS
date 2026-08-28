@@ -11,6 +11,7 @@ import Moya
 import CoreDomain
 import CoreNetwork
 import UMCFoundation
+import BusinessCardDomain
 @testable import BusinessCardData
 
 /// QR 딥링크가 서버 공개 프로필로 상대 명함을 복원하는 경로의 계약.
@@ -133,7 +134,8 @@ struct PeerCardRepositoryTests {
         let stub = StubRequesting()
         let sut = PeerCardRepository(networkRequesting: stub)
 
-        await #expect(throws: AppError.self) {
+        // 던지는 타입은 #1256 에서 도메인 언어로 바뀌었다 — 케이스까지 고정한다.
+        await #expect(throws: BusinessCardError.invalidCardLink) {
             _ = try await sut.fetchCard(memberId: "")
         }
         #expect(stub.requestedPaths.isEmpty)

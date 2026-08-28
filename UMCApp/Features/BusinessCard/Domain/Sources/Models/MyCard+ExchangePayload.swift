@@ -63,12 +63,26 @@ public extension MyCard {
 public extension ReceivedCard {
 
     /// 수신 페이로드에서 명함첩 항목을 만든다. 교환 직후 저장 경로의 단일 진입점.
-    init(payload: ExchangePayload, exchangeContext: String?, exchangedAt: Date = Date()) {
+    ///
+    /// 교환 시각은 **상대가 페이로드에 실어 보낸 값**을 쓴다 (#1227) — 로컬 `Date()` 로
+    /// 덮으면 전송 지연·재시도만큼 시각이 밀리고, 그 값이 명함첩 정렬 기준이다.
+    ///
+    /// 단, 미래 시각만은 지금으로 당긴다. 상대 기기 시계가 앞서 있으면 그 명함이
+    /// **영원히 목록 맨 위에** 박히는데, 남의 시계를 믿어서 얻는 정확도보다 손해가 크다.
+    /// 과거로 어긋난 값은 그대로 둔다 — 잘못 당기면 진짜 교환 순서를 잃는다.
+    init(
+        payload: ExchangePayload,
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod,
+        exchangedAt: Date? = nil
+    ) {
+        let now = Date()
         self.init(
             id: payload.cardID,
             profile: MyCard(payload: payload),
-            exchangedAt: exchangedAt,
-            exchangeContext: exchangeContext
+            exchangedAt: exchangedAt ?? min(payload.timestamp, now),
+            exchangeContext: exchangeContext,
+            exchangeMethod: exchangeMethod
         )
     }
 }

@@ -50,6 +50,9 @@ public final class ReceivedCardRecord {
     public var avatarURL: String?
     public var exchangedAt: Date = Date()
     public var exchangeContext: String?
+    /// `ExchangeMethod.rawValue`. 빈 문자열은 방식 기록 이전(#1227)에 저장된 행이다 —
+    /// 옵셔널 대신 기본값을 둬야 CloudKit 이 받는다.
+    public var exchangeMethodRaw: String = ""
     public var updatedAt: Date = Date()
 
     // MARK: - Init
@@ -70,6 +73,7 @@ public final class ReceivedCardRecord {
         avatarURL: String?,
         exchangedAt: Date,
         exchangeContext: String?,
+        exchangeMethodRaw: String = "",
         updatedAt: Date = Date()
     ) {
         self.ownerMemberId = ownerMemberId
@@ -87,6 +91,7 @@ public final class ReceivedCardRecord {
         self.avatarURL = avatarURL
         self.exchangedAt = exchangedAt
         self.exchangeContext = exchangeContext
+        self.exchangeMethodRaw = exchangeMethodRaw
         self.updatedAt = updatedAt
     }
 }

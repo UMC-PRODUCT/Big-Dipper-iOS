@@ -15,12 +15,17 @@ import MyPageDomain
 /// 등록까지 탭 루트(``MyPageView``)가 맡으므로 목적지도 화면도 `public` 으로 열 필요가 없다.
 enum MyPageDestination: Hashable {
 
-    /// 프로필 상세/편집.
+    /// 명함 편집 (#1232).
     ///
-    /// - Parameter profileData: 탭 루트가 이미 조회해 둔 프로필 스냅샷. 상세 화면은 이 값을
+    /// 시안의 명함 편집(`Figma 12804:30498`)은 사진·연동 계정·이름·닉네임·학교·활동 이력·
+    /// 외부 링크로 프로필 편집 폼과 필드가 1:1 로 같다 — **명함 전용 편집 항목이 따로 없다.**
+    /// 명함은 정본 프로필의 순수 파생(`Profile.toMyCard()`)이라 편집할 원본이 프로필뿐이기
+    /// 때문이다. 그래서 화면을 새로 만들지 않고 ``MyPageProfileView`` 를 시안 타이틀로 연다.
+    ///
+    /// - Parameter profileData: 탭 루트가 이미 조회해 둔 프로필 스냅샷. 편집 화면은 이 값을
     ///   편집 시작점으로 삼으므로 목적지가 직접 싣는다 — 재조회하면 카드에 보이던 값과
     ///   어긋난 상태로 편집이 시작될 수 있다.
-    case profile(profileData: ProfileData)
+    case cardEdit(profileData: ProfileData)
 
     /// 내 활동 게시글 목록 (내가 쓴 글 / 댓글 단 글 / 스크랩).
     ///

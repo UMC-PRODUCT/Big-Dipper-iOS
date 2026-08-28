@@ -289,6 +289,9 @@ struct StubBusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
         NotStubbedDeleteReceivedCardUseCase()
     }
     var exchangeCardsUseCase: ExchangeCardsUseCaseProtocol { NotStubbedExchangeCardsUseCase() }
+    var updateExchangeContextUseCase: UpdateExchangeContextUseCaseProtocol {
+        NotStubbedUpdateExchangeContextUseCase()
+    }
 }
 
 enum StubBusinessCardError: Error, Equatable {
@@ -335,7 +338,8 @@ private struct NotStubbedSaveReceivedCardUseCase: SaveReceivedCardUseCaseProtoco
     func execute(
         payload: ExchangePayload,
         ownerMemberId: String,
-        exchangeContext: String?
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard? {
         fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
     }
@@ -344,7 +348,8 @@ private struct NotStubbedSaveReceivedCardUseCase: SaveReceivedCardUseCaseProtoco
         card: MyCard,
         cardID: String,
         ownerMemberId: String,
-        exchangeContext: String?
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard? {
         fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
     }
@@ -356,6 +361,12 @@ private struct NotStubbedDeleteReceivedCardUseCase: DeleteReceivedCardUseCasePro
     }
 
     func executeAll() async throws {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
+}
+
+private struct NotStubbedUpdateExchangeContextUseCase: UpdateExchangeContextUseCaseProtocol {
+    func execute(card: ReceivedCard, context: String?) async throws -> ReceivedCard {
         fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
     }
 }

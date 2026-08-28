@@ -25,8 +25,8 @@ private enum Constants {
     static let failureDescription = "잠시 후 다시 시도해 주세요."
     static let failureImage = "exclamationmark.triangle"
 
-    static let deleteLabel = "삭제"
-    static let deleteImage = "trash"
+    static let scanLabel = "QR 스캔"
+    static let scanImage = "qrcode.viewfinder"
 
     /// 스켈레톤 칸 수. 첫 화면에 그리드가 찬 느낌만 주면 되므로 한 화면 분량으로 둔다.
     static let skeletonCount = 6
@@ -69,14 +69,29 @@ public struct ReceivedCardsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $viewModel.searchText, prompt: Constants.searchPrompt)
             .searchToolbarBehavior(.minimize)
-            .alertPrompt(item: $viewModel.alertPrompt)
+            .toolbar { scanToolbarItem }
             .task {
-                guard viewModel.cards.isIdle else { return }
-                await viewModel.load()
+                // 상세에서 삭제·메모 편집을 하고 돌아왔을 때를 위해 매번 다시 맞춘다.
+                // 첫 진입만 스켈레톤을 보여주고, 되돌아온 경우는 조용히 갱신한다.
+                if viewModel.cards.isIdle {
+                    await viewModel.load()
+                } else {
+                    await viewModel.refresh()
+                }
             }
     }
 
     // MARK: - View Component
+
+    /// 명함첩에서 바로 다음 명함을 받는 동선. 기본 카메라 앱을 거치지 않는다 (#1224).
+    private var scanToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink(value: BusinessCardDestination.scan) {
+                Image(systemName: Constants.scanImage)
+            }
+            .accessibilityLabel(Constants.scanLabel)
+        }
+    }
 
     @ViewBuilder
     private var content: some View {
@@ -103,17 +118,13 @@ public struct ReceivedCardsView: View {
         }
     }
 
+    /// 삭제는 상세 화면이 가져갔다 (#1227). 길게 눌러야 보이던 컨텍스트 메뉴는
+    /// 시안에 삭제 동선이 없어 둔 임시 자리였고, 이제 눌러서 들어가는 화면이 있다.
     private func cell(_ card: ReceivedCard) -> some View {
-        ReceivedCardCell(card: card)
-            .contextMenu {
-                // 시안에 삭제 동선이 없다. 그리드는 스와이프를 못 받으므로 길게 눌러
-                // 꺼내는 컨텍스트 메뉴로 둔다 — 카드 모양을 건드리지 않는 유일한 자리다.
-                Button(role: .destructive) {
-                    viewModel.requestDelete(card)
-                } label: {
-                    Label(Constants.deleteLabel, systemImage: Constants.deleteImage)
-                }
-            }
+        NavigationLink(value: BusinessCardDestination.receivedCardDetail(card)) {
+            ReceivedCardCell(card: card)
+        }
+        .buttonStyle(.plain)
     }
 
     /// 검색 중인지에 따라 빈 화면의 뜻이 다르다 — 「아직 한 장도 없음」과 「이 검색어에
