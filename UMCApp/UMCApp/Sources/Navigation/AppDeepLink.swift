@@ -18,7 +18,10 @@ enum AppDeepLink: Hashable {
     case message(MessageLink)
 
     /// 명함 QR·공유 링크. 그 사람의 명함을 명함첩에 저장한다.
-    case card(memberId: String)
+    ///
+    /// `memberId` 만 뽑지 않고 링크를 통째로 나른다 — 만료·서명(#1226)이 수신 측에
+    /// 닿아야 검증할 수 있다.
+    case card(CardLink)
 
     /// 내부 링크면 해석해 돌려준다. 아니면 `nil` — 소셜 로그인 콜백이 그 경로다.
     ///
@@ -30,7 +33,7 @@ enum AppDeepLink: Hashable {
             return .message(message)
         }
         if let card = CardLink.parse(url) {
-            return .card(memberId: card.memberId)
+            return .card(card)
         }
         return nil
     }

@@ -31,9 +31,14 @@ public final class SaveReceivedCardUseCase:
     public func execute(
         payload: ExchangePayload,
         ownerMemberId: String,
-        exchangeContext: String?
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard? {
-        let card = ReceivedCard(payload: payload, exchangeContext: exchangeContext)
+        let card = ReceivedCard(
+            payload: payload,
+            exchangeContext: exchangeContext,
+            exchangeMethod: exchangeMethod
+        )
         guard !isOwn(memberId: card.profile.memberId, ownerMemberId: ownerMemberId) else {
             return nil
         }
@@ -47,7 +52,8 @@ public final class SaveReceivedCardUseCase:
         card: MyCard,
         cardID: String,
         ownerMemberId: String,
-        exchangeContext: String?
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard? {
         guard !isOwn(memberId: card.memberId, ownerMemberId: ownerMemberId) else { return nil }
         try card.validate()
@@ -56,7 +62,8 @@ public final class SaveReceivedCardUseCase:
             id: cardID,
             profile: card,
             exchangedAt: Date(),
-            exchangeContext: exchangeContext
+            exchangeContext: exchangeContext,
+            exchangeMethod: exchangeMethod
         )
         try await repository.save(received)
         return received

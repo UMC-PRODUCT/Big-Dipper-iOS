@@ -6,6 +6,7 @@
 //
 
 #if DEBUG
+import BusinessCardPresentation
 import CoreDI
 import SwiftUI
 import VisionKit

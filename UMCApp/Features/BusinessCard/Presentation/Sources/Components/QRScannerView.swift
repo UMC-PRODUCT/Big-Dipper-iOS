@@ -1,24 +1,39 @@
 //
 //  QRScannerView.swift
-//  UMCApp
+//  BusinessCardPresentation
 //
 //  Created by One on 8/16/26.
 //
 
-#if DEBUG
 import SwiftUI
 import VisionKit
 
 /// VisionKit `DataScannerViewController` 래퍼 — QR 문자열 하나를 읽어 콜백으로 넘긴다.
 ///
-/// 검증 화면 전용이다. 제품 스캐너는 스캔 후 안내·재시도·중복 방지 UX가 필요하고,
-/// 그건 명함 View 라운드 몫이다. 여기서는 "읽히는가"만 본다.
-struct QRScannerView: UIViewControllerRepresentable {
+/// 카메라 미리보기와 인식만 맡는다. 권한 확인·해석·재시도 안내는 이 뷰를 놓는 화면의
+/// 몫이다 (제품 경로는 ``CardScanView``·``CardScanViewModel``).
+///
+/// - Important: `isSupported` 가 `false` 인 기기(A12 미만·시뮬레이터)에서는 만들지 않는다.
+///   컨트롤러 생성 자체는 되지만 `startScanning()` 이 던져 화면이 검게 남는다.
+public struct QRScannerView: UIViewControllerRepresentable {
+
+    // MARK: - Property
 
     /// 같은 QR을 계속 읽어 콜백이 폭주하지 않도록, 직전과 다른 값일 때만 올린다.
-    let onScanned: (String) -> Void
+    private let onScanned: (String) -> Void
 
-    func makeUIViewController(context: Context) -> DataScannerViewController {
+    /// 이 기기에서 데이터 스캐너를 쓸 수 있는지. Neural Engine 이 필요해 시뮬레이터는 `false`.
+    public static var isSupported: Bool { DataScannerViewController.isSupported }
+
+    // MARK: - Init
+
+    public init(onScanned: @escaping (String) -> Void) {
+        self.onScanned = onScanned
+    }
+
+    // MARK: - Function
+
+    public func makeUIViewController(context: Context) -> DataScannerViewController {
         let controller = DataScannerViewController(
             recognizedDataTypes: [.barcode(symbologies: [.qr])],
             qualityLevel: .balanced,
@@ -30,25 +45,29 @@ struct QRScannerView: UIViewControllerRepresentable {
         return controller
     }
 
-    func updateUIViewController(_ controller: DataScannerViewController, context: Context) {
+    public func updateUIViewController(
+        _ controller: DataScannerViewController,
+        context: Context
+    ) {
         guard !controller.isScanning else { return }
         try? controller.startScanning()
     }
 
-    static func dismantleUIViewController(
+    public static func dismantleUIViewController(
         _ controller: DataScannerViewController,
         coordinator: Coordinator
     ) {
         controller.stopScanning()
     }
 
-    func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         Coordinator(onScanned: onScanned)
     }
 
     // MARK: - Coordinator
 
-    final class Coordinator: NSObject, DataScannerViewControllerDelegate {
+    public final class Coordinator: NSObject, DataScannerViewControllerDelegate {
+
         private let onScanned: (String) -> Void
         private var lastPayload: String?
 
@@ -56,7 +75,7 @@ struct QRScannerView: UIViewControllerRepresentable {
             self.onScanned = onScanned
         }
 
-        func dataScanner(
+        public func dataScanner(
             _ dataScanner: DataScannerViewController,
             didAdd addedItems: [RecognizedItem],
             allItems: [RecognizedItem]
@@ -64,7 +83,7 @@ struct QRScannerView: UIViewControllerRepresentable {
             deliver(from: addedItems)
         }
 
-        func dataScanner(
+        public func dataScanner(
             _ dataScanner: DataScannerViewController,
             didUpdate updatedItems: [RecognizedItem],
             allItems: [RecognizedItem]
@@ -83,4 +102,3 @@ struct QRScannerView: UIViewControllerRepresentable {
         }
     }
 }
-#endif

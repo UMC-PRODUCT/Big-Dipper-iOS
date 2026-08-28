@@ -30,7 +30,8 @@ struct SaveReceivedCardUseCaseTests {
         let saved = try await sut.execute(
             payload: try makePayload(),
             ownerMemberId: "42",
-            exchangeContext: "OT에서 교환"
+            exchangeContext: "OT에서 교환",
+            exchangeMethod: .qrLink
         )
 
         #expect(saved?.id == "CARD-PEER")
@@ -48,7 +49,12 @@ struct SaveReceivedCardUseCaseTests {
         let payload = try makePayload()
 
         await #expect(throws: MockError.self) {
-            _ = try await sut.execute(payload: payload, ownerMemberId: "42", exchangeContext: nil)
+            _ = try await sut.execute(
+                payload: payload,
+                ownerMemberId: "42",
+                exchangeContext: nil,
+                exchangeMethod: .qrLink
+            )
         }
     }
 
@@ -60,7 +66,8 @@ struct SaveReceivedCardUseCaseTests {
         let saved = try await sut.execute(
             payload: try makePayload(),
             ownerMemberId: "7",
-            exchangeContext: nil
+            exchangeContext: nil,
+            exchangeMethod: .nearby
         )
 
         #expect(saved == nil)
@@ -82,7 +89,8 @@ struct SaveReceivedCardUseCaseTests {
         let saved = try await sut.execute(
             payload: payload,
             ownerMemberId: "",
-            exchangeContext: nil
+            exchangeContext: nil,
+            exchangeMethod: .qrLink
         )
 
         #expect(saved?.profile.memberId == "")
@@ -102,7 +110,12 @@ struct SaveReceivedCardUseCaseTests {
         )
 
         await #expect(throws: AppError.self) {
-            _ = try await sut.execute(payload: payload, ownerMemberId: "42", exchangeContext: nil)
+            _ = try await sut.execute(
+                payload: payload,
+                ownerMemberId: "42",
+                exchangeContext: nil,
+                exchangeMethod: .nearby
+            )
         }
         #expect(repository.savedCards.isEmpty)
     }
@@ -121,10 +134,27 @@ struct SaveReceivedCardUseCaseTests {
             card: mine,
             cardID: "CARD-7",
             ownerMemberId: "7",
-            exchangeContext: nil
+            exchangeContext: nil,
+            exchangeMethod: .qrLink
         )
 
         #expect(saved == nil)
         #expect(repository.savedCards.isEmpty)
+    }
+
+    @Test("교환 방식은 저장된 명함에 그대로 남는다")
+    func keepsExchangeMethod() async throws {
+        let repository = MockReceivedCardRepository()
+        let sut = SaveReceivedCardUseCase(repository: repository)
+
+        let saved = try await sut.execute(
+            payload: try makePayload(),
+            ownerMemberId: "42",
+            exchangeContext: nil,
+            exchangeMethod: .nearby
+        )
+
+        #expect(saved?.exchangeMethod == .nearby)
+        #expect(repository.savedCards.first?.exchangeMethod == .nearby)
     }
 }

@@ -9,6 +9,7 @@
 import SwiftUI
 import VisionKit
 import BusinessCardData
+import BusinessCardPresentation
 
 /// UWB(Nearby Interaction) 거리·방향 검증 섹션.
 ///

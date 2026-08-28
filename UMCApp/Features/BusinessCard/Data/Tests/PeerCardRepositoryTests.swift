@@ -134,6 +134,7 @@ struct PeerCardRepositoryTests {
         let stub = StubRequesting()
         let sut = PeerCardRepository(networkRequesting: stub)
 
+        // 던지는 타입은 #1256 에서 도메인 언어로 바뀌었다 — 케이스까지 고정한다.
         await #expect(throws: BusinessCardError.invalidCardLink) {
             _ = try await sut.fetchCard(memberId: "")
         }
