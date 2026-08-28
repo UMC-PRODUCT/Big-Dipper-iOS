@@ -8,6 +8,7 @@
 import Foundation
 import Testing
 import CoreNearbyExchange
+import UMCFoundation
 @testable import BusinessCardDomain
 
 @Suite("SaveReceivedCardUseCase — 페이로드 변환 후 저장 위임")
@@ -29,7 +30,8 @@ struct SaveReceivedCardUseCaseTests {
         let saved = try await sut.execute(
             payload: try makePayload(),
             ownerMemberId: "42",
-            exchangeContext: "OT에서 교환"
+            exchangeContext: "OT에서 교환",
+            exchangeMethod: .qrLink
         )
 
         #expect(saved?.id == "CARD-PEER")
@@ -47,7 +49,12 @@ struct SaveReceivedCardUseCaseTests {
         let payload = try makePayload()
 
         await #expect(throws: MockError.self) {
-            _ = try await sut.execute(payload: payload, ownerMemberId: "42", exchangeContext: nil)
+            _ = try await sut.execute(
+                payload: payload,
+                ownerMemberId: "42",
+                exchangeContext: nil,
+                exchangeMethod: .qrLink
+            )
         }
     }
 
@@ -59,7 +66,8 @@ struct SaveReceivedCardUseCaseTests {
         let saved = try await sut.execute(
             payload: try makePayload(),
             ownerMemberId: "7",
-            exchangeContext: nil
+            exchangeContext: nil,
+            exchangeMethod: .nearby
         )
 
         #expect(saved == nil)
@@ -81,11 +89,35 @@ struct SaveReceivedCardUseCaseTests {
         let saved = try await sut.execute(
             payload: payload,
             ownerMemberId: "",
-            exchangeContext: nil
+            exchangeContext: nil,
+            exchangeMethod: .qrLink
         )
 
         #expect(saved?.profile.memberId == "")
         #expect(repository.savedCards.count == 1)
+    }
+
+    /// v1 교환 페이로드는 기수·파트 필드 자체가 없어 빈 문자열로 복원된다. 그대로 저장하면
+    /// 명함첩에 「운영진 · 기수 없음」 한 장이 남는다 (#1223).
+    @Test("기수가 빈 명함은 저장 전에 걸러 낸다")
+    func rejectsCardWithoutGeneration() async throws {
+        let repository = MockReceivedCardRepository()
+        let sut = SaveReceivedCardUseCase(repository: repository)
+        let payload = try ExchangePayload(
+            cardID: "CARD-PEER", name: "상대", nickname: "상대닉", part: "",
+            generation: "", university: "중앙대학교", email: nil, github: nil,
+            linkedIn: nil, blog: nil, avatarURL: nil, cardLink: "umc://card/7"
+        )
+
+        await #expect(throws: AppError.self) {
+            _ = try await sut.execute(
+                payload: payload,
+                ownerMemberId: "42",
+                exchangeContext: nil,
+                exchangeMethod: .nearby
+            )
+        }
+        #expect(repository.savedCards.isEmpty)
     }
 
     @Test("딥링크 경로도 내 명함이면 저장하지 않는다")
@@ -102,10 +134,27 @@ struct SaveReceivedCardUseCaseTests {
             card: mine,
             cardID: "CARD-7",
             ownerMemberId: "7",
-            exchangeContext: nil
+            exchangeContext: nil,
+            exchangeMethod: .qrLink
         )
 
         #expect(saved == nil)
         #expect(repository.savedCards.isEmpty)
+    }
+
+    @Test("교환 방식은 저장된 명함에 그대로 남는다")
+    func keepsExchangeMethod() async throws {
+        let repository = MockReceivedCardRepository()
+        let sut = SaveReceivedCardUseCase(repository: repository)
+
+        let saved = try await sut.execute(
+            payload: try makePayload(),
+            ownerMemberId: "42",
+            exchangeContext: nil,
+            exchangeMethod: .nearby
+        )
+
+        #expect(saved?.exchangeMethod == .nearby)
+        #expect(repository.savedCards.first?.exchangeMethod == .nearby)
     }
 }

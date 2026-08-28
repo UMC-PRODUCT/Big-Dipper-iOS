@@ -16,7 +16,7 @@ import BusinessCardDomain
 struct ProfileToMyCardTests {
 
     @Test("최신 기수 챌린저 기록에서 기수·파트·학교를 파생한다")
-    func derivesFromLatestRecord() {
+    func derivesFromLatestRecord() throws {
         let profile = Profile(
             memberId: "42", name: "정의찬", nickname: "제옹",
             generations: ["11", "12"], schoolName: "한양대학교",
@@ -31,7 +31,7 @@ struct ProfileToMyCardTests {
             ]
         )
 
-        let card = profile.toMyCard()
+        let card = try profile.toMyCard()
 
         #expect(card.memberId == "42")
         #expect(card.generation == "12")
@@ -42,7 +42,7 @@ struct ProfileToMyCardTests {
     }
 
     @Test("외부 링크 3종(github·linkedIn·blog)이 모두 명함으로 넘어온다 — 시안 뒷면 3줄")
-    func mapsAllThreeExternalLinks() {
+    func mapsAllThreeExternalLinks() throws {
         let profile = Profile(
             memberId: "42", name: "정의찬", nickname: "제옹", generations: [],
             externalLinks: ProfileExternalLinks(
@@ -52,23 +52,64 @@ struct ProfileToMyCardTests {
                 github: "github.com/UMC-PRODUCT",
                 blog: "umc.tistory.com",
                 personal: "umc.dev"
-            )
+            ),
+            challengerRecords: [makeRecord(gisu: "12", part: "IOS")]
         )
 
-        let card = profile.toMyCard()
+        let card = try profile.toMyCard()
 
         #expect(card.github == "github.com/UMC-PRODUCT")
         #expect(card.linkedIn == "linkedin.com/in/umc")
         #expect(card.blog == "umc.tistory.com")
     }
 
-    @Test("챌린저 기록이 없으면 기수 0·admin 폴백으로도 명함이 만들어진다")
-    func fallsBackWithoutRecords() {
+    /// 예전에는 여기서 `generation = "0"`, `part = .admin` 인 명함이 **에러 없이** 나왔다.
+    /// 「기수 0기 운영진」은 존재하지 않는 사람이라, 그대로 두면 서버가 아무것도 주지 않은
+    /// 응답과 진짜 운영진을 앱이 구분하지 못한다 (#1223).
+    @Test("roles·challengerRecords가 모두 비면 폴백 대신 에러를 던진다")
+    func throwsWithoutRecordsOrRoles() {
         let profile = Profile(memberId: "42", name: "정의찬", nickname: "제옹", generations: [])
 
-        let card = profile.toMyCard()
+        #expect(throws: AppError.domain(.custom(message: "명함 정보를 불러오지 못했어요."))) {
+            _ = try profile.toMyCard()
+        }
+    }
 
-        #expect(card.generation == "0")
+    @Test("역할만 있고 기수가 비어 있어도 에러를 던진다")
+    func throwsWhenRoleCarriesNoGeneration() {
+        let profile = Profile(
+            memberId: "42", name: "정의찬", nickname: "제옹", generations: [],
+            roles: [
+                ProfileRole(
+                    id: "1", challengerId: "100", gisu: "", gisuId: "10",
+                    roleType: .schoolPresident, organizationType: .school,
+                    organizationId: "3", responsiblePart: nil
+                )
+            ]
+        )
+
+        #expect(throws: AppError.self) {
+            _ = try profile.toMyCard()
+        }
+    }
+
+    /// 파트는 검사하지 않는다 — 파트 없는 `.admin` 은 진짜 운영진의 정상 상태다.
+    @Test("파트 없는 운영진은 기수만 있으면 정상 명함이 된다")
+    func adminWithoutPartStaysValid() throws {
+        let profile = Profile(
+            memberId: "42", name: "정의찬", nickname: "제옹", generations: [],
+            roles: [
+                ProfileRole(
+                    id: "1", challengerId: "100", gisu: "12", gisuId: "10",
+                    roleType: .schoolPresident, organizationType: .school,
+                    organizationId: "3", responsiblePart: nil
+                )
+            ]
+        )
+
+        let card = try profile.toMyCard()
+
+        #expect(card.generation == "12")
         #expect(card.part == .admin)
         // 기록이 없는 것은 「파트 없음」이지 「못 읽음」이 아니다 — 원본을 남기지 않는다.
         #expect(card.partRaw == nil)
@@ -90,7 +131,7 @@ struct ProfileToMyCardTests {
             ]
         )
 
-        let card = profile.toMyCard()
+        let card = try profile.toMyCard()
 
         #expect(card.part == .admin)
         #expect(card.partRaw == "RUST")
@@ -99,16 +140,17 @@ struct ProfileToMyCardTests {
     }
 
     @Test("빈 이메일·공백 링크는 nil로 정리된다")
-    func blankOptionalFieldsBecomeNil() {
+    func blankOptionalFieldsBecomeNil() throws {
         let profile = Profile(
             memberId: "42", name: "정의찬", nickname: "제옹", generations: [],
             email: "",
             externalLinks: ProfileExternalLinks(
                 id: "1", linkedIn: "  ", instagram: nil, github: "  ", blog: nil, personal: nil
-            )
+            ),
+            challengerRecords: [makeRecord(gisu: "12", part: "IOS")]
         )
 
-        let card = profile.toMyCard()
+        let card = try profile.toMyCard()
 
         #expect(card.email == nil)
         #expect(card.github == nil)

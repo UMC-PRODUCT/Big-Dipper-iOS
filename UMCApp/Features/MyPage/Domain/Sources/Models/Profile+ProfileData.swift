@@ -47,63 +47,6 @@ public extension Profile {
 }
 
 private extension Profile {
-    /// 역할(roles)·챌린저 이력(challengerRecords)을 병합해 기수 내림차순 활동 이력을 구성합니다.
-    func activityLogs() -> [ActivityLog] {
-        let roleLogs = roles.map { role in
-            ActivityLog(
-                part: role.responsiblePart.flatMap { UMCPartType(apiValue: $0) } ?? .admin,
-                generation: role.gisu.intValue,
-                role: role.roleType
-            )
-        }
-
-        let challengerLogs = challengerRecords.compactMap { record -> ActivityLog? in
-            guard let part = UMCPartType(apiValue: record.part), part != .admin else {
-                return nil
-            }
-
-            return ActivityLog(
-                part: part,
-                generation: record.gisu.intValue,
-                role: .challenger
-            )
-        }
-
-        let merged = mergeAdminLogs(roleLogs + challengerLogs)
-
-        return merged.sorted { lhs, rhs in
-            if lhs.generation == rhs.generation {
-                return lhs.role > rhs.role
-            }
-            return lhs.generation > rhs.generation
-        }
-    }
-
-    /// 같은 기수의 Admin 이력을 하나로 병합합니다.
-    func mergeAdminLogs(_ logs: [ActivityLog]) -> [ActivityLog] {
-        var adminByGen: [Int: [ManagementTeam]] = [:]
-        var result: [ActivityLog] = []
-
-        for log in logs {
-            if log.part == .admin {
-                adminByGen[log.generation, default: []].append(log.role)
-            } else {
-                result.append(log)
-            }
-        }
-
-        for (gen, adminRoles) in adminByGen {
-            let sortedRoles = adminRoles.sorted(by: >)
-            result.append(ActivityLog(
-                part: .admin,
-                generation: gen,
-                roles: sortedRoles
-            ))
-        }
-
-        return result
-    }
-
     /// 외부 링크를 `SocialLinkType` 기반 `[ProfileLink]` 배열로 변환합니다.
     func profileLinks() -> [ProfileLink] {
         let mappedLinks: [SocialLinkType: String] = [

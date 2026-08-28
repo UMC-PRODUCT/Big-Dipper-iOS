@@ -201,7 +201,8 @@ final class BusinessCardDebugViewModel {
             _ = try await provider.saveReceivedCardUseCase.execute(
                 payload: payload,
                 ownerMemberId: ownerMemberId,
-                exchangeContext: "디버그 저장"
+                exchangeContext: "디버그 저장",
+                exchangeMethod: .nearby
             )
             await reloadReceivedCards()
         } catch {
@@ -416,7 +417,8 @@ final class BusinessCardDebugViewModel {
             let saved = try await provider.saveReceivedCardUseCase.execute(
                 payload: payload,
                 ownerMemberId: ownerMemberId,
-                exchangeContext: "QR 스캔"
+                exchangeContext: "QR 스캔",
+                exchangeMethod: .qrLink
             )
             guard let saved else {
                 scanNote("내 명함이다 — 명함첩에 넣지 않음")
@@ -448,7 +450,8 @@ final class BusinessCardDebugViewModel {
                 card: card,
                 cardID: Self.deepLinkCardID(memberId: memberId),
                 ownerMemberId: ownerMemberId,
-                exchangeContext: "QR 딥링크"
+                exchangeContext: "QR 딥링크",
+                exchangeMethod: .qrLink
             )
             guard let saved else {
                 scanNote("내 명함이다 — 명함첩에 넣지 않음")

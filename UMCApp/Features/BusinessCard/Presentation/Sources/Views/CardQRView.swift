@@ -20,6 +20,9 @@ private enum Constants {
     static let saveTitle = "이미지 저장"
     static let sharePreviewTitle = "내 명함 QR"
 
+    static let scanLabel = "QR 스캔"
+    static let scanImage = "qrcode.viewfinder"
+
     static let qrUnavailable = "QR을 만들지 못했어요"
     static let qrUnavailableDescription = "명함 정보는 그대로예요. 다시 만들어 볼까요?"
     static let qrUnavailableImage = "qrcode"
@@ -81,6 +84,15 @@ public struct CardQRView: View {
         content
             .navigationTitle(Constants.title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // 내 QR 을 보여주다 곧바로 상대 QR 을 받는 흐름이 흔하다 (#1224).
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink(value: BusinessCardDestination.scan) {
+                        Image(systemName: Constants.scanImage)
+                    }
+                    .accessibilityLabel(Constants.scanLabel)
+                }
+            }
             .alertPrompt(item: $viewModel.alertPrompt)
             .task {
                 guard viewModel.card.isIdle else { return }

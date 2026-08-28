@@ -16,6 +16,7 @@ final class MockReceivedCardRepository: ReceivedCardRepositoryProtocol, @uncheck
     var searchResult: Result<[ReceivedCard], Error> = .success([])
     var saveError: Error?
     var deleteError: Error?
+    var deleteAllError: Error?
     var countResult: Result<Int, Error> = .success(0)
 
     // MARK: - Capture
@@ -24,6 +25,7 @@ final class MockReceivedCardRepository: ReceivedCardRepositoryProtocol, @uncheck
     private(set) var lastSearchQuery: String?
     private(set) var savedCards: [ReceivedCard] = []
     private(set) var deletedIds: [String] = []
+    private(set) var deleteAllCallCount = 0
 
     // MARK: - ReceivedCardRepositoryProtocol
 
@@ -45,6 +47,12 @@ final class MockReceivedCardRepository: ReceivedCardRepositoryProtocol, @uncheck
     func delete(id: String) async throws {
         if let deleteError { throw deleteError }
         deletedIds.append(id)
+    }
+
+    func deleteAll() async throws {
+        if let deleteAllError { throw deleteAllError }
+        deleteAllCallCount += 1
+        deletedIds.append(contentsOf: savedCards.map(\.id))
     }
 
     func count() async throws -> Int {

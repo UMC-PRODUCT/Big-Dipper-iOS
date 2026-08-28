@@ -15,7 +15,7 @@ import BusinessCardDomain
 // — 명함과 프로필 카드가 다른 기수/파트를 보여주면 안 되기 때문.
 public extension Profile {
 
-    func toMyCard() -> MyCard {
+    func toMyCard() throws -> MyCard {
         let visibleRecords = challengerRecords.filter { UMCPartType(apiValue: $0.part) != .admin }
         let latestRecord = visibleRecords.max { $0.gisu.intValue < $1.gisu.intValue }
             ?? challengerRecords.max { $0.gisu.intValue < $1.gisu.intValue }
@@ -35,12 +35,17 @@ public extension Profile {
             ? rawPart
             : nil
 
-        return MyCard(
+        // `roles`·`challengerRecords` 가 모두 비면 여기가 빈 문자열로 남는다. 예전에는
+        // `"0"` 을 채워 넣어 「운영진 · 0기」 명함이 조용히 만들어졌다 — 그 폴백을 지우고
+        // ``MyCard/validate()`` 가 걸러 낸다 (#1223).
+        let derivedGeneration = latestRecord?.gisu ?? latestRole?.gisu ?? ""
+
+        let card = MyCard(
             memberId: memberId,
             name: latestRecord?.name ?? name,
             nickname: latestRecord?.nickname ?? nickname,
             part: UMCPartType(apiValue: latestRecord?.part ?? "") ?? fallbackPart,
-            generation: latestRecord?.gisu ?? latestRole?.gisu ?? "0",
+            generation: derivedGeneration,
             university: latestRecord?.schoolName ?? schoolName,
             email: (latestRecord?.email).flatMap(\.nonEmpty) ?? email.nonEmpty,
             github: externalLinks?.github?.nonEmpty,
@@ -49,6 +54,8 @@ public extension Profile {
             avatarURL: latestRecord?.profileImageLink?.nonEmpty ?? profileImageLink?.nonEmpty,
             partRaw: unrecognizedPart
         )
+        try card.validate()
+        return card
     }
 }
 

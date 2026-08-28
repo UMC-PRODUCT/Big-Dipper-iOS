@@ -185,10 +185,22 @@ extension UMCAppApp {
         FirebaseApp.configure()
     }
 
+    /// 영속 스토어를 못 만들어 **인메모리로 떨어졌다**.
+    ///
+    /// 이 세션에 저장한 것(명함첩 등)은 앱을 닫으면 사라진다. 조용히 넘어가면 사용자는
+    /// 저장된 줄 알고 잃는다 — `AppRootView`가 이 값을 읽어 한 번 고지한다.
+    nonisolated(unsafe) private(set) static var isEphemeralStore = false
+
     /// SwiftData ModelContainer를 생성합니다.
     ///
     /// CloudKit(`iCloud.com.umc.product`) 동기화를 먼저 시도하고, 실패하면 로컬 →
     /// 인메모리 순으로 폴백한다. (레거시 v2.2.0과 동일한 3단 체인)
+    ///
+    /// - Note: CloudKit 동기화 축은 **Apple ID**라 UMC 계정과 무관하다. 같은 Apple ID로
+    ///   두 UMC 계정을 쓰면 두 계정의 레코드가 한 스토어에 섞여 내려온다. 그래도 동기화를
+    ///   끄지 않는 이유는 명함첩이 서버 사본 없는 로컬 데이터라 기기 간 동기화를 잃으면
+    ///   기기를 바꿀 때 통째로 사라지기 때문이다. 계정 격리는 `ReceivedCardRecord`의
+    ///   `ownerMemberId` 열과 저장소의 소유자 술어가 책임진다 (#1217).
     ///
     /// - Returns: 생성된 ModelContainer.
     ///
@@ -234,6 +246,7 @@ extension UMCAppApp {
                     groupContainer: .none,
                     cloudKitDatabase: .none
                 )
+                isEphemeralStore = true
                 return try ModelContainer(for: schema, configurations: [memoryConfiguration])
             } catch {
                 fatalError("Failed to initialize ModelContainer: \(error)")

@@ -15,7 +15,12 @@ import CoreNetwork
 /// 금지 원칙에 따라 자체 케이스로 복제한다 (선례: `/member/profile/{id}`가
 /// MyPageRouter·StudyRouter 양쪽에 존재). path 변경은 각 Router의 계약 테스트가 잡는다.
 enum BusinessCardRouter {
-    /// 참여 스터디 목록 (`GET /api/v1/study-groups/managed`) — 항목 수만 쓴다.
+    /// **관리 가능한** 스터디 목록 (`GET /api/v1/study-groups/managed`) — 항목 수만 쓴다.
+    ///
+    /// - Important: `managed` 는 「내가 참여한」이 아니라 「내가 관리할 수 있는」이다
+    ///   (서버 `StudyGroupController`·`StudyRouter.getStudyGroupNames` 와 같은 의미).
+    ///   그래서 운영진이 아닌 챌린저에게 이 카운트는 항상 0이다. 참여 기준 목록 API가
+    ///   서버에 없어 클라이언트에서 메울 수 없다 (#1222).
     case getMyStudyGroups(query: StudyCountQueryDTO)
     /// 스크랩 글 페이지 (`GET /api/v1/posts/scrapped`) — totalElements만 쓴다.
     case getScrappedPosts(query: ScrappedCountQueryDTO)

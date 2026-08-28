@@ -243,9 +243,15 @@ public final class MyPageViewModel {
     }
 
     /// 회원 탈퇴 후 세션을 정리합니다.
+    ///
+    /// 명함첩은 서버 사본이 없는 로컬(+CloudKit) 데이터라 계정을 지워도 기기에 남는다.
+    /// 세션 정리보다 **먼저** 비우는 이유는 저장소가 현재 로그인 계정으로 스코프되기
+    /// 때문이다 — `tearDownSession()`이 세션 키를 지운 뒤에는 지울 대상을 특정할 수 없다.
+    /// 로그아웃에는 이 정리를 붙이지 않는다(다시 로그인하면 돌아와야 하는 데이터다).
     @MainActor
     public func deleteAccount() async throws {
         try await myPageProvider.deleteMemberUseCase.execute()
+        try await businessCardProvider.deleteReceivedCardUseCase.executeAll()
         UserDefaults.standard.set(false, forKey: AppStorageKey.canAutoLogin)
         try await tearDownSession()
     }

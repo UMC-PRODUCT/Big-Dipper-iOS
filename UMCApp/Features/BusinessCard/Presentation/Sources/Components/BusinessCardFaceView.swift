@@ -47,6 +47,8 @@ public struct BusinessCardFaceView: View {
         /// 시안 실측 높이. 글자가 커지면 이 값을 **바닥으로** 두고 늘어난다
         /// (고정하면 AX 크기에서 칩·이름이 카드 밖으로 밀린다).
         static let cardMinHeight: CGFloat = 205
+        /// 버튼 행(39)과 그 위 간격(24)을 뺀 높이. 액션 없는 카드가 아래를 비우지 않게 한다.
+        static let faceOnlyMinHeight: CGFloat = 205 - 24 - 39
         static let cardRadius: CGFloat = 34
         static let cardPadding: CGFloat = 16
         /// 정보 블록과 버튼 행 사이.
@@ -106,6 +108,12 @@ public struct BusinessCardFaceView: View {
 
     // MARK: - Body
 
+    /// 액션이 하나도 없으면 버튼 행을 그리지 않는다 — 받은 명함 상세(#1227)에는
+    /// 「명함 교환」·「QR 코드」가 할 일이 없다. 눌러도 아무 일 없는 버튼을 두느니 뺀다.
+    private var hasActions: Bool {
+        onExchange != nil || onQR != nil
+    }
+
     public var body: some View {
         VStack(spacing: Metrics.blockSpacing) {
             VStack(alignment: .leading, spacing: Metrics.headerSpacing) {
@@ -114,11 +122,11 @@ public struct BusinessCardFaceView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            actionButtons
+            if hasActions { actionButtons }
         }
         .padding(Metrics.cardPadding)
         .frame(maxWidth: .infinity)
-        .frame(minHeight: Metrics.cardMinHeight)
+        .frame(minHeight: hasActions ? Metrics.cardMinHeight : Metrics.faceOnlyMinHeight)
         .background(cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Metrics.cardRadius))
     }
@@ -155,7 +163,12 @@ public struct BusinessCardFaceView: View {
         }
     }
 
+    @ViewBuilder
     private var flipButton: some View {
+        if onFlip != nil { flipButtonBody }
+    }
+
+    private var flipButtonBody: some View {
         Button {
             onFlip?()
         } label: {

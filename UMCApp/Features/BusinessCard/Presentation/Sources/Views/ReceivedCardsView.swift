@@ -25,8 +25,8 @@ private enum Constants {
     static let failureDescription = "잠시 후 다시 시도해 주세요."
     static let failureImage = "exclamationmark.triangle"
 
-    static let deleteLabel = "삭제"
-    static let deleteImage = "trash"
+    static let scanLabel = "QR 스캔"
+    static let scanImage = "qrcode.viewfinder"
 
     static let openHint = "이 명함을 자세히 봅니다"
 
@@ -71,14 +71,29 @@ public struct ReceivedCardsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $viewModel.searchText, prompt: Constants.searchPrompt)
             .searchToolbarBehavior(.minimize)
-            .alertPrompt(item: $viewModel.alertPrompt)
+            .toolbar { scanToolbarItem }
             .task {
-                guard viewModel.cards.isIdle else { return }
-                await viewModel.load()
+                // 상세에서 삭제·메모 편집을 하고 돌아왔을 때를 위해 매번 다시 맞춘다.
+                // 첫 진입만 스켈레톤을 보여주고, 되돌아온 경우는 조용히 갱신한다.
+                if viewModel.cards.isIdle {
+                    await viewModel.load()
+                } else {
+                    await viewModel.refresh()
+                }
             }
     }
 
     // MARK: - View Component
+
+    /// 명함첩에서 바로 다음 명함을 받는 동선. 기본 카메라 앱을 거치지 않는다 (#1224).
+    private var scanToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink(value: BusinessCardDestination.scan) {
+                Image(systemName: Constants.scanImage)
+            }
+            .accessibilityLabel(Constants.scanLabel)
+        }
+    }
 
     @ViewBuilder
     private var content: some View {
@@ -105,22 +120,16 @@ public struct ReceivedCardsView: View {
         }
     }
 
+    /// 삭제는 상세 화면이 가져갔다 (#1227). 길게 눌러야 보이던 컨텍스트 메뉴는
+    /// 시안에 삭제 동선이 없어 둔 임시 자리였고, 이제 눌러서 들어가는 화면이 있다.
     private func cell(_ card: ReceivedCard) -> some View {
-        ReceivedCardCell(card: card)
-            .contextMenu {
-                // 시안에 삭제 동선이 없다. 그리드는 스와이프를 못 받으므로 길게 눌러
-                // 꺼내는 컨텍스트 메뉴로 둔다 — 카드 모양을 건드리지 않는 유일한 자리다.
-                Button(role: .destructive) {
-                    viewModel.requestDelete(card)
-                } label: {
-                    Label(Constants.deleteLabel, systemImage: Constants.deleteImage)
-                }
-            }
-            // 길게 누르기만으로는 VoiceOver 사용자가 삭제에 닿지 못한다. 같은 동작을
-            // 로터 액션으로도 내보낸다 — 컨텍스트 메뉴와 진입점만 다르고 흐름은 같다.
-            .accessibilityAction(named: Constants.deleteLabel) {
-                viewModel.requestDelete(card)
-            }
+        NavigationLink(value: BusinessCardDestination.receivedCardDetail(card)) {
+            ReceivedCardCell(card: card)
+        }
+        .buttonStyle(.plain)
+        // 카드는 이미 한 덩어리로 읽히지만(`children: .ignore`) 눌러서 무엇이 열리는지는
+        // 라벨에 없다 — 「버튼」만으로는 상세로 가는지 교환이 시작되는지 알 수 없다.
+        .accessibilityHint(Constants.openHint)
     }
 
     /// 검색 중인지에 따라 빈 화면의 뜻이 다르다 — 「아직 한 장도 없음」과 「이 검색어에
@@ -163,6 +172,6 @@ public struct ReceivedCardsView: View {
             .padding(.horizontal, Metrics.horizontalMargin)
             .padding(.top, Metrics.topMargin)
         }
-        .refreshable { await viewModel.refresh() }
+        .refreshable { await viewModel.load(showsLoading: false) }
     }
 }
