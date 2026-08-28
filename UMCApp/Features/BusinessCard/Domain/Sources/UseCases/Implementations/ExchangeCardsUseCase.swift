@@ -51,8 +51,8 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
 
         // transport 가 연결마다 핸드셰이크를 물어보게 한다. 토큰은 피어마다 달라야 해서
         // 전역으로 미리 만들어 둘 수 없다 (PeerRangingCoordinator 주석 참고).
-        if let ranging, let mpc = transport as? MPCTransport {
-            mpc.setHandshakeProvider(ranging)
+        if let ranging {
+            transport.setHandshakeProvider(ranging)
         }
     }
 

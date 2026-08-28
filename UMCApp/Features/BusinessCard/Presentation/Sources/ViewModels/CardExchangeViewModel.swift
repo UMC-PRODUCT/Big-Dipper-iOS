@@ -142,18 +142,6 @@ public final class CardExchangeViewModel {
     private func updateDistance(peerID: String, meters: Double?) {
         guard let index = peers.firstIndex(where: { $0.id == peerID }) else { return }
 
-        let peer = peers[index]
-        peers[index] = DiscoveredPeer(
-            id: peer.id,
-            cardUUIDPrefix: peer.cardUUIDPrefix,
-            version: peer.version,
-            flags: peer.flags,
-            discoveredAt: peer.discoveredAt,
-            displayName: peer.displayName,
-            part: peer.part,
-            generation: peer.generation,
-            avatarURL: peer.avatarURL,
-            distanceMeters: meters
-        )
+        peers[index] = peers[index].applying(distanceMeters: meters)
     }
 }

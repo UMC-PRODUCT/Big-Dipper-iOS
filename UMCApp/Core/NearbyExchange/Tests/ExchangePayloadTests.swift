@@ -59,6 +59,19 @@ struct ExchangePayloadTests {
         #expect(decoded.usdzURL == URL(string: "https://cdn.umc.dev/card.usdz"))
     }
 
+    @Test("모르는 상위 버전 페이로드는 조용히 v2로 읽지 않고 invalidPayload를 던진다")
+    func rejectsFutureVersion() {
+        let v3JSON = Data("""
+        {"cardID":"abc","name":"제옹","nickname":"제옹","part":"IOS","generation":"12",
+         "university":"한양대학교","cardLink":"umc://card?memberId=42",
+         "timestamp":"2026-04-23T00:00:00Z","version":3}
+        """.utf8)
+
+        #expect(throws: NearbyError.self) {
+            _ = try ExchangePayload.decode(from: v3JSON)
+        }
+    }
+
     @Test("usdzURL이 nil이면 통과한다 — 3D 에셋 없는 명함도 교환할 수 있다")
     func usdzURLOptional() throws {
         let payload = try makeV2()

@@ -120,13 +120,13 @@ struct DiscoveredPeerRow: View {
 #Preview("피어 행") {
     VStack(spacing: 8) {
         DiscoveredPeerRow(peer: DiscoveredPeer(
-            id: "a", cardUUIDPrefix: Data(), version: 1, flags: 0,
+            id: "a",
             displayName: "이름/닉네임", part: "IOS", generation: "10",
             avatarURL: nil, distanceMeters: 2.1
         ))
 
         DiscoveredPeerRow(peer: DiscoveredPeer(
-            id: "b", cardUUIDPrefix: Data(), version: 1, flags: 0
+            id: "b"
         ))
     }
     .padding(16)

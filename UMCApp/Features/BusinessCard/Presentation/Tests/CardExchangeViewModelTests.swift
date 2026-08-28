@@ -178,9 +178,6 @@ private func makeMyCard() -> MyCard {
 private func makePeer(id: String, name: String = "이름") -> DiscoveredPeer {
     DiscoveredPeer(
         id: id,
-        cardUUIDPrefix: Data(),
-        version: 1,
-        flags: 0,
         displayName: name,
         part: "IOS",
         generation: "10",

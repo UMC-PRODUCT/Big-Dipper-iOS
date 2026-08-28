@@ -28,10 +28,16 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
     public let linkedIn: String?
     public let blog: String?
     public let avatarURL: String?
-    /// 프로필 딥링크 (`umc://card/{memberId}`). 수신 측이 프로필 API로 최신화할 때 쓴다.
+    /// 프로필 딥링크. 정본은 질의형 `umc://card?memberId={memberId}` 다 — 굽는 형식은
+    /// `CardLink` 하나가 소유하므로 이 값도 거기서 만든다. 경로형 `umc://card/{memberId}`
+    /// 는 이미 구워진 QR 때문에 **읽기만** 남겨 둔 폐기 대상 호환 케이스다.
     /// **memberId의 유일한 운반 수단** — 수신 측은 이 값을 파싱해 정체성을 복원한다.
     public let cardLink: String
-    /// 3D 명함 에셋. v2에서 옵셔널로 완화 — 3D 명함은 후속 트랙.
+    /// 3D 명함 에셋 URL. **의도적으로 비워 두는 슬롯이다 — 지우지 말 것.**
+    ///
+    /// 설계서 §6 결정: 3D 명함은 온디바이스 합성이라 수신 측이 같은 번들 템플릿으로
+    /// 다시 합성한다. 그래서 페이로드에 에셋 URL 을 실을 이유가 없다. v1 이 필수로 들고
+    /// 있던 필드라 수신 호환을 위해 남으며, v2 에서 옵셔널로 완화됐다.
     public let usdzURL: URL?
     public let timestamp: Date
     /// 스키마 버전. 프로토콜 메타라 Int (서버 무관 — 절대규칙 #2 대상 아님).
@@ -91,6 +97,14 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let decodedVersion = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        // 상한이 없으면 미래의 v3 를 v2 로 읽고 **틀린 값을 조용히 받아들인다.** 모르는
+        // 버전은 읽을 수 없다고 말하는 편이 낫다 — 상대가 새 필드에 의미를 넣었을 때
+        // 여기서 걸리지 않으면 어디서도 걸리지 않는다.
+        guard (1...Self.currentVersion).contains(decodedVersion) else {
+            throw NearbyError.invalidPayload(
+                "지원하지 않는 페이로드 버전 \(decodedVersion) (지원 1...\(Self.currentVersion))"
+            )
+        }
         version = decodedVersion
         cardID = try container.decode(String.self, forKey: .cardID)
         timestamp = try container.decode(Date.self, forKey: .timestamp)

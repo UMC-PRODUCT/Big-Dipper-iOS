@@ -8,26 +8,6 @@
 import Foundation
 import MultipeerConnectivity
 
-// MARK: - NearbyHandshakeProviding
-
-/// 피어별 핸드셰이크를 만들고 상대 핸드셰이크를 받는 쪽.
-///
-/// **피어마다 달라야 하는 이유**: `NISession` 은 한 번에 한 상대와만 레인징한다
-/// (`NINearbyPeerConfiguration(peerToken:)` 이 상대 토큰 하나를 받는다). 그래서 상대가 늘면
-/// 세션도 늘고, 세션마다 자기 `discoveryToken` 이 다르다. 전역 토큰 하나를 뿌리면
-/// 두 번째 상대부터 엉뚱한 세션의 토큰을 받는다.
-public protocol NearbyHandshakeProviding: AnyObject, Sendable {
-
-    /// 이 피어에게 보낼 핸드셰이크. UWB 미탑재 기기는 `niToken` 을 `nil` 로 채운다.
-    func makeHandshake(forPeerID peerID: String) -> NearbyHandshake?
-
-    /// 상대 핸드셰이크 도착. 여기서 상대 토큰으로 레인징을 시작한다.
-    func didReceiveHandshake(_ handshake: NearbyHandshake, fromPeerID peerID: String)
-
-    /// 피어가 사라졌다. 해당 세션을 정리한다.
-    func didLosePeer(_ peerID: String)
-}
-
 // MARK: - MPCTransport
 
 /// MultipeerConnectivity 기반 근거리 명함 교환 transport.
@@ -187,7 +167,8 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
     // MARK: - Configuration
 
-    /// 레인징 조율 계층을 연결한다. 설정하지 않으면 거리 없이 발견·교환만 동작한다.
+    /// 레인징 조율 계층을 연결한다 (``NearbyTransportProtocol`` 요구사항).
+    /// 설정하지 않으면 거리 없이 발견·교환만 동작한다.
     public func setHandshakeProvider(_ provider: any NearbyHandshakeProviding) {
         stateQueue.sync { handshakeProvider = provider }
     }
@@ -388,9 +369,6 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
         return DiscoveredPeer(
             id: sessionID,
-            cardUUIDPrefix: Data(),
-            version: UInt8(clamping: ExchangePayload.currentVersion),
-            flags: 0,
             displayName: displayName,
             part: info[DiscoveryKey.part],
             generation: info[DiscoveryKey.generation],
