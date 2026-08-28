@@ -18,9 +18,10 @@ import BusinessCardDomain
 /// 타인 경로만 `toPublic()`으로 email·상벌점을 지운다. 그래서 내 명함이 쓰는 변환 체인
 /// (``MemberProfileResponseDTO/toDomain()`` → ``Profile/toMyCard()``)을 그대로 재사용한다.
 ///
-/// - Important: 응답에 `roles`·`challengerRecords`가 비어 있으면 변환이 **에러 없이**
-///   `part = .admin`, `generation = "0"`으로 무너진다. 서버 마스킹 정책이 바뀌면 조용히
-///   잘못된 명함이 저장되므로, 계약 테스트가 이 케이스를 고정한다.
+/// - Important: 응답에 `roles`·`challengerRecords`가 비어 있으면 기수를 세울 근거가 없다.
+///   예전에는 그 자리를 `part = .admin`, `generation = "0"`으로 메워 「운영진 · 0기」 명함이
+///   에러 없이 저장됐다. 지금은 ``MyCard/validate()``가 그 응답을 실패로 돌린다 (#1223) —
+///   근본 원인인 「명함 전용 공개 API 부재」는 서버 협의가 남아 있다.
 public final class PeerCardRepository: PeerCardRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Property
@@ -51,7 +52,7 @@ public final class PeerCardRepository: PeerCardRepositoryProtocol, @unchecked Se
             BusinessCardRouter.getMemberProfile(memberId: memberId)
         )
         let dto: MemberProfileResponseDTO = try decodeAbsorbingWrapper(from: response.data)
-        return dto.toDomain().toMyCard()
+        return try dto.toDomain().toMyCard()
     }
 
     // MARK: - Private Function
