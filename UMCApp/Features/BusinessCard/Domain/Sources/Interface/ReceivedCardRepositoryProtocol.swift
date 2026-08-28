@@ -18,8 +18,9 @@ public protocol ReceivedCardRepositoryProtocol: Sendable {
     /// 교환 시각 내림차순 전체 조회.
     func fetchAll() async throws -> [ReceivedCard]
     func search(query: String) async throws -> [ReceivedCard]
-    /// memberId(1차)·cardID(부차) 기준 upsert — 재교환 시 최신 명함으로 갱신.
+    /// 정체성(memberId, 없으면 명함 내용) 기준 upsert — 재교환 시 최신 명함으로 갱신.
     func save(_ card: ReceivedCard) async throws
+    /// 목록에서 고른 명함의 cardID. 같은 정체성의 레코드가 여러 벌이면 함께 지운다.
     func delete(id: String) async throws
     /// 현재 계정의 명함 전량 삭제 — 회원 탈퇴 전용.
     func deleteAll() async throws

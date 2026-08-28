@@ -13,8 +13,11 @@ import BusinessCardDomain
 /// SwiftData 기반 명함첩 저장소 (MP-F05).
 ///
 /// 서버 명함 API 부재 확정(2026-08-15 조사)으로 로컬 전용. 서버가 생기면 이 구현체만
-/// 교체한다. CloudKit 제약상 unique 불가 → memberId 기준 fetch 후 수동 upsert
+/// 교체한다. CloudKit 제약상 unique 불가 → 정체성 키로 fetch 후 수동 upsert
 /// (Home `ChallengerGenRepository` 선례).
+///
+/// **저장·중복 제거·삭제는 모두 `identityKey` 한 규칙을 쓴다.** 셋이 갈리면 목록에
+/// 보이지 않는 행이 남아 삭제한 명함이 되살아난다 (#1218).
 ///
 /// **모든 조회·저장·삭제는 현재 로그인 계정(`ownerMemberId`)으로 스코프된다.** 한 기기에서
 /// 계정을 바꾸면 이전 사용자의 명함이 그대로 보이던 문제(#1217)를 여기서 막는다. 소유자를
@@ -84,17 +87,14 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
         }
     }
 
-    /// memberId 일치 레코드가 있으면 최신 명함으로 갱신, 없으면 삽입.
-    ///
-    /// 1차 키는 **memberId**(cardLink `umc://card/{memberId}` 파싱값), 부차 키는 cardID다.
-    /// cardLink가 페이로드에서 정체성을 나르는 유일한 값이므로 그 파싱값이 정본이다.
+    /// 같은 정체성의 레코드가 있으면 최신 명함으로 갱신, 없으면 삽입.
     public func save(_ card: ReceivedCard) async throws {
         let owner = try requireOwner()
         try await MainActor.run {
-            let records = try fetchRecords(owner: owner)
-            if let existing = records.first(where: {
-                !card.profile.memberId.isEmpty && $0.memberId == card.profile.memberId
-            }) ?? records.first(where: { $0.cardID == card.id }) {
+            let key = card.identityKey
+            if let existing = try fetchRecords(owner: owner).first(where: {
+                $0.identityKey == key
+            }) {
                 existing.apply(card)
             } else {
                 modelContext.insert(ReceivedCardRecord(card, ownerMemberId: owner))
@@ -103,10 +103,18 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
         }
     }
 
+    /// 목록에서 고른 명함을 지운다.
+    ///
+    /// `id`는 목록에 보인 **한 장**의 cardID지만, 지우는 단위는 그 명함의 정체성이다.
+    /// cardID로만 지우면 같은 사람의 다른 cardID 행(재교환·다기기 CloudKit 동기화로
+    /// 생긴다)이 남아 다음 진입에서 되살아난다 (#1218).
     public func delete(id: String) async throws {
         let owner = try requireOwner()
         try await MainActor.run {
-            for record in try fetchRecords(owner: owner) where record.cardID == id {
+            let records = try fetchRecords(owner: owner)
+            guard let target = records.first(where: { $0.cardID == id }) else { return }
+            let key = target.identityKey
+            for record in records where record.identityKey == key {
                 modelContext.delete(record)
             }
             try modelContext.save()
@@ -160,19 +168,52 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
 
 // MARK: - Identity
 
+/// 명함첩 정체성 키 — **저장(upsert)·중복 제거·삭제가 모두 이 한 규칙을 쓴다.**
+///
+/// 셋이 서로 다른 키를 쓰면 목록에 보이지 않는 행이 남아 삭제한 명함이 되살아난다(#1218).
+///
+/// `memberId`(cardLink `umc://card/{memberId}` 파싱값)가 정본이다 — 페이로드에서 정체성을
+/// 나르는 유일한 값이다. **없을 때만** 명함 내용으로 대체한다. cardID는 대체 키가 될 수 없다:
+/// 교환마다 새 UUID라(`MyCard.toExchangePayload(cardID:)`) 같은 사람과 다시 교환할 때마다
+/// 새 행이 쌓이고, CloudKit 동기화 중복도 그대로 남는다.
+///
+/// - Note: 동명이인이 학교·기수·닉네임까지 같으면 한 장으로 합쳐진다. 신원 값이 없는 이상
+///   이보다 정확할 수 없고, 무한 중복보다는 낫다. 명함 전용 서버 API가 생겨 memberId가
+///   항상 실리면 이 대체 경로 자체가 사라진다.
+private func cardIdentityKey(
+    memberId: String,
+    name: String,
+    nickname: String,
+    university: String,
+    generation: String
+) -> String {
+    guard memberId.isEmpty else { return "member:\(memberId)" }
+    return "anon:\(name)|\(nickname)|\(university)|\(generation)"
+}
+
 private extension ReceivedCardRecord {
 
-    /// 중복 판정 키. `memberId`(cardLink 파싱값)가 정본이고, **없을 때만** cardID로 대체한다.
-    ///
-    /// 키를 둘로 가르는 이유: v1 페이로드(cardLink="")나 파싱 불가한 cardLink를 받으면
-    /// `MyCard(payload:)`가 memberId를 빈 문자열로 복원한다. 이때
-    /// - 빈 문자열을 하나의 키로 뭉치면 **서로 다른 사람이 한 명으로 사라진다**(데이터 손실)
-    /// - 그렇다고 전부 통과시키면 CloudKit 동기화 중복이 그대로 쌓인다
-    ///
-    /// cardID는 교환마다 새 UUID라 정체성이 없는 상대와 **재교환**하면 여전히 새 행이 생긴다.
-    /// 그건 신원 정보가 없는 이상 원리적으로 막을 수 없다 — 여기서 막는 것은 동기화 중복이다.
     var identityKey: String {
-        memberId.isEmpty ? "card:\(cardID)" : "member:\(memberId)"
+        cardIdentityKey(
+            memberId: memberId,
+            name: name,
+            nickname: nickname,
+            university: university,
+            generation: generation
+        )
+    }
+}
+
+private extension ReceivedCard {
+
+    var identityKey: String {
+        cardIdentityKey(
+            memberId: profile.memberId,
+            name: profile.name,
+            nickname: profile.nickname,
+            university: profile.university,
+            generation: profile.generation
+        )
     }
 }
 

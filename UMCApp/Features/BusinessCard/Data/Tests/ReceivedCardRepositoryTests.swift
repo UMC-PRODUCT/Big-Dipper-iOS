@@ -151,11 +151,11 @@ struct ReceivedCardRepositoryTests {
         )
     }
 
-    @Test("memberId 없는 레코드도 cardID로 CloudKit 중복이 걸러진다")
-    func dedupesIdentitylessRecordsByCardID() async throws {
-        // CloudKit 동기화가 같은 레코드를 두 벌 만든 상황.
+    @Test("memberId 없는 레코드도 명함 내용으로 CloudKit 중복이 걸러진다")
+    func dedupesIdentitylessRecordsByContent() async throws {
+        // CloudKit 동기화가 같은 레코드를 두 벌 만든 상황. cardID는 교환마다 달라진다.
         insertRecord(cardID: "C1", memberId: "", name: "정체불명")
-        insertRecord(cardID: "C1", memberId: "", name: "정체불명")
+        insertRecord(cardID: "C2", memberId: "", name: "정체불명")
         try container.mainContext.save()
 
         #expect(try await repository.fetchAll().count == 1)
@@ -180,6 +180,50 @@ struct ReceivedCardRepositoryTests {
 
         #expect(try await repository.fetchAll().isEmpty)
         #expect(try await repository.count() == 0)
+    }
+
+    // MARK: - 정체성 키 통일 (#1218)
+
+    /// 목록에 보이는 것은 dedup 후 최신 1장뿐이라, cardID로만 지우면 같은 사람의 옛 행이
+    /// 남아 다음 진입에서 되살아난다.
+    @Test("같은 상대의 cardID가 여러 벌이어도 한 번 삭제로 전부 사라진다")
+    func deleteRemovesEveryRecordOfSameIdentity() async throws {
+        // 기기 A·B에서 각각 교환 → 같은 memberId, 다른 cardID가 CloudKit으로 합쳐진 상황.
+        insertRecord(cardID: "C1", memberId: "7", name: "상대")
+        insertRecord(cardID: "C2", memberId: "7", name: "상대")
+        try container.mainContext.save()
+        let visible = try #require(try await repository.fetchAll().first)
+
+        try await repository.delete(id: visible.id)
+
+        #expect(try await repository.fetchAll().isEmpty)
+        #expect(try await repository.count() == 0)
+    }
+
+    /// cardID가 교환마다 새 UUID라, 그걸 대체 키로 쓰면 같은 사람과 다시 교환할 때마다
+    /// 새 행이 쌓인다 (#1196 「한 번만 저장」이 memberId 있을 때만 성립했다).
+    @Test("memberId 없는 상대와 두 번 교환해도 명함첩은 1장이다")
+    func reExchangeWithoutMemberIdStaysSingleCard() async throws {
+        let first = makeCard(id: UUID().uuidString, name: "상대", memberId: "")
+        let second = makeCard(id: UUID().uuidString, name: "상대", memberId: "")
+
+        try await repository.save(first)
+        try await repository.save(second)
+
+        #expect(try await repository.fetchAll().count == 1)
+        #expect(try await repository.count() == 1)
+    }
+
+    /// 정체성 없는 서로 다른 사람까지 뭉치면 데이터 손실이다 — 삭제도 남을 건드리면 안 된다.
+    @Test("memberId 없는 다른 사람은 함께 지워지지 않는다")
+    func deleteKeepsOtherIdentitylessPeople() async throws {
+        insertRecord(cardID: "C1", memberId: "", name: "김하나")
+        insertRecord(cardID: "C2", memberId: "", name: "박두울")
+        try container.mainContext.save()
+
+        try await repository.delete(id: "C1")
+
+        #expect(try await repository.fetchAll().map(\.profile.name) == ["박두울"])
     }
 
     // MARK: - 계정 격리 (#1217)
