@@ -45,7 +45,7 @@ public final class PeerCardRepository: PeerCardRepositoryProtocol, @unchecked Se
 
     public func fetchCard(memberId: String) async throws -> MyCard {
         guard !memberId.isEmpty else {
-            throw AppError.unknown(message: "명함 링크에 회원 식별자가 없습니다.")
+            throw BusinessCardError.invalidCardLink
         }
 
         let response = try await networkRequesting.request(

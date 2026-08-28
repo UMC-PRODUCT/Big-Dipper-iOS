@@ -30,6 +30,34 @@ struct TransportContractTests {
         #expect(peer.generation == nil)
     }
 
+    /// 권한 거부는 권한 API 가 아니라 Bonjour 실패로 위장해 온다. 이 판정이 무너지면
+    /// 화면은 원인 불문 「권한을 켜라」거나 원인 불문 「전송 오류」가 된다.
+    @Test("Bonjour 정책 거부는 권한 거부로 분류한다")
+    func policyDeniedIsPermissionDenied() {
+        let error = NSError(
+            domain: "NSNetServicesErrorDomain",
+            code: -72000,
+            userInfo: ["NSNetServicesErrorCode": -65570]
+        )
+
+        guard case .permissionDenied = NearbyError.startFailure(error) else {
+            Issue.record("permissionDenied 로 분류되지 않음"); return
+        }
+    }
+
+    @Test("그 밖의 Bonjour 실패는 원문을 들고 올라간다")
+    func otherFailureKeepsUnderlying() {
+        let error = NSError(
+            domain: "NSNetServicesErrorDomain",
+            code: -72000,
+            userInfo: ["NSNetServicesErrorCode": -65539]
+        )
+
+        guard case .transportFailure = NearbyError.startFailure(error) else {
+            Issue.record("transportFailure 로 분류되지 않음"); return
+        }
+    }
+
     @Test("Mock은 광고한 명함을 기록한다")
     func mockRecordsAdvertisedCard() async throws {
         let mock = MockNearbyTransport()
