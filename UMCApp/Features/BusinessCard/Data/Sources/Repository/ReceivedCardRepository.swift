@@ -16,6 +16,10 @@ import BusinessCardDomain
 /// 교체한다. CloudKit 제약상 unique 불가 → memberId 기준 fetch 후 수동 upsert
 /// (Home `ChallengerGenRepository` 선례).
 ///
+/// **모든 조회·저장·삭제는 현재 로그인 계정(`ownerMemberId`)으로 스코프된다.** 한 기기에서
+/// 계정을 바꾸면 이전 사용자의 명함이 그대로 보이던 문제(#1217)를 여기서 막는다. 소유자를
+/// 호출부가 넘기게 하지 않고 저장소가 직접 읽는 이유는, 넘기게 하면 언젠가 빼먹기 때문이다.
+///
 /// **모든 `modelContext` 접근은 메인 액터에서 한다.** 주입되는 것은 앱의 `mainContext`
 /// (`UMCAppApp.makeModelContainer` → `DIContainer.configured(modelContext:)`)인데,
 /// 이 타입의 메서드는 액터 격리가 없어 호출부가 `await` 하는 순간 백그라운드 실행자로
@@ -27,29 +31,49 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
     // MARK: - Property
 
     private let modelContext: ModelContext
+    private let defaults: UserDefaults
 
     // MARK: - Init
 
-    public init(modelContext: ModelContext) {
+    /// - Parameter defaults: 현재 로그인 계정을 읽을 저장소. 테스트는 격리된 suite를 넣는다.
+    public init(modelContext: ModelContext, defaults: UserDefaults = .standard) {
         self.modelContext = modelContext
+        self.defaults = defaults
+    }
+
+    // MARK: - Computed Property
+
+    /// 지금 로그인한 계정의 memberId. `nil`이면 로그인 세션이 없다.
+    ///
+    /// `init`에서 붙잡지 않고 호출마다 다시 읽는다 — `DIContainer.resolve`가 인스턴스를
+    /// 캐싱하므로 붙잡으면 계정을 바꾼 뒤에도 옛 소유자로 조회·저장하게 된다.
+    private var currentOwnerMemberId: String? {
+        AppStorageKey.memberIdString(in: defaults)
     }
 
     // MARK: - Function
 
     /// 교환 시각 내림차순 전체 조회. CloudKit 동기화 중복은 `identityKey` 기준 최신만 남긴다.
+    ///
+    /// 로그인 세션이 없으면 빈 목록이다 — 소유자를 모르는 상태에서 무엇이든 보여주면
+    /// 그게 곧 남의 명함첩이다.
     public func fetchAll() async throws -> [ReceivedCard] {
-        try await MainActor.run { try dedupedRecords().map { $0.toDomain() } }
+        guard let owner = currentOwnerMemberId else { return [] }
+        return try await MainActor.run { try dedupedRecords(owner: owner).map { $0.toDomain() } }
     }
 
-    /// 인메모리 필터를 쓰는 이유: `#Predicate`로 걸러내면 CloudKit 중복 dedup이 술어
-    /// 통과분에만 적용돼 `fetchAll()`과 결과 규칙이 갈린다(같은 memberId 중복 행 노출).
+    /// 검색어 필터를 인메모리로 두는 이유: `#Predicate`로 걸러내면 CloudKit 중복 dedup이
+    /// 술어 통과분에만 적용돼 `fetchAll()`과 결과 규칙이 갈린다(같은 memberId 중복 행 노출).
     /// 명함첩은 개인 수집 규모(수백 건)라 전량 fetch 비용이 dedup 일관성보다 싸다.
+    /// 소유자 술어는 이 이유에 걸리지 않는다 — 계정 경계는 dedup 범위 자체라 술어로 좁혀도
+    /// 규칙이 갈리지 않고, 무엇보다 남의 명함을 메모리에 올리지 않는 쪽이 맞다.
     /// 검색 대상에 nickname을 포함한다 — 명함첩은 닉네임으로 기억되는 경우가 많다.
     public func search(query: String) async throws -> [ReceivedCard] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !needle.isEmpty else { return try await fetchAll() }
+        guard let owner = currentOwnerMemberId else { return [] }
         return try await MainActor.run {
-            try dedupedRecords()
+            try dedupedRecords(owner: owner)
                 .filter {
                     $0.name.localizedStandardContains(needle)
                         || $0.nickname.localizedStandardContains(needle)
@@ -65,22 +89,24 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
     /// 1차 키는 **memberId**(cardLink `umc://card/{memberId}` 파싱값), 부차 키는 cardID다.
     /// cardLink가 페이로드에서 정체성을 나르는 유일한 값이므로 그 파싱값이 정본이다.
     public func save(_ card: ReceivedCard) async throws {
+        let owner = try requireOwner()
         try await MainActor.run {
-            let records = try fetchRecords()
+            let records = try fetchRecords(owner: owner)
             if let existing = records.first(where: {
                 !card.profile.memberId.isEmpty && $0.memberId == card.profile.memberId
             }) ?? records.first(where: { $0.cardID == card.id }) {
                 existing.apply(card)
             } else {
-                modelContext.insert(ReceivedCardRecord(card))
+                modelContext.insert(ReceivedCardRecord(card, ownerMemberId: owner))
             }
             try modelContext.save()
         }
     }
 
     public func delete(id: String) async throws {
+        let owner = try requireOwner()
         try await MainActor.run {
-            for record in try fetchRecords() where record.cardID == id {
+            for record in try fetchRecords(owner: owner) where record.cardID == id {
                 modelContext.delete(record)
             }
             try modelContext.save()
@@ -88,23 +114,47 @@ public final class ReceivedCardRepository: ReceivedCardRepositoryProtocol, @unch
     }
 
     public func count() async throws -> Int {
-        try await MainActor.run { try dedupedRecords().count }
+        guard let owner = currentOwnerMemberId else { return 0 }
+        return try await MainActor.run { try dedupedRecords(owner: owner).count }
+    }
+
+    /// 현재 계정의 명함을 전부 지운다 (회원 탈퇴).
+    ///
+    /// 로그아웃에서는 부르지 않는다 — 명함첩은 서버 사본이 없어서, 잠깐 로그아웃했다
+    /// 돌아온 사용자의 명함까지 날아간다. 로그아웃 격리는 소유자 술어가 이미 해낸다.
+    public func deleteAll() async throws {
+        let owner = try requireOwner()
+        try await MainActor.run {
+            for record in try fetchRecords(owner: owner) {
+                modelContext.delete(record)
+            }
+            try modelContext.save()
+        }
     }
 
     // MARK: - Private Function
 
-    private func fetchRecords() throws -> [ReceivedCardRecord] {
+    /// 쓰기 경로의 소유자. 없으면 조용히 넘어가지 않는다 — 소유자 없이 저장하면 그 명함은
+    /// 어느 계정에도 안 잡히는 유령이 된다. 화면 안에서 사용자가 되돌릴 수 없는 실패라
+    /// 전역 재로그인 유도로 이어지는 `AuthError.notLoggedIn`을 던진다.
+    private func requireOwner() throws -> String {
+        guard let owner = currentOwnerMemberId else { throw AuthError.notLoggedIn }
+        return owner
+    }
+
+    private func fetchRecords(owner: String) throws -> [ReceivedCardRecord] {
         let descriptor = FetchDescriptor<ReceivedCardRecord>(
+            predicate: #Predicate { $0.ownerMemberId == owner },
             sortBy: [SortDescriptor(\.exchangedAt, order: .reverse)]
         )
         return try modelContext.fetch(descriptor)
     }
 
     /// CloudKit 동기화가 만들 수 있는 중복을 걸러낸다.
-    /// `fetchRecords()`가 교환 시각 내림차순이라 살아남는 것은 가장 최근 교환분이다.
-    private func dedupedRecords() throws -> [ReceivedCardRecord] {
+    /// `fetchRecords(owner:)`가 교환 시각 내림차순이라 살아남는 것은 가장 최근 교환분이다.
+    private func dedupedRecords(owner: String) throws -> [ReceivedCardRecord] {
         var seenKeys = Set<String>()
-        return try fetchRecords().filter { seenKeys.insert($0.identityKey).inserted }
+        return try fetchRecords(owner: owner).filter { seenKeys.insert($0.identityKey).inserted }
     }
 }
 
@@ -130,8 +180,9 @@ private extension ReceivedCardRecord {
 
 private extension ReceivedCardRecord {
 
-    convenience init(_ card: ReceivedCard) {
+    convenience init(_ card: ReceivedCard, ownerMemberId: String) {
         self.init(
+            ownerMemberId: ownerMemberId,
             cardID: card.id,
             memberId: card.profile.memberId,
             name: card.profile.name,

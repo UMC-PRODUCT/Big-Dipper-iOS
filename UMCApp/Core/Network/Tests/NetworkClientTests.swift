@@ -70,6 +70,23 @@ struct NetworkClientTests {
         #expect(access == nil)
     }
 
+    /// 로그아웃이 토큰만 지우고 세션 AppStorage를 남기면, 다음 계정이 프로필을 동기화하기
+    /// 전까지 **이전 계정의 memberId**가 유효한 값처럼 읽힌다. 그 값으로 스코프되는
+    /// 명함첩 등이 남의 데이터를 그대로 연다 (#1217).
+    @Test("logout 호출 시 세션 단위 AppStorage 값이 함께 비워진다")
+    func logoutClearsSessionScopedStorage() async throws {
+        let store = MockTokenStore(accessToken: "A", refreshToken: "R")
+        let refresh = MockTokenRefreshService(behavior: .success(TokenPair(accessToken: "A", refreshToken: "R")))
+        let client = makeClient(store: store, refresh: refresh)
+        UserDefaults.standard.set("777", forKey: AppStorageKey.memberId)
+        UserDefaults.standard.set(true, forKey: AppStorageKey.canAutoLogin)
+
+        try await client.logout()
+
+        #expect(AppStorageKey.memberIdString() == nil)
+        #expect(!UserDefaults.standard.bool(forKey: AppStorageKey.canAutoLogin))
+    }
+
     // MARK: - request: Authorization 주입
 
     @Test("인증 정책이 true이고 액세스 토큰이 있으면 Authorization 헤더가 주입된다")

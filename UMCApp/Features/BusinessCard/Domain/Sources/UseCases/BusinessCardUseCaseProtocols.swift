@@ -61,6 +61,12 @@ public protocol SaveReceivedCardUseCaseProtocol: Sendable {
 /// 명함첩 항목 삭제.
 public protocol DeleteReceivedCardUseCaseProtocol: Sendable {
     func execute(id: String) async throws
+
+    /// 현재 계정의 명함첩을 통째로 비운다 — **회원 탈퇴 전용**.
+    ///
+    /// 로그아웃에는 쓰지 않는다. 명함첩은 서버 사본이 없어서 잠깐 로그아웃했다 돌아온
+    /// 사용자의 명함까지 날아간다. 계정 간 격리는 저장소의 소유자 스코프가 이미 해낸다.
+    func executeAll() async throws
 }
 
 /// 마이페이지 행 우측 숫자 일괄 공급 (MP-F07~F09).
