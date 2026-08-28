@@ -17,6 +17,8 @@ struct DiscoveredPeerRow: View {
     // MARK: - Property
 
     let peer: DiscoveredPeer
+    /// 이 상대에게 이미 내 명함을 보냈는지.
+    var hasSent: Bool = false
 
     /// 이 상대에게 명함을 보내는 중. 탭과 완료 화면 사이가 비면 사용자는 무반응으로
     /// 읽는다 — 신호 막대 자리를 진행 표시로 바꿔 그 구간을 메운다.
@@ -27,6 +29,8 @@ struct DiscoveredPeerRow: View {
     private enum Constants {
         static let unknownName = "이름 없는 멤버"
         static let signalImage = "cellularbars"
+        static let sentTitle = "보냈어요"
+        static let sentImage = "checkmark.circle.fill"
         /// 파트와 기수를 잇는 구분자. 시안 표기 `iOS ・10기`.
         static let separator = " ・"
 
@@ -91,12 +95,21 @@ struct DiscoveredPeerRow: View {
         return min(1, max(SignalRange.minimumFill, normalized))
     }
 
+    /// 줄 오른쪽이 지금 그리고 있는 것을 말로 옮긴 것. ``trailing`` 과 같은 순서라
+    /// 보는 것과 듣는 것이 어긋나지 않는다.
+    private var trailingLabel: String {
+        guard !hasSent else { return Constants.sentTitle }
+        return peer.distanceMeters
+            .map(Constants.distanceLabel(meters:)) ?? Constants.unknownDistanceLabel
+    }
+
     /// 「홍길동, iOS ・10기, 약 1.2미터」. 이름·파트·막대·거리가 따로 읽히면
     /// 목록을 훑는 동안 네 번씩 듣게 된다.
+    ///
+    /// 줄을 한 덩어리로 묶어 놓아서 「보냈어요」 뱃지가 따로 읽힐 길이 없다 —
+    /// 그 사실도 여기서 같이 말한다.
     private var accessibilityLabel: String {
-        let distance = peer.distanceMeters
-            .map(Constants.distanceLabel(meters:)) ?? Constants.unknownDistanceLabel
-        return [displayName, subtitle, distance]
+        [displayName, subtitle, trailingLabel]
             .filter { !$0.isEmpty }
             .joined(separator: ", ")
     }
@@ -144,13 +157,33 @@ struct DiscoveredPeerRow: View {
 
     // MARK: - View Component
 
+    /// 셋 다 줄 오른쪽 같은 자리를 쓴다 — 보내는 중 → 보냄 → 신호 세기 순으로
+    /// 하나만 그린다. 전송 중에 「보냈어요」가 먼저 뜨면 아직 안 끝난 일이
+    /// 끝난 것처럼 보인다.
     @ViewBuilder
     private var trailing: some View {
         if isSending {
             ProgressView().controlSize(.small)
+        } else if hasSent {
+            sentBadge
         } else {
             signal
         }
+    }
+
+    /// 전송이 끝난 행은 신호 세기 대신 결과를 보여 준다 — 막대만 계속 그리면
+    /// 눌렀다는 사실이 화면 어디에도 남지 않는다.
+    private var sentBadge: some View {
+        HStack(spacing: Metrics.textSpacing) {
+            Image(systemName: Constants.sentImage)
+                .font(.system(size: Metrics.signalSize))
+
+            Text(Constants.sentTitle)
+                .appFont(.footnote)
+        }
+        // 아래 ``signal`` 막대와 같은 자리·같은 파랑이어야 한다. 시안 raw hex 대신
+        // 코어 토큰을 쓴다 — 토큰은 다크 모드 값을 스스로 들고 있다 (#1237).
+        .foregroundStyle(Color.indigo500)
     }
 
     /// 거리는 UWB(NearbyInteraction)가 잰다. 미탑재 기기이거나 아직 못 쟀으면 `nil` 이라
@@ -199,6 +232,14 @@ struct DiscoveredPeerRow: View {
         DiscoveredPeerRow(
             peer: DiscoveredPeer(
                 id: "d", cardUUIDPrefix: Data(), version: 1, flags: 0,
+                displayName: "보낸 상대", part: "IOS", generation: "10"
+            ),
+            hasSent: true
+        )
+
+        DiscoveredPeerRow(
+            peer: DiscoveredPeer(
+                id: "e", cardUUIDPrefix: Data(), version: 1, flags: 0,
                 displayName: "보내는 중", part: "IOS", generation: "10",
                 avatarURL: nil, distanceMeters: 1.0
             ),

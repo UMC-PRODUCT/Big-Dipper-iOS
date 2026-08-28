@@ -18,11 +18,9 @@ private enum Constants {
     static let title = "명함 교환"
     static let stopTitle = "교환 중지"
 
-    static let failedTitle = "교환을 시작할 수 없어요"
-    /// 블루투스는 더 이상 쓰지 않는다(BLE transport 폐기) — 권한 항목 자체가 없어
-    /// 「블루투스를 확인하라」는 안내는 찾을 수 없는 설정을 가리킨다.
-    static let failedDescription = "설정에서 이 앱의 로컬 네트워크 권한을 켜 주세요."
-    static let failedImage = "wifi.exclamationmark"
+    static let openSettings = "설정 열기"
+    static let retry = "다시 시도"
+    static let searchAgain = "다시 찾기"
 
     static let cardFailureTitle = "내 명함을 불러올 수 없어요"
     static let cardFailureDescription = "명함이 있어야 상대에게 보낼 수 있어요."
@@ -47,6 +45,8 @@ public struct CardExchangeView: View {
     // MARK: - Property
 
     @State private var viewModel: CardExchangeViewModel
+
+    @Environment(\.scenePhase) private var scenePhase
 
     // MARK: - Init
 
@@ -76,6 +76,21 @@ public struct CardExchangeView: View {
         .onDisappear {
             Task { await viewModel.stop() }
         }
+        // 백그라운드에서 MPC 세션은 조용히 죽는데 화면은 그 사실을 모른다 — 복귀하면
+        // 목록에 옛 피어가 남은 채 아무도 새로 발견되지 않는다. 나갈 때 확실히 걷고
+        // 돌아올 때 다시 연다.
+        //
+        // `.inactive` 는 알림 센터·앱 스위처·전화 수신처럼 곧 돌아올 상태라 그대로 둔다.
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                Task { await viewModel.stop() }
+            case .active:
+                Task { await viewModel.resumeIfNeeded() }
+            default:
+                break
+            }
+        }
         .fullScreenCover(item: Binding(
             get: { viewModel.completedCard },
             set: { if $0 == nil { viewModel.dismissCompletion() } }
@@ -101,12 +116,8 @@ public struct CardExchangeView: View {
                 systemImage: Constants.cardFailureImage,
                 description: Text(Constants.cardFailureDescription)
             )
-        } else if viewModel.sessionFailed {
-            ContentUnavailableView(
-                Constants.failedTitle,
-                systemImage: Constants.failedImage,
-                description: Text(Constants.failedDescription)
-            )
+        } else if let failure = viewModel.failure {
+            failureView(failure)
         } else if viewModel.peers.isEmpty {
             // 시안 12654:32255 — 아직 아무도 발견하지 못한 동안의 레이더 화면.
             ScrollView {
@@ -115,6 +126,26 @@ public struct CardExchangeView: View {
             .scrollBounceBehavior(.basedOnSize)
         } else {
             peerList
+        }
+    }
+
+    /// 사유별로 문구와 복구 버튼이 다르다 — 만료된 사용자에게 권한을 켜라고 하면
+    /// 켤 것이 없어 사용자는 막힌다.
+    private func failureView(_ failure: BusinessCardError) -> some View {
+        let style = FailureStyle(failure)
+
+        return ContentUnavailableView {
+            Label(style.title, systemImage: style.image)
+        } description: {
+            Text(failure.errorDescription ?? "")
+        } actions: {
+            Button(style.actionTitle) {
+                if style.opensSettings {
+                    openAppSettings()
+                } else {
+                    Task { await viewModel.start() }
+                }
+            }
         }
     }
 
@@ -127,6 +158,7 @@ public struct CardExchangeView: View {
                     } label: {
                         DiscoveredPeerRow(
                             peer: peer,
+                            hasSent: viewModel.sentPeerIDs.contains(peer.id),
                             isSending: viewModel.sendingPeerID == peer.id
                         )
                     }
@@ -141,4 +173,59 @@ public struct CardExchangeView: View {
         }
     }
 
+}
+
+// MARK: - Failure Style
+
+/// 실패 사유 → 화면 표현. 사유마다 제목·아이콘·복구 버튼이 다르다.
+///
+/// 케이스별 `switch` 를 항목 수만큼 늘어놓으면 한 사유의 문구를 고칠 때 나머지를
+/// 빼먹는다. 한 자리에서 한 번에 고른다.
+private struct FailureStyle {
+
+    let title: String
+    let image: String
+    let actionTitle: String
+    /// 권한은 앱 안에서 풀 수 없다 — 설정을 여는 것 말고 할 수 있는 게 없다.
+    let opensSettings: Bool
+
+    init(_ failure: BusinessCardError) {
+        switch failure {
+        case .permissionDenied:
+            title = "교환을 시작할 수 없어요"
+            image = "wifi.exclamationmark"
+            actionTitle = Constants.openSettings
+            opensSettings = true
+        case .sessionExpired:
+            title = "교환을 멈췄어요"
+            image = "clock.badge.exclamationmark"
+            actionTitle = Constants.searchAgain
+            opensSettings = false
+        case .exchangeFailed:
+            title = "주변 기기와 연결하지 못했어요"
+            image = "antenna.radiowaves.left.and.right.slash"
+            actionTitle = Constants.retry
+            opensSettings = false
+        case .saveFailed:
+            title = "명함을 저장하지 못했어요"
+            image = "externaldrive.badge.exclamationmark"
+            actionTitle = Constants.retry
+            opensSettings = false
+        case .peerUnavailable:
+            title = "상대를 찾을 수 없어요"
+            image = "person.fill.questionmark"
+            actionTitle = Constants.searchAgain
+            opensSettings = false
+        case .invalidCardLink:
+            title = "명함 정보를 읽을 수 없어요"
+            image = "exclamationmark.triangle"
+            actionTitle = Constants.retry
+            opensSettings = false
+        }
+    }
+}
+
+private func openAppSettings() {
+    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+    UIApplication.shared.open(url)
 }

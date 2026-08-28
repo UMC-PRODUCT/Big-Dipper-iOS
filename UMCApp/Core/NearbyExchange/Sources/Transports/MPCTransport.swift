@@ -87,8 +87,6 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
     // MARK: - Property
 
-    public static var isSupported: Bool { true }
-
     /// 이 실행에서 나를 가리키는 임의 식별자.
     ///
     /// `MCPeerID.displayName` 을 키로 쓸 수 없다. **iOS 16부터 `UIDevice.name` 은 별도
@@ -130,8 +128,11 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     private var connectTimer: DispatchSourceTimer?
     /// `receive()` 구독 전에 도착한 명함.
     private var pendingPayloads: [ExchangePayload] = []
+    /// `startScanning()` 구독 전에 발생한 발견·소실. UseCase 는 광고를 먼저 걸고 스캔을
+    /// 구독하므로 그 사이에 신호가 나면 통로가 없다 — `pendingPayloads` 와 같은 이유다.
+    private var pendingDiscoveryEvents: [NearbyDiscoveryEvent] = []
 
-    private var peerContinuation: AsyncStream<DiscoveredPeer>.Continuation?
+    private var peerContinuation: AsyncStream<NearbyDiscoveryEvent>.Continuation?
     private var receiveContinuation: AsyncStream<ExchangePayload>.Continuation?
 
     /// 핸드셰이크를 만들고 받는 쪽 (레인징 조율 계층). 없으면 핸드셰이크를 주고받지 않는다.
@@ -151,15 +152,6 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     /// 진단 로그 (최신순, 최대 40줄).
     public var diagnosticLog: [String] {
         stateQueue.sync { _log }
-    }
-
-    /// 지금 **살아 있다고 보는** 피어의 세션 식별자.
-    ///
-    /// 화면 목록이 여기에 없는 행을 들고 있으면 유령이다. 앱을 강제 종료하면 Bonjour
-    /// goodbye 가 나가지 않아 상대 목록에 옛 광고가 TTL 만큼 남는데, 그 행을 탭하면 없는
-    /// 기기에게 초대를 보내고 타임아웃까지 그대로 태운다.
-    public var discoveredPeerIDs: Set<String> {
-        stateQueue.sync { Set(discoveredPeers.keys) }
     }
 
     /// 지금 세션에 연결된 피어의 세션 식별자.
@@ -249,9 +241,18 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
     // MARK: - Scanning
 
-    public func startScanning() -> AsyncStream<DiscoveredPeer> {
+    public func startScanning() -> AsyncStream<NearbyDiscoveryEvent> {
         AsyncStream { continuation in
-            stateQueue.sync { peerContinuation = continuation }
+            // 구독 전에 난 발견·소실을 먼저 흘린다 — 광고/구독 순서에 의존하지 않는다.
+            let buffered = stateQueue.sync { () -> [NearbyDiscoveryEvent] in
+                peerContinuation = continuation
+                let pending = pendingDiscoveryEvents
+                pendingDiscoveryEvents.removeAll()
+                return pending
+            }
+            for event in buffered {
+                continuation.yield(event)
+            }
             continuation.onTermination = { [weak self] _ in
                 // sync 금지 — 이 핸들러는 finish() 호출 스레드에서 동기 실행된다.
                 self?.stateQueue.async {
@@ -277,7 +278,9 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     public func send(payload: ExchangePayload, to peer: DiscoveredPeer) async throws {
         let (session, peerID) = stateQueue.sync { (self.session, peersBySessionID[peer.id]) }
         guard let session, let peerID else {
-            throw NearbyError.invalidPayload("발견되지 않은 피어: \(peer.id)")
+            // 페이로드 문제가 아니라 상대가 사라진 것이다. 구분하지 않으면 상위가
+            // 재시도해도 될 실패로 오인해 없는 기기에게 20초씩 초대를 건다.
+            throw NearbyError.peerUnavailable
         }
 
         let alreadyConnected = session.connectedPeers.contains(peerID)
@@ -511,7 +514,19 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         }
     }
 
-    private func takePeerContinuation() -> AsyncStream<DiscoveredPeer>.Continuation? {
+    /// 발견 채널로 이벤트를 흘린다. **`stateQueue` 안에서만 호출한다.**
+    ///
+    /// 아직 구독 전이면 버린다는 선택지는 없다 — 광고 시작 직후 나는 실패·발견이 통째로
+    /// 사라져 화면이 「탐색 중」에서 멈춘다. 그래서 버퍼에 쌓아 두고 구독 시점에 흘린다.
+    private func emitDiscovery(_ event: NearbyDiscoveryEvent) {
+        if let peerContinuation {
+            peerContinuation.yield(event)
+        } else {
+            pendingDiscoveryEvents.append(event)
+        }
+    }
+
+    private func takePeerContinuation() -> AsyncStream<NearbyDiscoveryEvent>.Continuation? {
         stateQueue.sync {
             let current = peerContinuation
             peerContinuation = nil
@@ -528,6 +543,7 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
             repliedSessionIDs.removeAll()
             connectingSessionIDs.removeAll()
             pendingPayloads.removeAll()
+            pendingDiscoveryEvents.removeAll()
         }
     }
 
@@ -589,7 +605,10 @@ extension MPCTransport: MCNearbyServiceAdvertiserDelegate {
         _ advertiser: MCNearbyServiceAdvertiser,
         didNotStartAdvertisingPeer error: any Error
     ) {
+        // `startAdvertising()` 은 이미 성공 반환한 뒤다 — 실패는 여기로만 온다.
+        // 스트림에 싣지 않으면 화면은 광고가 서 있다고 믿고 계속 레이더를 그린다.
         recordError("advertise", error)
+        stateQueue.sync { emitDiscovery(.failed(.startFailure(error))) }
     }
 }
 
@@ -616,7 +635,7 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
             peersBySessionID[peer.id] = peerID
             discoveredPeers[peer.id] = peer
             deviceModels[peer.id] = deviceModel
-            peerContinuation?.yield(peer)
+            emitDiscovery(.found(peer))
             if isNew {
                 let who = deviceModel.map { "\($0) " } ?? ""
                 appendLog(
@@ -636,6 +655,9 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
             deviceModels[sessionID] = nil
             repliedSessionIDs.remove(sessionID)
             connectingSessionIDs.remove(sessionID)
+            // 소실을 스트림으로도 내보낸다. 내부 딕셔너리만 지우면 화면은 옛 행을 계속
+            // 들고 있고, 그 유령을 탭하면 없는 기기에게 초대를 보내 20초를 통째로 태운다.
+            emitDiscovery(.lost(peerID: sessionID))
             return handshakeProvider
         }
         log("피어 소실 \(sessionID)")
@@ -647,6 +669,9 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
         didNotStartBrowsingForPeers error: any Error
     ) {
         recordError("browse", error)
+        // 사유를 먼저 흘리고 닫는다. 그냥 닫으면 상위 `for await` 가 조용히 끝나
+        // 「주변에 아무도 없음」과 구분되지 않는다.
+        stateQueue.sync { emitDiscovery(.failed(.startFailure(error))) }
         takePeerContinuation()?.finish()
     }
 }
