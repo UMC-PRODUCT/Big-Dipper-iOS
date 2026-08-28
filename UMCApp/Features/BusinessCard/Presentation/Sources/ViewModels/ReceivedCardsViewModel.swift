@@ -86,10 +86,12 @@ public final class ReceivedCardsViewModel {
         cards = .loading
         do {
             cards = .loaded(try await fetchReceivedCards.execute(query: trimmedQuery))
-        } catch let error as AppError {
-            cards = .failed(error)
+        } catch let error as BusinessCardError {
+            cards = .failed(error.asAppError)
         } catch {
-            cards = .failed(.unknown(message: error.localizedDescription))
+            // `.unknown` 으로 뭉개면 Repository·Network 에러가 전부 「일시적인 오류」가
+            // 되어 재시도 가능 여부까지 잃는다. `AppError.from` 이 타입별로 정규화한다.
+            cards = .failed(AppError.from(error))
         }
     }
 

@@ -167,13 +167,30 @@ struct CardExchangeViewModelTests {
         #expect(exchange.startCount == .zero)
     }
 
-    @Test("세션이 실패 이벤트를 흘리면 화면에 남긴다")
+    /// 릴리스 빌드에서도 사유가 화면까지 닿아야 한다 — 예전에는 검증용 디버그 화면만
+    /// 원문을 볼 수 있었고 제품 화면은 실패 여부조차 몰랐다.
+    @Test("세션이 실패 이벤트를 흘리면 사유까지 화면에 남긴다")
     func sessionFailureIsSurfaced() async {
-        let sut = makeSUT(exchange: StubExchangeCards(events: [.failed(.transportFailure(underlying: NearbyError.invalidPayload("연결 시간 초과")))]))
+        let sut = makeSUT(exchange: StubExchangeCards(events: [.failed(.permissionDenied)]))
 
         await sut.start()
 
-        #expect(sut.sessionFailed)
+        #expect(sut.failure == .permissionDenied)
+    }
+
+    /// 만료된 사용자에게 「권한을 켜라」고 하면 켤 것이 없어 막힌다.
+    @Test("만료와 저장 실패는 서로 다른 사유로 남는다")
+    func failureReasonsAreDistinct() async {
+        let expired = makeSUT(exchange: StubExchangeCards(events: [.failed(.sessionExpired)]))
+        let saveFailed = makeSUT(
+            exchange: StubExchangeCards(events: [.failed(.saveFailed(reason: "디스크"))])
+        )
+
+        await expired.start()
+        await saveFailed.start()
+
+        #expect(expired.failure == .sessionExpired)
+        #expect(saveFailed.failure == .saveFailed(reason: "디스크"))
     }
 
     // MARK: - Teardown

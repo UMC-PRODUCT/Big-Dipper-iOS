@@ -36,8 +36,11 @@ public final class CardExchangeViewModel {
     /// 수신·저장까지 끝난 상대 명함. 완료 화면의 유일한 입력이다.
     public private(set) var completedCard: ReceivedCard?
 
-    /// 세션이 시작조차 못 한 상태. 목록이 영영 비는 것과 구분해 화면이 다르게 그린다.
-    public private(set) var sessionFailed = false
+    /// 세션이 멈춘 사유. 목록이 영영 비는 것과 구분해 화면이 다르게 그린다.
+    ///
+    /// `Bool` 로 두면 「권한 거부」·「5분 만료」·「저장 실패」가 한 칸에 뭉개져 화면이
+    /// 원인과 무관한 안내를 하게 된다 — 실제로 만료된 사용자에게 권한을 켜라고 했다.
+    public private(set) var failure: BusinessCardError?
 
     private let fetchMyCard: FetchMyCardUseCaseProtocol
     private let exchangeCards: ExchangeCardsUseCaseProtocol
@@ -64,7 +67,7 @@ public final class CardExchangeViewModel {
     public func start() async {
         // 「계속 교환하기」로 재진입할 때 이전 결과가 남아 있으면 완료 화면이 곧장 다시 뜬다.
         completedCard = nil
-        sessionFailed = false
+        failure = nil
         peers = []
 
         let card: MyCard
@@ -126,8 +129,8 @@ public final class CardExchangeViewModel {
         case .received(let card):
             completedCard = card
 
-        case .failed:
-            sessionFailed = true
+        case .failed(let error):
+            failure = error
         }
     }
 

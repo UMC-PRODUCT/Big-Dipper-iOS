@@ -107,11 +107,11 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
                     try await self.transport.startAdvertising(card: payload)
                     self.yield(.advertising)
                 } catch let error as NearbyError {
-                    self.yield(.failed(error))
+                    self.yield(.failed(BusinessCardError(error)))
                     self.finish()
                     return
                 } catch {
-                    self.yield(.failed(.transportFailure(underlying: error)))
+                    self.yield(.failed(.exchangeFailed(reason: "\(error)")))
                     self.finish()
                     return
                 }
@@ -123,6 +123,8 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
                         self.yield(.peerFound(peer))
                     case .lost(let peerID):
                         self.yield(.peerLost(peerID: peerID))
+                    case .failed(let error):
+                        self.yield(.failed(BusinessCardError(error)))
                     }
                 }
                 // 스캔 스트림이 끝나도 세션은 타임아웃/stop까지 유지된다.
@@ -168,7 +170,9 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
             guard let card else { return }
             yield(.received(card))
         } catch {
-            yield(.failed(.transportFailure(underlying: error)))
+            // 저장 실패를 전송 실패로 감싸면 화면이 「연결하지 못했어요」를 띄운다.
+            // 교환 자체는 성공했고 명함첩에 넣는 데만 실패했다 — 재시도가 의미 있다.
+            yield(.failed(.saveFailed(reason: "\(error)")))
         }
     }
 

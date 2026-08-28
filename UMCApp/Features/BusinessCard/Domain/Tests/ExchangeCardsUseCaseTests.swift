@@ -88,6 +88,48 @@ struct ExchangeCardsUseCaseTests {
         #expect(events.contains(.peerLost(peerID: "peer-1")))
     }
 
+    /// 탐색이 서지 못한 것과 「주변에 아무도 없음」은 화면에서 똑같이 빈 목록이다.
+    /// 사유가 흐르지 않으면 사용자는 5분을 기다린 뒤 원인과 무관한 안내를 받는다.
+    @Test("transport 시작 실패는 failed 이벤트로 흐른다")
+    func startFailureIsForwarded() async {
+        let transport = MockNearbyTransport(
+            stubbedDiscoveryEvents: [.failed(.permissionDenied)]
+        )
+        let sut = ExchangeCardsUseCase(
+            transport: transport,
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
+            sessionTimeout: .milliseconds(200)
+        )
+
+        var failures: [BusinessCardError] = []
+        for await event in sut.start(myCard: myCard) {
+            if case .failed(let error) = event { failures.append(error) }
+        }
+
+        #expect(failures.contains(.permissionDenied))
+    }
+
+    /// 저장 실패를 전송 실패로 감싸면 화면이 「연결하지 못했어요」를 띄운다 — 교환은
+    /// 성공했고 명함첩에 넣는 데만 실패했다.
+    @Test("저장 실패는 전송 실패와 다른 사유로 흐른다")
+    func saveFailureIsDistinct() async throws {
+        let repository = MockReceivedCardRepository()
+        repository.saveError = NSError(domain: "SwiftData", code: 1)
+        let sut = ExchangeCardsUseCase(
+            transport: MockNearbyTransport(stubbedPayloads: [try makePeerPayload()]),
+            saveReceivedCard: SaveReceivedCardUseCase(repository: repository),
+            sessionTimeout: .milliseconds(200)
+        )
+
+        var failures: [BusinessCardError] = []
+        for await event in sut.start(myCard: myCard) {
+            if case .failed(let error) = event { failures.append(error) }
+        }
+
+        #expect(failures.contains { if case .saveFailed = $0 { return true }; return false })
+        #expect(!failures.contains { if case .exchangeFailed = $0 { return true }; return false })
+    }
+
     @Test("send는 transport에 내 명함 페이로드를 전달한다")
     func sendDelegates() async throws {
         let transport = MockNearbyTransport()

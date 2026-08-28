@@ -25,30 +25,8 @@ public enum ExchangeEvent: Sendable, Equatable {
     /// **명함 전송과 무관한 이벤트다.** 거리는 NearbyInteraction 이 재고, 교환 전에도
     /// 계속 흐른다. UWB 미탑재 기기이거나 범위를 벗어나면 `meters` 가 `nil` 이다.
     case distanceUpdated(peerID: String, meters: Double?)
-    case failed(NearbyError)            // 시작 실패·세션 만료
-
-    /// `NearbyError`는 Equatable이 아니라 failed는 케이스 일치로 갈음한다.
-    public static func == (lhs: ExchangeEvent, rhs: ExchangeEvent) -> Bool {
-        switch (lhs, rhs) {
-        case (.advertising, .advertising), (.scanning, .scanning):
-            return true
-        case (.peerFound(let lhsPeer), .peerFound(let rhsPeer)):
-            return lhsPeer == rhsPeer
-        case (.peerLost(let lhsID), .peerLost(let rhsID)):
-            return lhsID == rhsID
-        case (.sent(let lhsPeer), .sent(let rhsPeer)):
-            return lhsPeer == rhsPeer
-        case (.received(let lhsCard), .received(let rhsCard)):
-            return lhsCard == rhsCard
-        case (.distanceUpdated(let lhsID, let lhsMeters),
-              .distanceUpdated(let rhsID, let rhsMeters)):
-            return lhsID == rhsID && lhsMeters == rhsMeters
-        case (.failed, .failed):
-            return true
-        default:
-            return false
-        }
-    }
+    /// 교환이 멈춘 사유. 화면은 이 값으로 문구와 복구 버튼을 고른다.
+    case failed(BusinessCardError)
 }
 
 public protocol ExchangeCardsUseCaseProtocol: Sendable {
