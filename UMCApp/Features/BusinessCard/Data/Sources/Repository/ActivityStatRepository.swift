@@ -9,13 +9,12 @@ import Foundation
 import Moya
 import CoreNetwork
 import CoreDomain
-import UMCFoundation
 import BusinessCardDomain
 
 /// 마이페이지 행 카운트 저장소 (MP-F07~F09).
 ///
-/// 통합 stat API 부재로 기존 소스 3개를 조합한다. 실패는 그대로 throw — "0" 폴백은
-/// UseCase 정책. 서버 stat API가 생기면 이 구현체만 교체한다.
+/// 통합 stat API 부재로 기존 소스 3개를 조합한다. 실패는 그대로 throw — 조회 실패를
+/// "0"으로 바꾸지 않는다 (#1222). 서버 stat API가 생기면 이 구현체만 교체한다.
 public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Property
@@ -45,12 +44,17 @@ public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unch
 
     // MARK: - Function
 
-    public func fetchStudyCount() async throws -> Int {
+    /// 커서 응답에는 총개수가 없다 — 한 페이지(50) 를 받아 항목 수를 센다.
+    ///
+    /// 50건을 다 채우고 `hasNext` 가 참이면 **실제 수는 더 많다.** 예전에는 그 상태에서도
+    /// 그냥 "50"을 보여 줘서 51번째부터는 없는 것처럼 보였다 — 지금은 `"50+"` 로 잘렸음을
+    /// 드러낸다 (#1222).
+    public func fetchStudyCount() async throws -> String {
         let response = try await networkRequesting.request(
             BusinessCardRouter.getMyStudyGroups(query: StudyCountQueryDTO())
         )
         let page: StudyCountPageDTO = try decodeAbsorbingWrapper(from: response.data)
-        return page.itemCount
+        return page.hasNext ? "\(page.itemCount)+" : "\(page.itemCount)"
     }
 
     /// 서버 `totalElements`를 **변환 없이 그대로** 돌려준다 (절대 규칙 #2).
@@ -64,17 +68,14 @@ public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unch
         return page.totalElements
     }
 
-    /// 활동·프로젝트 이력 수 = admin 제외 챌린저 기수 기록 수 (추가 왕복 없음 — 프로필 캐시).
+    /// 활동·프로젝트 이력 수 = 마이페이지 활동 목록의 항목 수 (추가 왕복 없음 — 프로필 캐시).
     ///
-    /// 설계서가 적은 소스 `activityLogs`는 CoreDomain.Profile에 없는 필드다(MyPageDomain
-    /// 파생 모델 소유 — 크로스 피처 import 금지로 참조 불가). 그래서 정본
-    /// Profile.challengerRecords에서 재파생한다. MP-F08 우측 숫자의 의미는
-    /// "챌린저 이력 수"다 (운영진 항목 포함 여부에서 MyPage activityLogs와 갈릴 수 있음).
+    /// 예전에는 여기서 `challengerRecords` 를 직접 세는 바람에 운영진 이력이 목록에는
+    /// 보이고 숫자에는 빠졌다. 이제 목록과 같은 ``CoreDomain/Profile/activityLogs()`` 를
+    /// 부른다 — 규칙이 한 곳에 있으니 다시 갈라질 수 없다 (#1222).
     public func fetchActivityCount() async throws -> Int {
         let profile = try await memberProfileRepository.fetchMyProfile(forceRefresh: false)
-        return profile.challengerRecords
-            .filter { UMCPartType(apiValue: $0.part) != .admin }
-            .count
+        return profile.activityLogs().count
     }
 
     // MARK: - Private Function

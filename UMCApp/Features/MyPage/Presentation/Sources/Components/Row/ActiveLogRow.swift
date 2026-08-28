@@ -6,6 +6,7 @@
 //
 
 import CoreDesignSystem
+import CoreDomain
 import CoreUIComponents
 import MyPageDomain
 import SwiftUI

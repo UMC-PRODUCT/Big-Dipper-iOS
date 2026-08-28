@@ -88,7 +88,7 @@ struct BusinessCardDebugView: View {
                 icon: "person.text.rectangle.fill",
                 iconTint: .green,
                 title: "받은 명함",
-                trailingValue: "\(viewModel.activityStat.receivedCardCount)장"
+                trailingValue: viewModel.activityStat.receivedCardCount.map { "\($0)장" } ?? "-"
             ) {
                 DebugReceivedCardsView(viewModel: viewModel)
             }
@@ -111,7 +111,7 @@ struct BusinessCardDebugView: View {
                 icon: "chart.bar.fill",
                 iconTint: .orange,
                 title: "나의 스터디",
-                trailingValue: "\(viewModel.activityStat.studyCount)건"
+                trailingValue: viewModel.activityStat.studyCount.map { "\($0)건" } ?? "-"
             ) {
                 DebugMyStudyListView(container: container)
             }
@@ -122,7 +122,7 @@ struct BusinessCardDebugView: View {
                 icon: "folder.fill",
                 iconTint: .teal,
                 title: "나의 활동 · 프로젝트",
-                trailingValue: "\(viewModel.activityStat.activityCount)건"
+                trailingValue: viewModel.activityStat.activityCount.map { "\($0)건" } ?? "-"
             ) {
                 DebugMyActivityListView(container: container)
             }
