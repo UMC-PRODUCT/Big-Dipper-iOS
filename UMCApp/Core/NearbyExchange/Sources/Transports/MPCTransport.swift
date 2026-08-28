@@ -87,8 +87,6 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
     // MARK: - Property
 
-    public static var isSupported: Bool { true }
-
     /// 이 실행에서 나를 가리키는 임의 식별자.
     ///
     /// `MCPeerID.displayName` 을 키로 쓸 수 없다. **iOS 16부터 `UIDevice.name` 은 별도
@@ -605,7 +603,10 @@ extension MPCTransport: MCNearbyServiceAdvertiserDelegate {
         _ advertiser: MCNearbyServiceAdvertiser,
         didNotStartAdvertisingPeer error: any Error
     ) {
+        // `startAdvertising()` 은 이미 성공 반환한 뒤다 — 실패는 여기로만 온다.
+        // 스트림에 싣지 않으면 화면은 광고가 서 있다고 믿고 계속 레이더를 그린다.
         recordError("advertise", error)
+        stateQueue.sync { emitDiscovery(.failed(.startFailure(error))) }
     }
 }
 
@@ -666,6 +667,9 @@ extension MPCTransport: MCNearbyServiceBrowserDelegate {
         didNotStartBrowsingForPeers error: any Error
     ) {
         recordError("browse", error)
+        // 사유를 먼저 흘리고 닫는다. 그냥 닫으면 상위 `for await` 가 조용히 끝나
+        // 「주변에 아무도 없음」과 구분되지 않는다.
+        stateQueue.sync { emitDiscovery(.failed(.startFailure(error))) }
         takePeerContinuation()?.finish()
     }
 }

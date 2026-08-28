@@ -16,11 +16,18 @@ import Foundation
 ///
 /// 발견과 소실을 한 스트림에 실으면 **순서가 보장된다** — 별도 채널로 나누면 재발견이
 /// 소실보다 먼저 도착해 살아 있는 행을 지우는 경합이 생긴다.
-public enum NearbyDiscoveryEvent: Sendable, Equatable {
+public enum NearbyDiscoveryEvent: Sendable {
 
     /// 주변에서 새로 발견했거나 광고 정보가 갱신된 피어.
     case found(DiscoveredPeer)
 
     /// 더 이상 보이지 않는 피어. 목록에서 그 행을 지워야 한다.
     case lost(peerID: String)
+
+    /// 광고·탐색이 서지 못했다.
+    ///
+    /// 이 신호가 없으면 실패와 「주변에 아무도 없음」이 화면에서 똑같이 빈 목록으로
+    /// 보인다. 권한을 거부한 사용자는 레이더가 도는 화면을 5분간 보다가 만료 안내를
+    /// 받았다 — 원인과 무관한 문구다.
+    case failed(NearbyError)
 }
