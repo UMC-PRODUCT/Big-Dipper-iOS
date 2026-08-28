@@ -67,6 +67,27 @@ struct ExchangeCardsUseCaseTests {
         #expect(transport.advertisedCards.count == 1)
     }
 
+    /// transport 가 소실을 알아도 UseCase 가 흘리지 않으면 화면은 유령 행을 못 지운다.
+    @Test("transport 소실 신호는 peerLost 이벤트로 흐른다")
+    func lostPeerIsForwarded() async {
+        let transport = MockNearbyTransport(
+            stubbedPeers: [makePeer()],
+            stubbedDiscoveryEvents: [.lost(peerID: "peer-1")]
+        )
+        let sut = ExchangeCardsUseCase(
+            transport: transport,
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
+            sessionTimeout: .milliseconds(200)
+        )
+
+        var events: [ExchangeEvent] = []
+        for await event in sut.start(myCard: myCard) {
+            events.append(event)
+        }
+
+        #expect(events.contains(.peerLost(peerID: "peer-1")))
+    }
+
     @Test("send는 transport에 내 명함 페이로드를 전달한다")
     func sendDelegates() async throws {
         let transport = MockNearbyTransport()

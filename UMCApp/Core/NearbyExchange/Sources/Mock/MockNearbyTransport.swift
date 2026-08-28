@@ -22,6 +22,8 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
 
     public let stubbedPeers: [DiscoveredPeer]
     public let stubbedPayloads: [ExchangePayload]
+    /// 발견 이후에 흘릴 이벤트 — 소실·실패 전파를 테스트에서 그대로 재현한다.
+    public let stubbedDiscoveryEvents: [NearbyDiscoveryEvent]
     // 기록용 상태. 목이 Sendable 이라 mutable 저장 프로퍼티는 컴파일러가 막는다.
     // 테스트·프리뷰에서만 단일 스레드로 쓰므로 검사만 끈다.
     public nonisolated(unsafe) private(set) var didStartAdvertising = false
@@ -34,10 +36,12 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
 
     public init(
         stubbedPeers: [DiscoveredPeer] = [],
-        stubbedPayloads: [ExchangePayload] = []
+        stubbedPayloads: [ExchangePayload] = [],
+        stubbedDiscoveryEvents: [NearbyDiscoveryEvent] = []
     ) {
         self.stubbedPeers = stubbedPeers
         self.stubbedPayloads = stubbedPayloads
+        self.stubbedDiscoveryEvents = stubbedDiscoveryEvents
     }
 
     // MARK: - NearbyTransportProtocol
@@ -51,11 +55,11 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
         didStopAdvertising = true
     }
 
-    public func startScanning() -> AsyncStream<DiscoveredPeer> {
-        let peers = stubbedPeers
+    public func startScanning() -> AsyncStream<NearbyDiscoveryEvent> {
+        let events = stubbedPeers.map { NearbyDiscoveryEvent.found($0) } + stubbedDiscoveryEvents
         return AsyncStream { continuation in
-            for peer in peers {
-                continuation.yield(peer)
+            for event in events {
+                continuation.yield(event)
             }
             continuation.finish()
         }

@@ -48,6 +48,35 @@ struct CardExchangeViewModelTests {
         #expect(sut.peers.first?.displayName == "새 이름")
     }
 
+    /// 상대가 앱을 끄면 목록에 유령 행이 남는다. 그 행을 탭하면 없는 기기에게 초대를
+    /// 보내고 연결 타임아웃(20초)을 통째로 태운다.
+    @Test("피어가 사라지면 목록에서 그 행을 지운다")
+    func lostPeerIsRemoved() async {
+        let exchange = StubExchangeCards(events: [
+            .peerFound(makePeer(id: "a")),
+            .peerFound(makePeer(id: "b")),
+            .peerLost(peerID: "a"),
+        ])
+        let sut = makeSUT(exchange: exchange)
+
+        await sut.start()
+
+        #expect(sut.peers.map(\.id) == ["b"])
+    }
+
+    @Test("모르는 피어의 소실은 남은 목록을 건드리지 않는다")
+    func lostUnknownPeerKeepsList() async {
+        let exchange = StubExchangeCards(events: [
+            .peerFound(makePeer(id: "a")),
+            .peerLost(peerID: "ghost"),
+        ])
+        let sut = makeSUT(exchange: exchange)
+
+        await sut.start()
+
+        #expect(sut.peers.map(\.id) == ["a"])
+    }
+
     /// 거리는 교환과 무관하게 계속 흐른다. 새 피어를 만들지 않고 그 행의 값만 갱신해야 한다.
     @Test("거리 갱신은 새 행을 만들지 않고 그 행의 값만 바꾼다")
     func distanceUpdatesInPlace() async {

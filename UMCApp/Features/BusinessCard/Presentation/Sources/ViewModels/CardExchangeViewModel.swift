@@ -116,6 +116,10 @@ public final class CardExchangeViewModel {
         case .peerFound(let peer):
             upsert(peer)
 
+        case .peerLost(let peerID):
+            // 남겨두면 없는 기기에게 초대를 보내고 연결 타임아웃(20초)을 통째로 태운다.
+            peers.removeAll { $0.id == peerID }
+
         case .distanceUpdated(let peerID, let meters):
             updateDistance(peerID: peerID, meters: meters)
 

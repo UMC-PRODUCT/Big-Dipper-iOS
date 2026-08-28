@@ -117,8 +117,13 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
                 }
 
                 self.yield(.scanning)
-                for await peer in self.transport.startScanning() {
-                    self.yield(.peerFound(peer))
+                for await event in self.transport.startScanning() {
+                    switch event {
+                    case .found(let peer):
+                        self.yield(.peerFound(peer))
+                    case .lost(let peerID):
+                        self.yield(.peerLost(peerID: peerID))
+                    }
                 }
                 // 스캔 스트림이 끝나도 세션은 타임아웃/stop까지 유지된다.
                 // receiveTask를 여기서 await하지 않는다 — 대기하면 취소가 닿지 않아

@@ -13,6 +13,11 @@ public enum ExchangeEvent: Sendable, Equatable {
     case advertising                    // 광고 시작됨
     case scanning                       // 스캔 시작됨
     case peerFound(DiscoveredPeer)      // 주변 명함 발견 (wifiwnd 리스트 행)
+    /// 발견 목록에서 사라진 피어. 화면은 그 행을 지운다.
+    ///
+    /// 이 케이스가 없던 동안 상대가 앱을 종료해도 행이 남았고, 그 유령을 탭하면 없는
+    /// 기기에게 초대를 보내 연결 타임아웃(20초)을 통째로 태운 뒤에야 실패했다.
+    case peerLost(peerID: String)
     case sent(DiscoveredPeer)           // 선택한 피어에게 내 명함 전송됨
     case received(ReceivedCard)         // 상대 명함 수신·저장됨 (교환 완료 화면 데이터)
     /// UWB 실측 거리 갱신 (wifiwnd 행 우측 「2.1m」).
@@ -29,6 +34,8 @@ public enum ExchangeEvent: Sendable, Equatable {
             return true
         case (.peerFound(let lhsPeer), .peerFound(let rhsPeer)):
             return lhsPeer == rhsPeer
+        case (.peerLost(let lhsID), .peerLost(let rhsID)):
+            return lhsID == rhsID
         case (.sent(let lhsPeer), .sent(let rhsPeer)):
             return lhsPeer == rhsPeer
         case (.received(let lhsCard), .received(let rhsCard)):
