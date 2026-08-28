@@ -41,9 +41,7 @@ public struct BusinessCardRoutingView: View {
         case .receivedCards:
             ReceivedCardsView(
                 viewModel: ReceivedCardsViewModel(
-                    fetchReceivedCards: provider.fetchReceivedCardsUseCase,
-                    deleteReceivedCard: provider.deleteReceivedCardUseCase,
-                    errorHandler: errorHandler
+                    fetchReceivedCards: provider.fetchReceivedCardsUseCase
                 )
             )
 
@@ -70,6 +68,17 @@ public struct BusinessCardRoutingView: View {
         // UseCase 를 꺼내므로 컨테이너만 넘긴다.
         case .scan:
             CardScanView(container: container, viewModel: CardScanViewModel())
+
+        case .receivedCardDetail(let card):
+            ReceivedCardDetailView(
+                viewModel: ReceivedCardDetailViewModel(
+                    card: card,
+                    deleteReceivedCard: provider.deleteReceivedCardUseCase,
+                    updateExchangeContext: provider.updateExchangeContextUseCase,
+                    generateCardQR: provider.generateCardQRUseCase,
+                    errorHandler: errorHandler
+                )
+            )
         }
     }
 }

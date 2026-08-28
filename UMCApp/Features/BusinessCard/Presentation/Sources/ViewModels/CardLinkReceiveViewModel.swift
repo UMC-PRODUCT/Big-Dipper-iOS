@@ -15,9 +15,6 @@ private enum Constants {
     static let feature = "BusinessCard"
     static let action = "receiveCardLink"
 
-    /// 명함첩 행에 남는 출처 표기. 근거리 교환과 구분된다.
-    static let exchangeContext = "QR 링크"
-
     static let ownCardTitle = "내 명함이에요"
     static let ownCardMessage = "다른 사람의 QR을 스캔하면 그 명함이 명함첩에 저장돼요."
     static let ownCardConfirm = "확인"
@@ -84,7 +81,10 @@ public final class CardLinkReceiveViewModel {
                 card: card,
                 cardID: Self.cardID(memberId: memberId),
                 ownerMemberId: ownerMemberIdProvider(),
-                exchangeContext: Constants.exchangeContext
+                // 출처는 ``ExchangeMethod`` 가 타입으로 들고 간다 (#1227). 맥락 메모 칸에
+                // "QR 링크" 를 적어 두면 사용자가 메모를 고치는 순간 출처가 사라진다.
+                exchangeContext: nil,
+                exchangeMethod: .qrLink
             )
 
             guard let saved else {

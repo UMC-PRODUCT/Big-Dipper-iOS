@@ -27,7 +27,9 @@ struct CardLinkReceiveViewModelTests {
 
         #expect(sut.savedCard?.profile.name == "정의찬")
         #expect(save.receivedCardID == "QR-42")
-        #expect(save.receivedContext == "QR 링크")
+        // 출처는 맥락 메모가 아니라 ``ExchangeMethod`` 가 들고 간다 (#1227).
+        #expect(save.receivedContext == nil)
+        #expect(save.receivedMethod == .qrLink)
     }
 
     /// 명함첩 dedup 이 이 키를 보조 키로 쓴다. 스캔할 때마다 값이 달라지면 같은 사람이
@@ -212,6 +214,7 @@ private final class SpySaveReceivedCard: SaveReceivedCardUseCaseProtocol, @unche
     private(set) var receivedCardID: String?
     private(set) var receivedOwnerMemberId: String?
     private(set) var receivedContext: String?
+    private(set) var receivedMethod: ExchangeMethod?
 
     init(result: ReceivedCard? = makeReceivedCard(), error: Error? = nil) {
         self.result = result
@@ -221,7 +224,8 @@ private final class SpySaveReceivedCard: SaveReceivedCardUseCaseProtocol, @unche
     func execute(
         payload: ExchangePayload,
         ownerMemberId: String,
-        exchangeContext: String?
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard? {
         Issue.record("QR 링크 경로는 페이로드 진입점을 쓰지 않는다")
         return nil
@@ -231,12 +235,14 @@ private final class SpySaveReceivedCard: SaveReceivedCardUseCaseProtocol, @unche
         card: MyCard,
         cardID: String,
         ownerMemberId: String,
-        exchangeContext: String?
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard? {
         callCount += 1
         receivedCardID = cardID
         receivedOwnerMemberId = ownerMemberId
         receivedContext = exchangeContext
+        receivedMethod = exchangeMethod
         if let error { throw error }
         return result
     }

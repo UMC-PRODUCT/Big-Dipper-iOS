@@ -158,7 +158,10 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
             let card = try await saveReceivedCard.execute(
                 payload: payload,
                 ownerMemberId: ownerMemberId,
-                exchangeContext: nil
+                // 맥락 메모는 상세 화면에서 사용자가 적는다 (#1227) — 교환 직후에 물으면
+                // 대화를 끊는다. 여기서 아는 것은 "근거리로 받았다"는 사실뿐이다.
+                exchangeContext: nil,
+                exchangeMethod: .nearby
             )
             guard let card else { return }
             yield(.received(card))

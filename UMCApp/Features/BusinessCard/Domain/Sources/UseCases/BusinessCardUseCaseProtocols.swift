@@ -38,7 +38,8 @@ public protocol SaveReceivedCardUseCaseProtocol: Sendable {
     func execute(
         payload: ExchangePayload,
         ownerMemberId: String,
-        exchangeContext: String?
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard?
 
     /// 이미 복원된 명함을 저장한다 (QR 딥링크 경로).
@@ -54,8 +55,18 @@ public protocol SaveReceivedCardUseCaseProtocol: Sendable {
         card: MyCard,
         cardID: String,
         ownerMemberId: String,
-        exchangeContext: String?
+        exchangeContext: String?,
+        exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard?
+}
+
+/// 명함첩 항목의 교환 맥락 메모 갱신 (#1227).
+///
+/// 방식(``ExchangeMethod``)은 앱이 자동으로 채우지만 「어디서·무슨 자리에서」는 알 방법이
+/// 없다. 교환 직후에 물으면 대화를 끊으므로, 나중에 상세 화면에서 적게 한다.
+public protocol UpdateExchangeContextUseCaseProtocol: Sendable {
+    /// - Returns: 메모가 반영된 명함.
+    func execute(card: ReceivedCard, context: String?) async throws -> ReceivedCard
 }
 
 /// 명함첩 항목 삭제.

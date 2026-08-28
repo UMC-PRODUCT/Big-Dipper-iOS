@@ -145,7 +145,8 @@ private extension ReceivedCardRecord {
             blog: card.profile.blog,
             avatarURL: card.profile.avatarURL,
             exchangedAt: card.exchangedAt,
-            exchangeContext: card.exchangeContext
+            exchangeContext: card.exchangeContext,
+            exchangeMethodRaw: card.exchangeMethod.rawValue
         )
     }
 
@@ -164,6 +165,7 @@ private extension ReceivedCardRecord {
         avatarURL = card.profile.avatarURL
         exchangedAt = card.exchangedAt
         exchangeContext = card.exchangeContext
+        exchangeMethodRaw = card.exchangeMethod.rawValue
         updatedAt = .now
     }
 
@@ -188,7 +190,8 @@ private extension ReceivedCardRecord {
                 partRaw: (parsedPart == nil && !partRaw.isEmpty) ? partRaw : nil
             ),
             exchangedAt: exchangedAt,
-            exchangeContext: exchangeContext
+            exchangeContext: exchangeContext,
+            exchangeMethod: ExchangeMethod(storedValue: exchangeMethodRaw)
         )
     }
 }
