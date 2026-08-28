@@ -23,7 +23,7 @@ struct CardLinkReceiveViewModelTests {
         let save = SpySaveReceivedCard()
         let sut = makeSUT(fetch: StubFetchPeerCard(card: makeCard()), save: save)
 
-        await sut.receive(memberId: "42")
+        await sut.receive(link: CardLink(memberId: "42"))
 
         #expect(sut.savedCard?.profile.name == "정의찬")
         #expect(save.receivedCardID == "QR-42")
@@ -46,7 +46,7 @@ struct CardLinkReceiveViewModelTests {
         let save = SpySaveReceivedCard()
         let sut = makeSUT(save: save, ownerMemberId: "7")
 
-        await sut.receive(memberId: "42")
+        await sut.receive(link: CardLink(memberId: "42"))
 
         #expect(save.receivedOwnerMemberId == "7")
     }
@@ -59,7 +59,7 @@ struct CardLinkReceiveViewModelTests {
     func ownCardIsExplained() async {
         let sut = makeSUT(save: SpySaveReceivedCard(result: nil))
 
-        await sut.receive(memberId: "7")
+        await sut.receive(link: CardLink(memberId: "7"))
 
         #expect(sut.savedCard == nil)
         #expect(sut.alertPrompt?.title == "내 명함이에요")
@@ -71,7 +71,7 @@ struct CardLinkReceiveViewModelTests {
     func fetchFailureShowsNoCompletion() async {
         let sut = makeSUT(fetch: StubFetchPeerCard(error: StubError.boom))
 
-        await sut.receive(memberId: "42")
+        await sut.receive(link: CardLink(memberId: "42"))
 
         #expect(sut.savedCard == nil)
         #expect(sut.alertPrompt == nil)
@@ -81,7 +81,7 @@ struct CardLinkReceiveViewModelTests {
     func saveFailureShowsNoCompletion() async {
         let sut = makeSUT(save: SpySaveReceivedCard(error: StubError.boom))
 
-        await sut.receive(memberId: "42")
+        await sut.receive(link: CardLink(memberId: "42"))
 
         #expect(sut.savedCard == nil)
     }
@@ -95,10 +95,10 @@ struct CardLinkReceiveViewModelTests {
         let save = SpySaveReceivedCard()
         let sut = makeSUT(fetch: fetch, save: save)
 
-        async let first: Void = sut.receive(memberId: "42")
+        async let first: Void = sut.receive(link: CardLink(memberId: "42"))
         // 첫 호출이 조회에서 멈춘 사이 두 번째가 들어온다.
         await fetch.waitUntilStarted()
-        await sut.receive(memberId: "42")
+        await sut.receive(link: CardLink(memberId: "42"))
         await fetch.resume()
         await first
 
@@ -108,7 +108,7 @@ struct CardLinkReceiveViewModelTests {
     @Test("완료 화면을 닫으면 저장된 명함을 비운다")
     func dismissClearsCompletion() async {
         let sut = makeSUT()
-        await sut.receive(memberId: "42")
+        await sut.receive(link: CardLink(memberId: "42"))
         #expect(sut.savedCard != nil)
 
         sut.dismissCompletion()

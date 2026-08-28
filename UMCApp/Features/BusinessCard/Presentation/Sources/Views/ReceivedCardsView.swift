@@ -28,6 +28,9 @@ private enum Constants {
     static let deleteLabel = "삭제"
     static let deleteImage = "trash"
 
+    static let scanLabel = "QR 스캔"
+    static let scanImage = "qrcode.viewfinder"
+
     /// 스켈레톤 칸 수. 첫 화면에 그리드가 찬 느낌만 주면 되므로 한 화면 분량으로 둔다.
     static let skeletonCount = 6
 }
@@ -69,6 +72,7 @@ public struct ReceivedCardsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $viewModel.searchText, prompt: Constants.searchPrompt)
             .searchToolbarBehavior(.minimize)
+            .toolbar { scanToolbarItem }
             .alertPrompt(item: $viewModel.alertPrompt)
             .task {
                 guard viewModel.cards.isIdle else { return }
@@ -77,6 +81,16 @@ public struct ReceivedCardsView: View {
     }
 
     // MARK: - View Component
+
+    /// 명함첩에서 바로 다음 명함을 받는 동선. 기본 카메라 앱을 거치지 않는다 (#1224).
+    private var scanToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink(value: BusinessCardDestination.scan) {
+                Image(systemName: Constants.scanImage)
+            }
+            .accessibilityLabel(Constants.scanLabel)
+        }
+    }
 
     @ViewBuilder
     private var content: some View {

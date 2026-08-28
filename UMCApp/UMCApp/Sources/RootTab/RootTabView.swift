@@ -8,6 +8,7 @@
 import SwiftUI
 
 import ActivityPresentation
+import BusinessCardDomain
 import BusinessCardPresentation
 import CommunityDomain
 import CommunityPresentation
@@ -36,8 +37,8 @@ struct RootTabView: View {
 
     @State private var pathStore = PathStore()
 
-    /// 딥링크로 받은 명함 링크의 `memberId`. 수신 모디파이어가 처리 후 비운다.
-    @State private var pendingCardMemberId: String?
+    /// 딥링크로 받은 명함 링크. 수신 모디파이어가 처리 후 비운다.
+    @State private var pendingCardLink: CardLink?
 
     @Environment(\.di) private var di
     @Environment(DeepLinkStore.self) private var deepLinkStore
@@ -61,7 +62,7 @@ struct RootTabView: View {
         .environment(pathStore)
         // 명함 링크는 탭을 옮기는 것으로 끝나지 않는다 — 서버 조회·저장·완료 화면까지가
         // 한 동작이라 탭 셸 바깥(모달)에 붙인다.
-        .businessCardLinkReceiver(memberId: $pendingCardMemberId, container: di)
+        .businessCardLinkReceiver(link: $pendingCardLink, container: di)
         // 앱이 켜져 있는 동안 도착한 링크와, 로그인 화면에 머무는 사이 밀려 있던 링크를
         // 같은 함수로 받는다. 후자는 이 뷰가 처음 뜨는 시점에 한 번 꺼내면 된다.
         .task { consumePendingDeepLink() }
@@ -219,11 +220,11 @@ struct RootTabView: View {
                 on: .community
             )
 
-        case .card(let memberId):
+        case .card(let link):
             // 저장 결과는 마이페이지(명함첩이 사는 탭)에서 알리는 게 맥락이 맞다.
             // 조회·저장·완료 화면은 `businessCardLinkReceiver` 가 맡는다.
             pathStore.selectedTab = .mypage
-            pendingCardMemberId = memberId
+            pendingCardLink = link
 
         case .message(.notice), .none:
             return

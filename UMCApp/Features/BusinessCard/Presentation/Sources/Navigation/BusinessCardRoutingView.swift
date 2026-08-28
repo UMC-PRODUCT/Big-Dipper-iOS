@@ -65,6 +65,11 @@ public struct BusinessCardRoutingView: View {
                     errorHandler: errorHandler
                 )
             )
+
+        // 스캔 화면은 provider 를 쓰지 않는다 — 수신 모디파이어가 컨테이너에서 직접
+        // UseCase 를 꺼내므로 컨테이너만 넘긴다.
+        case .scan:
+            CardScanView(container: container, viewModel: CardScanViewModel())
         }
     }
 }

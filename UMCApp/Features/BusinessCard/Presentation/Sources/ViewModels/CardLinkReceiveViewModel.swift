@@ -70,11 +70,13 @@ public final class CardLinkReceiveViewModel {
 
     // MARK: - Function
 
-    /// 링크의 `memberId` 로 상대 명함을 받아 명함첩에 저장한다.
-    public func receive(memberId: String) async {
+    /// 링크가 가리키는 상대 명함을 받아 명함첩에 저장한다.
+    public func receive(link: CardLink) async {
         guard !isReceiving else { return }
         isReceiving = true
         defer { isReceiving = false }
+
+        let memberId = link.memberId
 
         do {
             let card = try await fetchPeerCard.execute(memberId: memberId)

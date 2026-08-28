@@ -24,4 +24,7 @@ public enum BusinessCardDestination: Hashable {
 
     /// 근거리 명함 교환 세션 (MP-F06).
     case exchange
+
+    /// 인앱 QR 스캔 (#1224). 기본 카메라 앱 없이 상대 명함을 받는다.
+    case scan
 }
