@@ -46,7 +46,7 @@ struct ExchangeCardsUseCaseTests {
         let sut = ExchangeCardsUseCase(
             transport: transport,
             saveReceivedCard: save,
-            sessionTimeout: .milliseconds(200)
+            idleTimeout: .milliseconds(200)
         )
 
         var events: [ExchangeEvent] = []
@@ -77,7 +77,7 @@ struct ExchangeCardsUseCaseTests {
         let sut = ExchangeCardsUseCase(
             transport: transport,
             saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
-            sessionTimeout: .milliseconds(200)
+            idleTimeout: .milliseconds(200)
         )
 
         var events: [ExchangeEvent] = []
@@ -98,7 +98,7 @@ struct ExchangeCardsUseCaseTests {
         let sut = ExchangeCardsUseCase(
             transport: transport,
             saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
-            sessionTimeout: .milliseconds(200)
+            idleTimeout: .milliseconds(200)
         )
 
         var failures: [BusinessCardError] = []
@@ -118,7 +118,7 @@ struct ExchangeCardsUseCaseTests {
         let sut = ExchangeCardsUseCase(
             transport: MockNearbyTransport(stubbedPayloads: [try makePeerPayload()]),
             saveReceivedCard: SaveReceivedCardUseCase(repository: repository),
-            sessionTimeout: .milliseconds(200)
+            idleTimeout: .milliseconds(200)
         )
 
         var failures: [BusinessCardError] = []
@@ -150,7 +150,7 @@ struct ExchangeCardsUseCaseTests {
         let sut = ExchangeCardsUseCase(
             transport: MockNearbyTransport(),
             saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
-            sessionTimeout: .milliseconds(50)
+            idleTimeout: .milliseconds(50)
         )
 
         var sawExpired = false
@@ -176,12 +176,68 @@ struct ExchangeCardsUseCaseTests {
         #expect(transport.didStopAdvertising)
     }
 
+    /// 순간적인 연결 흔들림에 교환 전체가 실패하던 지점. MPC 는 시도마다 초대·연결을
+    /// 다시 태우므로 재시도가 실제로 다른 결과를 낸다.
+    @Test("전송이 흔들리면 재시도해서 성공시킨다")
+    func sendRetriesTransientFailure() async throws {
+        let transport = MockNearbyTransport(sendFailures: 2)
+        let sut = ExchangeCardsUseCase(
+            transport: transport,
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository())
+        )
+
+        try await sut.send(myCard: myCard, to: makePeer())
+
+        #expect(transport.sendAttempts == 3)
+        #expect(transport.sentPayloads.count == 1)
+    }
+
+    /// 상대가 이미 사라졌으면 재시도는 손해다 — 없는 기기에게 건 초대는 연결
+    /// 타임아웃(20초)을 통째로 태운 뒤에야 실패한다. 3회면 1분을 버린다.
+    @Test("사라진 피어에게는 재시도하지 않는다")
+    func sendSkipsRetryForMissingPeer() async {
+        let transport = MockNearbyTransport(sendFailures: 5, sendFailureError: .peerUnavailable)
+        let sut = ExchangeCardsUseCase(
+            transport: transport,
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository())
+        )
+
+        await #expect(throws: BusinessCardError.peerUnavailable) {
+            try await sut.send(myCard: myCard, to: self.makePeer())
+        }
+        #expect(transport.sendAttempts == 1)
+    }
+
+    /// 절대 시간으로 자르면 활발히 교환하는 중에도 세션이 끊긴다. 전송이 있었으면
+    /// 타이머는 처음부터 다시 걸려야 한다.
+    @Test("전송이 있으면 idle 타이머가 다시 걸린다")
+    func activityResetsIdleTimer() async throws {
+        let idle = Duration.milliseconds(300)
+        let sut = ExchangeCardsUseCase(
+            transport: MockNearbyTransport(),
+            saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
+            idleTimeout: idle
+        )
+
+        let started = ContinuousClock.now
+        let send = Task {
+            try await Task.sleep(for: .milliseconds(150))
+            try await sut.send(myCard: self.myCard, to: self.makePeer())
+        }
+
+        for await _ in sut.start(myCard: myCard) {}
+        try await send.value
+
+        // 리셋이 없으면 300ms 에 끝난다. 150ms 에 전송했으므로 450ms 근처여야 한다.
+        #expect(ContinuousClock.now - started > .milliseconds(380))
+    }
+
     @Test("start를 다시 부르면 이전 세션 스트림이 먼저 종료된다")
     func restartFinishesPreviousStream() async {
         let sut = ExchangeCardsUseCase(
             transport: MockNearbyTransport(),
             saveReceivedCard: SaveReceivedCardUseCase(repository: MockReceivedCardRepository()),
-            sessionTimeout: .milliseconds(50)
+            idleTimeout: .milliseconds(50)
         )
 
         let first = sut.start(myCard: myCard)

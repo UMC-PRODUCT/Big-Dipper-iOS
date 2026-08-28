@@ -278,7 +278,9 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
     public func send(payload: ExchangePayload, to peer: DiscoveredPeer) async throws {
         let (session, peerID) = stateQueue.sync { (self.session, peersBySessionID[peer.id]) }
         guard let session, let peerID else {
-            throw NearbyError.invalidPayload("발견되지 않은 피어: \(peer.id)")
+            // 페이로드 문제가 아니라 상대가 사라진 것이다. 구분하지 않으면 상위가
+            // 재시도해도 될 실패로 오인해 없는 기기에게 20초씩 초대를 건다.
+            throw NearbyError.peerUnavailable
         }
 
         let alreadyConnected = session.connectedPeers.contains(peerID)

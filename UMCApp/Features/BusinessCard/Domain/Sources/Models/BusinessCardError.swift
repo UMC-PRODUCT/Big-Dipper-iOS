@@ -34,6 +34,9 @@ public enum BusinessCardError: Error, LocalizedError, Equatable, Sendable {
     /// 명함 링크에 회원 식별자가 없다 (QR·딥링크 파손).
     case invalidCardLink
 
+    /// 상대가 이미 자리를 떠났다. 재시도해도 같은 결과라 문구가 달라야 한다.
+    case peerUnavailable
+
     // MARK: - Init
 
     /// transport 에러를 도메인 언어로 옮긴다.
@@ -44,6 +47,8 @@ public enum BusinessCardError: Error, LocalizedError, Equatable, Sendable {
         switch error {
         case .permissionDenied:
             self = .permissionDenied
+        case .peerUnavailable:
+            self = .peerUnavailable
         case .sessionExpired:
             self = .sessionExpired
         case .unsupported(let detail), .invalidPayload(let detail):
@@ -67,6 +72,8 @@ public enum BusinessCardError: Error, LocalizedError, Equatable, Sendable {
             return "받은 명함을 저장하지 못했어요. 다시 시도해 주세요."
         case .invalidCardLink:
             return "명함 링크에 회원 정보가 없어요."
+        case .peerUnavailable:
+            return "상대가 자리를 떠난 것 같아요. 다시 찾아 주세요."
         }
     }
 
@@ -75,7 +82,7 @@ public enum BusinessCardError: Error, LocalizedError, Equatable, Sendable {
         switch self {
         case .exchangeFailed(let reason), .saveFailed(let reason):
             return reason
-        case .permissionDenied, .sessionExpired, .invalidCardLink:
+        case .permissionDenied, .sessionExpired, .invalidCardLink, .peerUnavailable:
             return nil
         }
     }

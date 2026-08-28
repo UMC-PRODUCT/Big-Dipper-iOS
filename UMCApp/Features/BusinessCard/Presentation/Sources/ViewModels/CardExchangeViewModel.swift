@@ -42,6 +42,12 @@ public final class CardExchangeViewModel {
     /// 원인과 무관한 안내를 하게 된다 — 실제로 만료된 사용자에게 권한을 켜라고 했다.
     public private(set) var failure: BusinessCardError?
 
+    /// 내 명함을 이미 보낸 상대. 행에 「보냈어요」를 달아 준다.
+    ///
+    /// 전송은 성공해도 화면이 그대로였다 — 상대가 아직 안 받았는지 내가 잘못 눌렀는지
+    /// 구분이 안 돼 같은 사람에게 계속 다시 보내게 된다.
+    public private(set) var sentPeerIDs: Set<String> = []
+
     private let fetchMyCard: FetchMyCardUseCaseProtocol
     private let exchangeCards: ExchangeCardsUseCaseProtocol
     private let errorHandler: ErrorHandler
@@ -69,6 +75,7 @@ public final class CardExchangeViewModel {
         completedCard = nil
         failure = nil
         peers = []
+        sentPeerIDs = []
 
         let card: MyCard
         do {
@@ -113,8 +120,11 @@ public final class CardExchangeViewModel {
 
     private func apply(_ event: ExchangeEvent) {
         switch event {
-        case .advertising, .scanning, .sent:
+        case .advertising, .scanning:
             break
+
+        case .sent(let peer):
+            sentPeerIDs.insert(peer.id)
 
         case .peerFound(let peer):
             upsert(peer)

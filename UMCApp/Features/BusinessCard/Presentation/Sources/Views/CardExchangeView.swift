@@ -139,7 +139,10 @@ public struct CardExchangeView: View {
                     Button {
                         Task { await viewModel.send(to: peer) }
                     } label: {
-                        DiscoveredPeerRow(peer: peer)
+                        DiscoveredPeerRow(
+                            peer: peer,
+                            hasSent: viewModel.sentPeerIDs.contains(peer.id)
+                        )
                     }
                     .buttonStyle(.plain)
                 }
@@ -186,6 +189,11 @@ private struct FailureStyle {
             title = "명함을 저장하지 못했어요"
             image = "externaldrive.badge.exclamationmark"
             actionTitle = Constants.retry
+            opensSettings = false
+        case .peerUnavailable:
+            title = "상대를 찾을 수 없어요"
+            image = "person.fill.questionmark"
+            actionTitle = Constants.searchAgain
             opensSettings = false
         case .invalidCardLink:
             title = "명함 정보를 읽을 수 없어요"

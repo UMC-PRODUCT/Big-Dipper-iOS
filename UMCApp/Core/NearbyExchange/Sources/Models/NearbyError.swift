@@ -9,6 +9,11 @@ import Foundation
 
 public enum NearbyError: Error, Sendable {
     case permissionDenied
+    /// 목록에 있던 피어가 이미 사라졌다.
+    ///
+    /// 재시도하면 안 되는 실패다 — MPC 는 없는 기기에게도 초대를 걸고 연결
+    /// 타임아웃(20초)을 통째로 태운 뒤에야 실패한다. 재시도 3회면 1분을 버린다.
+    case peerUnavailable
     case unsupported(String)
     case invalidPayload(String)
     case transportFailure(underlying: Error)
@@ -18,6 +23,8 @@ public enum NearbyError: Error, Sendable {
         switch self {
         case .permissionDenied:
             return "근거리 교환에 필요한 권한이 거부되었습니다."
+        case .peerUnavailable:
+            return "상대 기기를 더 이상 찾을 수 없습니다."
         case .unsupported(let detail):
             return "이 기기에서는 지원하지 않는 기능입니다: \(detail)"
         case .invalidPayload(let detail):

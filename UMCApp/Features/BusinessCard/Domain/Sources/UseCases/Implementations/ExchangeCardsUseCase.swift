@@ -8,6 +8,15 @@
 import Foundation
 import CoreNearbyExchange
 
+// MARK: - Constants
+
+private enum Constants {
+    /// 전송 시도 횟수(최초 1회 + 재시도 2회).
+    static let sendAttempts = 3
+    /// 재시도 사이 간격. 순간적인 연결 흔들림이 가라앉을 만큼만 짧게 둔다.
+    static let sendBackoff: [Duration] = [.milliseconds(500), .milliseconds(1_500)]
+}
+
 /// 근거리 명함 교환 세션 오케스트레이션 (wifiwnd 화면의 기능부).
 ///
 /// 광고(내 명함 노출)와 스캔(주변 명함 발견)을 한 세션으로 묶고, 수신한 페이로드를
@@ -22,7 +31,8 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
 
     private let transport: NearbyTransportProtocol
     private let saveReceivedCard: SaveReceivedCardUseCaseProtocol
-    private let sessionTimeout: Duration
+    /// 마지막 활동 이후 이만큼 아무 일도 없으면 세션을 끝낸다.
+    private let idleTimeout: Duration
     /// UWB 거리 측정. 없으면 거리 없이 발견·교환만 동작한다 (구형 기기·시뮬레이터).
     private let ranging: PeerRangingCoordinator?
 
@@ -41,12 +51,12 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
     public init(
         transport: NearbyTransportProtocol,
         saveReceivedCard: SaveReceivedCardUseCaseProtocol,
-        sessionTimeout: Duration = .seconds(5 * 60),
+        idleTimeout: Duration = .seconds(5 * 60),
         ranging: PeerRangingCoordinator? = nil
     ) {
         self.transport = transport
         self.saveReceivedCard = saveReceivedCard
-        self.sessionTimeout = sessionTimeout
+        self.idleTimeout = idleTimeout
         self.ranging = ranging
 
         // transport 가 연결마다 핸드셰이크를 물어보게 한다. 토큰은 피어마다 달라야 해서
@@ -133,21 +143,17 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
             }
             stateQueue.sync { self.sessionTask = sessionWork }
 
-            let timeoutWork = Task { [weak self] in
-                guard let self else { return }
-                try? await Task.sleep(for: self.sessionTimeout)
-                guard !Task.isCancelled else { return }
-                self.yield(.failed(.sessionExpired))
-                await self.transport.stopAdvertising()
-                self.finish()
-            }
-            stateQueue.sync { self.timeoutTask = timeoutWork }
+            restartIdleTimer()
         }
     }
 
     public func send(myCard: MyCard, to peer: DiscoveredPeer) async throws {
         let payload = try myCard.toExchangePayload()
-        try await transport.send(payload: payload, to: peer)
+        do {
+            try await sendWithRetry(payload, to: peer)
+        } catch let error as NearbyError {
+            throw BusinessCardError(error)
+        }
         yield(.sent(peer))
     }
 
@@ -176,8 +182,77 @@ public final class ExchangeCardsUseCase: ExchangeCardsUseCaseProtocol, @unchecke
         }
     }
 
+    /// 연결이 한 번 흔들렸다고 교환 전체를 실패시키지 않는다. MPC 는 시도마다
+    /// 초대·연결을 다시 태우므로 재시도가 실제로 다른 결과를 낸다.
+    ///
+    /// 다만 상대가 이미 사라졌으면 재시도는 손해다 — 없는 기기에게 건 초대는
+    /// 연결 타임아웃(20초)을 통째로 태운 뒤에야 실패한다.
+    private func sendWithRetry(_ payload: ExchangePayload, to peer: DiscoveredPeer) async throws {
+        for attempt in 0..<Constants.sendAttempts {
+            if attempt > 0 {
+                try? await Task.sleep(for: Constants.sendBackoff[attempt - 1])
+            }
+            do {
+                return try await transport.send(payload: payload, to: peer)
+            } catch let error as NearbyError where !Self.isRetryable(error) {
+                throw error
+            } catch {
+                guard attempt == Constants.sendAttempts - 1 else { continue }
+                throw error
+            }
+        }
+    }
+
+    /// 다시 걸어 볼 가치가 있는 실패인지. 상대 부재·권한·페이로드 오류는 몇 번을
+    /// 걸어도 같은 결과다.
+    private static func isRetryable(_ error: NearbyError) -> Bool {
+        switch error {
+        case .peerUnavailable, .permissionDenied, .invalidPayload, .unsupported:
+            return false
+        case .transportFailure, .sessionExpired:
+            return true
+        }
+    }
+
+    /// idle 타이머를 처음부터 다시 건다.
+    ///
+    /// 절대 시간으로 자르면 활발히 교환하는 중에도 세션이 끊긴다. 반대로 타이머가
+    /// 아예 없으면 화면을 켜 둔 채 두었을 때 광고가 무기한 돌아 배터리를 태우고
+    /// 주변에 이름을 계속 노출한다.
+    private func restartIdleTimer() {
+        let work = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(for: self.idleTimeout)
+            guard !Task.isCancelled else { return }
+            self.yield(.failed(.sessionExpired))
+            // 광고·탐색·세션을 모두 걷는다 — 스트림만 닫으면 transport 는 계속 돈다.
+            await self.transport.stopAdvertising()
+            self.finish()
+        }
+        let previous = stateQueue.sync { () -> Task<Void, Never>? in
+            let old = timeoutTask
+            timeoutTask = work
+            return old
+        }
+        previous?.cancel()
+    }
+
+    /// 사용자가 실제로 무언가를 만난 순간만 「활동」으로 친다.
+    ///
+    /// 거리 갱신은 뺀다 — UWB 는 초당 여러 번 흘러서 포함하면 idle 이 영영 오지 않는다.
+    private static func isActivity(_ event: ExchangeEvent) -> Bool {
+        switch event {
+        case .peerFound, .sent, .received:
+            return true
+        case .advertising, .scanning, .peerLost, .distanceUpdated, .failed:
+            return false
+        }
+    }
+
     private func yield(_ event: ExchangeEvent) {
         stateQueue.sync { _ = continuation?.yield(event) }
+        // 락 밖에서 건다 — 같은 직렬 큐에 재진입하면 데드락난다.
+        if Self.isActivity(event) { restartIdleTimer() }
     }
 
     /// 스트림을 닫는다. 어떤 경로로 끝나든 continuation leak을 남기지 않는다 (스파이크 ④).

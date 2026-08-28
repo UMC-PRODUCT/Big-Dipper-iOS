@@ -142,6 +142,22 @@ struct CardExchangeViewModelTests {
         #expect(exchange.sentPeerIDs == ["a"])
     }
 
+    /// `.sent` 는 「내 명함이 상대에게 갔다」는 유일한 신호인데 `.advertising`/`.scanning`
+    /// 과 함께 버려졌다. 사용자는 받기만 확인할 수 있고 보내기는 확인할 수 없었다.
+    @Test("전송이 끝난 상대를 기억해 행에 표시한다")
+    func sentPeerIsRemembered() async {
+        let exchange = StubExchangeCards(events: [
+            .peerFound(makePeer(id: "a")),
+            .peerFound(makePeer(id: "b")),
+            .sent(makePeer(id: "a")),
+        ])
+        let sut = makeSUT(exchange: exchange)
+
+        await sut.start()
+
+        #expect(sut.sentPeerIDs == ["a"])
+    }
+
     @Test("전송이 실패하면 에러를 알린다")
     func sendFailureIsReported() async {
         let errorHandler = ErrorHandler()
