@@ -359,6 +359,10 @@ private struct NotStubbedDeleteReceivedCardUseCase: DeleteReceivedCardUseCasePro
     func execute(id: String) async throws {
         fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
     }
+
+    func executeAll() async throws {
+        fatalError("MyPageViewModel 테스트에서 호출되지 않아야 하는 UseCase")
+    }
 }
 
 private struct NotStubbedUpdateExchangeContextUseCase: UpdateExchangeContextUseCaseProtocol {

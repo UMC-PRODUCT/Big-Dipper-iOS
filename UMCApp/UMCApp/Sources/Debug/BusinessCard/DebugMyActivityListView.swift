@@ -21,8 +21,9 @@ import UMCFoundation
 /// 목록 소스는 `GET /api/v1/member/me` 의 `challengerRecords` 하나뿐이고, 여기에는 기간·
 /// 시작일·종료일·설명·썸네일이 없다. 그래서 행에 그릴 수 있는 건 기수·파트·학교·지부·상태뿐이다.
 ///
-/// 이 화면이 실제로 확인하는 것은 **카운트 정의가 두 갈래로 갈려 있다는 사실**이다.
-/// 두 숫자를 나란히 보여줘서 실기기에서 차이를 눈으로 본다.
+/// 예전에는 이 화면이 **카운트 정의가 두 갈래라는 사실**을 보여 주는 용도였다. 지금은
+/// 명함 카운트도 마이페이지 목록도 `Profile.activityLogs()` 하나를 보므로 (#1222)
+/// 그 숫자와 원본 기록을 나란히 놓고 파생이 맞는지 확인한다.
 struct DebugMyActivityListView: View {
 
     // MARK: - Property
@@ -88,35 +89,18 @@ struct DebugMyActivityListView: View {
     }
 
     private var countSection: some View {
-        Section("카운트 정의 대조") {
-            LabeledContent("명함 activityCount") {
-                Text("\(viewModel.businessCardCount)건")
+        Section("활동 카운트") {
+            LabeledContent("activityLogs 항목 수") {
+                Text("\(viewModel.activityCount)건")
                     .font(.body.bold())
             }
 
-            LabeledContent("마이페이지 activityLogs") {
-                Text("\(viewModel.myPageStyleCount)건")
-                    .font(.body.bold())
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Label(
-                    viewModel.countsAgree ? "두 정의가 일치" : "두 정의가 불일치",
-                    systemImage: viewModel.countsAgree
-                        ? "checkmark.circle.fill"
-                        : "exclamationmark.triangle.fill"
-                )
-                .font(.footnote.bold())
-                .foregroundStyle(viewModel.countsAgree ? .green : .orange)
-
-                Text("""
-                명함 쪽은 admin 만 빼고 세므로 **서버가 보낸 미지의 파트 코드도 포함**한다. \
-                마이페이지 쪽은 파싱에 성공한 파트만 세므로 미지 파트를 **제외**한다(운영진 roles \
-                병합 차이는 이 화면에서 재현하지 않는다). 목록을 제품화할 때 어느 쪽을 정본으로 \
-                삼을지 정해야 한다.
-                """)
-                .font(.caption)
-            }
+            Text("""
+            명함 `activityCount` 와 마이페이지 활동 목록이 같은 `Profile.activityLogs()` \
+            를 센다 (#1222). 아래 원본 기록보다 적을 수 있다 — 같은 기수의 운영진 역할은 \
+            한 줄로 병합되고, 파싱 안 되는 파트 코드는 빠진다.
+            """)
+            .font(.caption)
         }
     }
 
@@ -216,13 +200,8 @@ final class DebugMyActivityListViewModel {
 
     var records: Loadable<[ProfileChallengerRecord]> = .idle
 
-    /// `ActivityStatRepository.fetchActivityCount()` 와 같은 규칙 — admin 만 제외(미지 파트 포함).
-    private(set) var businessCardCount = 0
-
-    /// `Profile+ProfileData.activityLogs` 와 같은 규칙 — 파싱 성공 + admin 아님(미지 파트 제외).
-    private(set) var myPageStyleCount = 0
-
-    var countsAgree: Bool { businessCardCount == myPageStyleCount }
+    /// 마이페이지 활동 목록·명함 `activityCount` 가 함께 쓰는 정본 파생 결과의 항목 수.
+    private(set) var activityCount = 0
 
     private let memberProfileRepository: MemberProfileRepositoryProtocol
 
@@ -240,11 +219,7 @@ final class DebugMyActivityListViewModel {
             let profile = try await memberProfileRepository.fetchMyProfile(forceRefresh: false)
             let all = profile.challengerRecords
             records = .loaded(all)
-            businessCardCount = all.filter { UMCPartType(apiValue: $0.part) != .admin }.count
-            myPageStyleCount = all.filter {
-                guard let part = UMCPartType(apiValue: $0.part) else { return false }
-                return part != .admin
-            }.count
+            activityCount = profile.activityLogs().count
         } catch let error as AppError {
             records = .failed(error)
         } catch {

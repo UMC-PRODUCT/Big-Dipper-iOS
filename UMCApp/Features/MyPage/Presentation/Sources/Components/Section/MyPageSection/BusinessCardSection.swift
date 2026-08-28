@@ -15,7 +15,7 @@ public struct BusinessCardSection: View {
     // MARK: - Property
 
     private let sectionType: MyPageSectionType
-    private let receivedCardCount: String
+    private let receivedCardCount: String?
     private let onReceivedCards: () -> Void
     private let onCardEdit: (() -> Void)?
     private let isCardEditPending: Bool
@@ -24,6 +24,7 @@ public struct BusinessCardSection: View {
 
     /// - Parameters:
     ///   - receivedCardCount: 받은 명함 수(서버 정수는 절대규칙 #2에 따라 String).
+    ///     아직 못 세었으면(조회 전·실패) `nil` — "0장"이 아니라 "-"로 그린다 (#1222).
     ///   - onReceivedCards: 명함첩(받은 명함 그리드)으로 이동.
     ///   - onCardEdit: 명함 편집으로 이동. 편집에 필요한 프로필 스냅샷이 아직 없으면
     ///     (로딩 중·실패) `nil` — 행이 죽은 탭 없이 비활성화된다.
@@ -31,7 +32,7 @@ public struct BusinessCardSection: View {
     ///     표시를 보여준다(`onCardEdit`이 `nil`이어도 무반응처럼 보이지 않게).
     public init(
         sectionType: MyPageSectionType = .businessCard,
-        receivedCardCount: String,
+        receivedCardCount: String?,
         onReceivedCards: @escaping () -> Void,
         onCardEdit: (() -> Void)?,
         isCardEditPending: Bool = false
@@ -55,7 +56,7 @@ public struct BusinessCardSection: View {
                     systemIcon: "person.text.rectangle",
                     iconColor: MyPageListIconColor.green,
                     title: "받은 명함",
-                    value: "\(receivedCardCount)장",
+                    value: receivedCardCount.map { "\($0)장" } ?? "-",
                     action: onReceivedCards
                 )
 

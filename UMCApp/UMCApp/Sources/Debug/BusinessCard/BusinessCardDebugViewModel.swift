@@ -300,7 +300,11 @@ final class BusinessCardDebugViewModel {
         isExchanging = false
     }
 
-    /// 0.5초마다 진단 표시를 다시 읽게 하고, 유령 행을 걷어내고, 전송 로그를 파일로 옮긴다.
+    /// 0.5초마다 진단 표시를 다시 읽게 하고, 전송 로그를 파일로 옮긴다.
+    ///
+    /// 유령 행 청소는 여기서 뺐다 — `ExchangeEvent.peerLost` 가 생겨 소실이 스트림으로
+    /// 흐른다. 폴링 우회는 `MPCTransport` 구체 타입 캐스팅에 기대고 있어 Mock transport 로는
+    /// 애초에 동작하지도 않았다.
     private func startDiagnosticsPolling() {
         diagnosticsTask?.cancel()
         diagnosticsTask = Task { [weak self] in
@@ -308,7 +312,6 @@ final class BusinessCardDebugViewModel {
                 try? await Task.sleep(for: .milliseconds(500))
                 guard let self, !Task.isCancelled else { return }
                 self.diagnosticsTick &+= 1
-                self.pruneLostPeers()
                 self.mirrorTransportLog()
             }
         }
@@ -333,22 +336,6 @@ final class BusinessCardDebugViewModel {
         fresh.reversed().forEach { DebugFileLog.append("[전송] \($0)") }
     }
 
-    /// transport 가 더 이상 보지 못하는 행을 목록에서 지운다.
-    ///
-    /// transport 는 `lostPeer` 를 받지만 그걸 화면까지 나를 통로가 없었다(`ExchangeEvent` 에
-    /// 소실 케이스가 없다). 그래서 상대 앱을 재실행하면 **옛 세션 식별자의 행이 그대로 남아**
-    /// 기기 한 대에 「발견 2」 가 떴다. 그 유령을 탭하면 없는 기기에게 초대를 보내고
-    /// 연결 타임아웃(20초)을 통째로 태운다.
-    private func pruneLostPeers() {
-        guard let mpc = transport as? MPCTransport else { return }
-        let alive = mpc.discoveredPeerIDs
-        guard peers.contains(where: { !alive.contains($0.id) }) else { return }
-        let removed = peers.filter { !alive.contains($0.id) }.map(\.id)
-        peers.removeAll { !alive.contains($0.id) }
-        removed.forEach { sendStates[$0] = nil }
-        note("피어 소실: \(removed.joined(separator: ", "))")
-    }
-
     private func handle(_ event: ExchangeEvent) {
         switch event {
         case .advertising:
@@ -367,6 +354,11 @@ final class BusinessCardDebugViewModel {
                 peers.append(peer)
                 note("peerFound: \(peer.displayName ?? peer.id)")
             }
+        case .peerLost(let peerID):
+            guard peers.contains(where: { $0.id == peerID }) else { return }
+            peers.removeAll { $0.id == peerID }
+            sendStates[peerID] = nil
+            note("피어 소실: \(peerID)")
         case .sent(let peer):
             note("sent → \(peer.displayName ?? peer.id)")
         case .received(let card):

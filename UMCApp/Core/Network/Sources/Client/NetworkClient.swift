@@ -74,6 +74,11 @@ public actor NetworkClient {
         refreshTask?.cancel()
         refreshTask = nil
         try await tokenStore.clear()
+        // 세션 단위 AppStorage(멤버 ID·기수·학교·역할…)를 함께 비운다. 모든 로그아웃·세션
+        // 만료·탈퇴 경로가 이 메서드를 지나므로 여기 한 곳에서 지우면 누락이 없다.
+        // 남겨 두면 다음 계정이 로그인해 프로필을 동기화하기 전까지 **이전 계정의 memberId**가
+        // 유효한 값처럼 읽혀, 그 값으로 스코프되는 명함첩 등이 남의 데이터를 연다 (#1217).
+        AppStorageKey.clearSessionScopedValues()
 
         #if DEBUG
         print("로그아웃 완료")

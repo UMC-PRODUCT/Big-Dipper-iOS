@@ -24,6 +24,10 @@ public final class SaveReceivedCardUseCase:
     // MARK: - Function
 
     /// 교환·QR 스캔 어느 경로로 들어와도 같은 변환을 거치게 하는 단일 저장 진입점.
+    ///
+    /// 저장 직전에 ``MyCard/validate()``로 한 번 더 거른다. 서버 조회 경로는 이미 변환에서
+    /// 걸리지만, 근거리 교환은 상대 기기가 준 값을 그대로 싣는다 — v1 페이로드는 기수·파트
+    /// 필드 자체가 없어 「운영진 · 기수 없음」 명함이 명함첩에 남을 수 있었다 (#1223).
     public func execute(
         payload: ExchangePayload,
         ownerMemberId: String,
@@ -38,6 +42,7 @@ public final class SaveReceivedCardUseCase:
         guard !isOwn(memberId: card.profile.memberId, ownerMemberId: ownerMemberId) else {
             return nil
         }
+        try card.profile.validate()
         try await repository.save(card)
         return card
     }
@@ -51,6 +56,7 @@ public final class SaveReceivedCardUseCase:
         exchangeMethod: ExchangeMethod
     ) async throws -> ReceivedCard? {
         guard !isOwn(memberId: card.memberId, ownerMemberId: ownerMemberId) else { return nil }
+        try card.validate()
 
         let received = ReceivedCard(
             id: cardID,

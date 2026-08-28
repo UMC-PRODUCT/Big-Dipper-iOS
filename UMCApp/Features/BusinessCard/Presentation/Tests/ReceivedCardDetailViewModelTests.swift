@@ -151,6 +151,11 @@ private final class StubDeleteReceivedCard:
         deletedIDs.append(id)
         if let error { throw error }
     }
+
+    /// 회원 탈퇴 전용 경로(#1217) — 상세 화면은 한 장씩만 지운다.
+    func executeAll() async throws {
+        Issue.record("상세 화면 삭제는 명함첩을 통째로 비우지 않는다")
+    }
 }
 
 private final class StubUpdateExchangeContext:

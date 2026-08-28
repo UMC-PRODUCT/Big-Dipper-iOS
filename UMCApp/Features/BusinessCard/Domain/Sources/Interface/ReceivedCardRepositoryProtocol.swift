@@ -11,13 +11,19 @@ import Foundation
 ///
 /// 로컬(SwiftData) 전용 — 서버 명함 API 부재 확정(2026-08-15 서버 레포 전수 조사).
 /// 서버가 생기면 구현체만 교체한다.
+///
+/// 모든 메서드는 **현재 로그인 계정 범위**로 동작한다. 소유자를 파라미터로 받지 않는 것은
+/// 의도다 — 받게 하면 호출부가 언젠가 빼먹고, 그 순간 계정 격리가 뚫린다(#1217).
 public protocol ReceivedCardRepositoryProtocol: Sendable {
     /// 교환 시각 내림차순 전체 조회.
     func fetchAll() async throws -> [ReceivedCard]
     func search(query: String) async throws -> [ReceivedCard]
-    /// memberId(1차)·cardID(부차) 기준 upsert — 재교환 시 최신 명함으로 갱신.
+    /// 정체성(memberId, 없으면 명함 내용) 기준 upsert — 재교환 시 최신 명함으로 갱신.
     func save(_ card: ReceivedCard) async throws
+    /// 목록에서 고른 명함의 cardID. 같은 정체성의 레코드가 여러 벌이면 함께 지운다.
     func delete(id: String) async throws
+    /// 현재 계정의 명함 전량 삭제 — 회원 탈퇴 전용.
+    func deleteAll() async throws
     /// 로컬 집계라 Int (절대규칙 #2의 서버 정수 대상 아님).
     func count() async throws -> Int
 }
