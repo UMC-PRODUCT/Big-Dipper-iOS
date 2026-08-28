@@ -25,9 +25,10 @@ struct BusinessCardSummaryView: View {
     // MARK: - Constants
 
     private enum Metrics {
-        /// 시안 실측 폭(402pt 화면에서 좌우 16 마진). 폭은 유동으로 두고 높이만 고정한다.
+        /// 시안 실측 폭(402pt 화면에서 좌우 16 마진). 폭은 유동으로 둔다.
         static let referenceWidth: CGFloat = 370
-        static let height: CGFloat = 112
+        /// 시안 실측 높이. **바닥값**이다 — 글자가 커지면 카드가 따라 늘어난다.
+        static let minHeight: CGFloat = 112
         static let cornerRadius: CGFloat = 34
         static let padding: CGFloat = 16
         static let avatarSize: CGFloat = 80
@@ -37,18 +38,19 @@ struct BusinessCardSummaryView: View {
         static let chipSpacing: CGFloat = 5
     }
 
+    /// 전부 코어 토큰이다 (#1237) — 라이트 전용 raw hex 를 걷어냈다.
     private enum Palette {
         /// 시안 `linear-gradient(126.738deg, rgba(114,142,253,0.9) 7.53%, #5468FC 95.75%)`.
         /// 명함_l 은 각도 112.185°, 시작 알파 0.8 로 **다르다** — 옮겨 쓰지 말 것.
-        static let gradientStart = BusinessCardPalette.cardGradientStart.opacity(0.9)
-        static let gradientEnd = BusinessCardPalette.indigo
+        /// (실측 대비: #728EFD→indigo400 · #5468FC→indigo500 · #444CE7→indigo600)
+        static let gradientStart = Color.indigo400.opacity(0.9)
+        static let gradientEnd = Color.indigo500
 
         static let gradientStartLocation: Double = 0.0753
         static let gradientEndLocation: Double = 0.9575
 
         /// 중앙 방사형 오버레이. 시안은 세로로 눌린 타원이라 축 비율만 옮긴다.
-        static let overlayEnd = Color(red: 68 / 255, green: 76 / 255, blue: 231 / 255)
-            .opacity(0.7)
+        static let overlayEnd = Color.indigo600.opacity(0.7)
     }
 
     /// 126.738° 선형 그라데이션을 370×112 상자의 UnitPoint 로 옮긴 값.
@@ -81,9 +83,18 @@ struct BusinessCardSummaryView: View {
         }
         .padding(Metrics.padding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: Metrics.height)
+        .frame(minHeight: Metrics.minHeight)
         .background(background)
         .clipShape(RoundedRectangle(cornerRadius: Metrics.cornerRadius))
+        // 아바타·이름·학교·칩 2개가 따로 읽히면 누구 명함인지 조립해야 알 수 있다.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
+    private var accessibilityLabel: String {
+        [displayName, card.university, "\(card.partDisplayName) 파트", "\(card.generation)기"]
+            .joined(separator: ", ")
     }
 
     // MARK: - View Component
@@ -99,6 +110,7 @@ struct BusinessCardSummaryView: View {
         HStack(alignment: .firstTextBaseline, spacing: Metrics.nameSpacing) {
             // 시안은 Pretendard Bold 지만 `AppFontWeight` 에 bold 가 없다(regular/medium/
             // semibold 3종). 가장 가까운 semibold 를 쓴다 — 명함_l 도 같은 처리를 했다.
+            // 확장은 `Pretendard-Bold.otf` 반입이 선행되어야 한다 (#1237).
             Text(displayName)
                 .appFont(.title2, weight: .semibold, color: Color.white)
                 .lineLimit(1)

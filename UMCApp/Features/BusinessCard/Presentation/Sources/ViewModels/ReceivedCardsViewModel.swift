@@ -82,8 +82,14 @@ public final class ReceivedCardsViewModel {
 
     // MARK: - Function
 
-    public func load() async {
-        cards = .loading
+    /// - Parameter showsLoading: `.loading` 을 거칠지. 당겨서 새로고침은 `false` 다 —
+    ///   목록을 스켈레톤으로 갈아 끼우면 사용자가 잡고 있는 화면이 통째로 사라지고
+    ///   시스템 새로고침 인디케이터와 이중으로 보인다.
+    public func load(showsLoading: Bool = true) async {
+        if showsLoading {
+            cards = .loading
+        }
+
         do {
             cards = .loaded(try await fetchReceivedCards.execute(query: trimmedQuery))
         } catch let error as AppError {
@@ -91,6 +97,11 @@ public final class ReceivedCardsViewModel {
         } catch {
             cards = .failed(.unknown(message: error.localizedDescription))
         }
+    }
+
+    /// 당겨서 새로고침 (#1230). 실패 후 화면을 나갔다 다시 들어와야 재시도되던 것을 없앤다.
+    public func refresh() async {
+        await load(showsLoading: false)
     }
 
     /// 명함첩은 서버 사본이 없다 — 지우면 다시 교환하기 전까지 복구할 수 없어서

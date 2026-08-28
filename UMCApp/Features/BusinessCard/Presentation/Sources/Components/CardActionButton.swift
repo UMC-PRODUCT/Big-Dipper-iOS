@@ -14,8 +14,10 @@ import CoreDesignSystem
 /// 높이 48 · radius 100 캡슐인데, `MainButtonSize` 는 36/44/52 뿐이고 `.primary`
 /// 스타일은 radius 8 이다. 어느 조합으로도 맞출 수 없다.
 ///
-/// - Note: 코어 버튼 규격이 시안에서 밀린 상태다. 앱 전역 버튼 어휘를 바꾸는 건
-///   명함 브랜치가 결정할 범위가 아니라 여기서만 쓰는 컴포넌트로 둔다.
+/// - Note: **명함 전용으로 유지한다** (#1237 결정). 공용 `MainButton` 으로 수렴하려면
+///   `MainButtonSize` 에 48 케이스를, `ButtonStyle` 에 캡슐 변형을 새로 넣어야 하는데
+///   그건 앱 전역 버튼 어휘를 바꾸는 일이라 명함 브랜치가 결정할 범위가 아니다.
+///   코어 버튼 규격이 시안에서 밀린 상태라는 사실만 남겨 둔다.
 struct CardActionButton: View {
 
     // MARK: - Role
@@ -29,7 +31,9 @@ struct CardActionButton: View {
         var background: Color {
             switch self {
             case .primary:
-                return BusinessCardPalette.indigo
+                // 시안 실측은 #5468FC 였지만 코어 토큰으로 수렴했다(#1237).
+                // 토큰은 Asset Catalog 라 다크 모드 값을 스스로 들고 있다.
+                return .indigo500
             case .secondary:
                 // iOS Fills/Secondary = rgba(120,120,128,0.16).
                 return Color(uiColor: .secondarySystemFill)
@@ -54,8 +58,9 @@ struct CardActionButton: View {
     let role: Role
     let action: () -> Void
 
-    /// 시안 높이 48 (Apple iOS 26 `Buttons`).
-    static let labelHeight: CGFloat = 48
+    /// 시안 높이 48 (Apple iOS 26 `Buttons`). **바닥값**이다 — 글자가 커지면
+    /// 버튼이 따라 커진다(고정하면 AX 크기에서 라벨이 캡슐 밖으로 넘친다).
+    static let labelMinHeight: CGFloat = 48
 
     // MARK: - Body
 
@@ -79,8 +84,9 @@ extension View {
         // 시안은 SF Pro Medium 17 이지만 앱 전체가 Pretendard 다. 스톡 Apple
         // 컴포넌트를 쓴 흔적으로 보여 서체는 앱을 따른다.
         appFont(.body, weight: .medium, color: role.foreground)
+            .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
-            .frame(height: CardActionButton.labelHeight)
+            .frame(minHeight: CardActionButton.labelMinHeight)
             .background(role.background, in: Capsule())
     }
 }

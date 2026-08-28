@@ -21,7 +21,12 @@ private enum Constants {
     static let sharePreviewTitle = "내 명함 QR"
 
     static let qrUnavailable = "QR을 만들지 못했어요"
+    static let qrUnavailableDescription = "명함 정보는 그대로예요. 다시 만들어 볼까요?"
     static let qrUnavailableImage = "qrcode"
+    static let qrRetryTitle = "QR 다시 만들기"
+
+    static let qrAccessibilityLabel = "내 명함 QR 코드"
+    static let qrAccessibilityHint = "상대가 이 코드를 스캔하면 내 명함이 저장돼요"
 
     static let failureTitle = "명함을 불러올 수 없어요"
     static let failureDescription = "잠시 후 다시 시도해 주세요."
@@ -48,9 +53,11 @@ private enum Metrics {
 }
 
 private enum Palette {
-    static let qrBoxBorder = BusinessCardPalette.hairline
-    /// 시안 그림자 rgba(26,31,51,0.08).
-    static let qrBoxShadow = Color(red: 26 / 255, green: 31 / 255, blue: 51 / 255).opacity(0.08)
+    /// 시안 실측은 테두리 `#E5E8ED` · 그림자 `rgba(26,31,51,0.08)` 였다.
+    /// raw 값에는 다크 모드 대응이 없어 코어 토큰과 `.black` 알파로 수렴한다 (#1237).
+    /// 같은 피처의 ``DiscoveredPeerRow`` · ``ReceivedCardCell`` 그림자와 같은 값이다.
+    static let qrBoxBorder = Color.grey200
+    static let qrBoxShadow = Color.black.opacity(0.08)
 }
 
 /// 내 명함 QR (MP-F02 뒷면·MP-F04) — 시안 `12639:33027`.
@@ -113,6 +120,7 @@ public struct CardQRView: View {
             .padding(.horizontal, Metrics.horizontalMargin)
             .padding(.top, Metrics.topMargin)
         }
+        .refreshable { await viewModel.refresh() }
     }
 
     private var qrBlock: some View {
@@ -122,7 +130,7 @@ public struct CardQRView: View {
             Text(Constants.caption)
                 .appFont(.subheadline, color: .grey600)
                 .multilineTextAlignment(.center)
-                .frame(width: Metrics.qrBoxSize)
+                .frame(maxWidth: Metrics.qrBoxSize)
         }
     }
 
@@ -136,14 +144,22 @@ public struct CardQRView: View {
                     .interpolation(.none)
                     .scaledToFit()
                     .padding(Metrics.qrInset)
+                    .accessibilityElement()
+                    .accessibilityLabel(Constants.qrAccessibilityLabel)
+                    .accessibilityHint(Constants.qrAccessibilityHint)
             } else {
                 ContentUnavailableView(
                     Constants.qrUnavailable,
-                    systemImage: Constants.qrUnavailableImage
+                    systemImage: Constants.qrUnavailableImage,
+                    description: Text(Constants.qrUnavailableDescription)
                 )
             }
         }
-        .frame(width: Metrics.qrBoxSize, height: Metrics.qrBoxSize)
+        // QR 은 정사각형이어야 스캔된다 — 가로는 고정한다. 세로만 **최소값**으로 풀어
+        // 생성 실패 문구가 큰 글자에서 박스 밖으로 잘리지 않게 한다 (#1234).
+        // QR 이 있을 때는 scaledToFit 이 204pt 정사각으로 맞아 높이도 272 그대로다.
+        .frame(width: Metrics.qrBoxSize)
+        .frame(minHeight: Metrics.qrBoxSize)
         .background(Color.grey000, in: RoundedRectangle(cornerRadius: Metrics.qrBoxRadius))
         .overlay {
             RoundedRectangle(cornerRadius: Metrics.qrBoxRadius)
@@ -152,6 +168,9 @@ public struct CardQRView: View {
         .shadow(color: Palette.qrBoxShadow, radius: Metrics.shadowRadius, y: Metrics.shadowY)
     }
 
+    /// QR 생성이 실패하면 공유·저장은 줄 게 없다. 그렇다고 스택을 통째로 비우면
+    /// 화면에 남는 동작이 하나도 없어 사용자가 나갔다 들어오는 수밖에 없었다 —
+    /// 실패한 단계(인코딩)만 다시 도는 버튼으로 바꾼다 (#1230).
     @ViewBuilder
     private var buttons: some View {
         VStack(spacing: Metrics.buttonSpacing) {
@@ -166,6 +185,10 @@ public struct CardQRView: View {
 
                 CardActionButton(title: Constants.saveTitle, role: .secondary) {
                     Task { await viewModel.saveQRImage() }
+                }
+            } else {
+                CardActionButton(title: Constants.qrRetryTitle, role: .primary) {
+                    viewModel.retryQRGeneration()
                 }
             }
         }

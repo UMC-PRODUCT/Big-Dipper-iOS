@@ -28,6 +28,8 @@ private enum Constants {
     static let deleteLabel = "삭제"
     static let deleteImage = "trash"
 
+    static let openHint = "이 명함을 자세히 봅니다"
+
     /// 스켈레톤 칸 수. 첫 화면에 그리드가 찬 느낌만 주면 되므로 한 화면 분량으로 둔다.
     static let skeletonCount = 6
 }
@@ -114,6 +116,11 @@ public struct ReceivedCardsView: View {
                     Label(Constants.deleteLabel, systemImage: Constants.deleteImage)
                 }
             }
+            // 길게 누르기만으로는 VoiceOver 사용자가 삭제에 닿지 못한다. 같은 동작을
+            // 로터 액션으로도 내보낸다 — 컨텍스트 메뉴와 진입점만 다르고 흐름은 같다.
+            .accessibilityAction(named: Constants.deleteLabel) {
+                viewModel.requestDelete(card)
+            }
     }
 
     /// 검색 중인지에 따라 빈 화면의 뜻이 다르다 — 「아직 한 장도 없음」과 「이 검색어에
@@ -156,5 +163,6 @@ public struct ReceivedCardsView: View {
             .padding(.horizontal, Metrics.horizontalMargin)
             .padding(.top, Metrics.topMargin)
         }
+        .refreshable { await viewModel.refresh() }
     }
 }

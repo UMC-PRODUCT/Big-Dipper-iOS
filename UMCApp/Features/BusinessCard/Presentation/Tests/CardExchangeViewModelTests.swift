@@ -125,6 +125,33 @@ struct CardExchangeViewModelTests {
         #expect(errorHandler.currentError != nil)
     }
 
+    /// 진행 표시가 남으면 목록 전체가 `disabled` 인 채 영영 풀리지 않는다 —
+    /// 실패 한 번에 화면이 잠기는 셈이라 `defer` 로 반드시 걷어낸다.
+    @Test("전송이 실패해도 진행 표시는 남지 않는다")
+    func sendFailureClearsInFlightMark() async {
+        let exchange = StubExchangeCards(events: [], sendError: StubError.boom)
+        let sut = makeSUT(exchange: exchange)
+        await sut.start()
+
+        await sut.send(to: makePeer(id: "a"))
+
+        #expect(sut.sendingPeerID == nil)
+    }
+
+    /// 명함이 없으면 보낼 게 없다. 그래도 진행 표시부터 켜고 시작하면
+    /// 아무 일도 일어나지 않는 채로 목록만 잠긴다.
+    @Test("명함이 없으면 진행 표시를 켜지 않는다")
+    func sendWithoutCardDoesNotMarkInFlight() async {
+        let exchange = StubExchangeCards(events: [])
+        let sut = makeSUT(fetch: StubFetchMyCard(error: StubError.boom), exchange: exchange)
+        await sut.start()
+
+        await sut.send(to: makePeer(id: "a"))
+
+        #expect(sut.sendingPeerID == nil)
+        #expect(exchange.sentPeerIDs.isEmpty)
+    }
+
     // MARK: - Failure
 
     @Test("명함을 못 불러오면 세션을 시작하지 않는다")

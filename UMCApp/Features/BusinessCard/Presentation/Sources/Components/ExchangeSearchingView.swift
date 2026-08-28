@@ -52,7 +52,8 @@ struct ExchangeSearchingView: View {
         static let radarSize: CGFloat = 364
         static let avatarSize: CGFloat = 80
 
-        static let captionWidth: CGFloat = 266
+        /// 시안 문구 폭. **상한**으로 둔다 — 고정하면 큰 글자에서 줄이 넘친다.
+        static let captionMaxWidth: CGFloat = 266
         static let captionSpacing: CGFloat = 5
     }
 
@@ -83,11 +84,15 @@ struct ExchangeSearchingView: View {
         HStack(spacing: Metrics.badgeSpacing) {
             Image(systemName: Constants.badgeIcon)
                 .font(.system(size: Metrics.badgeIconGlyph))
-                .foregroundStyle(BusinessCardPalette.indigo)
-                .frame(width: Metrics.badgeIconBox, height: Metrics.badgeIconBox)
+                .foregroundStyle(Color.indigo500)
+                .frame(minWidth: Metrics.badgeIconBox, minHeight: Metrics.badgeIconBox)
+                // 옆 문구가 같은 뜻을 말한다 — 「wifi」까지 읽히면 겹친다.
+                .accessibilityHidden(true)
 
             Text(Constants.badgeTitle)
-                .appFont(.subheadline, weight: .semibold, color: .black)
+                // `.black` 리터럴은 다크 모드에서 검정 배경 위 검정 글씨가 된다.
+                // `.grey900` 은 Asset Catalog 라 다크에서 흰색으로 뒤집힌다.
+                .appFont(.subheadline, weight: .semibold, color: .grey900)
         }
         .padding(.horizontal, Metrics.badgeHorizontalPadding)
         .padding(.vertical, Metrics.badgeVerticalPadding)
@@ -123,6 +128,8 @@ struct ExchangeSearchingView: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
                 }
             }
+            // 탐색 중이라는 사실은 아래 문구가 말한다. 링과 아바타는 그 시각 표현이다.
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -156,17 +163,24 @@ struct ExchangeSearchingView: View {
     private var caption: some View {
         VStack(spacing: Metrics.captionSpacing) {
             Text(Constants.title)
-                .appFont(.title3, weight: .semibold, color: .black)
+                .appFont(.title3, weight: .semibold, color: .grey900)
 
             Text("\(Constants.captionPrefix)\(emphasizedButtonName)\(Constants.captionSuffix)")
                 .appFont(.subheadline, color: .grey500)
         }
         .multilineTextAlignment(.center)
-        .frame(width: Metrics.captionWidth)
+        .frame(maxWidth: Metrics.captionMaxWidth)
+        .accessibilityElement(children: .combine)
     }
 
-    /// 안내문 속 강조 스팬 — 시안이 버튼명만 Bold 로 싣는다(AppFontWeight 에 bold 가
-    /// 없어 semibold, 명함_l 과 같은 처리). 바깥 `appFont` 는 환경 폰트라 이 명시 폰트가 이긴다.
+    /// 안내문 속 강조 스팬 — 시안이 버튼명만 Bold 로 싣는다.
+    ///
+    /// `AppFontWeight` 는 regular/medium/semibold 3종뿐이라 semibold 로 근사한다.
+    /// 확장하려면 `Core/DesignSystem/Resources/Fonts/` 에 `Pretendard-Bold.otf` 가
+    /// 먼저 들어와야 한다 — 파일 없이 케이스만 늘리면 `Font.custom` 이 조용히
+    /// 시스템 서체로 떨어진다 (#1237).
+    ///
+    /// 바깥 `appFont` 는 환경 폰트라 이 명시 폰트가 이긴다.
     private var emphasizedButtonName: Text {
         Text(Constants.captionEmphasis).font(.app(.subheadline, weight: .semibold))
     }
