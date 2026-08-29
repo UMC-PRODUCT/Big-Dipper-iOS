@@ -61,6 +61,9 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
       (예: `✨ [Feat] 명함 도메인 계층 — MyCard · 명함첩 · 교환 세션 UseCase (#1194)`)
       **이슈 제목 형식(`📄 Docs: …` — 콜론)을 PR 제목에 쓰지 않는다.** `[Docs]:`처럼 대괄호 뒤 콜론도 금지.
       (이모지·Type 매핑표: `docs/claude/git-workflow.md`)
+    - **PR 생성 시 Assignee 와 라벨을 반드시 지정한다** — `gh pr create` 에 `--assignee "@me"` 와
+      `[Type]` 대응 라벨(`--label ":page_facing_up: Docs"` 등)을 같이 넘긴다. 나중에 붙이지 않는다.
+      (라벨명은 `gh label list` 출력과 정확히 일치해야 하며, 누락 시 `gh pr edit <번호> --add-assignee --add-label` 로 보정)
     - **PR 본문은 `.github/pull_request_template.md` 섹션 구조를 그대로 따른다.**
       임의 목차(`## 무엇을`·`## 검증` 등) 금지. `Closes #이슈번호`는 `## 🔗 관련 이슈` 섹션에 넣는다.
       ⚠️ `gh pr create --body "..."`는 템플릿을 불러오지 않는다 — 템플릿을 복사해 채운 뒤

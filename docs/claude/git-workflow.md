@@ -95,13 +95,28 @@ Git Flow + **연속 브랜치 파생** 지원
 > # 템플릿을 복사해 채운 뒤 --body-file 로 넘긴다
 > cp .github/pull_request_template.md /tmp/pr-body.md
 > # ... /tmp/pr-body.md 편집 (섹션 유지, 주석 제거, 내용 작성) ...
-> gh pr create --base develop --title "..." --body-file /tmp/pr-body.md
+> gh pr create --base develop \
+>   --title "📄 [Docs] 작업 내용 (#1267)" \
+>   --assignee "@me" \
+>   --label ":page_facing_up: Docs" \
+>   --body-file /tmp/pr-body.md
 > ```
+>
+> `--assignee`·`--label` 은 **생략하지 않는다** (위 「PR 규칙」 첫 항목).
 >
 > 이미 만든 PR 의 본문을 고칠 때도 같다: `gh pr edit <번호> --body-file /tmp/pr-body.md`
 
 ## PR 규칙
 
+- **Assignee 와 라벨은 PR 생성 시점에 반드시 지정한다** — 나중에 붙이는 게 아니라 `gh pr create` 플래그로 같이 넘긴다.
+  라벨이 없으면 보드·라벨 필터에서 PR 이 새어나가고, Assignee 가 없으면 담당자 추적이 끊긴다.
+  - **Assignee**: 기본 `--assignee "@me"`(PR 작성자). 다른 사람이 이어받으면 `--assignee <github-login>`,
+    여러 명이면 콤마로 구분(`--assignee "alice,bob"`).
+  - **라벨**: 제목의 `[Type]` 에 대응하는 값 — 위 「PR 제목 형식」 표의 `라벨` 열을 그대로 쓴다.
+    여러 성격이 섞이면 `--label` 을 반복해 복수 지정한다.
+  - 라벨 이름은 `gh label list` 출력 문자열(`:page_facing_up: Docs` 처럼 이모지 코드 포함)과
+    **정확히 일치**해야 한다. 틀리면 `gh pr create` 자체가 실패한다.
+  - 이미 만든 PR 에 누락됐다면: `gh pr edit <번호> --add-assignee "@me" --add-label ":page_facing_up: Docs"`
 - 최소 1인 Approve 필수
 - main/develop 직접 푸시 금지
 - Squash and Merge 사용
