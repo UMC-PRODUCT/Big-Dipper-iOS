@@ -27,12 +27,15 @@ public final class FetchActivityStatUseCase:
 
     // MARK: - Function
 
-    /// 네 소스를 병렬 조회하고, 실패한 소스만 "0"으로 채운다 (MP-F07 우측 값 일관).
+    /// 네 소스를 병렬 조회하고, 실패한 소스만 `nil` 로 남긴다.
+    ///
+    /// 한 소스가 죽어도 나머지 숫자는 보여야 해서 소스별로 삼키되, 삼킨 결과를 `"0"` 이
+    /// 아니라 `nil` 로 남긴다 — 화면이 「0개」와 「못 세었다」를 다르게 그린다 (#1222).
     public func execute() async -> ActivityStat {
-        async let received = countOrZero { try await self.receivedCardRepository.count() }
-        async let study = countOrZero { try await self.statRepository.fetchStudyCount() }
-        async let activity = countOrZero { try await self.statRepository.fetchActivityCount() }
-        async let bookmark = textOrZero { try await self.statRepository.fetchBookmarkCount() }
+        async let received = value { String(try await self.receivedCardRepository.count()) }
+        async let study = value { try await self.statRepository.fetchStudyCount() }
+        async let activity = value { String(try await self.statRepository.fetchActivityCount()) }
+        async let bookmark = value { try await self.statRepository.fetchBookmarkCount() }
 
         return await ActivityStat(
             receivedCardCount: received,
@@ -44,17 +47,12 @@ public final class FetchActivityStatUseCase:
 
     // MARK: - Private Function
 
-    /// 로컬 집계(Int) 소스 — 실패 시 "0".
-    private func countOrZero(_ fetch: () async throws -> Int) async -> String {
-        (try? await fetch()).map(String.init) ?? "0"
-    }
-
-    /// 서버 원본(String) 소스 — 실패·빈 문자열이면 "0". 값은 변환 없이 통과시킨다
+    /// 조회 실패·빈 문자열이면 `nil`. 값은 변환 없이 통과시킨다
     /// (절대 규칙 #2 — Int 왕복은 비정상 값을 조용히 0으로 삼킨다).
-    private func textOrZero(_ fetch: () async throws -> String) async -> String {
+    private func value(_ fetch: () async throws -> String) async -> String? {
         guard let value = try? await fetch(),
               !value.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return "0"
+            return nil
         }
         return value
     }

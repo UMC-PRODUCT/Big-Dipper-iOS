@@ -11,7 +11,7 @@ import UMCFoundation
 // MARK: - Query
 
 /// 스터디 카운트 쿼리. 커서 응답에 총개수가 없어 페이지를 크게 받아 항목 수를 센다.
-/// size(50) 초과분은 표기가 50에서 멈춘다 — 개인 참여 스터디 수 특성상 실질 영향 없음.
+/// size(50) 를 넘으면 `hasNext` 가 참으로 오고, 저장소가 그걸 읽어 `"50+"` 로 표기한다.
 public struct StudyCountQueryDTO {
     public let size: Int
 

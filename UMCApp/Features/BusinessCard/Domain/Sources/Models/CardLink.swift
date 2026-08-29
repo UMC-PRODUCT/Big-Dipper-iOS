@@ -30,6 +30,11 @@ import Foundation
 ///   숫자만 쓸 것.
 /// - Note: 읽기는 굽기보다 넓다. 과거 정본이던 Universal Link 두 경로와 경로형 커스텀
 ///   스킴(`umc://card/{id}`)도 계속 해석한다 — 이미 구워진 QR 이미지는 회수할 수 없다.
+///   수용 종료 기한은 ``Constants/legacySunset`` 에 박아 두고 테스트가 지키게 한다 (#1226).
+/// - Note: 만료(`exp`)는 **덧붙이는 질의 파라미터**라 Android 를 깨지 않는다 (#1226).
+///   저쪽 매니페스트 필터는 `scheme=umc, host=card` 로 질의를 보지 않고, NavHost 패턴
+///   (`umc://card?memberId={memberId}`)은 패턴에 선언된 질의만 읽어 모르는 값은 버린다
+///   (`MainNavHost.kt:471-479` · `AndroidManifest.xml:96-103`, 2026-08-28 확인).
 public struct CardLink: Hashable, Sendable {
 
     // MARK: - Constants
@@ -41,6 +46,31 @@ public struct CardLink: Hashable, Sendable {
         static let cardScheme = "umc"
         static let cardHost = "card"
         static let memberIdQueryName = "memberId"
+
+        /// 만료 시각 질의 파라미터 — epoch 초. 없으면 만료가 없는 링크로 읽는다 (#1226).
+        static let expiryQueryName = "exp"
+
+        /// QR 에 굽는 유효 기간.
+        ///
+        /// 짧게 잡으면 화면에 띄워 둔 QR 이 대화 도중 죽고, 「QR 이미지 저장」·공유로
+        /// 내보낸 이미지가 그날을 못 넘긴다. 길게 잡으면 회수 못 하는 QR 이 오래 산다.
+        /// 30일은 그 사이 — 모집 부스 인쇄물처럼 **해를 넘겨 도는 QR** 만 끊는다.
+        ///
+        /// - Important: `exp` 는 서명되지 않아 **위조할 수 있다.** 정직하게 발급된 링크의
+        ///   수명을 묶을 뿐이고, 임의 memberId 링크를 지어내 명함을 긁어 모으는 열거 수집은
+        ///   막지 못한다 — 그건 서버 발급 서명 토큰이 있어야 한다 (#1225 · #1226 코멘트).
+        static let validity: TimeInterval = 60 * 60 * 24 * 30
+
+        /// 폐기 형식(구 Universal Link 2종 · 경로형 커스텀 스킴) 수용 종료 기한 (#1226).
+        ///
+        /// 날짜만 주석에 적으면 아무도 안 본다. `CardLinkTests` 가 이 날짜를 지나면
+        /// 실패하게 해 두어 **CI 가 먼저 걸린다** — 그때 폐기 경로를 지우거나 기한을
+        /// 다시 합의한다.
+        static let legacySunset = DateComponents(
+            calendar: .init(identifier: .gregorian),
+            timeZone: .init(identifier: "Asia/Seoul"),
+            year: 2027, month: 3, day: 1
+        ).date ?? .distantFuture
 
         /// 과거 정본이던 Universal Link 표기 — **읽기 전용.** 서버에 AASA 가 없어 굽기를
         /// 접었지만, 이 표기로 구워진 검증기 QR 이 남아 있을 수 있다.
@@ -61,18 +91,47 @@ public struct CardLink: Hashable, Sendable {
 
     public let memberId: String
 
+    /// 링크 만료 시각. `nil` 이면 만료가 없다 — `exp` 를 굽기 전에 나간 QR 과 Android 가
+    /// 굽는 링크가 여기 해당한다. 없는 만료를 「지금 만료」로 읽으면 정상 QR 이 통째로
+    /// 죽으므로 **없음과 지남을 절대 섞지 않는다.**
+    public let expiresAt: Date?
+
     // MARK: - Init
 
-    public init(memberId: String) {
+    public init(memberId: String, expiresAt: Date? = nil) {
         self.memberId = memberId
+        self.expiresAt = expiresAt
     }
+
+    /// 지금부터 ``Constants/validity`` 동안 유효한 링크. QR 을 구울 때 쓴다 (#1226).
+    public static func issued(memberId: String, now: Date = Date()) -> CardLink {
+        CardLink(memberId: memberId, expiresAt: now.addingTimeInterval(Constants.validity))
+    }
+
+    /// 폐기 형식 수용 종료 기한 — 테스트가 이 날짜를 지키게 한다.
+    public static var legacyFormatSunset: Date { Constants.legacySunset }
 
     // MARK: - Computed Property
 
     /// QR 에 굽는 정규 문자열 — `umc://card?memberId={id}`. Android 와 같은 값이다.
+    /// 만료가 있으면 `&exp={epoch초}` 를 덧붙인다 (Android 는 모르는 질의를 버린다).
     public var urlString: String {
-        "\(Constants.cardScheme)://\(Constants.cardHost)"
+        let base = "\(Constants.cardScheme)://\(Constants.cardHost)"
             + "?\(Constants.memberIdQueryName)=\(memberId)"
+
+        guard let expiresAt else { return base }
+
+        return base + "&\(Constants.expiryQueryName)=\(Int(expiresAt.timeIntervalSince1970))"
+    }
+
+    /// 만료가 지났다. 만료 없는 링크는 언제나 `false`.
+    ///
+    /// 파싱은 이 값을 보지 않는다 — 만료된 링크도 구조적으로는 해석되어야 저장 경로가
+    /// 「만료됐다」고 안내할 수 있고, 명함첩에 이미 저장된 `cardLink` 에서 memberId 를
+    /// 다시 읽는 경로(``MyCard/init(payload:)``)가 시간이 지났다고 깨지지 않는다.
+    public func isExpired(now: Date = Date()) -> Bool {
+        guard let expiresAt else { return false }
+        return expiresAt < now
     }
 
     public var url: URL? {
@@ -99,7 +158,7 @@ public struct CardLink: Hashable, Sendable {
               isValidIdentifier(identifier)
         else { return nil }
 
-        return CardLink(memberId: identifier)
+        return CardLink(memberId: identifier, expiresAt: expiryQuery(in: url))
     }
 
     private static func parseCustomScheme(_ url: URL) -> CardLink? {
@@ -112,13 +171,26 @@ public struct CardLink: Hashable, Sendable {
 
         guard let identifier, isValidIdentifier(identifier) else { return nil }
 
-        return CardLink(memberId: identifier)
+        return CardLink(memberId: identifier, expiresAt: expiryQuery(in: url))
     }
 
     private static func memberIdQuery(in url: URL) -> String? {
+        query(named: Constants.memberIdQueryName, in: url)
+    }
+
+    /// `exp` 는 epoch 초 문자열. 값이 없거나 숫자가 아니면 **만료 없음**으로 읽는다 —
+    /// 못 읽은 값을 「만료」로 처리하면 오타 하나가 정상 명함 수신을 막는다.
+    private static func expiryQuery(in url: URL) -> Date? {
+        guard let raw = query(named: Constants.expiryQueryName, in: url),
+              let epoch = TimeInterval(raw) else { return nil }
+
+        return Date(timeIntervalSince1970: epoch)
+    }
+
+    private static func query(named name: String, in url: URL) -> String? {
         URLComponents(url: url, resolvingAgainstBaseURL: false)?
             .queryItems?
-            .first(where: { $0.name == Constants.memberIdQueryName })?
+            .first(where: { $0.name == name })?
             .value
     }
 

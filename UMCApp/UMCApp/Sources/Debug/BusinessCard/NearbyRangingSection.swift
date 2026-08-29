@@ -10,6 +10,7 @@ import CryptoKit
 import SwiftUI
 import VisionKit
 import BusinessCardData
+import BusinessCardPresentation
 import CoreNearbyExchange
 
 /// UWB(Nearby Interaction) 거리 검증 섹션 — **제품 ``PeerRangingCoordinator`` 를 그대로 돌린다.**

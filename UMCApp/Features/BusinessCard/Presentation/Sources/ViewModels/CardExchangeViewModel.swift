@@ -51,6 +51,10 @@ public final class CardExchangeViewModel {
     /// 구분이 안 돼 같은 사람에게 계속 다시 보내게 된다.
     public private(set) var sentPeerIDs: Set<String> = []
 
+    /// 지금 명함을 보내고 있는 상대. 탭과 완료 화면 사이에 아무 표시가 없으면
+    /// 사용자는 「눌렀는데 반응이 없다」로 읽는다 (#1230).
+    public private(set) var sendingPeerID: String?
+
     private let fetchMyCard: FetchMyCardUseCaseProtocol
     private let exchangeCards: ExchangeCardsUseCaseProtocol
     private let errorHandler: ErrorHandler
@@ -77,6 +81,7 @@ public final class CardExchangeViewModel {
         // 「계속 교환하기」로 재진입할 때 이전 결과가 남아 있으면 완료 화면이 곧장 다시 뜬다.
         completedCard = nil
         failure = nil
+        sendingPeerID = nil
         peers = []
         sentPeerIDs = []
 
@@ -110,7 +115,10 @@ public final class CardExchangeViewModel {
     }
 
     public func send(to peer: DiscoveredPeer) async {
-        guard let card = myCard.value else { return }
+        guard let card = myCard.value, sendingPeerID == nil else { return }
+
+        sendingPeerID = peer.id
+        defer { sendingPeerID = nil }
 
         do {
             try await exchangeCards.send(myCard: card, to: peer)

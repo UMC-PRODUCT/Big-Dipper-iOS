@@ -60,7 +60,11 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
     - **PR 제목은 `{이모지} [Type] {작업 내용} (#이슈번호)`** — 분류는 반드시 `[대괄호]`, 끝에 이슈번호.
       (예: `✨ [Feat] 명함 도메인 계층 — MyCard · 명함첩 · 교환 세션 UseCase (#1194)`)
       **이슈 제목 형식(`📄 Docs: …` — 콜론)을 PR 제목에 쓰지 않는다.** `[Docs]:`처럼 대괄호 뒤 콜론도 금지.
-      본문에는 `Closes #이슈번호`를 넣어 이슈와 연결한다. (이모지·Type 매핑표: `docs/claude/git-workflow.md`)
+      (이모지·Type 매핑표: `docs/claude/git-workflow.md`)
+    - **PR 본문은 `.github/pull_request_template.md` 섹션 구조를 그대로 따른다.**
+      임의 목차(`## 무엇을`·`## 검증` 등) 금지. `Closes #이슈번호`는 `## 🔗 관련 이슈` 섹션에 넣는다.
+      ⚠️ `gh pr create --body "..."`는 템플릿을 불러오지 않는다 — 템플릿을 복사해 채운 뒤
+      `--body-file`로 넘길 것. (섹션 표·예시: `docs/claude/git-workflow.md` "PR 본문 형식")
     - 이미 푸시한 브랜치명을 고쳐야 하면 GitHub 브랜치 rename API는 **열려 있던 PR을 닫아버리므로**, rename 후 새 PR을 만들고 닫힌 PR에 후속 PR 번호를 코멘트로 남긴다.
     - 배포 브랜치는 예외: `testFlight/{번호}` · `release/{번호}` (순차 번호, 이슈번호 아님).
 
@@ -112,11 +116,12 @@ cd UMCApp && make doctor    # 환경 진단
 | PR 리뷰 규칙 & 체크리스트 | `docs/claude/pr-review.md` | PR 리뷰 작성 시 |
 | 3D 명함 Phase 0 검증 결과 | `docs/claude/business-card-3d-spike.md` | 3D 명함(#1246~#1249) 착수 전, 스파이크 실측치 확인 |
 
-iOS 26 프레임워크 API — 신규 Apple API를 다룰 때:
+Apple 프레임워크 API — 신규 Apple API를 다룰 때:
 
 | 모음 | 인덱스 | 언제 읽나 |
 |------|--------|----------|
-| iOS 26 프레임워크 가이드(20종) | `docs/claude/ios26-frameworks/INDEX.md` | Liquid Glass, FoundationModels, SwiftData 상속, 신규 SwiftUI/Concurrency API 등 |
+| Apple 프레임워크 가이드(20종) | `docs/claude/apple-frameworks/INDEX.md` | `glassEffect`·`GlassEffectContainer`(Liquid Glass) · 툴바 신규 API · `AttributedString`/리치 텍스트 · FoundationModels(온디바이스 LLM) · SwiftData 상속 · `@MainActor`/actor/async 동시성 · Swift Charts 3D · WebKit·AlarmKit·MapKit·StoreKit 연동 |
+| Apple 스킬팩(9종 · reference 66종, Apple 원문) | `docs/claude/apple-frameworks/INDEX.md` §3 | **SwiftUI·App Intents 코드를 새로 쓰거나 리뷰할 때.** `@Observable`/`@State`/`@Binding` 소유권 · `@Environment`/`@Entry` 무효화 경고 · `ForEach`/`List` identity(`id: \.self` 안티패턴) · soft-deprecated API 확인(`NavigationView`, 구 `onChange`) · 조건부 `.if` 모디파이어 · 뷰 분해/init 비용 · `Animatable` · App Intents 스키마/`AppEnum` · UIKit 현대화 · Xcode 보안 빌드 설정 |
 
 기획·설계 문서 — **별도 레포로 분리되어 있다**:
 

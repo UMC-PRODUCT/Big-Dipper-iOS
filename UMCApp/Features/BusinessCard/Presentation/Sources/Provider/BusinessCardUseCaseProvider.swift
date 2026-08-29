@@ -18,6 +18,7 @@ public protocol BusinessCardUseCaseProviding {
     var fetchReceivedCardsUseCase: FetchReceivedCardsUseCaseProtocol { get }
     var saveReceivedCardUseCase: SaveReceivedCardUseCaseProtocol { get }
     var deleteReceivedCardUseCase: DeleteReceivedCardUseCaseProtocol { get }
+    var updateExchangeContextUseCase: UpdateExchangeContextUseCaseProtocol { get }
     var fetchActivityStatUseCase: FetchActivityStatUseCaseProtocol { get }
     var generateCardQRUseCase: GenerateCardQRUseCaseProtocol { get }
     var exchangeCardsUseCase: ExchangeCardsUseCaseProtocol { get }
@@ -32,6 +33,7 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
     public let fetchReceivedCardsUseCase: FetchReceivedCardsUseCaseProtocol
     public let saveReceivedCardUseCase: SaveReceivedCardUseCaseProtocol
     public let deleteReceivedCardUseCase: DeleteReceivedCardUseCaseProtocol
+    public let updateExchangeContextUseCase: UpdateExchangeContextUseCaseProtocol
     public let fetchActivityStatUseCase: FetchActivityStatUseCaseProtocol
     public let generateCardQRUseCase: GenerateCardQRUseCaseProtocol
     public let exchangeCardsUseCase: ExchangeCardsUseCaseProtocol
@@ -55,6 +57,9 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
         )
         self.saveReceivedCardUseCase = save
         self.deleteReceivedCardUseCase = DeleteReceivedCardUseCase(
+            repository: receivedCardRepository
+        )
+        self.updateExchangeContextUseCase = UpdateExchangeContextUseCase(
             repository: receivedCardRepository
         )
         self.fetchActivityStatUseCase = FetchActivityStatUseCase(

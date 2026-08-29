@@ -22,6 +22,11 @@ struct AppRootView: View {
     // MARK: - Property
 
     @State private var viewModel = AppFlowViewModel()
+
+    /// 영속 스토어 폴백 고지. 실행당 한 번만 뜬다.
+    @State private var storageAlert: AlertPrompt?
+    @State private var didNoticeEphemeralStore = false
+
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
 
@@ -55,6 +60,8 @@ struct AppRootView: View {
         }
         .animation(.easeInOut(duration: DefaultConstant.animationTime), value: viewModel.state)
         .environment(\.appFlow, viewModel.appFlow)
+        .alertPrompt(item: $storageAlert)
+        .task { noticeEphemeralStoreIfNeeded() }
         .onReceive(
             NotificationCenter.default.publisher(for: .authSessionExpired)
         ) { _ in
@@ -68,6 +75,21 @@ struct AppRootView: View {
     }
 
     // MARK: - Function
+
+    /// 영속 스토어 생성이 인메모리까지 밀렸으면 한 번 알린다.
+    ///
+    /// 이 상태에서는 이번 실행에 저장한 명함첩·읽음 표시가 앱을 닫는 순간 사라진다.
+    /// 조용히 두면 사용자는 저장됐다고 믿고 잃으므로, 복구 안내 없이라도 사실은 말한다.
+    private func noticeEphemeralStoreIfNeeded() {
+        guard UMCAppApp.isEphemeralStore, !didNoticeEphemeralStore else { return }
+        didNoticeEphemeralStore = true
+        storageAlert = AlertPrompt(
+            title: "저장 공간을 열지 못했어요",
+            message: "이번 실행 동안 저장한 명함·읽음 표시는 앱을 닫으면 사라져요. "
+                + "기기를 재시작하거나 저장 공간을 확보한 뒤 다시 실행해 주세요.",
+            positiveBtnTitle: "확인"
+        )
+    }
 
     /// 세션 만료 시 세션 역할 상태 초기화 → DI 캐시 초기화 → 로그인 화면 전환 →
     /// (비동기) 토큰 삭제를 수행한다.

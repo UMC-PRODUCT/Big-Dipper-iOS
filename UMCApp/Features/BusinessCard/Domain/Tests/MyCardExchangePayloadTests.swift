@@ -88,10 +88,59 @@ struct MyCardExchangePayloadTests {
     func receivedCardFromPayload() throws {
         let payload = try card.toExchangePayload(cardID: "CARD-1")
 
-        let received = ReceivedCard(payload: payload, exchangeContext: "OT에서 교환")
+        let received = ReceivedCard(
+            payload: payload,
+            exchangeContext: "OT에서 교환",
+            exchangeMethod: .nearby
+        )
 
         #expect(received.id == "CARD-1")
         #expect(received.profile.name == "정의찬")
         #expect(received.exchangeContext == "OT에서 교환")
+        #expect(received.exchangeMethod == .nearby)
+    }
+
+    /// 로컬 `Date()` 로 덮으면 전송 지연·재시도만큼 시각이 밀린다 (#1227).
+    @Test("교환 시각은 상대가 보낸 페이로드 값을 그대로 쓴다")
+    func receivedCardKeepsPayloadTimestamp() throws {
+        let payload = try card.toExchangePayload(cardID: "CARD-1")
+
+        let received = ReceivedCard(
+            payload: payload,
+            exchangeContext: nil,
+            exchangeMethod: .nearby
+        )
+
+        #expect(received.exchangedAt == payload.timestamp)
+    }
+
+    /// 상대 시계가 앞서 있으면 그 명함이 명함첩 맨 위에 영원히 박힌다 — 남의 시계를
+    /// 믿어서 얻는 정확도보다 손해가 크다.
+    @Test("미래 시각으로 온 교환 시각은 지금으로 당긴다")
+    func futureTimestampIsClamped() throws {
+        let payload = try card.toExchangePayload(cardID: "CARD-1")
+        let future = try ExchangePayload(
+            cardID: payload.cardID,
+            name: payload.name,
+            nickname: payload.nickname,
+            part: payload.part,
+            generation: payload.generation,
+            university: payload.university,
+            email: payload.email,
+            github: payload.github,
+            linkedIn: payload.linkedIn,
+            blog: payload.blog,
+            avatarURL: payload.avatarURL,
+            cardLink: payload.cardLink,
+            timestamp: Date().addingTimeInterval(60 * 60 * 24)
+        )
+
+        let received = ReceivedCard(
+            payload: future,
+            exchangeContext: nil,
+            exchangeMethod: .nearby
+        )
+
+        #expect(received.exchangedAt < future.timestamp)
     }
 }

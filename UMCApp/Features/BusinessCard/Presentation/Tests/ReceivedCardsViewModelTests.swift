@@ -12,7 +12,7 @@ import BusinessCardDomain
 @testable import BusinessCardPresentation
 
 @MainActor
-@Suite("ReceivedCardsViewModel — 명함첩 로드·검색·삭제")
+@Suite("ReceivedCardsViewModel — 명함첩 로드·검색")
 struct ReceivedCardsViewModelTests {
 
     // MARK: - Load
@@ -35,6 +35,20 @@ struct ReceivedCardsViewModelTests {
         await sut.load()
 
         #expect(sut.cards.error != nil)
+    }
+
+    /// 상세에서 돌아왔을 때 쓰는 경로다. `.loading` 을 거치면 스켈레톤이 깜빡이고
+    /// 스크롤이 튄다 — 이미 답이 떠 있는 화면에서는 그게 더 손해다.
+    @Test("조용한 갱신은 목록을 비우지 않고 최신값으로 바꾼다")
+    func refreshKeepsListVisible() async {
+        let fetch = StubFetchReceivedCards(result: [makeCard(id: "1", name: "A")])
+        let sut = makeSUT(fetch: fetch)
+        await sut.load()
+
+        await sut.refresh()
+
+        #expect(sut.cards.value?.map(\.id) == ["1"])
+        #expect(sut.cards.isLoading == false)
     }
 
     // MARK: - Search
@@ -74,61 +88,6 @@ struct ReceivedCardsViewModelTests {
         #expect(fetch.callCount == 1)
         #expect(fetch.lastQuery == "제옹")
     }
-
-    // MARK: - Delete
-
-    @Test("삭제하면 목록에서 빠진다")
-    func deleteRemovesFromList() async {
-        let delete = StubDeleteReceivedCard()
-        let sut = makeSUT(
-            fetch: StubFetchReceivedCards(result: [
-                makeCard(id: "1", name: "A"), makeCard(id: "2", name: "B"),
-            ]),
-            delete: delete
-        )
-        await sut.load()
-
-        await sut.delete(id: "1")
-
-        #expect(delete.deletedIDs == ["1"])
-        #expect(sut.cards.value?.map(\.id) == ["2"])
-    }
-
-    /// 명함첩은 서버 사본이 없다 — 지우면 그 명함은 다시 교환하기 전까지 복구할 수 없다.
-    /// 그래서 그리드에서 바로 지우지 않고 확인을 한 번 받는다.
-    @Test("삭제를 요청하면 곧바로 지우지 않고 확인 다이얼로그를 띄운다")
-    func requestDeleteAsksFirst() async {
-        let delete = StubDeleteReceivedCard()
-        let sut = makeSUT(
-            fetch: StubFetchReceivedCards(result: [makeCard(id: "1", name: "A")]),
-            delete: delete
-        )
-        await sut.load()
-
-        sut.requestDelete(makeCard(id: "1", name: "A"))
-
-        #expect(sut.alertPrompt?.isPositiveBtnDestructive == true)
-        #expect(delete.deletedIDs.isEmpty)
-        #expect(sut.cards.value?.count == 1)
-    }
-
-    /// 실패했는데 행을 지워 버리면 사용자는 지워진 줄 알고 화면을 뜨고, 다음 진입에서
-    /// 되살아난 명함을 본다. 실패는 목록을 건드리지 않고 알리기만 한다.
-    @Test("삭제가 실패하면 목록을 그대로 두고 에러를 알린다")
-    func deleteFailureKeepsList() async {
-        let errorHandler = ErrorHandler()
-        let sut = makeSUT(
-            fetch: StubFetchReceivedCards(result: [makeCard(id: "1", name: "A")]),
-            delete: StubDeleteReceivedCard(error: StubError.boom),
-            errorHandler: errorHandler
-        )
-        await sut.load()
-
-        await sut.delete(id: "1")
-
-        #expect(sut.cards.value?.map(\.id) == ["1"])
-        #expect(errorHandler.currentError != nil)
-    }
 }
 
 // MARK: - Fixture
@@ -152,16 +111,8 @@ private func makeCard(id: String, name: String) -> ReceivedCard {
 }
 
 @MainActor
-private func makeSUT(
-    fetch: StubFetchReceivedCards,
-    delete: StubDeleteReceivedCard = StubDeleteReceivedCard(),
-    errorHandler: ErrorHandler = ErrorHandler()
-) -> ReceivedCardsViewModel {
-    ReceivedCardsViewModel(
-        fetchReceivedCards: fetch,
-        deleteReceivedCard: delete,
-        errorHandler: errorHandler
-    )
+private func makeSUT(fetch: StubFetchReceivedCards) -> ReceivedCardsViewModel {
+    ReceivedCardsViewModel(fetchReceivedCards: fetch)
 }
 
 // MARK: - Stub
@@ -184,21 +135,5 @@ private final class StubFetchReceivedCards:
         lastQuery = query
         if let error { throw error }
         return result
-    }
-}
-
-private final class StubDeleteReceivedCard:
-    DeleteReceivedCardUseCaseProtocol, @unchecked Sendable {
-
-    private let error: Error?
-    private(set) var deletedIDs: [String] = []
-
-    init(error: Error? = nil) {
-        self.error = error
-    }
-
-    func execute(id: String) async throws {
-        deletedIDs.append(id)
-        if let error { throw error }
     }
 }

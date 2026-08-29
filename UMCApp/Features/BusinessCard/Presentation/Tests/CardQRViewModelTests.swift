@@ -52,6 +52,54 @@ struct CardQRViewModelTests {
         #expect(sut.qrImage == nil)
     }
 
+    // MARK: - Retry / Refresh
+
+    /// 인코딩만 실패한 경우다. 명함은 이미 손에 있으니 재조회 없이 그 단계만 다시 돈다 —
+    /// 카드까지 다시 받아오면 왕복이 한 번 더 붙고 화면이 스켈레톤으로 되돌아간다.
+    @Test("QR 재시도는 명함을 다시 받아오지 않고 생성만 다시 한다")
+    func retryRegeneratesWithoutRefetching() async {
+        let fetch = StubFetchMyCard(card: makeCard())
+        let generator = StubGenerateCardQR(image: makeImage(), error: StubError.boom)
+        let sut = makeSUT(fetch: fetch, generator: generator)
+
+        await sut.load()
+        #expect(sut.qrImage == nil)
+        #expect(fetch.callCount == 1)
+
+        generator.error = nil
+        sut.retryQRGeneration()
+
+        #expect(sut.qrImage != nil)
+        #expect(fetch.callCount == 1, "재시도가 명함을 다시 받아오면 안 된다")
+    }
+
+    /// 명함조차 없으면 되살릴 재료가 없다 — 조용히 아무것도 하지 않아야 한다.
+    @Test("명함이 없으면 QR 재시도는 아무 일도 하지 않는다")
+    func retryWithoutCardDoesNothing() async {
+        let generator = StubGenerateCardQR(image: makeImage())
+        let sut = makeSUT(fetch: StubFetchMyCard(error: StubError.boom), generator: generator)
+        await sut.load()
+
+        sut.retryQRGeneration()
+
+        #expect(sut.qrImage == nil)
+        #expect(generator.callCount == .zero)
+    }
+
+    /// 당겨서 새로고침인데 캐시를 그대로 돌려주면 아무것도 하지 않는 제스처가 된다.
+    @Test("새로고침은 캐시를 건너뛰고 로딩 상태로 되돌아가지 않는다")
+    func refreshForcesRefetchAndKeepsContent() async {
+        let fetch = StubFetchMyCard(card: makeCard())
+        let sut = makeSUT(fetch: fetch)
+        await sut.load()
+        #expect(fetch.lastForceRefresh == false)
+
+        await sut.refresh()
+
+        #expect(fetch.lastForceRefresh == true)
+        #expect(sut.card.value != nil)
+    }
+
     // MARK: - Save
 
     @Test("이미지 저장을 누르면 생성된 QR 을 저장기로 넘긴다")
@@ -133,6 +181,8 @@ private final class StubFetchMyCard: FetchMyCardUseCaseProtocol, @unchecked Send
 
     private let card: MyCard?
     private let error: Error?
+    private(set) var callCount = 0
+    private(set) var lastForceRefresh: Bool?
 
     init(card: MyCard? = nil, error: Error? = nil) {
         self.card = card
@@ -140,6 +190,8 @@ private final class StubFetchMyCard: FetchMyCardUseCaseProtocol, @unchecked Send
     }
 
     func execute(forceRefresh: Bool) async throws -> MyCard {
+        callCount += 1
+        lastForceRefresh = forceRefresh
         if let error { throw error }
         return card ?? makeCard()
     }
@@ -148,8 +200,10 @@ private final class StubFetchMyCard: FetchMyCardUseCaseProtocol, @unchecked Send
 private final class StubGenerateCardQR: GenerateCardQRUseCaseProtocol, @unchecked Sendable {
 
     private let image: CGImage?
-    private let error: Error?
+    /// 재시도 경로를 재현하려면 「실패한 뒤 성공」이 필요해 도중에 바꿀 수 있게 둔다.
+    var error: Error?
     private(set) var lastCard: MyCard?
+    private(set) var callCount = 0
 
     init(image: CGImage? = nil, error: Error? = nil) {
         self.image = image
@@ -157,6 +211,7 @@ private final class StubGenerateCardQR: GenerateCardQRUseCaseProtocol, @unchecke
     }
 
     func execute(for card: MyCard) throws -> CGImage {
+        callCount += 1
         lastCard = card
         if let error { throw error }
         return image ?? makeImage()

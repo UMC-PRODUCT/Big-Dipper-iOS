@@ -20,6 +20,10 @@ struct DiscoveredPeerRow: View {
     /// 이 상대에게 이미 내 명함을 보냈는지.
     var hasSent: Bool = false
 
+    /// 이 상대에게 명함을 보내는 중. 탭과 완료 화면 사이가 비면 사용자는 무반응으로
+    /// 읽는다 — 신호 막대 자리를 진행 표시로 바꿔 그 구간을 메운다.
+    var isSending: Bool = false
+
     // MARK: - Constants
 
     private enum Constants {
@@ -29,10 +33,19 @@ struct DiscoveredPeerRow: View {
         static let sentImage = "checkmark.circle.fill"
         /// 파트와 기수를 잇는 구분자. 시안 표기 `iOS ・10기`.
         static let separator = " ・"
+
+        static let sendingLabel = "명함 보내는 중"
+        static let unknownDistanceLabel = "거리 측정 중"
+        static let actionHint = "이 멤버에게 내 명함을 보냅니다"
+
+        static func distanceLabel(meters: Double) -> String {
+            String(format: "약 %.1f미터", meters)
+        }
     }
 
     private enum Metrics {
-        static let height: CGFloat = 80
+        /// 시안 실측 높이. **바닥값**이다 — 글자가 커지면 줄이 따라 늘어난다.
+        static let minHeight: CGFloat = 80
         static let cornerRadius: CGFloat = 34
         static let padding: CGFloat = 16
         static let avatarSize: CGFloat = 48
@@ -43,6 +56,17 @@ struct DiscoveredPeerRow: View {
         static let shadowRadius: CGFloat = 4
         static let shadowY: CGFloat = 2
         static let shadowOpacity: Double = 0.1
+    }
+
+    /// 거리를 막대 채움 비율(0…1)로 옮기는 구간. UWB(NearbyInteraction) 실효 사거리가
+    /// 10m 안쪽이라 그 범위를 네 칸에 고르게 나눈다.
+    private enum SignalRange {
+        /// 이보다 가까우면 가득 찬다.
+        static let near: Double = 1
+        /// 이보다 멀면 한 칸만 남는다.
+        static let far: Double = 9
+        /// 사거리 밖에서도 막대가 통째로 비지 않게 남기는 하한.
+        static let minimumFill: Double = 0.25
     }
 
     // MARK: - Computed Property
@@ -59,6 +83,35 @@ struct DiscoveredPeerRow: View {
         let part = peer.part.flatMap(UMCPartType.init(apiValue:))?.name ?? peer.part
         let generation = peer.generation.map { "\($0)기" }
         return [part, generation].compactMap { $0 }.joined(separator: Constants.separator)
+    }
+
+    /// 막대 채움 비율. 거리를 아직 못 쟀으면 `0` — 「가까움」을 뜻하는 가득 찬 막대가
+    /// 기본값으로 뜨는 것을 막는다(`variableValue: nil` 은 전부 채워 그린다).
+    private var signalFill: Double {
+        guard let meters = peer.distanceMeters else { return .zero }
+
+        let span = SignalRange.far - SignalRange.near
+        let normalized = (SignalRange.far - meters) / span
+        return min(1, max(SignalRange.minimumFill, normalized))
+    }
+
+    /// 줄 오른쪽이 지금 그리고 있는 것을 말로 옮긴 것. ``trailing`` 과 같은 순서라
+    /// 보는 것과 듣는 것이 어긋나지 않는다.
+    private var trailingLabel: String {
+        guard !hasSent else { return Constants.sentTitle }
+        return peer.distanceMeters
+            .map(Constants.distanceLabel(meters:)) ?? Constants.unknownDistanceLabel
+    }
+
+    /// 「홍길동, iOS ・10기, 약 1.2미터」. 이름·파트·막대·거리가 따로 읽히면
+    /// 목록을 훑는 동안 네 번씩 듣게 된다.
+    ///
+    /// 줄을 한 덩어리로 묶어 놓아서 「보냈어요」 뱃지가 따로 읽힐 길이 없다 —
+    /// 그 사실도 여기서 같이 말한다.
+    private var accessibilityLabel: String {
+        [displayName, subtitle, trailingLabel]
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
     }
 
     // MARK: - Body
@@ -86,24 +139,37 @@ struct DiscoveredPeerRow: View {
 
             Spacer(minLength: Metrics.contentSpacing)
 
-            if hasSent {
-                sentBadge
-            } else {
-                signal
-            }
+            trailing
         }
         .padding(Metrics.padding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: Metrics.height)
+        .frame(minHeight: Metrics.minHeight)
         .background(Color.grey000, in: RoundedRectangle(cornerRadius: Metrics.cornerRadius))
         .shadow(
             color: .black.opacity(Metrics.shadowOpacity),
             radius: Metrics.shadowRadius,
             y: Metrics.shadowY
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isSending ? Constants.sendingLabel : accessibilityLabel)
+        .accessibilityHint(isSending ? "" : Constants.actionHint)
     }
 
     // MARK: - View Component
+
+    /// 셋 다 줄 오른쪽 같은 자리를 쓴다 — 보내는 중 → 보냄 → 신호 세기 순으로
+    /// 하나만 그린다. 전송 중에 「보냈어요」가 먼저 뜨면 아직 안 끝난 일이
+    /// 끝난 것처럼 보인다.
+    @ViewBuilder
+    private var trailing: some View {
+        if isSending {
+            ProgressView().controlSize(.small)
+        } else if hasSent {
+            sentBadge
+        } else {
+            signal
+        }
+    }
 
     /// 전송이 끝난 행은 신호 세기 대신 결과를 보여 준다 — 막대만 계속 그리면
     /// 눌렀다는 사실이 화면 어디에도 남지 않는다.
@@ -115,23 +181,29 @@ struct DiscoveredPeerRow: View {
             Text(Constants.sentTitle)
                 .appFont(.footnote)
         }
-        .foregroundStyle(BusinessCardPalette.indigo)
+        // 아래 ``signal`` 막대와 같은 자리·같은 파랑이어야 한다. 시안 raw hex 대신
+        // 코어 토큰을 쓴다 — 토큰은 다크 모드 값을 스스로 들고 있다 (#1237).
+        .foregroundStyle(Color.indigo500)
     }
 
     /// 거리는 UWB(NearbyInteraction)가 잰다. 미탑재 기기이거나 아직 못 쟀으면 `nil` 이라
-    /// 막대만 두고 숫자를 비운다 — 「0.0m」로 채우면 옆에 있다는 거짓말이 된다.
+    /// 막대를 비우고 숫자를 감춘다 — 「0.0m」로 채우면 옆에 있다는 거짓말이 된다.
+    ///
+    /// 막대는 장식이 아니라 거리의 시각 표현이라 VoiceOver 에서는 숨기고, 같은 정보를
+    /// 줄 전체 라벨이 말로 전달한다.
     private var signal: some View {
         VStack(alignment: .trailing, spacing: Metrics.textSpacing) {
-            Image(systemName: Constants.signalImage)
+            Image(systemName: Constants.signalImage, variableValue: signalFill)
                 .font(.system(size: Metrics.signalSize))
-                .foregroundStyle(BusinessCardPalette.indigo)
+                .foregroundStyle(Color.indigo500)
 
             if let meters = peer.distanceMeters {
                 Text(String(format: "%.1fm", meters))
-                    .appFont(.footnote, color: BusinessCardPalette.indigo)
+                    .appFont(.footnote, color: .indigo500)
                     .monospacedDigit()
             }
         }
+        .accessibilityHidden(true)
     }
 }
 
@@ -147,15 +219,31 @@ struct DiscoveredPeerRow: View {
         ))
 
         DiscoveredPeerRow(peer: DiscoveredPeer(
-            id: "b"
+            id: "b",
+            displayName: "먼 멤버", part: "PM", generation: "12",
+            avatarURL: nil, distanceMeters: 8.4
+        ))
+
+        // 거리 미측정 — 막대가 비어야 한다.
+        DiscoveredPeerRow(peer: DiscoveredPeer(
+            id: "c"
         ))
 
         DiscoveredPeerRow(
             peer: DiscoveredPeer(
-                id: "c",
+                id: "d",
                 displayName: "보낸 상대", part: "IOS", generation: "10"
             ),
             hasSent: true
+        )
+
+        DiscoveredPeerRow(
+            peer: DiscoveredPeer(
+                id: "e",
+                displayName: "보내는 중", part: "IOS", generation: "10",
+                avatarURL: nil, distanceMeters: 1.0
+            ),
+            isSending: true
         )
     }
     .padding(16)

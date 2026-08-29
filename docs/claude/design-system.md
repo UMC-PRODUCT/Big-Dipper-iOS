@@ -1,7 +1,7 @@
 # 디자인 시스템 + 성능 최적화
 
 > 디자인 토큰, Typography, Glass Effect, 공용 컴포넌트, 렌더링 최적화 상세 레퍼런스.
-> 핵심 요약은 `CLAUDE.md` 참고. iOS 26 프레임워크 API 상세는 `docs/claude/ios26-frameworks/` 참고.
+> 핵심 요약은 `CLAUDE.md` 참고. Apple 프레임워크 API 상세는 `docs/claude/apple-frameworks/` 참고.
 
 토큰 정의: `DefaultConstant.swift`, `DefaultSpacing.swift`
 
@@ -66,7 +66,7 @@ Pretendard 기반. `.appFont()` modifier로 줄간격 포함, `.font(.app())` �
 | `.glassProminent` (ButtonStyle) | Primary 버튼 |
 | `.glass` (ButtonStyle) | Secondary 버튼 |
 
-> Liquid Glass API 전체 사용법은 `docs/claude/ios26-frameworks/SwiftUI-Implementing-Liquid-Glass-Design.md` 참고.
+> Liquid Glass API 전체 사용법은 `docs/claude/apple-frameworks/SwiftUI-Implementing-Liquid-Glass-Design.md` 참고.
 
 ## 공용 UI 컴포넌트 (`Core/Common/UIComponents/`)
 

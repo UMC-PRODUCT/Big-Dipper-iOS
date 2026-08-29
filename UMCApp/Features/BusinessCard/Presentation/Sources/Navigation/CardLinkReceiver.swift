@@ -5,23 +5,27 @@
 //  Created by One on 8/19/26.
 //
 
-import CoreDI
 import SwiftUI
+import BusinessCardDomain
+import CoreDI
 import UMCFoundation
 
 /// 명함 링크 수신을 화면 한 곳에 붙이는 진입점.
 public extension View {
 
-    /// 명함 링크(`memberId`)가 들어오면 상대 명함을 받아 명함첩에 저장하고 완료 화면을 덮는다.
+    /// 명함 링크가 들어오면 상대 명함을 받아 명함첩에 저장하고 완료 화면을 덮는다.
     ///
-    /// 앱 셸이 딥링크를 해석해 `memberId` 를 넣어 주면 나머지는 이 모디파이어가 맡는다 —
-    /// 셸이 명함 UseCase 나 완료 화면을 알 필요가 없다 (선례: ``BusinessCardRoutingView``).
+    /// 앱 셸(딥링크)과 인앱 스캐너(``CardScanView``)가 같은 모디파이어로 들어온다 —
+    /// 호출부는 명함 UseCase 나 완료 화면을 알 필요가 없다 (선례: ``BusinessCardRoutingView``).
     /// 처리를 마치면 바인딩을 `nil` 로 비워 같은 링크가 다시 열리지 않게 한다.
+    ///
+    /// - Parameter link: ``CardLink`` 통째로 받는다. `memberId` 만 넘기면 링크가 나르는
+    ///   만료·서명(#1226)이 여기 닿기 전에 버려진다.
     func businessCardLinkReceiver(
-        memberId: Binding<String?>,
+        link: Binding<CardLink?>,
         container: DIContainer
     ) -> some View {
-        modifier(CardLinkReceiverModifier(memberId: memberId, container: container))
+        modifier(CardLinkReceiverModifier(link: link, container: container))
     }
 }
 
@@ -33,7 +37,7 @@ private struct CardLinkReceiverModifier: ViewModifier {
 
     // MARK: - Property
 
-    @Binding var memberId: String?
+    @Binding var link: CardLink?
 
     let container: DIContainer
 
@@ -46,7 +50,7 @@ private struct CardLinkReceiverModifier: ViewModifier {
 
         content.modifier(
             CardLinkReceiverCore(
-                memberId: $memberId,
+                link: $link,
                 viewModel: CardLinkReceiveViewModel(
                     fetchPeerCard: provider.fetchPeerCardUseCase,
                     saveReceivedCard: provider.saveReceivedCardUseCase,
@@ -65,14 +69,14 @@ private struct CardLinkReceiverCore: ViewModifier {
 
     // MARK: - Property
 
-    @Binding var memberId: String?
+    @Binding var link: CardLink?
 
     @State private var viewModel: CardLinkReceiveViewModel
 
     // MARK: - Init
 
-    init(memberId: Binding<String?>, viewModel: CardLinkReceiveViewModel) {
-        self._memberId = memberId
+    init(link: Binding<CardLink?>, viewModel: CardLinkReceiveViewModel) {
+        self._link = link
         self._viewModel = State(initialValue: viewModel)
     }
 
@@ -81,11 +85,11 @@ private struct CardLinkReceiverCore: ViewModifier {
     func body(content: Content) -> some View {
         content
             // `id:` 를 링크 값으로 두면 새 링크마다 다시 돈다. 처리 후 바인딩을 비우므로
-            // 같은 상대를 다시 스캔해도 값이 nil → memberId 로 바뀌며 또 실행된다.
-            .task(id: memberId) {
-                guard let memberId else { return }
-                await viewModel.receive(memberId: memberId)
-                self.memberId = nil
+            // 같은 상대를 다시 스캔해도 값이 nil → link 로 바뀌며 또 실행된다.
+            .task(id: link) {
+                guard let link else { return }
+                await viewModel.receive(link: link)
+                self.link = nil
             }
             .fullScreenCover(item: Binding(
                 get: { viewModel.savedCard },

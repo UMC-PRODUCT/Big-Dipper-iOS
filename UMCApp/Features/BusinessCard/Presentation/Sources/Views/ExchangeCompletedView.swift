@@ -25,7 +25,9 @@ private enum Constants {
 
 private enum Metrics {
     static let illustrationSize: CGFloat = 200
-    static let messageWidth: CGFloat = 228
+    /// 시안 실측 폭. **상한**이다 — 고정하면 큰 글자에서 문구가 넘치고,
+    /// 그렇다고 풀어 두면 한 줄이 화면 끝까지 늘어져 시안 리듬이 깨진다.
+    static let messageMaxWidth: CGFloat = 228
     static let illustrationSpacing: CGFloat = 16
     static let textSpacing: CGFloat = 4
     static let buttonSpacing: CGFloat = 10
@@ -61,6 +63,7 @@ struct ExchangeCompletedView: View {
                 Image.umcExchangeCompleted
                     .resizable()
                     .frame(width: Metrics.illustrationSize, height: Metrics.illustrationSize)
+                    .accessibilityHidden(true)
 
                 message
             }
@@ -78,6 +81,9 @@ struct ExchangeCompletedView: View {
     private var message: some View {
         VStack(spacing: Metrics.textSpacing) {
             // 시안은 Pretendard Bold 지만 `AppFontWeight` 에 bold 가 없어 semibold 로 간다.
+            // 확장하려면 `Core/DesignSystem/Resources/Fonts/` 에 `Pretendard-Bold.otf` 가
+            // 먼저 들어와야 한다 — 파일 없이 케이스만 늘리면 `Font.custom` 이 조용히
+            // 시스템 서체로 떨어진다 (#1237).
             Text(Constants.title)
                 .appFont(.title2, weight: .semibold, color: .grey900)
 
@@ -85,7 +91,10 @@ struct ExchangeCompletedView: View {
                 .appFont(.subheadline, color: .grey600)
                 .multilineTextAlignment(.center)
         }
-        .frame(width: Metrics.messageWidth)
+        .frame(maxWidth: Metrics.messageMaxWidth)
+        // 제목과 안내가 한 덩어리로 읽혀야 한다 — 나눠 읽으면 이름이 문맥 없이 뜬다.
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     private var buttons: some View {
