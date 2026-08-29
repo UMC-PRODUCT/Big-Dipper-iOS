@@ -27,15 +27,18 @@ struct ReceivedCardCell: View {
         /// `16 + 181 + 8 + 181 + 16 = 402` 가 화면을 넘고, 440pt 에서는 오른쪽이 빈다.
         /// 열을 유동으로 두고 이 값은 그라데이션 축 산출의 기준으로만 남긴다.
         static let referenceWidth: CGFloat = 181
-        static let height: CGFloat = 124
+        /// 시안 실측 높이. **바닥값**이다 — 글자가 커지면 칸이 따라 늘어난다.
+        static let minHeight: CGFloat = 124
         static let cornerRadius: CGFloat = 34
         static let padding: CGFloat = 16
         /// 상단 행(아바타·칩)과 텍스트 블록 사이.
         static let blockSpacing: CGFloat = 8
         static let avatarSize: CGFloat = 40
         static let chipSpacing: CGFloat = 4
-        static let chipHeight: CGFloat = 21
+        /// 시안 칩 높이. **바닥값**이다 — 고정하면 큰 글자에서 라벨이 캡슐을 넘는다.
+        static let chipMinHeight: CGFloat = 21
         static let chipHorizontalPadding: CGFloat = 6
+        static let chipVerticalPadding: CGFloat = 2
         static let textSpacing: CGFloat = 4
     }
 
@@ -92,9 +95,22 @@ struct ReceivedCardCell: View {
         }
         .padding(Metrics.padding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: Metrics.height)
+        .frame(minHeight: Metrics.minHeight)
         .background(background)
         .clipShape(RoundedRectangle(cornerRadius: Metrics.cornerRadius))
+        // 아바타·칩 2개·이름·학교가 따로 읽히면 한 칸을 훑는 데 다섯 번이 걸린다.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
+    private var accessibilityLabel: String {
+        [
+            displayName,
+            card.profile.university,
+            "\(card.profile.partDisplayName) 파트",
+            "\(card.profile.generation)기",
+        ].joined(separator: ", ")
     }
 
     // MARK: - View Component
@@ -113,7 +129,7 @@ struct ReceivedCardCell: View {
                 chip("\(card.profile.generation)기")
             }
         }
-        .frame(height: Metrics.avatarSize)
+        .frame(minHeight: Metrics.avatarSize)
     }
 
     private var textBlock: some View {
@@ -130,19 +146,35 @@ struct ReceivedCardCell: View {
 
     /// 파트 칩과 기수 칩이 같은 배경을 쓴다 — 시안에 둘 사이 색 구분이 없다.
     ///
-    /// - Note: 라벨이 전 파트 공통 흰색이라 Node.js(#FFCC00)에서는 대비가 낮다.
-    ///   시안이 그렇게 그려져 있어 그대로 따르되 디자이너 확인이 필요하다.
+    /// - Important: **흰 라벨이 WCAG AA(4.5:1)를 8개 파트 전부 미달한다** (#1235).
+    ///   시드@0.8 을 카드 면(틴트 최대 0.15)에 합성한 라이트 모드 실측 대비비:
+    ///   Admin 3.75 · PM 3.40 · Design 3.15 · Web 2.74 · Spring 1.96 · Android 1.94 ·
+    ///   iOS 1.94 · **Node 1.42** (최악). 같은 배경에 검정 라벨을 얹으면
+    ///   5.60~14.77 로 8개 전부 통과한다.
+    ///   색 선택은 디자인 결정이라 여기서 바꾸지 않는다 — #1236 시안 확정 대기.
     private func chip(_ text: String) -> some View {
         Text(text)
             .appFont(.caption2, color: Color.white)
             .lineLimit(1)
             .padding(.horizontal, Metrics.chipHorizontalPadding)
-            .frame(height: Metrics.chipHeight)
+            .padding(.vertical, Metrics.chipVerticalPadding)
+            .frame(minHeight: Metrics.chipMinHeight)
             .background(seed.opacity(Palette.chipAlpha), in: Capsule())
     }
 
     /// 시드 컬러 2겹 — 좌상단은 거의 흰색, 우하단으로 갈수록 파트 색이 옅게 깔린다.
+    ///
+    /// 시드는 알파 0.05~0.1 뿐이라 **그 자체로는 면이 되지 못한다.** 라이트에서는
+    /// 흰 배경이 대신 면 노릇을 해 왔지만 다크에서는 카드가 배경에 녹아 사라진다.
+    /// `grey000`(라이트 흰색 / 다크 검정)을 바닥에 깔아 어느 모드에서도 면이 남게 한다.
+    /// 같은 피처의 ``DiscoveredPeerRow`` 가 쓰는 카드 면과 같은 토큰이다.
     private var background: some View {
+        Color.grey000.overlay {
+            seedTint
+        }
+    }
+
+    private var seedTint: some View {
         LinearGradient(
             stops: [
                 .init(color: seed.opacity(.zero), location: Palette.linearStart),

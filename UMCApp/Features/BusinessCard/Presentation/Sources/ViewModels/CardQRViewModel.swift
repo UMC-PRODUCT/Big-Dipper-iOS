@@ -63,11 +63,20 @@ public final class CardQRViewModel {
 
     // MARK: - Function
 
-    public func load() async {
-        card = .loading
+    /// - Parameters:
+    ///   - showsLoading: `.loading` 을 거칠지. 당겨서 새로고침은 `false` 다 —
+    ///     스켈레톤으로 갈아 끼우면 잡고 있던 화면이 통째로 사라진다.
+    ///   - forceRefresh: 세션 캐시를 건너뛸지. 진입 시에는 `false` 로 캐시를 쓰고,
+    ///     사용자가 직접 당겼을 때만 `true` — 캐시를 그대로 돌려주면 새로고침이
+    ///     아무것도 하지 않는 제스처가 된다.
+    public func load(showsLoading: Bool = true, forceRefresh: Bool = false) async {
+        if showsLoading {
+            card = .loading
+        }
         qrImage = nil
+
         do {
-            let myCard = try await fetchMyCard.execute(forceRefresh: false)
+            let myCard = try await fetchMyCard.execute(forceRefresh: forceRefresh)
             card = .loaded(myCard)
             // QR 만 못 만들었다고 명함까지 감출 이유가 없다. 카드는 그대로 두고
             // QR 자리만 비운다 — 화면이 그 상태를 따로 그린다.
@@ -77,6 +86,20 @@ public final class CardQRViewModel {
         } catch {
             card = .failed(.unknown(message: error.localizedDescription))
         }
+    }
+
+    /// 당겨서 새로고침 (#1230).
+    public func refresh() async {
+        await load(showsLoading: false, forceRefresh: true)
+    }
+
+    /// QR 생성만 다시 시도한다 (#1230).
+    ///
+    /// 명함은 이미 손에 있는데 인코딩만 실패한 경우가 있다. 그때 카드까지 다시 받아오면
+    /// 왕복이 한 번 더 붙고 화면이 스켈레톤으로 되돌아간다 — 실패한 단계만 다시 돈다.
+    public func retryQRGeneration() {
+        guard let myCard = card.value else { return }
+        qrImage = try? generateCardQR.execute(for: myCard)
     }
 
     /// 공유 시트에도 저장이 있지만 시안이 버튼을 따로 뒀다 — 한 번 탭으로 끝나는 경로다.

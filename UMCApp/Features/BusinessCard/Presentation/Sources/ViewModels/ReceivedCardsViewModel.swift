@@ -62,8 +62,14 @@ public final class ReceivedCardsViewModel {
 
     // MARK: - Function
 
-    public func load() async {
-        cards = .loading
+    /// - Parameter showsLoading: `.loading` 을 거칠지. 당겨서 새로고침은 `false` 다 —
+    ///   목록을 스켈레톤으로 갈아 끼우면 사용자가 잡고 있는 화면이 통째로 사라지고
+    ///   시스템 새로고침 인디케이터와 이중으로 보인다.
+    public func load(showsLoading: Bool = true) async {
+        if showsLoading {
+            cards = .loading
+        }
+
         do {
             cards = .loaded(try await fetchReceivedCards.execute(query: trimmedQuery))
         } catch let error as BusinessCardError {
@@ -79,6 +85,9 @@ public final class ReceivedCardsViewModel {
     /// 돌아온 경우다. `.loading` 을 거치지 않는다: 스켈레톤이 한 번 깜빡이고 스크롤이
     /// 맨 위로 튀는데, 화면에 이미 답이 떠 있는 상황에서는 그게 더 손해다.
     /// 실패해도 조용히 둔다 — 지금 보이는 목록이 최신이 아닐 뿐 틀리지 않았다.
+    ///
+    /// - Note: 당겨서 새로고침은 이 경로가 아니라 `load(showsLoading: false)` 다.
+    ///   사용자가 직접 요청한 갱신이라 실패를 삼키면 제스처가 먹통으로 읽힌다.
     public func refresh() async {
         guard let refreshed = try? await fetchReceivedCards.execute(query: trimmedQuery) else {
             return

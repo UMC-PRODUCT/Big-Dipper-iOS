@@ -64,6 +64,10 @@ public struct ReceivedCardDetailView: View {
 
     @State private var viewModel: ReceivedCardDetailViewModel
 
+    /// 옆 텍스트가 `.subheadline` 이라 아이콘만 고정 크기로 두면 AX 크기에서 홀로 작아진다.
+    @ScaledMetric(relativeTo: .subheadline)
+    private var methodIconSize: CGFloat = Metrics.methodIconSize
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
@@ -133,10 +137,12 @@ public struct ReceivedCardDetailView: View {
                         .appFont(.subheadline, color: .grey900)
                 } icon: {
                     Image(systemName: viewModel.card.exchangeMethod.iconName)
-                        .font(.system(size: Metrics.methodIconSize))
+                        .font(.system(size: methodIconSize))
                         .foregroundStyle(Color.indigo500)
                 }
             }
+            // 「받은 경로」와 값이 따로 읽히면 무엇에 대한 값인지 조립해야 알 수 있다.
+            .accessibilityElement(children: .combine)
 
             valueRow(
                 label: Constants.receivedAtLabel,
@@ -170,7 +176,7 @@ public struct ReceivedCardDetailView: View {
             viewModel.requestDelete()
         } label: {
             Label(Constants.deleteTitle, systemImage: Constants.deleteImage)
-                .appFont(.subheadline, weight: .semibold, color: .red)
+                .appFont(.subheadline, weight: .semibold, color: .red500)
                 .frame(maxWidth: .infinity)
                 .padding(Metrics.cardPadding)
                 .background(
@@ -189,6 +195,7 @@ public struct ReceivedCardDetailView: View {
         VStack(alignment: .leading, spacing: Metrics.headerSpacing) {
             Text(title)
                 .appFont(.footnote, weight: .semibold, color: .grey600)
+                .accessibilityAddTraits(.isHeader)
 
             VStack(spacing: Metrics.rowSpacing) {
                 content()
@@ -210,6 +217,7 @@ public struct ReceivedCardDetailView: View {
                 .appFont(.subheadline, color: .grey900)
                 .multilineTextAlignment(.trailing)
         }
+        .accessibilityElement(children: .combine)
     }
 
     /// 열 수 있는 값은 눌러서 열고, 아니면 텍스트로만 둔다 — 눌러도 아무 일 없는

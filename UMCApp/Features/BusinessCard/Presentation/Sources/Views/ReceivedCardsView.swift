@@ -28,6 +28,8 @@ private enum Constants {
     static let scanLabel = "QR 스캔"
     static let scanImage = "qrcode.viewfinder"
 
+    static let openHint = "이 명함을 자세히 봅니다"
+
     /// 스켈레톤 칸 수. 첫 화면에 그리드가 찬 느낌만 주면 되므로 한 화면 분량으로 둔다.
     static let skeletonCount = 6
 }
@@ -125,6 +127,9 @@ public struct ReceivedCardsView: View {
             ReceivedCardCell(card: card)
         }
         .buttonStyle(.plain)
+        // 카드는 이미 한 덩어리로 읽히지만(`children: .ignore`) 눌러서 무엇이 열리는지는
+        // 라벨에 없다 — 「버튼」만으로는 상세로 가는지 교환이 시작되는지 알 수 없다.
+        .accessibilityHint(Constants.openHint)
     }
 
     /// 검색 중인지에 따라 빈 화면의 뜻이 다르다 — 「아직 한 장도 없음」과 「이 검색어에
@@ -167,5 +172,6 @@ public struct ReceivedCardsView: View {
             .padding(.horizontal, Metrics.horizontalMargin)
             .padding(.top, Metrics.topMargin)
         }
+        .refreshable { await viewModel.load(showsLoading: false) }
     }
 }

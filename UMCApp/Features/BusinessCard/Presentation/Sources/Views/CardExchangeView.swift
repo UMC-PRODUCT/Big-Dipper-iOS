@@ -158,10 +158,14 @@ public struct CardExchangeView: View {
                     } label: {
                         DiscoveredPeerRow(
                             peer: peer,
-                            hasSent: viewModel.sentPeerIDs.contains(peer.id)
+                            hasSent: viewModel.sentPeerIDs.contains(peer.id),
+                            isSending: viewModel.sendingPeerID == peer.id
                         )
                     }
                     .buttonStyle(.plain)
+                    // 보내는 중에는 목록 전체가 잠긴다. 한 번에 한 명한테만 보내는데,
+                    // 다른 행이 눌리는 채로 두면 무시된 탭이 「먹통」으로 읽힌다.
+                    .disabled(viewModel.sendingPeerID != nil)
                 }
             }
             .padding(.horizontal, Metrics.horizontalMargin)

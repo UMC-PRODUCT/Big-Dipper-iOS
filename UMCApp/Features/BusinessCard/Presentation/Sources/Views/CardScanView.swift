@@ -138,5 +138,8 @@ public struct CardScanView: View {
             .padding(.horizontal, Metrics.captionSpacing)
             .padding(.bottom, Metrics.captionBottomPadding)
             .animation(.default, value: viewModel.notice)
+            // 카메라 화면에서 이 문구가 유일한 피드백이다. 스캔 결과에 따라 문구가
+            // 바뀌는데, 그 사실을 알리지 않으면 VoiceOver 사용자는 계속 첫 안내만 듣는다.
+            .accessibilityAddTraits(.updatesFrequently)
     }
 }

@@ -31,11 +31,24 @@ public struct BusinessCardFaceView: View {
     private let onExchange: (() -> Void)?
     private let onQR: (() -> Void)?
 
+    private enum Constants {
+        static let exchangeIcon = "shareplay"
+        static let exchangeTitle = "명함 교환"
+        static let qrIcon = "qrcode"
+        static let qrTitle = "QR 코드"
+        static let qrLabel = "내 명함 QR 코드"
+        static let qrUnavailable = "QR 코드를 만들지 못했어요"
+        static let flipToBack = "명함 뒷면 보기"
+        static let flipToFront = "명함 앞면 보기"
+    }
+
     /// 시안 실측값 (`Figma 12639:33234` / `12766:98172`).
     private enum Metrics {
-        static let cardHeight: CGFloat = 205
+        /// 시안 실측 높이. 글자가 커지면 이 값을 **바닥으로** 두고 늘어난다
+        /// (고정하면 AX 크기에서 칩·이름이 카드 밖으로 밀린다).
+        static let cardMinHeight: CGFloat = 205
         /// 버튼 행(39)과 그 위 간격(24)을 뺀 높이. 액션 없는 카드가 아래를 비우지 않게 한다.
-        static let faceOnlyHeight: CGFloat = 205 - 24 - 39
+        static let faceOnlyMinHeight: CGFloat = 205 - 24 - 39
         static let cardRadius: CGFloat = 34
         static let cardPadding: CGFloat = 16
         /// 정보 블록과 버튼 행 사이.
@@ -52,7 +65,7 @@ public struct BusinessCardFaceView: View {
         static let logoWidth: CGFloat = 47
         static let logoHeight: CGFloat = 15.16
         static let buttonSpacing: CGFloat = 10
-        static let buttonHeight: CGFloat = 39
+        static let buttonMinHeight: CGFloat = 39
         static let buttonRadius: CGFloat = 40
         static let buttonIconSize: CGFloat = 19
         static let linkSpacing: CGFloat = 8
@@ -61,12 +74,18 @@ public struct BusinessCardFaceView: View {
         static let qrBorderWidth: CGFloat = 0.26
     }
 
-    /// 카드 배경. 시안에 대응하는 토큰이 없어 실측 색을 그대로 쓴다
-    /// (`linear-gradient(112.185deg, rgba(114,142,253,0.8), #5468FC)`).
+    /// 카드 배경 · QR 테두리. 전부 코어 토큰이다 (#1237).
+    ///
+    /// 시안 실측은 `linear-gradient(112.185deg, rgba(114,142,253,0.8), #5468FC)` ·
+    /// 테두리 `#E5E8ED` 였고 그동안 `BusinessCardPalette` 가 그 raw 값을 들고 있었다.
+    /// 같은 화면의 버튼이 `Color.indigo500`(#4869F0)을 쓰는 바람에 파랑이 둘로
+    /// 갈렸고, raw 값에는 다크 모드 대응이 없었다. 토큰은 Asset Catalog 라 모드별
+    /// 값을 스스로 들고 있으므로 명함도 토큰으로 수렴한다.
+    /// (실측과의 차: 시작색 #728EFD→#6683FF · 끝색 #5468FC→#4869F0 · 테두리 #E5E8ED→#E7E8EA)
     private enum Palette {
-        static let gradientStart = BusinessCardPalette.cardGradientStart
-        static let gradientEnd = BusinessCardPalette.indigo
-        static let qrBorder = BusinessCardPalette.hairline
+        static let gradientStart = Color.indigo400
+        static let gradientEnd = Color.indigo500
+        static let qrBorder = Color.grey200
     }
 
     // MARK: - Init
@@ -107,7 +126,7 @@ public struct BusinessCardFaceView: View {
         }
         .padding(Metrics.cardPadding)
         .frame(maxWidth: .infinity)
-        .frame(height: hasActions ? Metrics.cardHeight : Metrics.faceOnlyHeight)
+        .frame(minHeight: hasActions ? Metrics.cardMinHeight : Metrics.faceOnlyMinHeight)
         .background(cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Metrics.cardRadius))
     }
@@ -155,11 +174,12 @@ public struct BusinessCardFaceView: View {
         } label: {
             Image(systemName: "arrow.2.squarepath")
                 .font(.system(size: Metrics.flipIconSize))
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 .foregroundStyle(Color.white)
-                .frame(width: Metrics.flipButtonSize, height: Metrics.flipButtonSize)
+                .frame(minWidth: Metrics.flipButtonSize, minHeight: Metrics.flipButtonSize)
                 .glassEffect(.clear, in: Circle())
         }
-        .accessibilityLabel(isFlipped ? "명함 앞면 보기" : "명함 뒷면 보기")
+        .accessibilityLabel(isFlipped ? Constants.flipToFront : Constants.flipToBack)
     }
 
     /// 시안 더미 `이름/닉네임` 규칙 — 닉네임이 비어 있으면 이름만 싣는다
@@ -192,6 +212,15 @@ public struct BusinessCardFaceView: View {
 
             Spacer(minLength: 0)
         }
+        // 아바타·이름·학교·칩 4개가 따로 읽히면 누구 명함인지 조립해야 알 수 있다.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(frontAccessibilityLabel)
+    }
+
+    /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
+    private var frontAccessibilityLabel: String {
+        [displayName, card.university, "\(card.partDisplayName) 파트", "\(card.generation)기"]
+            .joined(separator: ", ")
     }
 
     /// 뒷면은 아바타 자리에 QR 이 오고, 이름·칩 자리에 링크 3줄이 온다.
@@ -245,8 +274,11 @@ public struct BusinessCardFaceView: View {
             }
         }
         .frame(width: Metrics.avatarSize, height: Metrics.avatarSize)
+        // QR 은 어느 모드에서도 흰 바탕이어야 인식된다 — 여기만 토큰을 쓰지 않는다.
         .background(Color.white, in: shape)
         .overlay { shape.stroke(Palette.qrBorder, lineWidth: Metrics.qrBorderWidth) }
+        .accessibilityElement()
+        .accessibilityLabel(qrImage == nil ? Constants.qrUnavailable : Constants.qrLabel)
     }
 
     /// 값이 없어도 줄을 지운다 — 시안이 3줄 고정이지만 빈 줄은 서버 미입력을
@@ -264,6 +296,7 @@ public struct BusinessCardFaceView: View {
                     .appFont(.footnote, color: Color.white)
                     .lineLimit(1)
             }
+            .accessibilityElement(children: .combine)
         }
     }
 
@@ -289,8 +322,12 @@ public struct BusinessCardFaceView: View {
 
     private var actionButtons: some View {
         HStack(spacing: Metrics.buttonSpacing) {
-            actionButton(icon: "shareplay", title: "명함 교환", action: onExchange)
-            actionButton(icon: "qrcode", title: "QR 코드", action: onQR)
+            actionButton(
+                icon: Constants.exchangeIcon,
+                title: Constants.exchangeTitle,
+                action: onExchange
+            )
+            actionButton(icon: Constants.qrIcon, title: Constants.qrTitle, action: onQR)
         }
     }
 
@@ -310,11 +347,11 @@ public struct BusinessCardFaceView: View {
                 Text(title)
                     .appFont(.subheadline, weight: .semibold)
             }
-            // 시안 변수는 main-color/indigo500 이다. 코드베이스 토큰과 이름이 같아
-            // 토큰을 쓴다 (실측 hex 는 #5468FC 로 미세하게 다르다).
+            // 시안 변수 main-color/indigo500 = 코어 토큰. 카드 그라디언트도 같은
+            // 토큰으로 수렴해(#1237) 이제 한 화면에 파랑이 하나뿐이다.
             .foregroundStyle(Color.indigo500)
             .frame(maxWidth: .infinity)
-            .frame(height: Metrics.buttonHeight)
+            .frame(minHeight: Metrics.buttonMinHeight)
             .background(Color.white, in: RoundedRectangle(cornerRadius: Metrics.buttonRadius))
         }
         .buttonStyle(.plain)
