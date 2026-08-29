@@ -91,6 +91,11 @@ public final class MockNearbyTransport: NearbyTransportProtocol {
             continuation.finish()
         }
     }
+
+    /// 의도적으로 아무것도 하지 않는다. Mock 은 실제 무선이 없어 NI 토큰을 건널
+    /// 채널이 없고, 레인징 자체가 시뮬레이터에서 동작하지 않는다. 거리가 필요하면
+    /// `stubbedPeers` 의 `distanceMeters` 에 직접 넣는다.
+    public func setHandshakeProvider(_ provider: any NearbyHandshakeProviding) {}
 }
 
 #endif

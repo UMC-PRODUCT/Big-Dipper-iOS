@@ -10,24 +10,25 @@ import Foundation
 // MARK: - DiscoveredPeer
 
 /// 스캔 중 발견된 상대 피어 정보.
-/// 광고에서 추출한 최소 식별 정보만 포함 (PII 미포함 — PRD Q2 결정).
+///
+/// 광고가 실제로 나르는 값만 담는다. 한때 `cardUUIDPrefix`·`version`·`flags` 를 들고
+/// 있었는데 BLE 광고 패킷을 전제한 필드였다. transport 가 MPC 로 좁혀지면서 광고는
+/// Bonjour TXT 딕셔너리가 됐고 저 셋은 어디에서도 오지 않아 늘 상수였다 — 「광고에서
+/// 추출한 값」이라는 선언만 남고 실제로는 로컬 상수였으므로 걷어냈다.
 public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
 
     // MARK: - Property
 
-    /// 광고에서 수신한 cardUUID prefix (8 bytes)
+    /// transport 가 피어를 가르는 키. MPC 에서는 광고에 실린 세션 식별자다.
     public let id: String
-    public let cardUUIDPrefix: Data
-    public let version: UInt8
-    public let flags: UInt8
     public let discoveredAt: Date
-    /// 스캔 UI 표시용 이름. 핸드셰이크(PeerPreview)로 받기 전에는 무 PII 정책(PRD Q2)상 nil.
+    /// 스캔 UI 표시용 이름. 광고가 이름을 싣지 않는 transport 에서는 nil (무 PII 정책 PRD Q2).
     public let displayName: String?
     /// 표시용 파트 apiValue. 채널이 제공할 때만 채운다.
     public let part: String?
     /// 표시용 기수. 채널이 제공할 때만 채운다.
     public let generation: String?
-    /// 표시용 아바타 URL. 핸드셰이크로 받은 값.
+    /// 표시용 아바타 URL.
     public let avatarURL: String?
     /// UWB 실측 거리(미터).
     ///
@@ -40,9 +41,6 @@ public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
 
     public init(
         id: String,
-        cardUUIDPrefix: Data,
-        version: UInt8,
-        flags: UInt8,
         discoveredAt: Date = Date(),
         displayName: String? = nil,
         part: String? = nil,
@@ -51,9 +49,6 @@ public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
         distanceMeters: Double? = nil
     ) {
         self.id = id
-        self.cardUUIDPrefix = cardUUIDPrefix
-        self.version = version
-        self.flags = flags
         self.discoveredAt = discoveredAt
         self.displayName = displayName
         self.part = part
@@ -62,29 +57,10 @@ public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
         self.distanceMeters = distanceMeters
     }
 
-    /// 핸드셰이크로 받은 미리보기를 얹은 사본. 발견은 됐지만 아직 누군지 모르는 행을 채운다.
-    public func applying(_ preview: PeerPreview) -> DiscoveredPeer {
-        DiscoveredPeer(
-            id: id,
-            cardUUIDPrefix: cardUUIDPrefix,
-            version: version,
-            flags: flags,
-            discoveredAt: discoveredAt,
-            displayName: "\(preview.name)/\(preview.nickname)",
-            part: preview.part,
-            generation: preview.generation,
-            avatarURL: preview.avatarURL,
-            distanceMeters: distanceMeters
-        )
-    }
-
     /// UWB 실측 거리를 얹은 사본. 레인징이 갱신될 때마다 교체한다.
     public func applying(distanceMeters: Double?) -> DiscoveredPeer {
         DiscoveredPeer(
             id: id,
-            cardUUIDPrefix: cardUUIDPrefix,
-            version: version,
-            flags: flags,
             discoveredAt: discoveredAt,
             displayName: displayName,
             part: part,
@@ -93,6 +69,26 @@ public struct DiscoveredPeer: Sendable, Identifiable, Equatable {
             distanceMeters: distanceMeters
         )
     }
+}
+
+// MARK: - NearbyHandshakeProviding
+
+/// 피어별 핸드셰이크를 만들고 상대 핸드셰이크를 받는 쪽 (레인징 조율 계층).
+///
+/// **피어마다 달라야 하는 이유**: `NISession` 은 한 번에 한 상대와만 레인징한다
+/// (`NINearbyPeerConfiguration(peerToken:)` 이 상대 토큰 하나를 받는다). 그래서 상대가 늘면
+/// 세션도 늘고, 세션마다 자기 `discoveryToken` 이 다르다. 전역 토큰 하나를 뿌리면
+/// 두 번째 상대부터 엉뚱한 세션의 토큰을 받는다.
+public protocol NearbyHandshakeProviding: AnyObject, Sendable {
+
+    /// 이 피어에게 보낼 핸드셰이크. UWB 미탑재 기기는 `niToken` 을 `nil` 로 채운다.
+    func makeHandshake(forPeerID peerID: String) -> NearbyHandshake?
+
+    /// 상대 핸드셰이크 도착. 여기서 상대 토큰으로 레인징을 시작한다.
+    func didReceiveHandshake(_ handshake: NearbyHandshake, fromPeerID peerID: String)
+
+    /// 피어가 사라졌다. 해당 세션을 정리한다.
+    func didLosePeer(_ peerID: String)
 }
 
 // MARK: - NearbyTransportProtocol
@@ -135,4 +131,14 @@ public protocol NearbyTransportProtocol: Sendable {
 
     /// 상대로부터 수신된 명함 페이로드 스트림.
     func receive() -> AsyncStream<ExchangePayload>
+
+    // MARK: - Ranging
+
+    /// 레인징 조율 계층을 연결한다. 연결 수립 시점에 ``NearbyHandshake`` 를 주고받는 배선이다.
+    ///
+    /// **기본 구현을 두지 않는 이유**: NI 토큰은 데이터 채널이 있어야만 건널 수 있어서
+    /// (NearbyInteraction 은 스스로 토큰을 나르지 못한다) 이 배선이 없으면 거리가 조용히
+    /// 비어버린다. 프로토콜 요구사항으로 두면 새 transport 는 나를지 말지를 반드시 정하게
+    /// 된다 — 나르지 않기로 했다면 빈 구현에 그 사유를 적는다.
+    func setHandshakeProvider(_ provider: any NearbyHandshakeProviding)
 }

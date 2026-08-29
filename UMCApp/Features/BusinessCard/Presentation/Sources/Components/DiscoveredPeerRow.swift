@@ -213,25 +213,25 @@ struct DiscoveredPeerRow: View {
 #Preview("피어 행") {
     VStack(spacing: 8) {
         DiscoveredPeerRow(peer: DiscoveredPeer(
-            id: "a", cardUUIDPrefix: Data(), version: 1, flags: 0,
+            id: "a",
             displayName: "이름/닉네임", part: "IOS", generation: "10",
             avatarURL: nil, distanceMeters: 2.1
         ))
 
         DiscoveredPeerRow(peer: DiscoveredPeer(
-            id: "b", cardUUIDPrefix: Data(), version: 1, flags: 0,
+            id: "b",
             displayName: "먼 멤버", part: "PM", generation: "12",
             avatarURL: nil, distanceMeters: 8.4
         ))
 
         // 거리 미측정 — 막대가 비어야 한다.
         DiscoveredPeerRow(peer: DiscoveredPeer(
-            id: "c", cardUUIDPrefix: Data(), version: 1, flags: 0
+            id: "c"
         ))
 
         DiscoveredPeerRow(
             peer: DiscoveredPeer(
-                id: "d", cardUUIDPrefix: Data(), version: 1, flags: 0,
+                id: "d",
                 displayName: "보낸 상대", part: "IOS", generation: "10"
             ),
             hasSent: true
@@ -239,7 +239,7 @@ struct DiscoveredPeerRow: View {
 
         DiscoveredPeerRow(
             peer: DiscoveredPeer(
-                id: "e", cardUUIDPrefix: Data(), version: 1, flags: 0,
+                id: "e",
                 displayName: "보내는 중", part: "IOS", generation: "10",
                 avatarURL: nil, distanceMeters: 1.0
             ),

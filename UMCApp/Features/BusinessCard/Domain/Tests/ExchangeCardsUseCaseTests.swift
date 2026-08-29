@@ -21,7 +21,7 @@ struct ExchangeCardsUseCaseTests {
     )
 
     private func makePeer() -> DiscoveredPeer {
-        DiscoveredPeer(id: "peer-1", cardUUIDPrefix: Data(), version: 2, flags: 0,
+        DiscoveredPeer(id: "peer-1",
                        displayName: "상대")
     }
 

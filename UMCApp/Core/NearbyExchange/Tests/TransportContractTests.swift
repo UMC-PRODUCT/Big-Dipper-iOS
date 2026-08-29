@@ -21,9 +21,9 @@ struct TransportContractTests {
         )
     }
 
-    @Test("DiscoveredPeer 표시 필드는 기본 nil — 핸드셰이크 전에는 익명이다")
+    @Test("DiscoveredPeer 표시 필드는 기본 nil — 광고가 싣지 않으면 익명이다")
     func peerDisplayFieldsDefaultNil() {
-        let peer = DiscoveredPeer(id: "p1", cardUUIDPrefix: Data(), version: 1, flags: 0)
+        let peer = DiscoveredPeer(id: "p1")
 
         #expect(peer.displayName == nil)
         #expect(peer.part == nil)

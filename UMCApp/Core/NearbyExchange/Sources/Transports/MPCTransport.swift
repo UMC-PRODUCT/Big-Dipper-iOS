@@ -8,26 +8,6 @@
 import Foundation
 import MultipeerConnectivity
 
-// MARK: - NearbyHandshakeProviding
-
-/// 피어별 핸드셰이크를 만들고 상대 핸드셰이크를 받는 쪽.
-///
-/// **피어마다 달라야 하는 이유**: `NISession` 은 한 번에 한 상대와만 레인징한다
-/// (`NINearbyPeerConfiguration(peerToken:)` 이 상대 토큰 하나를 받는다). 그래서 상대가 늘면
-/// 세션도 늘고, 세션마다 자기 `discoveryToken` 이 다르다. 전역 토큰 하나를 뿌리면
-/// 두 번째 상대부터 엉뚱한 세션의 토큰을 받는다.
-public protocol NearbyHandshakeProviding: AnyObject, Sendable {
-
-    /// 이 피어에게 보낼 핸드셰이크. UWB 미탑재 기기는 `niToken` 을 `nil` 로 채운다.
-    func makeHandshake(forPeerID peerID: String) -> NearbyHandshake?
-
-    /// 상대 핸드셰이크 도착. 여기서 상대 토큰으로 레인징을 시작한다.
-    func didReceiveHandshake(_ handshake: NearbyHandshake, fromPeerID peerID: String)
-
-    /// 피어가 사라졌다. 해당 세션을 정리한다.
-    func didLosePeer(_ peerID: String)
-}
-
 // MARK: - MPCTransport
 
 /// MultipeerConnectivity 기반 근거리 명함 교환 transport.
@@ -173,13 +153,27 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         super.init()
     }
 
+    /// `stateQueue` 를 타지 않고 상태를 직접 만진다.
+    ///
+    /// **여기서 `stateQueue.sync` 를 부르면 죽는다.** `startScanning()`·`receive()` 의
+    /// `onTermination` 과 재초대 타이머 핸들러는 `stateQueue` 위에서 `self?` 를 옵셔널
+    /// 체이닝으로 풀어 강한 임시 참조를 만든다. 그게 마지막 참조면 블록이 끝나는 순간
+    /// `deinit` 이 **그 큐 위에서** 돌고, 직렬 큐 재진입 sync 는 즉시 트랩이다.
+    /// 마지막 참조가 사라진 뒤라 경쟁할 상대도 없어 큐로 감쌀 이유가 없다.
     deinit {
-        tearDown()
+        connectTimer?.cancel()
+        advertiser?.stopAdvertisingPeer()
+        browser?.stopBrowsingForPeers()
+        session?.disconnect()
+        // 이 시점의 weak self 는 이미 nil 이라 onTermination 은 큐를 건드리지 않고 끝난다.
+        peerContinuation?.finish()
+        receiveContinuation?.finish()
     }
 
     // MARK: - Configuration
 
-    /// 레인징 조율 계층을 연결한다. 설정하지 않으면 거리 없이 발견·교환만 동작한다.
+    /// 레인징 조율 계층을 연결한다 (``NearbyTransportProtocol`` 요구사항).
+    /// 설정하지 않으면 거리 없이 발견·교환만 동작한다.
     public func setHandshakeProvider(_ provider: any NearbyHandshakeProviding) {
         stateQueue.sync { handshakeProvider = provider }
     }
@@ -391,9 +385,6 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
 
         return DiscoveredPeer(
             id: sessionID,
-            cardUUIDPrefix: Data(),
-            version: UInt8(clamping: ExchangePayload.currentVersion),
-            flags: 0,
             displayName: displayName,
             part: info[DiscoveryKey.part],
             generation: info[DiscoveryKey.generation],
@@ -566,20 +557,6 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         resetSessionState()
     }
 
-    private func tearDown() {
-        stateQueue.sync {
-            connectTimer?.cancel()
-            connectTimer = nil
-            advertiser?.stopAdvertisingPeer()
-            browser?.stopBrowsingForPeers()
-            session?.disconnect()
-            advertiser = nil
-            browser = nil
-            session = nil
-        }
-        takePeerContinuation()?.finish()
-        takeReceiveContinuation()?.finish()
-    }
 }
 
 // MARK: - MCNearbyServiceAdvertiserDelegate
