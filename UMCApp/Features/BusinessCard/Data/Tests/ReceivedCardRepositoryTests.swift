@@ -138,7 +138,8 @@ struct ReceivedCardRepositoryTests {
         cardID: String,
         memberId: String,
         name: String,
-        owner: String = ReceivedCardRepositoryTests.owner
+        owner: String = ReceivedCardRepositoryTests.owner,
+        exchangedAt: Date = Date()
     ) {
         container.mainContext.insert(
             ReceivedCardRecord(
@@ -146,7 +147,7 @@ struct ReceivedCardRepositoryTests {
                 cardID: cardID, memberId: memberId, name: name, nickname: "\(name)닉",
                 partRaw: "DESIGN", generation: "11", university: "중앙대학교",
                 email: nil, github: nil, linkedIn: nil, blog: nil, avatarURL: nil,
-                exchangedAt: Date(), exchangeContext: nil
+                exchangedAt: exchangedAt, exchangeContext: nil
             )
         )
     }
@@ -189,10 +190,17 @@ struct ReceivedCardRepositoryTests {
     @Test("같은 상대의 cardID가 여러 벌이어도 한 번 삭제로 전부 사라진다")
     func deleteRemovesEveryRecordOfSameIdentity() async throws {
         // 기기 A·B에서 각각 교환 → 같은 memberId, 다른 cardID가 CloudKit으로 합쳐진 상황.
-        insertRecord(cardID: "C1", memberId: "7", name: "상대")
-        insertRecord(cardID: "C2", memberId: "7", name: "상대")
+        // 교환 시각을 벌려 둔다 — 목록에 뜨는 쪽(최신)과 숨는 쪽(과거)이 뒤집히면
+        // 「보이던 한 장을 지웠는데 숨어 있던 옛 행이 올라온다」를 짚지 못한다.
+        let now = Date()
+        insertRecord(cardID: "C-NEW", memberId: "7", name: "상대", exchangedAt: now)
+        insertRecord(
+            cardID: "C-OLD", memberId: "7", name: "상대",
+            exchangedAt: now.addingTimeInterval(-3600)
+        )
         try container.mainContext.save()
         let visible = try #require(try await repository.fetchAll().first)
+        #expect(visible.id == "C-NEW")
 
         try await repository.delete(id: visible.id)
 
