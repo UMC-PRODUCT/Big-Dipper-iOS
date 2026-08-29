@@ -153,8 +153,21 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         super.init()
     }
 
+    /// `stateQueue` 를 타지 않고 상태를 직접 만진다.
+    ///
+    /// **여기서 `stateQueue.sync` 를 부르면 죽는다.** `startScanning()`·`receive()` 의
+    /// `onTermination` 과 재초대 타이머 핸들러는 `stateQueue` 위에서 `self?` 를 옵셔널
+    /// 체이닝으로 풀어 강한 임시 참조를 만든다. 그게 마지막 참조면 블록이 끝나는 순간
+    /// `deinit` 이 **그 큐 위에서** 돌고, 직렬 큐 재진입 sync 는 즉시 트랩이다.
+    /// 마지막 참조가 사라진 뒤라 경쟁할 상대도 없어 큐로 감쌀 이유가 없다.
     deinit {
-        tearDown()
+        connectTimer?.cancel()
+        advertiser?.stopAdvertisingPeer()
+        browser?.stopBrowsingForPeers()
+        session?.disconnect()
+        // 이 시점의 weak self 는 이미 nil 이라 onTermination 은 큐를 건드리지 않고 끝난다.
+        peerContinuation?.finish()
+        receiveContinuation?.finish()
     }
 
     // MARK: - Configuration
@@ -544,20 +557,6 @@ public final class MPCTransport: NSObject, NearbyTransportProtocol, @unchecked S
         resetSessionState()
     }
 
-    private func tearDown() {
-        stateQueue.sync {
-            connectTimer?.cancel()
-            connectTimer = nil
-            advertiser?.stopAdvertisingPeer()
-            browser?.stopBrowsingForPeers()
-            session?.disconnect()
-            advertiser = nil
-            browser = nil
-            session = nil
-        }
-        takePeerContinuation()?.finish()
-        takeReceiveContinuation()?.finish()
-    }
 }
 
 // MARK: - MCNearbyServiceAdvertiserDelegate
