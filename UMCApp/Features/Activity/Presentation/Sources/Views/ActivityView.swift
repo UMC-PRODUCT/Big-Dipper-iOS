@@ -41,6 +41,9 @@ struct ActivityView: View {
     /// 목록이 아니라 두 진입점의 공통 조상인 탭 루트(이 화면)다.
     @State private var attendanceViewModel: OperatorAttendanceViewModel
 
+    /// 다른 탭이 올린 진입 요청. 소비하면 비운다(``consumePendingEntry()``).
+    @Binding private var pendingEntry: ActivityEntry?
+
     private let container: DIContainer
     private let errorHandler: ErrorHandler
     private let userSession: UserSessionManager
@@ -50,14 +53,17 @@ struct ActivityView: View {
     /// - Parameters:
     ///   - container: 자식 화면이 UseCase·세션을 resolve 할 DI 컨테이너
     ///   - errorHandler: 흐름 중단형 전역 에러 처리기
+    ///   - pendingEntry: 다른 탭에서 넘어온 진입 요청. 처리 후 `nil` 로 비운다.
     ///   - viewModel: 프리뷰/테스트용 주입 지점 (기본값: container 로 생성)
     init(
         container: DIContainer,
         errorHandler: ErrorHandler,
+        pendingEntry: Binding<ActivityEntry?>,
         viewModel: ActivityViewModel? = nil
     ) {
         self.container = container
         self.errorHandler = errorHandler
+        _pendingEntry = pendingEntry
         self.userSession = container.resolve(UserSessionManager.self)
         _viewModel = State(
             initialValue: viewModel ?? ActivityViewModel(
@@ -88,8 +94,15 @@ struct ActivityView: View {
     }
 
     /// 사용자가 고른 섹션 (고르기 전이면 모드의 기본 섹션)
+    ///
+    /// 밖에서 들어온 요청(``pendingEntry``)이 있으면 그것을 먼저 본다. 소비는 `.task` 가
+    /// 하지만, 첫 렌더부터 요청한 섹션이 나와야 기본 섹션인 출석 화면이 한 프레임 스쳐
+    /// 지나가지(그리고 세션 로딩을 헛되이 시작하지) 않는다.
     private var currentSection: ActivitySection {
-        selectedSection ?? ActivitySection.defaultSection(for: mode)
+        if let pendingEntry {
+            return pendingEntry.section(in: mode)
+        }
+        return selectedSection ?? ActivitySection.defaultSection(for: mode)
     }
 
     private var sectionBinding: Binding<ActivitySection> {
@@ -125,10 +138,30 @@ struct ActivityView: View {
             .task {
                 await viewModel.load()
             }
+            .task(id: pendingEntry) {
+                consumePendingEntry()
+            }
             .onChange(of: mode) { oldMode, newMode in
                 let previous = selectedSection ?? ActivitySection.defaultSection(for: oldMode)
                 selectedSection = previous.mapped(to: newMode)
             }
+    }
+
+    // MARK: - Function
+
+    /// 다른 탭이 올린 진입 요청을 소비해 그 섹션으로 옮긴다.
+    ///
+    /// 요청이 도착하는 시점에 이 화면은 이미 살아 있을 수도(그 탭을 본 적 있음), 아직
+    /// 만들어지지 않았을 수도(한 번도 안 봄) 있다. `.task(id:)` 는 등장 시점과 값 변경
+    /// 시점 양쪽에서 돌아 두 경우를 하나로 덮는다 — `.onChange` 만 쓰면 후자에서 요청이
+    /// 등록 전에 지나가 버린다.
+    ///
+    /// 비우지 않으면 ``currentSection`` 이 계속 요청을 우선해 섹션 메뉴가 먹지 않는다.
+    private func consumePendingEntry() {
+        guard let pendingEntry else { return }
+
+        selectedSection = pendingEntry.section(in: mode)
+        self.pendingEntry = nil
     }
 
     // MARK: - View Component

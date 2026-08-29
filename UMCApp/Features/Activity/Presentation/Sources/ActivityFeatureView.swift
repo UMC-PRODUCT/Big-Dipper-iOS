@@ -25,13 +25,20 @@ public struct ActivityFeatureView: View {
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
 
+    /// 다른 탭이 올린 진입 요청. 탭 루트가 처리한 뒤 비운다.
+    @Binding private var pendingEntry: ActivityEntry?
+
     // MARK: - Init
 
-    public init() {}
+    /// - Parameter pendingEntry: 다른 탭에서 넘어온 진입 요청(예: 마이페이지 「나의 스터디」).
+    ///   탭 루트 ``ActivityView`` 가 해당 섹션으로 옮긴 뒤 `nil` 로 비운다.
+    public init(pendingEntry: Binding<ActivityEntry?>) {
+        _pendingEntry = pendingEntry
+    }
 
     // MARK: - Body
 
     public var body: some View {
-        ActivityView(container: di, errorHandler: errorHandler)
+        ActivityView(container: di, errorHandler: errorHandler, pendingEntry: $pendingEntry)
     }
 }

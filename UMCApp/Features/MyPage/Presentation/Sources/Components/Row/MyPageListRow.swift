@@ -61,8 +61,8 @@ struct MyPageListDivider: View {
 
 /// 시안 `item/MypageList` — 32x32 컬러 아이콘 타일 + 레이블 + (옵션)우측 값 + chevron.
 ///
-/// `action`이 `nil`이면 탭 제스처를 아예 달지 않는다 — 목적지가 없는 행에 죽은 탭을
-/// 만들지 않기 위해서다(나의 활동 섹션이 이 경로를 쓴다).
+/// `action`이 `nil`이면 탭 제스처도, chevron도 달지 않는다 — chevron만 남기면 목적지가
+/// 없는 행이 활성 외관인 채 눌러도 무반응인, 바로 그 죽은 탭이 된다.
 ///
 /// `isPending`이 `true`면 `action`이 있어도 탭을 막고 chevron 대신 진행 표시를 보여준다 —
 /// 목적지는 있는데 아직 필요한 데이터가 도착하지 않은 경우다(예: 명함 편집이 프로필 스냅샷을
@@ -70,14 +70,18 @@ struct MyPageListDivider: View {
 struct MyPageListRow: View {
 
     private enum Constants {
-        static let rowHeight: CGFloat = 54
+        /// 시안 실측 높이. **바닥값**이다 — 글자가 커지면 줄이 따라 늘어난다.
+        static let minRowHeight: CGFloat = 54
+        static let verticalPadding = DefaultSpacing.spacing8
         static let contentSpacing: CGFloat = 16
         static let iconTileSize: CGFloat = 32
         static let iconTileRadius: CGFloat = 8
         static let iconGlyphSize: CGFloat = 17
+        static let titleLineLimit = 2
         static let trailingSpacing: CGFloat = 8
         static let chevronSize: CGFloat = 17
         static let pendingOpacity: CGFloat = 0.6
+        static let pendingHint = "필요한 정보를 불러오는 중입니다"
     }
 
     let systemIcon: String
@@ -99,12 +103,19 @@ struct MyPageListRow: View {
         }
     }
 
+    /// 「나의 활동 ・프로젝트, 3건」. 아이콘 타일과 chevron은 옆 글자를 그림으로 옮긴
+    /// 장식이라 따로 읽히면 줄 하나를 네 번 스와이프하게 된다.
+    private var accessibilityLabel: String {
+        [title, value].compactMap { $0 }.joined(separator: ", ")
+    }
+
     private var rowContent: some View {
         HStack(spacing: Constants.contentSpacing) {
             iconTile
 
             Text(title)
                 .appFont(.callout, color: .black)
+                .lineLimit(Constants.titleLineLimit)
 
             Spacer(minLength: Constants.contentSpacing)
 
@@ -117,16 +128,20 @@ struct MyPageListRow: View {
                 if isPending {
                     ProgressView()
                         .controlSize(.mini)
-                } else {
+                } else if action != nil {
                     Image(systemName: "chevron.right")
                         .font(.system(size: Constants.chevronSize))
                         .foregroundStyle(Color.grey500)
                 }
             }
         }
-        .frame(height: Constants.rowHeight)
+        .padding(.vertical, Constants.verticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: Constants.minRowHeight)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(isPending ? Constants.pendingHint : "")
     }
 
     private var iconTile: some View {

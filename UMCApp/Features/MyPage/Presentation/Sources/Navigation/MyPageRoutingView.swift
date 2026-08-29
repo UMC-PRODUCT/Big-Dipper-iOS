@@ -31,6 +31,9 @@ struct MyPageRoutingView: View {
 
     var body: some View {
         switch destination {
+        case .activityLogs(let activityLogs):
+            MyActivityLogsView(activityLogs: activityLogs)
+
         case .cardEdit(let profileData):
             MyPageProfileView(container: container, profileData: profileData)
 

@@ -40,6 +40,9 @@ struct RootTabView: View {
     /// 딥링크로 받은 명함 링크. 수신 모디파이어가 처리 후 비운다.
     @State private var pendingCardLink: CardLink?
 
+    /// 다른 탭이 요청한 Activity 진입 지점. Activity 탭 루트가 처리 후 비운다.
+    @State private var pendingActivityEntry: ActivityEntry?
+
     @Environment(\.di) private var di
     @Environment(DeepLinkStore.self) private var deepLinkStore
 
@@ -176,7 +179,7 @@ struct RootTabView: View {
                 }
             )
         case .activity:
-            ActivityFeatureView()
+            ActivityFeatureView(pendingEntry: $pendingActivityEntry)
         case .community:
             CommunityFeatureView(
                 onNoticeSelected: { detailItem in
@@ -187,10 +190,36 @@ struct RootTabView: View {
                 }
             )
         case .mypage:
-            MyPageFeatureView { entry in
-                pathStore.push(businessCardDestination(for: entry), on: .mypage)
-            }
+            MyPageFeatureView(
+                onOpenBusinessCard: { entry in
+                    pathStore.push(businessCardDestination(for: entry), on: .mypage)
+                },
+                onOpenStudy: {
+                    pendingActivityEntry = Self.enterActivityStudy(pathStore: pathStore)
+                }
+            )
         }
+    }
+
+    /// 마이페이지 「나의 스터디」 → Activity 탭의 스터디 섹션(MP-F10).
+    ///
+    /// 탭만 바꾸면 두 군데가 어긋난다.
+    /// 1. `PathStore` 는 탭별 스택을 보존하므로 Activity 에 남아 있던 상세 화면이 복원된다.
+    ///    → 그 탭의 경로를 루트로 되돌린다(선례: 커뮤니티 스레드 이탈 시 `pathStore[.community]`).
+    /// 2. Activity 루트가 마지막에 고른 섹션을 들고 있어 기본값인 출석 화면이 뜬다.
+    ///    → 섹션은 ``ActivityEntry`` 요청으로 넘긴다.
+    ///
+    /// 어느 섹션이 「스터디」인지(모드별 `.studyActivity`/`.studyManage`)는 Activity 모듈이
+    /// 정한다 — App 은 "스터디로 가고 싶다"만 말한다. Feature 끼리 직접 목적지를 넘기지 않고
+    /// App 셸이 중개하는 규약은 ``businessCardDestination(for:)`` 과 같다.
+    ///
+    /// 뷰 렌더링 없이 전이를 검증하려고 `static` 으로 뽑았다
+    /// (선례: `RootTabAccessoryView.shouldShow`, `MyPageView.retryCardAndProfile`).
+    static func enterActivityStudy(pathStore: PathStore) -> ActivityEntry {
+        pathStore[.activity] = NavigationPath()
+        pathStore.selectedTab = .activity
+
+        return .study
     }
 
     /// 마이페이지의 중립 진입 요청을 명함 목적지로 번역한다.
