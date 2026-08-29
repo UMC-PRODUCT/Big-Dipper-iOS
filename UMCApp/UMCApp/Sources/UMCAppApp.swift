@@ -94,7 +94,8 @@ struct UMCAppApp: App {
                 .task {
                     appDelegate.configure(
                         container: container,
-                        modelContext: sharedModelContainer.mainContext
+                        modelContext: sharedModelContainer.mainContext,
+                        deepLinkStore: deepLinkStore
                     )
                     await maintenanceViewModel.check()
                 }
