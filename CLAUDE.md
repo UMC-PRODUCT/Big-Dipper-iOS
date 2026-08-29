@@ -118,6 +118,7 @@ cd UMCApp && make doctor    # 환경 진단
 | 프로젝트 구조(AppProduct) | `docs/claude/project-structure.md` | 레거시 디렉터리 탐색 |
 | PR 리뷰 규칙 & 체크리스트 | `docs/claude/pr-review.md` | PR 리뷰 작성 시 |
 | 3D 명함 Phase 0 검증 결과 | `docs/claude/business-card-3d-spike.md` | 3D 명함(#1246~#1249) 착수 전, 스파이크 실측치 확인 |
+| 근거리 교환 실기기 검증 | `docs/claude/nearby-exchange-device-verification.md` | 근거리 명함 교환을 실기기 2대로 검증할 때, 조직 팀 App ID capability·서명 문제를 풀 때 |
 
 Apple 프레임워크 API — 신규 Apple API를 다룰 때:
 
