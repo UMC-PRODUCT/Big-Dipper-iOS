@@ -23,7 +23,8 @@
         <string>group.com.umc.product.widget</string>
     </array>
     <!-- 배열 첫 항목이 SecItemAdd 의 기본 access group 이므로 순서를 바꾸면 -->
-    <!-- 토큰 저장 위치가 달라진다. 공유 그룹명은 watch·확장 타겟과 동일하게 유지한다. -->
+    <!-- 토큰 저장 위치가 달라진다. 공유 그룹명은 watch 타겟과 동일하게 유지한다 -->
+    <!-- (위젯은 Keychain 을 쓰지 않아 이 키가 없다). -->
     <key>keychain-access-groups</key>
     <array>
         <string>$(AppIdentifierPrefix)com.umc.product.shared</string>

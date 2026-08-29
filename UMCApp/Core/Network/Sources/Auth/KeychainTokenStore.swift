@@ -22,6 +22,8 @@ import Security
 ///   - **Access group**: 쿼리에 access group을 지정하지 않으므로 저장은 entitlement의
 ///     첫 그룹(`$(AppIdentifierPrefix)com.umc.product.shared`)에, 조회는 앱이 가진
 ///     모든 그룹을 대상으로 이뤄진다
+///   - **삭제 범위**: `clear()` 역시 access group을 지정하지 않아 앱이 가진 모든 그룹에서
+///     동일 키를 함께 제거한다
 public actor KeychainTokenStore: TokenStore {
 
     // MARK: - Property
