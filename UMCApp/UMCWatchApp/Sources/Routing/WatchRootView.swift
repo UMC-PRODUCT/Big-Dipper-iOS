@@ -16,9 +16,22 @@ struct WatchRootView: View {
 
         NavigationStack(path: $router.path) {
             HomeGlanceView()
-                .navigationDestination(for: WatchRoute.self) { route in
-                    WatchRoutePlaceholderView(route: route)
-                }
+                .navigationDestination(for: WatchRoute.self) { destination(for: $0) }
+        }
+    }
+
+    // MARK: - Function
+
+    /// 아직 화면이 없는 경로는 플레이스홀더로 남는다 — #1207(출석)·#1209(폴백)가 채운다.
+    @ViewBuilder
+    private func destination(for route: WatchRoute) -> some View {
+        switch route {
+        case .pingList:
+            PingListView()
+        case .pingDetail(let noticeID):
+            PingDetailView(noticeID: noticeID)
+        case .attendanceList, .attendanceSession, .attendanceResult, .fallback:
+            WatchRoutePlaceholderView(route: route)
         }
     }
 }
