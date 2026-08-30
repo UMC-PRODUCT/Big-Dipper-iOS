@@ -61,13 +61,12 @@ struct HomeGlanceView: View {
             }
             .watchCard(.hero)
         } else {
-            VStack(alignment: .leading, spacing: WatchLayout.tightSpacing) {
-                cardLabel("오늘 세션")
-                Text(viewModel.emptySessionMessage)
-                    .font(.watch(.cardValue))
-                    .foregroundStyle(WatchColor.textSecondary)
-            }
-            .watchCard()
+            // 빈 상태 문구가 "오늘 세션"을 이미 포함하므로 라벨을 얹지 않는다 — 같은 말이
+            // 두 줄로 반복되면 라벨/값 위계가 오히려 흐려진다.
+            Text(viewModel.emptySessionMessage)
+                .font(.watch(.cardValue))
+                .foregroundStyle(WatchColor.textSecondary)
+                .watchCard()
         }
     }
 
