@@ -114,6 +114,7 @@ cd UMCApp && make doctor    # 환경 진단
 | Response DTO 디코딩 | `docs/claude/response-dto-decoding.md` | Response DTO 작성/수정 |
 | 디자인 시스템 & 성능 | `docs/claude/design-system.md` | UI/토큰/Glass/렌더링 최적화 |
 | watchOS 디자인 시스템 | `docs/claude/watch-design-system.md` | 워치 화면·컴포넌트 작업, Glass 절제 규칙 확인 |
+| watchOS Complication | `docs/claude/watch-complications.md` | 워치페이스 Complication 추가·수정, App Group 스냅샷 경로 확인 |
 | 코딩 스타일 & 네이밍 | `docs/claude/coding-style.md` | 네이밍 판단이 필요할 때 |
 | Git Workflow | `docs/claude/git-workflow.md` | 브랜치/커밋/PR/이슈(템플릿·Type·Priority)/배포 |
 | 프로젝트 구조(AppProduct) | `docs/claude/project-structure.md` | 레거시 디렉터리 탐색 |
