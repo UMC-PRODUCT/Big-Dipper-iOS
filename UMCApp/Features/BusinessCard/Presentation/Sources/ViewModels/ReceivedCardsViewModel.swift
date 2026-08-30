@@ -36,19 +36,26 @@ public final class ReceivedCardsViewModel {
             reloadTask = Task { [weak self] in
                 try? await Task.sleep(for: Constants.searchDebounce)
                 guard !Task.isCancelled else { return }
-                await self?.load()
+                // 검색은 캐시만 다시 읽는다. 여기서 동기화를 부르면 글자마다 전량 왕복이
+                // 나간다.
+                await self?.reloadFromCache(showsLoading: true)
             }
         }
     }
 
     private let fetchReceivedCards: FetchReceivedCardsUseCaseProtocol
+    private let syncReceivedCards: SyncReceivedCardsUseCaseProtocol
 
     @ObservationIgnored private var reloadTask: Task<Void, Never>?
 
     // MARK: - Init
 
-    public init(fetchReceivedCards: FetchReceivedCardsUseCaseProtocol) {
+    public init(
+        fetchReceivedCards: FetchReceivedCardsUseCaseProtocol,
+        syncReceivedCards: SyncReceivedCardsUseCaseProtocol
+    ) {
         self.fetchReceivedCards = fetchReceivedCards
+        self.syncReceivedCards = syncReceivedCards
     }
 
     // MARK: - Computed Property
@@ -66,6 +73,15 @@ public final class ReceivedCardsViewModel {
     ///   목록을 스켈레톤으로 갈아 끼우면 사용자가 잡고 있는 화면이 통째로 사라지고
     ///   시스템 새로고침 인디케이터와 이중으로 보인다.
     public func load(showsLoading: Bool = true) async {
+        await reloadFromCache(showsLoading: showsLoading)
+        // 동기화 실패는 삼킨다 — 서버를 못 만나도 캐시로 목록은 떠야 하고, 이미 답이 떠
+        // 있는 화면을 네트워크 오류로 덮으면 사용자가 할 수 있는 일이 없다.
+        guard (try? await syncReceivedCards.execute()) != nil else { return }
+        await reloadFromCache(showsLoading: false)
+    }
+
+    /// 서버를 거치지 않고 로컬 캐시만 다시 읽는다.
+    private func reloadFromCache(showsLoading: Bool) async {
         if showsLoading {
             cards = .loading
         }
