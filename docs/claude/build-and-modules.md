@@ -115,10 +115,12 @@ External Packages     (Moya 15.0.3 / Kingfisher 8.6.1)
 >
 > 렌더링 이력: 초기 구상이던 RealityKit(3D)은 한 차례 폐기됐다(#1196에서 ARKit·RealityKit 링크 해제). 이후로는 2D SwiftUI가 유일한 렌더링 경로였다. 그런데 #1245 Phase 0 스파이크가 3D 명함을 "조건부 Go"로 되살렸다 — 온디바이스 합성·한글 텍스트 메시·2D 스냅샷은 전부 기준을 넘겼고, 유일한 미해결 항목인 첫 진입 지연(시뮬레이터 실측 9.42~11.62s)은 #1249 착수 전 실기기 재측정을 조건으로 건다(`docs/claude/business-card-3d-spike.md`). #1246이 베이스 USDZ 템플릿과 앵커 바인딩 규약을 정했고(`docs/claude/business-card-3d-anchor-contract.md`), #1247(회전)·#1248(온디바이스 합성)이 뒤따른다. 스파이크 하네스는 `#if DEBUG` 가드 아래에 있고(`Presentation/Sources/Spike/BusinessCard3DSpike.swift`), 템플릿 규약과 USDZ 에셋은 프로덕션 코드지만(`Presentation/Sources/Card3D/BusinessCardTemplate.swift` · `Presentation/Resources/BusinessCardTemplate.usdz`) 아직 어떤 화면에도 연결되지 않는다 — #1247·#1248 이 붙인다. **따라서 "UMCApp에 RealityKit 참조가 없다"는 더 이상 사실이 아니다** — `import RealityKit`이 `BusinessCardPresentation`에 이미 있다.
 
-> **경계 정책 — 일정(Schedule) (#981 확정)**: 전용 Schedule Feature 모듈은 **신설하지 않는다.**
+> **경계 정책 — 일정(Schedule) (#981 확정 · #1212 갱신)**: 전용 Schedule Feature 모듈은 **신설하지 않는다.**
 > 일정 도메인의 단일 소유자는 `HomeDomain`(모델·Repository/UseCase Protocol) + `HomeData`(`ScheduleV2Router`·`ScheduleRepository`·일정 DTO) + `HomePresentation`(일정 화면)이다.
 > Activity 등 다른 Feature 는 `ScheduleDetailData`·`ScheduleLocation`·`ScheduleAttendancePolicy`·`ScheduleRepositoryProtocol` 을 **HomeDomain 에서 재사용**하며 자체 일정 모델을 다시 만들지 않는다.
 > 단, 엔드포인트별 wire DTO 는 각 Feature Data 에 두는 것이 원칙이다 — 출석 응답의 `ScheduleLocationDTO`/`ScheduleAttendancePolicyDTO`(ActivityData)와 V2 일정 응답의 동명 DTO(HomeData)는 서로 다른 엔드포인트 계약이므로 의도적으로 분리돼 있고, 둘 다 같은 HomeDomain 모델로 매핑한다. (ActivityData → HomeData 링크는 HomeData 의 CoreML 리소스 번들까지 끌고 오므로 통합하지 않는다.)
+>
+> **플랫폼 축 (#1212 확정)**: Watch 앱이 ActivityDomain 출석 UseCase 를 쓰기 위해 일정 모델을 옮기지 않는다 — 소유자는 그대로 두고 `HomeDomain`(+의존 사슬의 `NoticeDomain`)과 `CoreDomain` 의 **Domain 타겟만** iOS+watchOS 멀티플랫폼으로 개방한다. 세 타겟의 소스 import 는 `Foundation`·`UMCFoundation`·`NoticeDomain`·`SwiftData` 뿐이라 watchOS 제약이 없고, 모델을 옮기지 않으므로 iOS 측 `import HomeDomain` 은 전부 무변경이다. 워치가 재사용하는 타입은 `ScheduleDetailData`·`ScheduleLocation`·`ScheduleAttendancePolicy`·`ScheduleAttendanceStatus`·`ScheduleRepositoryProtocol`(HomeDomain)과 `ChallengerInfo`(CoreDomain). `Data`/`Presentation` 타겟은 iOS 전용 그대로다 — `ActivityData` 는 Moya/CoreNetwork 의존이라 워치가 링크할 수 없고, 워치의 데이터 수급은 WatchConnectivity 경로(#1210)로 해결한다. (대안이던 "일정 모델 CoreDomain 승격"은 단일 소유자 경계를 깨면서 기존 import 도 대량으로 깨뜨리므로 기각.)
 
 ### Feature 모듈 구조
 
@@ -129,6 +131,21 @@ External Packages     (Moya 15.0.3 / Kingfisher 8.6.1)
 | `{Name}Domain` | `.staticFramework` | `dev.umc.feature.{name}.domain` | `Domain/Sources/**` |
 | `{Name}Data` | `.staticFramework` | `dev.umc.feature.{name}.data` | `Data/Sources/**` |
 | `{Name}Presentation` | `.staticFramework` | `dev.umc.feature.{name}.presentation` | `Presentation/Sources/**` |
+
+### 플랫폼(destination) 정책
+
+기본값은 iOS 전용이다. watchOS 재사용이 필요한 타겟만 `[.iPhone, .appleWatch]` / `.multiplatform(iOS: "26.4", watchOS: "26.4")` 로 개방한다 — Core 모듈은 `coreProject` 의 `destinations`/`deploymentTargets` 인자, Feature Domain 은 `featureProject` 의 `domainDestinations`/`domainDeploymentTargets` 인자로 지정한다.
+
+| watchOS 개방 타겟 | 매니페스트 |
+|-------------------|-----------|
+| `UMCFoundation` | `Core/Foundation/Project.swift` |
+| `CoreWatchConnectivity` | `Core/WatchConnectivity/Project.swift` |
+| `CoreDomain` | `Core/Domain/Project.swift` |
+| `NoticeDomain` | `Features/Notice/Project.swift` |
+| `HomeDomain` | `Features/Home/Project.swift` |
+| `ActivityDomain` | `Features/Activity/Project.swift` |
+
+이 목록은 #1212 에서 확정됐다. 그 전에는 `ActivityDomain` 만 destination 이 watchOS 로 열려 있고 `HomeDomain`·`CoreDomain` 의존은 `condition: .when([.ios])` 로 iOS 한정이라, watchOS 로 빌드하면 `unable to resolve module dependency: 'HomeDomain'` 으로 실패했다(어떤 watch 타겟도 링크하지 않아 드러나지 않았을 뿐). #1212 에서 의존 사슬 전체를 개방하며 조건부 의존을 제거했고, `UMCWatchApp` 이 `ActivityDomain`·`HomeDomain` 을 링크한다.
 
 ### ProjectDescriptionHelpers
 
@@ -168,7 +185,7 @@ featureProject(
 ### 주요 설정
 
 - **Tuist 버전**: `UMCApp/mise.toml` 고정 (`4.155.0`)
-- **Deployment Target**: iOS 26.4 (`Project.swift` 기준, 전체 타겟 공통)
+- **Deployment Target**: iOS 26.4 (`Project.swift` 기준). watchOS 개방 타겟은 watchOS 26.4 병기 ("플랫폼(destination) 정책" 참고)
 - **Product Type**: 모든 모듈 `.staticFramework`
 - **Bundle ID**: Core → `dev.umc.core.*` / Feature → `dev.umc.feature.*.*`
 - **Workspace**: glob(`Core/*`, `Features/*`) + `UMCAppWidget`, `UMCWatchApp` 명시 포함
