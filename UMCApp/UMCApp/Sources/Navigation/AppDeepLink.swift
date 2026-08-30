@@ -5,13 +5,14 @@
 
 import Foundation
 
+import ActivityDomain
 import BusinessCardDomain
 import CommunityDomain
 
 /// 앱이 밖에서 받아 여는 링크 한 종류.
 ///
-/// 표기 규칙은 각 Feature 의 Domain 이 소유한다(``MessageLink``·``CardLink``) — App 은
-/// 어느 파서에게 먼저 물어볼지만 정하고 링크 문법은 모른다.
+/// 표기 규칙은 각 Feature 의 Domain 이 소유한다(``MessageLink``·``CardLink``·
+/// ``AttendanceLink``) — App 은 어느 파서에게 먼저 물어볼지만 정하고 링크 문법은 모른다.
 enum AppDeepLink: Hashable {
 
     /// 커뮤니티 스레드·공지 링크.
@@ -23,17 +24,24 @@ enum AppDeepLink: Hashable {
     /// 닿아야 검증할 수 있다.
     case card(CardLink)
 
+    /// 출석 승인/반려 푸시가 싣고 오는 일정 링크. 활동 탭의 해당 세션으로 착지한다.
+    case attendance(AttendanceLink)
+
     /// 내부 링크면 해석해 돌려준다. 아니면 `nil` — 소셜 로그인 콜백이 그 경로다.
     ///
-    /// 두 파서가 무는 표기는 겹치지 않는다 (`umc://thread|notice`·`https://umc.it.kr/t/…`
-    /// 대 `umc://card/…`·`https://{api host}/mypage/card?memberId=…`). 그래도 순서를
-    /// 고정해 두는 편이 안전해 기존 동작인 메시지 링크를 먼저 본다.
+    /// 세 파서가 무는 표기는 겹치지 않는다 (`umc://thread|notice`·`https://umc.it.kr/t/…`
+    /// 대 `umc://card/…`·`https://{api host}/mypage/card?memberId=…` 대
+    /// `umc://attendance/…`). 그래도 순서를 고정해 두는 편이 안전해 기존 동작인 메시지
+    /// 링크를 먼저 본다.
     static func parse(_ url: URL) -> AppDeepLink? {
         if let message = MessageLink.parse(url) {
             return .message(message)
         }
         if let card = CardLink.parse(url) {
             return .card(card)
+        }
+        if let attendance = AttendanceLink.parse(url) {
+            return .attendance(attendance)
         }
         return nil
     }

@@ -17,6 +17,14 @@ let project = featureProject(
         // (선례: Features/Community/Project.swift, Features/Auth/Project.swift).
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
+        // 명함첩 그리드의 2D 스냅샷 캐시가 Kingfisher `ImageCache` 를 직접 쓴다 (#1249).
+        // CoreUIComponents 가 이미 링크하지만 전이 의존에 기대지 않는다 (위 규약).
+        .external(name: "Kingfisher"),
+    ],
+    presentationResources: [
+        // 3D 명함 베이스 USDZ 템플릿 (#1246). 같은 폴더의 `.usda`·`.png` 는 리뷰용 생성물이라
+        // 번들에 싣지 않는다 — 런타임이 읽는 것은 usdz 하나뿐이다.
+        "Presentation/Resources/*.usdz",
     ],
     includesDomainTests: true,
     domainTestDependencies: [
@@ -39,5 +47,9 @@ let project = featureProject(
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         // 교환 세션 테스트가 DiscoveredPeer·NearbyError 를 직접 만든다.
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
+        // 합성 테스트가 UMCPartType.seedColor 로 파트 tint 폴백을 검증한다.
+        .project(target: "CoreUIComponents", path: .relativeToRoot("Core/UIComponents")),
+        // 스냅샷 테스트가 ImageCache 를 직접 만들어 상한·트리밍을 검사한다 (#1249).
+        .external(name: "Kingfisher"),
     ]
 )
