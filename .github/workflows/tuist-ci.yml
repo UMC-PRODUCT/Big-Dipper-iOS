@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build-test:
-    name: Build & Test (UMCApp / Tuist)
+    name: Build & Test (UMCApp + watchOS / Tuist)
     runs-on: macos-26
 
     defaults:
@@ -119,6 +119,33 @@ jobs:
 
       - name: Build & Test (make test)
         run: make test
+
+      # 아래 watchOS 스텝들을 별도 잡으로 빼지 않는 이유(이슈 #1216):
+      # 시크릿 복원 · mise/Tuist 설치 · SPM 캐시 · tuist generate 를 통째로 한 번 더
+      # 돌려야 해서 러너 시간이 두 배가 된다. 같은 잡에 이어 붙이면 생성된 워크스페이스를
+      # 그대로 재사용한다.
+      - name: Check watchOS simulator runtime
+        run: |
+          # generic/platform=watchOS Simulator 빌드는 런타임 설치 없이도 통과하는 경우가
+          # 많다. 그래서 여기서 실패시키지 않고 경고만 남긴다 — 러너 이미지에서 런타임이
+          # 빠졌을 때 뒤 스텝이 깨지면 이 로그가 원인을 바로 가리킨다.
+          if xcrun simctl list runtimes | grep -qi watchos; then
+            xcrun simctl list runtimes | grep -i watchos
+          else
+            echo "::warning::watchOS simulator runtime not found. Attempting download..."
+            xcodebuild -downloadPlatform watchOS || \
+              echo "::warning::watchOS runtime download failed. Continuing with generic destination."
+          fi
+
+      - name: Build watchOS app (make build-watch)
+        run: make build-watch
+
+      # UMCApp 스킴의 test action 에는 UMCAppTests 만 들어 있어서 위 `make test` 로는
+      # Core 모듈 테스트가 돌지 않는다. 워치 회귀를 잡으려면 스킴을 명시해야 한다.
+      # destination 은 Makefile 기본값(iOS Simulator)을 그대로 쓴다 — CoreWatchConnectivity
+      # 는 iOS/watchOS 멀티플랫폼 타겟이라 iOS 시뮬레이터에서 로직 테스트가 돈다.
+      - name: Test CoreWatchConnectivity
+        run: make test SCHEME=CoreWatchConnectivity
 
   notify:
     name: Notify Discord
