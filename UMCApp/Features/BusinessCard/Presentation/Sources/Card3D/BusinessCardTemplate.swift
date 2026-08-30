@@ -100,6 +100,12 @@ public enum BusinessCardTemplate {
 
         public var frameHeight: Float { fontSize * Self.frameHeightRatio }
 
+        /// `MeshResource.generateText(extrusionDepth:)` 에 넘기는 두께.
+        ///
+        /// 폰트 크기에 비례한다 — 고정값을 쓰면 작은 슬롯(칩 라벨 2.927mm)에서만 글자가
+        /// 두꺼워 보인다. 5% 는 스파이크가 쓴 값이고 카드 두께(0.6mm)를 넘지 않는다.
+        public var extrusionDepth: Float { fontSize * 0.05 }
+
         /// `MeshResource.generateText(containerFrame:)` 에 그대로 넘기는 상자.
         public var containerFrame: CGRect {
             CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(frameHeight))

@@ -182,20 +182,13 @@ public struct BusinessCardFaceView: View {
         .accessibilityLabel(isFlipped ? Constants.flipToFront : Constants.flipToBack)
     }
 
-    /// 시안 더미 `이름/닉네임` 규칙 — 닉네임이 비어 있으면 이름만 싣는다
-    /// (명함_m·명함_s 와 같은 규칙).
-    private var displayName: String {
-        let nickname = card.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        return nickname.isEmpty ? card.name : "\(card.name)/\(nickname)"
-    }
-
     private var frontFace: some View {
         HStack(alignment: .top, spacing: Metrics.contentSpacing) {
             avatar
 
             VStack(alignment: .leading, spacing: Metrics.contentSpacing) {
                 HStack(alignment: .lastTextBaseline, spacing: Metrics.nameSpacing) {
-                    Text(displayName)
+                    Text(card.displayName)
                         .appFont(.title3, weight: .semibold, color: Color.white)
                         .lineLimit(1)
 
@@ -219,7 +212,7 @@ public struct BusinessCardFaceView: View {
 
     /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
     private var frontAccessibilityLabel: String {
-        [displayName, card.university, "\(card.partDisplayName) 파트", "\(card.generation)기"]
+        [card.displayName, card.university, "\(card.partDisplayName) 파트", "\(card.generation)기"]
             .joined(separator: ", ")
     }
 

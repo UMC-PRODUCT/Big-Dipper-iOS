@@ -69,6 +69,15 @@ public struct MyCard: Equatable, Hashable, Sendable {
 
     // MARK: - Computed Property
 
+    /// 카드에 찍히는 이름. 닉네임이 있으면 `"이름/닉네임"`.
+    ///
+    /// 2D(`BusinessCardFaceView`)와 3D(`BusinessCardComposer`)가 이 하나를 쓴다 —
+    /// 같은 규칙을 두 곳에 적으면 반드시 갈라진다.
+    public var displayName: String {
+        let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? name : "\(name)/\(trimmed)"
+    }
+
     /// 화면에 쓰는 파트 이름. 못 읽은 값이면 원본을 그대로 보여준다 — 틀린 이름(운영진)보다
     /// 낯선 이름이 낫다.
     public var partDisplayName: String {

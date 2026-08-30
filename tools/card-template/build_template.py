@@ -365,7 +365,14 @@ def build_stage() -> str:
         PORTRAIT_DIAMETER,
     )
 
-    def face(name: str, sign: int, surface: str, mesh: dict, anchors: dict) -> str:
+    def face(
+        name: str,
+        sign: int,
+        surface: str,
+        material: str,
+        mesh: dict,
+        anchors: dict,
+    ) -> str:
         # 함정: 뒷면 회전은 **스칼라** `double xformOp:rotateY = 180` 이어야 한다.
         # `double3 xformOp:rotateY = (0, 180, 0)` 은 usdchecker 를 통과하면서 회전이
         # 적용되지 않아 뒷면 앵커가 거울반전 없이 카드 안쪽에 박힌다 (계약 테스트 4가 잡는다).
@@ -375,11 +382,14 @@ def build_stage() -> str:
             ops.append('"xformOp:rotateY"')
             rotate = "        double xformOp:rotateY = 180\n"
         center = FACE_SURFACE_CENTER
+        # prim 이름과 머티리얼 이름은 **다른 것**이다. 한 인자를 양쪽에 쓰면
+        # `Portrait` 처럼 둘이 어긋나는 면에서 `material:binding` 이 존재하지 않는
+        # 머티리얼을 가리키고, usdchecker 는 댕글링 rel 을 에러로 보지 않아 조용히 넘어간다.
         prims = [
             mesh_prim(
                 surface,
                 mesh,
-                surface,
+                material,
                 "        ",
                 translate=(center[0], center[1], SURFACE_LIFT),
             )
@@ -412,9 +422,9 @@ def Xform "{STAGE_NAME}" (
 {{
 {mesh_prim("CardBody", body, "CardSurface", "    ")}
 
-{face("Face_Front", 1, "Portrait", portrait, FRONT_ANCHORS)}
+{face("Face_Front", 1, "Portrait", "PortraitSurface", portrait, FRONT_ANCHORS)}
 
-{face("Face_Back", -1, "QRSurface", qr, BACK_ANCHORS)}
+{face("Face_Back", -1, "QRSurface", "QRSurface", qr, BACK_ANCHORS)}
 
     def Scope "Materials"
     {{
