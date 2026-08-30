@@ -15,6 +15,8 @@ let project = watchAppProject(
         // 출석 화면 상태를 Loadable/AppError 로 표현한다. HomeDomain 경유 전파에 기대지 않고
         // 직접 쓰는 모듈이므로 명시 링크한다.
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
+        // `.project(target:)` 로 appExtension 을 걸면 Tuist 가 워치 앱 PlugIns 에 자동 임베드한다.
+        .project(target: "UMCWatchComplication", path: .relativeToRoot("UMCWatchComplication")),
     ],
     includesTests: true
 )

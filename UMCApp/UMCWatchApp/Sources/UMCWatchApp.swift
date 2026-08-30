@@ -39,6 +39,7 @@ struct UMCWatchApp: App {
                 .environment(attendance)
                 .environment(inbox)
                 .task { coordinator.activate() }
+                .syncsComplication(with: coordinator)
         }
     }
 }
