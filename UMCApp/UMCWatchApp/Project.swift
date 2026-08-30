@@ -8,5 +8,6 @@ let project = watchAppProject(
     dependencies: [
         .project(target: "CoreWatchConnectivity", path: .relativeToRoot("Core/WatchConnectivity")),
         .project(target: "CoreWatchDesignSystem", path: .relativeToRoot("Core/WatchDesignSystem")),
-    ]
+    ],
+    includesTests: true
 )
