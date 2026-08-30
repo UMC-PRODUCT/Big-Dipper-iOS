@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     private var container: DIContainer?
     private var modelContext: ModelContext?
+    private var deepLinkStore: DeepLinkStore?
     /// 직전 업로드 실패 조합. 같은 (멤버, 토큰)으로 매번 재시도하지 않도록 기억한다.
     private var lastFailedFCMUpload: (memberId: Int, token: String)?
     private let logger = Logger(
@@ -38,13 +39,18 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     // MARK: - Function
 
-    /// DIContainer·ModelContext를 주입하고 FCM 토큰 동기화를 시도한다.
+    /// DIContainer·ModelContext·DeepLinkStore를 주입하고 FCM 토큰 동기화를 시도한다.
     ///
     /// `UMCAppApp`의 루트 뷰 `task`에서 호출된다. 그 전에 도착한 토큰은 UserDefaults에만
     /// 저장돼 있다가 이 시점의 동기화로 업로드된다.
-    func configure(container: DIContainer, modelContext: ModelContext) {
+    func configure(
+        container: DIContainer,
+        modelContext: ModelContext,
+        deepLinkStore: DeepLinkStore
+    ) {
         self.container = container
         self.modelContext = modelContext
+        self.deepLinkStore = deepLinkStore
         Task { @MainActor in
             await syncFCMTokenIfPossible(trigger: "configure")
         }
@@ -95,6 +101,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         saveNoticeHistory(from: notification.request.content)
+        handlePush(userInfo: notification.request.content.userInfo, isTap: false)
         completionHandler([.banner, .sound, .badge])
     }
 
@@ -104,7 +111,26 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         saveNoticeHistory(from: response.notification.request.content)
+        handlePush(userInfo: response.notification.request.content.userInfo, isTap: true)
         completionHandler()
+    }
+
+    /// 백그라운드로 도착한 데이터 푸시.
+    ///
+    /// 서버가 `content-available: 1`(APNs `ApnsConfig`)을 실어 줄 때만 호출된다 — 지금 서버는
+    /// 이 플래그를 붙이지 않아 실질적으로는 잠자는 경로다. 그래도 `UIBackgroundModes` 에
+    /// `remote-notification` 을 선언해 둔 이상 대응 핸들러는 있어야, 플래그가 켜지는 날
+    /// 앱이 화면 밖에서도 출석 상태를 따라잡는다.
+    ///
+    /// - Note: 여기서는 ``saveNoticeHistory(from:)`` 를 부르지 않는다. 알림을 동반한 포그라운드
+    ///   푸시는 이 콜백과 `willPresent` 가 함께 불려, 저장하면 같은 항목이 알림 보관함에 두 번
+    ///   쌓인다.
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any]
+    ) async -> UIBackgroundFetchResult {
+        handlePush(userInfo: userInfo, isTap: false)
+        return .newData
     }
 }
 
@@ -138,6 +164,27 @@ extension Notification.Name {
 // MARK: - Private Function
 
 private extension AppDelegate {
+
+    /// 수신한 푸시를 타입별로 분기한다.
+    ///
+    /// 출석 상태 변경 푸시는 화면이 떠 있든 아니든 상태를 맞춰야 하므로 앱 내부 알림으로
+    /// 흘려보내고(구독자는 `ActivityViewModel`), 화면 이동은 사용자가 알림을 탭했을 때만 한다.
+    ///
+    /// - Parameter isTap: 알림 탭으로 들어온 경로인지 (딥링크 이동은 탭일 때만)
+    func handlePush(userInfo: [AnyHashable: Any], isTap: Bool) {
+        let payload = PushPayload(userInfo: userInfo)
+
+        if let scheduleId = payload.attendanceScheduleId {
+            NotificationCenter.default.post(
+                name: .attendanceStatusChanged,
+                object: nil,
+                userInfo: [Notification.attendanceScheduleIdKey: scheduleId]
+            )
+        }
+
+        guard isTap, let deepLink = payload.deepLink else { return }
+        deepLinkStore?.receive(deepLink)
+    }
 
     /// 로그인/가입 직후 프로필이 저장되면 FCM 토큰을 다시 동기화한다.
     ///

@@ -18,14 +18,26 @@ final class MockActivityStatRepository: ActivityStatRepositoryProtocol, @uncheck
     var bookmarkCountResult: Result<String, Error> = .failure(MockError.notStubbed)
     var activityCountResult: Result<Int, Error> = .failure(MockError.notStubbed)
 
+    /// 서버 통계 한 방의 응답. `nil`이면 위 소스별 스텁으로 조립한다 — 소스별 실패를
+    /// 검증하는 기존 테스트가 그대로 살아 있어야 한다.
+    var memberStatsResult: Result<MemberStats, Error>?
+
+    // MARK: - Capture
+
+    private(set) var memberStatsCallCount = 0
+
     // MARK: - ActivityStatRepositoryProtocol
 
-    func fetchStudyCount() async throws -> String {
-        try studyCountResult.get()
-    }
-
-    func fetchBookmarkCount() async throws -> String {
-        try bookmarkCountResult.get()
+    func fetchMemberStats() async throws -> MemberStats {
+        memberStatsCallCount += 1
+        if let memberStatsResult {
+            return try memberStatsResult.get()
+        }
+        return MemberStats(
+            receivedCardCount: nil,
+            studyCount: try? studyCountResult.get(),
+            bookmarkCount: try? bookmarkCountResult.get()
+        )
     }
 
     func fetchActivityCount() async throws -> Int {

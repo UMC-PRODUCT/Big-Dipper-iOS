@@ -108,6 +108,43 @@ struct FetchActivityStatUseCaseTests {
         #expect(result.bookmarkCount == nil)
     }
 
+    /// 서버가 세는 편이 정확하다 — 명함첩은 여러 기기에서 쓰이고 로컬 캐시는 아직
+    /// 동기화 전일 수 있다.
+    @Test("서버가 받은 명함 수를 주면 로컬 카운트를 부르지 않는다")
+    func prefersServerReceivedCardCount() async {
+        let stat = MockActivityStatRepository()
+        stat.memberStatsResult = .success(MemberStats(
+            receivedCardCount: "31", studyCount: "3", bookmarkCount: "7"
+        ))
+        stat.activityCountResult = .success(2)
+        let received = MockReceivedCardRepository()
+        received.countResult = .success(12)
+
+        let result = await FetchActivityStatUseCase(
+            statRepository: stat, receivedCardRepository: received
+        ).execute()
+
+        #expect(result.receivedCardCount == "31")
+    }
+
+    /// 서버에 명함 API가 배포되기 전까지 릴리스가 지나는 경로다.
+    @Test("서버가 받은 명함 수를 못 주면 로컬 명함첩을 센다")
+    func fallsBackToLocalReceivedCardCount() async {
+        let stat = MockActivityStatRepository()
+        stat.memberStatsResult = .success(MemberStats(
+            receivedCardCount: nil, studyCount: "3", bookmarkCount: "7"
+        ))
+        stat.activityCountResult = .success(2)
+        let received = MockReceivedCardRepository()
+        received.countResult = .success(12)
+
+        let result = await FetchActivityStatUseCase(
+            statRepository: stat, receivedCardRepository: received
+        ).execute()
+
+        #expect(result.receivedCardCount == "12")
+    }
+
     @Test("서버가 준 비정상 문자열도 변환 없이 통과시킨다 (절대규칙 #2)")
     func passesServerValueThrough() async {
         let stat = MockActivityStatRepository()
