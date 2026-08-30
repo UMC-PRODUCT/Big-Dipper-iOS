@@ -46,6 +46,10 @@ struct ChallengerAttendanceSessionView: View {
     @State private var mapViewModelCache = MapViewModelCache()
     @State private var expandedSessionId: Session.ID?
 
+    /// 푸시가 지목한 일정 식별자. 해당 세션을 펼친 뒤 비운다 — 같은 일정에 대한 두 번째
+    /// 푸시도 다시 동작해야 한다.
+    @Binding private var focusedScheduleId: String?
+
     private let errorHandler: ErrorHandler
     private let sessions: [Session]
     private let schedules: [ScheduleDetailData]
@@ -59,6 +63,7 @@ struct ChallengerAttendanceSessionView: View {
     ///   - sessions: 상위(일정 화면)가 소유한 세션 목록
     ///   - schedules: 세션과 같은 조회에서 나온 일정 원본 (출석 정책·일정 ID 조회용)
     ///   - userId: 출석 주체
+    ///   - focusedScheduleId: 푸시가 지목한 일정. 목록에 있으면 그 세션을 펼치고 비운다.
     ///   - viewModel: 프리뷰/테스트용 주입 지점 (기본값: container 로 생성)
     init(
         container: DIContainer,
@@ -66,12 +71,14 @@ struct ChallengerAttendanceSessionView: View {
         sessions: [Session],
         schedules: [ScheduleDetailData],
         userId: UserID,
+        focusedScheduleId: Binding<String?> = .constant(nil),
         viewModel: ChallengerAttendanceViewModel? = nil
     ) {
         self.errorHandler = errorHandler
         self.sessions = sessions
         self.schedules = schedules
         self.userId = userId
+        _focusedScheduleId = focusedScheduleId
         _attendanceViewModel = State(
             initialValue: viewModel ?? ChallengerAttendanceViewModel(
                 errorHandler: errorHandler,
@@ -115,29 +122,39 @@ struct ChallengerAttendanceSessionView: View {
     // MARK: - Body
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: DefaultSpacing.spacing48) {
-                attendanceSessionSection
-                myAttendanceStatusSection
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: DefaultSpacing.spacing48) {
+                    attendanceSessionSection
+                    myAttendanceStatusSection
+                }
+                .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
+                .safeAreaPadding(.bottom, DefaultConstant.defaultSafeBottom)
             }
-            .safeAreaPadding(.horizontal, DefaultConstant.defaultSafeHorizon)
-            .safeAreaPadding(.bottom, DefaultConstant.defaultSafeBottom)
-        }
-        .contentMargins(
-            .trailing,
-            DefaultConstant.defaultContentTrailingMargins,
-            for: .scrollContent
-        )
-        .contentMargins(
-            .bottom,
-            DefaultConstant.defaultContentBottomMargins,
-            for: .scrollContent
-        )
-        .onChange(of: schedules, initial: true) { _, latest in
-            attendanceViewModel.apply(schedules: latest)
-        }
-        .onDisappear {
-            Task { await attendanceViewModel.geofenceCleanup() }
+            .contentMargins(
+                .trailing,
+                DefaultConstant.defaultContentTrailingMargins,
+                for: .scrollContent
+            )
+            .contentMargins(
+                .bottom,
+                DefaultConstant.defaultContentBottomMargins,
+                for: .scrollContent
+            )
+            .onChange(of: schedules, initial: true) { _, latest in
+                attendanceViewModel.apply(schedules: latest)
+            }
+            // 지목과 목록 도착의 순서가 정해져 있지 않다 — 푸시는 화면 갱신을 촉발하면서
+            // 동시에 지목을 남기므로 두 축 모두에서 같은 시도를 한다.
+            .onChange(of: focusedScheduleId, initial: true) { _, _ in
+                focusRequestedSession(proxy: proxy)
+            }
+            .onChange(of: sessions) { _, _ in
+                focusRequestedSession(proxy: proxy)
+            }
+            .onDisappear {
+                Task { await attendanceViewModel.geofenceCleanup() }
+            }
         }
     }
 
@@ -251,6 +268,25 @@ struct ChallengerAttendanceSessionView: View {
     }
 
     // MARK: - Function
+
+    /// 푸시가 지목한 세션을 펼치고 그 자리로 스크롤합니다.
+    ///
+    /// 목록에서 찾지 못하면 지목을 남겨 둡니다 — 푸시가 촉발한 재조회가 끝나기 전에 비우면
+    /// 뒤늦게 도착한 목록에서 다시 펼칠 기회가 사라집니다.
+    private func focusRequestedSession(proxy: ScrollViewProxy) {
+        guard let scheduleId = focusedScheduleId,
+              let session = availableSessions.first(where: { $0.id.value == scheduleId })
+        else { return }
+
+        withAnimation(.spring(Spring(
+            response: Constants.animationResponse,
+            dampingRatio: Constants.animationDamping
+        ))) {
+            expandedSessionId = session.id
+            proxy.scrollTo(session.id, anchor: .top)
+        }
+        focusedScheduleId = nil
+    }
 
     /// Session별 지도 모델을 캐시에서 가져오거나 새로 생성합니다.
     ///

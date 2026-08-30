@@ -41,7 +41,8 @@ public struct BusinessCardRoutingView: View {
         case .receivedCards:
             ReceivedCardsView(
                 viewModel: ReceivedCardsViewModel(
-                    fetchReceivedCards: provider.fetchReceivedCardsUseCase
+                    fetchReceivedCards: provider.fetchReceivedCardsUseCase,
+                    syncReceivedCards: provider.syncReceivedCardsUseCase
                 )
             )
 

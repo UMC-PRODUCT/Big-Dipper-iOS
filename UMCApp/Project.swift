@@ -31,7 +31,11 @@ let project = Project(
                     // 시안에도 다크 프레임이 없어서, 검증 안 된 다크를 내보내지 않는다.
                     // (다크를 정식 지원하려면 시안·시맨틱 별칭 토큰부터 있어야 한다)
                     "UIUserInterfaceStyle": "Light",
-                    "NSNearbyInteractionUsageDescription": "근거리에서 정확한 명함 교환을 위해 위치를 사용합니다.",
+                    // NearbyInteraction 은 UWB 로 상대 기기와의 거리·방향만 재고
+                    // CoreLocation 을 전혀 쓰지 않는다. 아래 NSLocationWhenInUseUsageDescription
+                    // (GPS 출석)과 별개 권한이라, 문구에 "위치"를 쓰면 사용자·심사가 오독한다.
+                    "NSNearbyInteractionUsageDescription":
+                        "근처에 있는 상대 기기와의 거리를 측정해 명함을 주고받을 상대를 정확히 찾습니다.",
                     "NSCameraUsageDescription": "상대의 명함 QR을 스캔하기 위해 카메라를 사용합니다.",
                     // 명함 QR 화면의 「이미지 저장」(MP-F04). 읽기 없이 추가만 하므로
                     // NSPhotoLibraryUsageDescription(전체 접근)이 아니라 Add 전용 키를 쓴다.
@@ -129,6 +133,12 @@ let project = Project(
                 ),
                 .project(target: "MaintenanceData", path: .relativeToRoot("Features/Maintenance")),
                 .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
+                // 워치 타겟이 같은 모듈을 링크하지만 그건 watchOS 슬라이스다. iPhone 쪽
+                // WCSession 을 활성화하려면 앱 타겟이 iOS 슬라이스를 따로 링크해야 한다.
+                .project(
+                    target: "CoreWatchConnectivity",
+                    path: .relativeToRoot("Core/WatchConnectivity")
+                ),
                 .external(name: "FirebaseCore"),
                 .external(name: "FirebaseMessaging"),
                 .project(target: "UMCAppWidget", path: "UMCAppWidget"),

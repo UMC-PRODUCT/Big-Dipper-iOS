@@ -39,18 +39,22 @@ struct DebugToolsView: View {
     let viewModel: BusinessCardDebugViewModel
 
     @State private var isScanning = false
+    @State private var syncBackend = CardSyncBackendChoice.current
+    @State private var syncScenario = MockCardExchangeRemote.scenario
 
     // MARK: - Body
 
     var body: some View {
         List {
             receivedCardsSection
+            syncSection
             peerLookupSection
             scanSection
             NearbyRangingSection()
             myCardRawSection
             activityStatRawSection
             payloadSection
+            watchConnectivitySection
         }
         .navigationTitle("검증 도구")
         .navigationBarTitleDisplayMode(.inline)
@@ -68,6 +72,50 @@ struct DebugToolsView: View {
         } footer: {
             Text("같은 memberId로 다시 저장하면 새 행이 아니라 갱신되어야 한다(upsert). "
                  + "앱을 껐다 켜도 남아야 한다.")
+        }
+    }
+
+    /// 서버 동기화 검증. 서버에 명함 API가 없어(2026-08-30) Mock 이 유일한 확인 수단이다.
+    private var syncSection: some View {
+        Section {
+            Picker("백엔드", selection: $syncBackend) {
+                ForEach(CardSyncBackendChoice.allCases) { choice in
+                    Text(choice.title).tag(choice)
+                }
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: syncBackend) { _, newValue in
+                CardSyncBackendChoice.select(newValue)
+            }
+
+            Text(syncBackend.caveat)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if syncBackend == .mock {
+                Picker("Mock 시나리오", selection: $syncScenario) {
+                    ForEach(MockCardExchangeRemote.Scenario.allCases) { scenario in
+                        Text(scenario.title).tag(scenario)
+                    }
+                }
+                .onChange(of: syncScenario) { _, newValue in
+                    MockCardExchangeRemote.scenario = newValue
+                }
+            }
+
+            Button("지금 동기화") {
+                Task { await viewModel.syncNow() }
+            }
+
+            ForEach(Array(viewModel.syncLog.enumerated()), id: \.offset) { _, line in
+                Text(line).font(.caption).monospaced()
+            }
+        } header: {
+            Text("서버 동기화 — SyncReceivedCardsUseCase")
+        } footer: {
+            Text("백엔드를 바꾸면 앱을 다시 켜야 적용된다(DI가 시작 시 한 번만 읽는다). "
+                 + "시나리오는 즉시 반영된다. 재조정은 서버가 안 준 항목만 지워야 하고, "
+                 + "아직 못 올린 항목과 로컬 메모는 남아야 한다.")
         }
     }
 
@@ -154,8 +202,8 @@ struct DebugToolsView: View {
             Text("활동 카운트 원본 — FetchActivityStatUseCase")
         } footer: {
             Text("""
-            네 소스 병렬 조회. 실패한 소스만 "-"로 떨어지고 나머지는 유지되어야 한다. \
-            스터디는 잘리면 "50+". 스크랩은 시안 v3에 표시 자리가 없다.
+            서버 통계 한 방 + 실패한 값만 로컬 폴백. 실패한 소스만 "-"로 떨어지고 \
+            나머지는 유지되어야 한다. 스터디는 잘리면 "50+". 스크랩은 시안 v3에 자리가 없다.
             """)
         }
     }
@@ -169,6 +217,21 @@ struct DebugToolsView: View {
             Text("ExchangePayload v2 왕복")
         } footer: {
             Text("내 명함 → 페이로드 → JSON → 디코딩 → 명함 복원까지 실제로 돌린 결과다.")
+        }
+    }
+
+    /// 명함 전용 하네스는 아니지만, `-bcHarness` 실행 인자
+    /// (``RootTabView/openBusinessCardHarnessIfRequested()``)로 시뮬레이터에서 한 번에 들어올 수
+    /// 있는 유일한 검증 입구라 여기에 붙인다.
+    private var watchConnectivitySection: some View {
+        Section {
+            NavigationLink {
+                WatchConnectivityDebugView(container: container)
+            } label: {
+                Label("워치 연동", systemImage: "applewatch.radiowaves.left.and.right")
+            }
+        } footer: {
+            Text("WCSession 활성화·스냅샷 퍼블리시·동기화 왕복이 실제로 성립하는지 확인한다.")
         }
     }
 

@@ -5,7 +5,10 @@ import SwiftUI
 /// 시맨틱 상태 축. 브랜드 색(`WatchColor.brandAccent` 등)과 **분리**되어 있다.
 /// 각 케이스는 색뿐 아니라 **실루엣이 다른** SF Symbol 을 가진다 —
 /// 색각 이상 사용자가 색 없이도 구분할 수 있어야 한다.
-public enum WatchStatus: Sendable, CaseIterable {
+///
+/// `Equatable` 은 #1209 `WatchFallbackPresentation` 이 이 타입을 담고도 구조체 전체를
+/// `Equatable` 로 합성하기 위해 필요하다 — 연관값 없는 enum 이라 비교 로직은 자동 합성된다.
+public enum WatchStatus: Sendable, CaseIterable, Equatable {
     /// 진행 중 — 인디고 원판.
     case active
     /// 승인 대기 — 회색 점 + 인디고 링(팔레트 렌더링).

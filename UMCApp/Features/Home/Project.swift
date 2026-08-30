@@ -3,6 +3,11 @@ import ProjectDescriptionHelpers
 
 let project = featureProject(
     name: "Home",
+    // #1212: watch 출석 도메인이 ActivityDomain → HomeDomain 경로로 일정 모델
+    // (ScheduleDetailData·ScheduleAttendancePolicy)을 그대로 재사용한다. 모델을 옮기지 않고
+    // 지원 플랫폼만 넓혔다 — Domain 소스는 Foundation/UMCFoundation/NoticeDomain/SwiftData 만 쓴다.
+    domainDestinations: [.iPhone, .appleWatch],
+    domainDeploymentTargets: .multiplatform(iOS: "26.4", watchOS: "26.4"),
     domainExtraDependencies: [
         // 최근 공지(#915)가 NoticeDomain의 조회 파이프라인(NoticeItemModel/NoticeListRequest 등)을 재사용한다.
         .project(target: "NoticeDomain", path: .relativeToRoot("Features/Notice")),

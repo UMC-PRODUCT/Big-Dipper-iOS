@@ -36,8 +36,12 @@ public extension Notification.Name {
 
     /// 출석 승인/반려 상태 변경 알림.
     ///
-    /// 운영진이 출석을 승인/반려하면 발송됩니다.
+    /// 생산자는 둘입니다 — 운영진 기기에서 승인/반려한 직후의 로컬 post 와, 챌린저 기기가
+    /// 받은 출석 상태 변경 푸시(`AppDelegate`)입니다.
     /// Activity 탭 ViewModel이 수신하여 세션 목록을 서버 상태로 다시 맞춥니다.
+    ///
+    /// - Note: 푸시 경로는 대상 일정 식별자를 ``Notification/attendanceScheduleIdKey`` 로
+    ///   실어 보냅니다. 수신 측은 전체 재조회라 지금은 읽지 않지만, 계약상 함께 나릅니다.
     static let attendanceStatusChanged = Notification.Name("attendanceStatusChanged")
 
     /// 기수 매핑 정보가 갱신되었을 때 발송되는 알림.
@@ -48,4 +52,10 @@ public extension Notification.Name {
     /// 멤버 관리 화면에서 상벌점을 부여하거나 삭제하면 발송됩니다.
     /// 관련 화면(예: 명예의 전당)이 수신하여 목록을 갱신합니다.
     static let memberPenaltyUpdated = Notification.Name("memberPenaltyUpdated")
+}
+
+public extension Notification {
+
+    /// ``Notification/Name/attendanceStatusChanged`` userInfo 에 실리는 일정 식별자 키.
+    static let attendanceScheduleIdKey: String = "scheduleId"
 }

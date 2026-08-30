@@ -77,6 +77,37 @@ struct ReceivedCardsViewModelTests {
         #expect(fetch.lastQuery == nil)
     }
 
+    // MARK: - Sync
+
+    /// 서버가 죽었다고 이미 손에 있는 명함첩까지 못 보게 되면 안 된다. 캐시가 정본이 아닌
+    /// 것과 캐시를 못 보여주는 것은 다른 문제다.
+    @Test("동기화가 실패해도 캐시 목록은 loaded 로 남는다")
+    func syncFailureKeepsCachedList() async {
+        let fetch = StubFetchReceivedCards(result: [makeCard(id: "1", name: "A")])
+        let sync = StubSyncReceivedCards()
+        sync.error = StubError.boom
+        let sut = makeSUT(fetch: fetch, sync: sync)
+
+        await sut.load()
+
+        #expect(sut.cards.value?.count == 1)
+        #expect(sut.cards.error == nil)
+        #expect(sync.callCount == 1)
+    }
+
+    /// 화면 진입은 캐시를 먼저 그리고 서버를 맞춘 뒤 다시 그린다. 한 글자 칠 때마다
+    /// 서버를 두드리면 안 되므로 디바운스 경로는 캐시만 다시 읽는다.
+    @Test("검색 디바운스는 동기화를 부르지 않는다")
+    func debounceDoesNotSync() async throws {
+        let sync = StubSyncReceivedCards()
+        let sut = makeSUT(fetch: StubFetchReceivedCards(result: []), sync: sync)
+
+        sut.searchText = "제옹"
+        try await Task.sleep(for: .milliseconds(600))
+
+        #expect(sync.callCount == 0)
+    }
+
     @Test("검색어를 입력하면 직접 부르지 않아도 디바운스 뒤 다시 조회한다")
     func typingTriggersDebouncedReload() async throws {
         let fetch = StubFetchReceivedCards(result: [])
@@ -111,8 +142,11 @@ private func makeCard(id: String, name: String) -> ReceivedCard {
 }
 
 @MainActor
-private func makeSUT(fetch: StubFetchReceivedCards) -> ReceivedCardsViewModel {
-    ReceivedCardsViewModel(fetchReceivedCards: fetch)
+private func makeSUT(
+    fetch: StubFetchReceivedCards,
+    sync: StubSyncReceivedCards = StubSyncReceivedCards()
+) -> ReceivedCardsViewModel {
+    ReceivedCardsViewModel(fetchReceivedCards: fetch, syncReceivedCards: sync)
 }
 
 // MARK: - Stub
@@ -135,5 +169,17 @@ private final class StubFetchReceivedCards:
         lastQuery = query
         if let error { throw error }
         return result
+    }
+}
+
+private final class StubSyncReceivedCards:
+    SyncReceivedCardsUseCaseProtocol, @unchecked Sendable {
+
+    var error: Error?
+    private(set) var callCount = 0
+
+    func execute() async throws {
+        callCount += 1
+        if let error { throw error }
     }
 }
