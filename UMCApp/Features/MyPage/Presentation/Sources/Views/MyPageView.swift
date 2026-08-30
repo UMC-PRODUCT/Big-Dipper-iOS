@@ -120,7 +120,7 @@ struct MyPageView: View {
                 .frame(maxWidth: .infinity)
 
         case .loaded(let card):
-            BusinessCardFaceView(
+            BusinessCard3DView(
                 card: card,
                 isFlipped: isCardFlipped,
                 qrImage: viewModel.qrImage,

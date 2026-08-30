@@ -93,25 +93,22 @@ struct BusinessCardSummaryView: View {
 
     /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
     private var accessibilityLabel: String {
-        [displayName, card.university, "\(card.partDisplayName) 파트", "\(card.generation)기"]
-            .joined(separator: ", ")
+        [
+            card.displayName,
+            card.university,
+            "\(card.partDisplayName) 파트",
+            "\(card.generation)기",
+        ].joined(separator: ", ")
     }
 
     // MARK: - View Component
-
-    /// 시안 더미가 `이름/닉네임` 이라 명함_l(``BusinessCardFaceView``)과 같은 규칙으로
-    /// 둘을 함께 싣는다. 닉네임이 비어 있으면 이름만.
-    private var displayName: String {
-        let nickname = card.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        return nickname.isEmpty ? card.name : "\(card.name)/\(nickname)"
-    }
 
     private var nameRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: Metrics.nameSpacing) {
             // 시안은 Pretendard Bold 지만 `AppFontWeight` 에 bold 가 없다(regular/medium/
             // semibold 3종). 가장 가까운 semibold 를 쓴다 — 명함_l 도 같은 처리를 했다.
             // 확장은 `Pretendard-Bold.otf` 반입이 선행되어야 한다 (#1237).
-            Text(displayName)
+            Text(card.displayName)
                 .appFont(.title2, weight: .semibold, color: Color.white)
                 .lineLimit(1)
 

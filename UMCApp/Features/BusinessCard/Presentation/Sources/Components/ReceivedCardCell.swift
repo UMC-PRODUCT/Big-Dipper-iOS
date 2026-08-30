@@ -74,15 +74,6 @@ struct ReceivedCardCell: View {
         card.profile.part.seedColor
     }
 
-    /// 시안 더미가 `이름/닉네임` 이라 둘을 함께 싣는다. 명함_s 에는 텍스트 줄이 둘뿐이고
-    /// 아래 줄은 학교가 차지해서 닉네임에 자리를 따로 못 준다.
-    ///
-    /// - Note: 더미가 「이름 또는 닉네임」을 뜻하는 자리표시자일 수도 있다. 디자이너 확인 대기.
-    private var displayName: String {
-        let nickname = card.profile.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        return nickname.isEmpty ? card.profile.name : "\(card.profile.name)/\(nickname)"
-    }
-
     // MARK: - Body
 
     var body: some View {
@@ -106,7 +97,7 @@ struct ReceivedCardCell: View {
     /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
     private var accessibilityLabel: String {
         [
-            displayName,
+            card.profile.displayName,
             card.profile.university,
             "\(card.profile.partDisplayName) 파트",
             "\(card.profile.generation)기",
@@ -134,7 +125,7 @@ struct ReceivedCardCell: View {
 
     private var textBlock: some View {
         VStack(alignment: .leading, spacing: Metrics.textSpacing) {
-            Text(displayName)
+            Text(card.profile.displayName)
                 .appFont(.body, weight: .semibold, color: .grey900)
                 .lineLimit(1)
 

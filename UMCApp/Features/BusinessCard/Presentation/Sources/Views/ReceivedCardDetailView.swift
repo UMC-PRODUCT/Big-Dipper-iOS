@@ -82,7 +82,7 @@ public struct ReceivedCardDetailView: View {
     public var body: some View {
         ScrollView {
             VStack(spacing: Metrics.sectionSpacing) {
-                BusinessCardFaceView(
+                BusinessCard3DView(
                     card: viewModel.card.profile,
                     isFlipped: viewModel.isFlipped,
                     qrImage: viewModel.qrImage,

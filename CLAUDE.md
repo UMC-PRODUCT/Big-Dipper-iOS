@@ -119,6 +119,7 @@ cd UMCApp && make doctor    # 환경 진단
 | PR 리뷰 규칙 & 체크리스트 | `docs/claude/pr-review.md` | PR 리뷰 작성 시 |
 | 3D 명함 Phase 0 검증 결과 | `docs/claude/business-card-3d-spike.md` | 3D 명함(#1246~#1249) 착수 전, 스파이크 실측치 확인 |
 | 3D 명함 베이스 템플릿 · 앵커 규약 | `docs/claude/business-card-3d-anchor-contract.md` | #1247·#1248 구현 시, `BusinessCardTemplate` 앵커·머티리얼 슬롯 참조 및 계약 테스트 확인 |
+| 3D 명함 렌더러 — 회전·인터랙션·접근성 | `docs/claude/business-card-3d-renderer.md` | #1248·#1249 착수 전, `makeEntity` seam·회전 아키텍처·접근성 정책·튜닝 손잡이 확인 |
 
 Apple 프레임워크 API — 신규 Apple API를 다룰 때:
 
