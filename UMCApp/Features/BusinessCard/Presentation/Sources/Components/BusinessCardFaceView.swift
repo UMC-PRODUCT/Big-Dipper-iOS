@@ -174,6 +174,7 @@ public struct BusinessCardFaceView: View {
         ) {
             onFlip?()
         }
+        .accessibilityLabel(isFlipped ? Constants.flipToFront : Constants.flipToBack)
     }
 
     private var frontFace: some View {
@@ -182,9 +183,14 @@ public struct BusinessCardFaceView: View {
 
             VStack(alignment: .leading, spacing: Metrics.contentSpacing) {
                 HStack(alignment: .lastTextBaseline, spacing: Metrics.nameSpacing) {
-                    Text(card.displayName)
+                    // 표기 규칙은 ``MyCard/nameWithNickname`` 한 곳에 있다 — 명함_l·_m·_s
+                    // 공통이고 원출처는 명함_s 시안(`12657:35806`)이다.
+                    // 둘 다 `lineLimit(1)` 이라 폭이 모자라면 어느 쪽이 잘릴지 규칙이
+                    // 없었다. 이름이 1차 식별자라 학교가 먼저 말줄임되게 못 박는다 (#1236).
+                    Text(card.nameWithNickname)
                         .appFont(.title3, weight: .semibold, color: Color.white)
                         .lineLimit(1)
+                        .layoutPriority(1)
 
                     Text(card.university)
                         .appFont(.footnote, color: Color.white)

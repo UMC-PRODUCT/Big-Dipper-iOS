@@ -18,6 +18,7 @@ final class MockReceivedCardRepository: ReceivedCardRepositoryProtocol, @uncheck
     var deleteError: Error?
     var deleteAllError: Error?
     var countResult: Result<Int, Error> = .success(0)
+    var syncError: Error?
 
     // MARK: - Capture
 
@@ -26,6 +27,7 @@ final class MockReceivedCardRepository: ReceivedCardRepositoryProtocol, @uncheck
     private(set) var savedCards: [ReceivedCard] = []
     private(set) var deletedIds: [String] = []
     private(set) var deleteAllCallCount = 0
+    private(set) var syncCallCount = 0
 
     // MARK: - ReceivedCardRepositoryProtocol
 
@@ -57,5 +59,11 @@ final class MockReceivedCardRepository: ReceivedCardRepositoryProtocol, @uncheck
 
     func count() async throws -> Int {
         try countResult.get()
+    }
+
+    /// 프로토콜 확장 기본 구현으로 no-op을 주지 않는다 — 호출 여부가 검증 대상이다.
+    func sync() async throws {
+        syncCallCount += 1
+        if let syncError { throw syncError }
     }
 }

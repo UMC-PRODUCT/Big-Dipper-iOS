@@ -191,8 +191,14 @@ extension DIContainer {
         }
 
         // MARK: - Token Store (NetworkClient보다 먼저 등록)
+        // 팩토리 밖에서 한 번만 만들어 캡처한다. 팩토리 안에서 만들면 로그아웃의
+        // `resetCache()` 뒤 다음 resolve가 **새** 인스턴스를 만들어, 옛 인스턴스를 붙잡은
+        // 쪽(워치 요청 핸들러·STOMP 펌프)은 `clear()`로 비워진 인메모리 캐시를 그대로 든 채
+        // 굳는다 — 재로그인해도 토큰을 영영 못 본다. Keychain이 정본이라 인스턴스를 나눠 쓸
+        // 이유가 없다.
+        let tokenStore = KeychainTokenStore()
         container.register(TokenStore.self) {
-            KeychainTokenStore()
+            tokenStore
         }
 
         // MARK: - Network Infrastructure

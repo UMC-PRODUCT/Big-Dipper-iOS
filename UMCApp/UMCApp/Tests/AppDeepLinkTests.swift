@@ -5,6 +5,7 @@
 
 import Foundation
 import Testing
+import ActivityDomain
 import BusinessCardDomain
 import CommunityDomain
 @testable import UMCApp
@@ -57,6 +58,28 @@ struct AppDeepLinkTests {
         let url = URL(string: "umc://notice/34")!
 
         #expect(AppDeepLink.parse(url) == .message(.notice(id: "34")))
+    }
+
+    // MARK: - Attendance
+
+    /// 출석 승인/반려 푸시가 싣고 오는 표기. 여기서 못 읽으면 알림을 탭해도 아무 일이 없다.
+    @Test("출석 링크를 읽는다")
+    func parsesAttendanceLink() {
+        let url = URL(string: "umc://attendance/1234")!
+
+        #expect(AppDeepLink.parse(url) == .attendance(AttendanceLink(scheduleId: "1234")))
+    }
+
+    /// 일정 식별자는 정수의 String 직렬화라, 숫자가 아니면 출석 링크로 열지 않는다.
+    @Test(
+        "숫자가 아닌 출석 링크는 열지 않는다",
+        arguments: [
+            "umc://attendance/abc",
+            "umc://attendance/",
+        ]
+    )
+    func rejectsMalformedAttendanceLink(_ raw: String) {
+        #expect(AppDeepLink.parse(URL(string: raw)!) == nil)
     }
 
     // MARK: - Foreign

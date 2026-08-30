@@ -46,7 +46,6 @@ struct ReceivedCardCell: View {
         /// 시안은 시드 컬러를 이 농도로만 깐다 — 카드는 거의 흰색이고 파트 색은 힌트다.
         static let linearEndAlpha: Double = 0.1
         static let radialEndAlpha: Double = 0.05
-        static let chipAlpha: Double = 0.8
 
         /// 시안 `linear-gradient(108.16deg, rgba(C,0) 7.53%, rgba(C,0.1) 95.75%)` 의 정지점.
         static let linearStart: Double = 0.0753
@@ -70,8 +69,20 @@ struct ReceivedCardCell: View {
 
     // MARK: - Computed Property
 
+    /// 카드 면에 까는 워시용 시드. 못 읽은 파트는 회색 폴백으로 돌린다 — `partRaw` 가
+    /// 있으면 `part` 는 관례상 `.admin` 이라, 그대로 두면 낯선 파트의 카드가 Admin
+    /// 인디고를 입고 운영진처럼 보인다 (#1236 확정).
     private var seed: Color {
-        card.profile.part.seedColor
+        card.profile.partRaw == nil
+            ? card.profile.part.seedColor
+            : UMCPartType.unresolvedSeedColor
+    }
+
+    /// 칩 면. 혼합비는 ``UMCPartType/chipSeedColor`` 안에만 두고 여기서는 갈래만 고른다.
+    private var chipFill: Color {
+        card.profile.partRaw == nil
+            ? card.profile.part.chipSeedColor
+            : UMCPartType.unresolvedChipSeedColor
     }
 
     // MARK: - Body
@@ -97,7 +108,7 @@ struct ReceivedCardCell: View {
     /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
     private var accessibilityLabel: String {
         [
-            card.profile.displayName,
+            card.profile.nameWithNickname,
             card.profile.university,
             "\(card.profile.partDisplayName) 파트",
             "\(card.profile.generation)기",
@@ -125,7 +136,9 @@ struct ReceivedCardCell: View {
 
     private var textBlock: some View {
         VStack(alignment: .leading, spacing: Metrics.textSpacing) {
-            Text(card.profile.displayName)
+            // 표기 규칙은 ``MyCard/nameWithNickname`` 한 곳에 있다 — 명함_l·_m·_s 공통이고
+            // 원출처가 이 화면의 시안(`12657:35806`)이다.
+            Text(card.profile.nameWithNickname)
                 .appFont(.body, weight: .semibold, color: .grey900)
                 .lineLimit(1)
 
@@ -137,20 +150,29 @@ struct ReceivedCardCell: View {
 
     /// 파트 칩과 기수 칩이 같은 배경을 쓴다 — 시안에 둘 사이 색 구분이 없다.
     ///
-    /// - Important: **흰 라벨이 WCAG AA(4.5:1)를 8개 파트 전부 미달한다** (#1235).
-    ///   시드@0.8 을 카드 면(틴트 최대 0.15)에 합성한 라이트 모드 실측 대비비:
-    ///   Admin 3.75 · PM 3.40 · Design 3.15 · Web 2.74 · Spring 1.96 · Android 1.94 ·
-    ///   iOS 1.94 · **Node 1.42** (최악). 같은 배경에 검정 라벨을 얹으면
-    ///   5.60~14.77 로 8개 전부 통과한다.
-    ///   색 선택은 디자인 결정이라 여기서 바꾸지 않는다 — #1236 시안 확정 대기.
+    /// 칩 면을 **모드 불변 불투명색**으로 굳히고 잉크를 검정으로 고정한다 (#1235 해소,
+    /// #1236 확정). 알파 합성(시드@0.8)에 흰 라벨이던 예전 조합은 라이트 8종 전부
+    /// WCAG AA(4.5:1) 미달이었다 — Admin 3.75 · PM 3.40 · Design 3.15 · Web 2.74 ·
+    /// Spring 1.96 · Android 1.94 · iOS 1.94 · **Node 1.42**(최악).
+    ///
+    /// 라벨 색만 바꾸는 안은 **다크에서 다시 깨진다.** 다크 실측 — 검정 라벨:
+    /// Admin 2.95 · PM 3.47 · Design 3.90 · Web 4.08 미달 / 흰 라벨: Spring 3.42 ·
+    /// Android 3.32 · iOS 3.38 · Node 2.39 미달. 어느 한 잉크로도 양 모드를 못 덮는다.
+    /// 면을 미리 섞어 두면 라이트 픽셀은 그대로면서 다크에서도 같은 색이 남아,
+    /// 검정 라벨 하나로 라이트·다크 8종이 전부 5.92~14.92 로 통과한다.
+    ///
+    /// - Note: `grey900` 은 다크에서 흰색으로 뒤집혀 쓸 수 없다. 면이 모드 불변이므로
+    ///   잉크도 모드 불변인 `Color.black` 이어야 한다. 못 읽은 파트 폴백만 다이내믹
+    ///   토큰이라 모드에 따라 변하지만, 검정 라벨 대비가 라이트 12.22 · 다크 7.82 로
+    ///   양쪽 다 AA 를 넘는다 (``UMCPartType/unresolvedSeedColor``).
     private func chip(_ text: String) -> some View {
         Text(text)
-            .appFont(.caption2, color: Color.white)
+            .appFont(.caption2, color: Color.black)
             .lineLimit(1)
             .padding(.horizontal, Metrics.chipHorizontalPadding)
             .padding(.vertical, Metrics.chipVerticalPadding)
             .frame(minHeight: Metrics.chipMinHeight)
-            .background(seed.opacity(Palette.chipAlpha), in: Capsule())
+            .background(chipFill, in: Capsule())
     }
 
     /// 시드 컬러 2겹 — 좌상단은 거의 흰색, 우하단으로 갈수록 파트 색이 옅게 깔린다.

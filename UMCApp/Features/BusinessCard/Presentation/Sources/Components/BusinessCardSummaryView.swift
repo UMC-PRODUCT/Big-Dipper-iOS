@@ -94,7 +94,7 @@ struct BusinessCardSummaryView: View {
     /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
     private var accessibilityLabel: String {
         [
-            card.displayName,
+            card.nameWithNickname,
             card.university,
             "\(card.partDisplayName) 파트",
             "\(card.generation)기",
@@ -108,9 +108,15 @@ struct BusinessCardSummaryView: View {
             // 시안은 Pretendard Bold 지만 `AppFontWeight` 에 bold 가 없다(regular/medium/
             // semibold 3종). 가장 가까운 semibold 를 쓴다 — 명함_l 도 같은 처리를 했다.
             // 확장은 `Pretendard-Bold.otf` 반입이 선행되어야 한다 (#1237).
-            Text(card.displayName)
+            //
+            // 표기 규칙은 ``MyCard/nameWithNickname`` 한 곳에 있다 — 명함_l·_m·_s
+            // 공통이고 원출처는 명함_s 시안(`12657:35806`)이다.
+            // 둘 다 `lineLimit(1)` 이라 폭이 모자라면 어느 쪽이 잘릴지 규칙이 없었다.
+            // 이름이 1차 식별자라 학교가 먼저 말줄임되게 못 박는다 (#1236).
+            Text(card.nameWithNickname)
                 .appFont(.title2, weight: .semibold, color: Color.white)
                 .lineLimit(1)
+                .layoutPriority(1)
 
             Text(card.university)
                 .appFont(.subheadline, color: Color.white)

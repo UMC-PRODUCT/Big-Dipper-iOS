@@ -55,6 +55,23 @@ public final class ReceivedCardRecord {
     public var exchangeMethodRaw: String = ""
     public var updatedAt: Date = Date()
 
+    /// 마지막으로 **서버 집합에서 확인된** 시각. `nil` 이면 아직 서버에 없다 — 오프라인
+    /// 교환·서버 이행 대기·상대 memberId 를 모르는 행이 그렇다.
+    ///
+    /// 전량 재조정의 삭제 면제 조건과 스캔 레이스 가드를 이 한 필드가 겸한다. 아직 못 올린
+    /// 행을 「서버에 없다」는 이유로 지우면 눈앞에서 교환한 명함이 사라진다.
+    ///
+    /// - Note: 옵셔널이라 CloudKit 제약(전 필드 기본값)을 만족하고, 기존 기기의 행은
+    ///   `nil` 로 열려 자동으로 「미푸시」 상태가 된다 — 첫 동기화의 push 가 곧 이행 경로다.
+    public var serverSyncedAt: Date?
+
+    /// 상대도 나를 명함첩에 담았는지 (서버 판정).
+    ///
+    /// 이메일 표시 여부를 앱이 이 값으로 판단하지 않는다 — 판단 주체는 서버 하나이고,
+    /// 서버는 상호가 아니면 `email` 자체를 내리지 않는다. 여기 남기는 이유는 「왜 이메일이
+    /// 없는지」 안내 문구 하나 때문이다.
+    public var isMutual: Bool = false
+
     // MARK: - Init
 
     public init(
@@ -74,7 +91,9 @@ public final class ReceivedCardRecord {
         exchangedAt: Date,
         exchangeContext: String?,
         exchangeMethodRaw: String = "",
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        serverSyncedAt: Date? = nil,
+        isMutual: Bool = false
     ) {
         self.ownerMemberId = ownerMemberId
         self.cardID = cardID
@@ -93,5 +112,7 @@ public final class ReceivedCardRecord {
         self.exchangeContext = exchangeContext
         self.exchangeMethodRaw = exchangeMethodRaw
         self.updatedAt = updatedAt
+        self.serverSyncedAt = serverSyncedAt
+        self.isMutual = isMutual
     }
 }

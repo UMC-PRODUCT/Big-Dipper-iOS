@@ -18,3 +18,21 @@ protocol BusinessCardNetworkRequesting {
 }
 
 extension MoyaNetworkAdapter: BusinessCardNetworkRequesting {}
+
+// MARK: - Envelope Absorbing Decode
+
+extension JSONDecoder {
+
+    /// `APIResponse` 래핑 응답과 raw 응답을 **양쪽 다** 흡수한다.
+    ///
+    /// 서버가 같은 자원을 어떤 컨트롤러에서는 봉투에 싸고 어떤 곳에서는 그대로 내려서,
+    /// 호출부마다 한쪽만 가정하면 그때그때 깨진다 (`MyPageRepository.fetchMemberProfile`
+    /// 선례). 이 피처의 저장소가 전부 이 한 규칙을 쓴다.
+    func decodeAbsorbingWrapper<T: Codable>(_ type: T.Type, from data: Data) throws -> T {
+        if let wrapped = try? decode(APIResponse<T>.self, from: data),
+           let result = try? wrapped.unwrap() {
+            return result
+        }
+        return try decode(T.self, from: data)
+    }
+}
