@@ -38,6 +38,7 @@ public struct BusinessCardFaceView: View {
         static let qrTitle = "QR 코드"
         static let qrLabel = "내 명함 QR 코드"
         static let qrUnavailable = "QR 코드를 만들지 못했어요"
+        static let flipIcon = "arrow.2.squarepath"
         static let flipToBack = "명함 뒷면 보기"
         static let flipToFront = "명함 앞면 보기"
     }
@@ -60,8 +61,6 @@ public struct BusinessCardFaceView: View {
         static let avatarSize: CGFloat = 70
         static let nameSpacing: CGFloat = 8
         static let chipSpacing: CGFloat = 5
-        static let flipButtonSize: CGFloat = 32
-        static let flipIconSize: CGFloat = 15
         static let logoWidth: CGFloat = 47
         static let logoHeight: CGFloat = 15.16
         static let buttonSpacing: CGFloat = 10
@@ -169,15 +168,11 @@ public struct BusinessCardFaceView: View {
     }
 
     private var flipButtonBody: some View {
-        Button {
+        CardGlassCircleButton(
+            systemName: Constants.flipIcon,
+            label: isFlipped ? Constants.flipToFront : Constants.flipToBack
+        ) {
             onFlip?()
-        } label: {
-            Image(systemName: "arrow.2.squarepath")
-                .font(.system(size: Metrics.flipIconSize))
-                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-                .foregroundStyle(Color.white)
-                .frame(minWidth: Metrics.flipButtonSize, minHeight: Metrics.flipButtonSize)
-                .glassEffect(.clear, in: Circle())
         }
         .accessibilityLabel(isFlipped ? Constants.flipToFront : Constants.flipToBack)
     }
@@ -212,17 +207,7 @@ public struct BusinessCardFaceView: View {
         }
         // 아바타·이름·학교·칩 4개가 따로 읽히면 누구 명함인지 조립해야 알 수 있다.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(frontAccessibilityLabel)
-    }
-
-    /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
-    private var frontAccessibilityLabel: String {
-        [
-            card.nameWithNickname,
-            card.university,
-            "\(card.partDisplayName) 파트",
-            "\(card.generation)기",
-        ].joined(separator: ", ")
+        .accessibilityLabel(card.frontFaceAccessibilityLabel)
     }
 
     /// 뒷면은 아바타 자리에 QR 이 오고, 이름·칩 자리에 링크 3줄이 온다.
