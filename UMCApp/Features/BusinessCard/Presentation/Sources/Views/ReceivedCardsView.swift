@@ -132,7 +132,7 @@ public struct ReceivedCardsView: View {
     /// 시안에 삭제 동선이 없어 둔 임시 자리였고, 이제 눌러서 들어가는 화면이 있다.
     private func cell(_ card: ReceivedCard) -> some View {
         NavigationLink(value: BusinessCardDestination.receivedCardDetail(card)) {
-            ReceivedCardCell(card: card)
+            ReceivedCardSnapshotCell(card: card)
         }
         .buttonStyle(.plain)
         // 카드는 이미 한 덩어리로 읽히지만(`children: .ignore`) 눌러서 무엇이 열리는지는
