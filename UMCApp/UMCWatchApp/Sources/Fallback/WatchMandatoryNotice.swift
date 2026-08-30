@@ -58,7 +58,7 @@ struct WatchMandatoryNoticeBanner: View {
     // MARK: - Function
 
     private var presentation: WatchFallbackPresentation {
-        WatchFallbackReason.mandatoryNoticeUnread.presentation.replacingMessage(notice.title)
+        WatchFallbackReason.mandatoryNoticeUnread.presentation.replacing(message: notice.title)
     }
 }
 

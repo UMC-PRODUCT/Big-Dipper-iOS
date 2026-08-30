@@ -24,7 +24,7 @@ enum WatchFailureCategory: Hashable, Sendable, CaseIterable {
 /// 연관값을 두지 않는 이유: `CaseIterable` 합성을 살리기 위해서다. 케이스를 추가하면
 /// `allCases` 가 자동으로 늘어나 테스트가 새 케이스를 강제로 검사한다. 시각(HH:MM)·공지 제목
 /// 같은 가변 정보는 소비하는 쪽(`WatchOfflineQueueCard`·`WatchMandatoryNoticeBanner`)이
-/// `WatchFallbackPresentation.replacingHint(_:)`/`replacingMessage(_:)` 로 따로 꽂는다.
+/// `WatchFallbackPresentation.replacing(title:message:hint:)` 로 따로 꽂는다.
 /// `WatchRoute.fallback` 연관값이라 `WatchRoute` 와 같은 `public` 이어야 한다
 /// (`public enum` 은 연관값 타입도 최소 같은 접근 수준을 요구한다).
 public enum WatchFallbackReason: Hashable, Sendable, CaseIterable {

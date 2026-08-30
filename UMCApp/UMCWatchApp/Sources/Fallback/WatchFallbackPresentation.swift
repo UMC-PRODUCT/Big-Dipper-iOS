@@ -30,30 +30,20 @@ struct WatchFallbackPresentation: Equatable, Sendable {
 
 extension WatchFallbackPresentation {
 
-    /// 힌트만 동적 값으로 교체한다 — P0-7 대기의 "남은 유효 시간 N시간 M분"처럼 화면을 그리는
-    /// 시점에 계산해야 하는 문구용. `reason.presentation` 은 순수 정적 값이라 여기서 담을 수 없다.
-    func replacingHint(_ hint: String) -> WatchFallbackPresentation {
+    /// 화면을 그리는 시점에만 알 수 있는 문구를 꽂는다 — `reason.presentation` 은 순수 정적
+    /// 값이라 출석 시각(P0-5) · 남은 유효 시간(P0-7) · 공지 제목(P0-8) 같은 값을 담을 수 없다.
+    /// 넘기지 않은 항목은 원래 문구를 그대로 둔다.
+    func replacing(
+        title: String? = nil,
+        message: String? = nil,
+        hint: String? = nil
+    ) -> WatchFallbackPresentation {
         WatchFallbackPresentation(
             symbolName: symbolName,
             status: status,
-            title: title,
-            message: message,
-            hint: hint,
-            primaryAction: primaryAction,
-            secondaryAction: secondaryAction,
-            disabledAction: disabledAction
-        )
-    }
-
-    /// 설명만 동적 값으로 교체한다 — P0-8 배너의 공지 제목처럼 reason 밖(서버 데이터)에서
-    /// 오는 문구용.
-    func replacingMessage(_ message: String) -> WatchFallbackPresentation {
-        WatchFallbackPresentation(
-            symbolName: symbolName,
-            status: status,
-            title: title,
-            message: message,
-            hint: hint,
+            title: title ?? self.title,
+            message: message ?? self.message,
+            hint: hint ?? self.hint,
             primaryAction: primaryAction,
             secondaryAction: secondaryAction,
             disabledAction: disabledAction
@@ -156,7 +146,7 @@ extension WatchFallbackReason {
 
         case .offlineQueued:
             // 남은 유효 시간은 화면을 그리는 시점의 현재 시각에 따라 계속 바뀌므로 정적
-            // 문구로 고정할 수 없다 — `WatchOfflineQueueCard` 가 `replacingHint(_:)` 로
+            // 문구로 고정할 수 없다 — `WatchOfflineQueueCard` 가 `replacing(hint:)` 로
             // 실제 값을 꽂는다.
             return WatchFallbackPresentation(
                 symbolName: "arrow.up.circle.fill",
@@ -183,7 +173,7 @@ extension WatchFallbackReason {
 
         case .mandatoryNoticeUnread:
             // 실제 공지 제목은 reason 밖(서버 데이터)에서 온다 — `WatchMandatoryNoticeBanner`
-            // 가 `replacingMessage(_:)` 로 실제 제목을 꽂는다.
+            // 가 `replacing(message:)` 로 실제 제목을 꽂는다.
             return WatchFallbackPresentation(
                 symbolName: "exclamationmark.bubble.fill",
                 status: .warning,

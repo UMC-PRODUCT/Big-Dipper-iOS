@@ -60,7 +60,7 @@ struct WatchOfflineQueueCard: View {
     private var presentation: WatchFallbackPresentation {
         switch state {
         case .waiting(let remaining):
-            return state.reason.presentation.replacingHint(Self.remainingLabel(remaining))
+            return state.reason.presentation.replacing(hint: Self.remainingLabel(remaining))
         case .expired:
             return state.reason.presentation
         }

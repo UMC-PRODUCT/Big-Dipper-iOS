@@ -28,6 +28,7 @@ struct HomeGlanceView: View {
                 pingChip
                 pendingApprovalBadge
                 phoneDisconnectedRow
+                fallbackDebugRow
             }
             .padding(.horizontal, WatchLayout.screenHorizontalPadding)
         }
@@ -141,6 +142,30 @@ struct HomeGlanceView: View {
         }
     }
 
+    /// 폴백 9종 검수용 DEBUG 진입점. 실제 실패 신호가 붙기 전(#1207·#1210)까지
+    /// 디자인·QA 가 실기기에서 화면을 확인할 수 있는 유일한 경로다.
+    @ViewBuilder
+    private var fallbackDebugRow: some View {
+        #if DEBUG
+        NavigationLink {
+            WatchFallbackDebugMenu()
+        } label: {
+            HStack(spacing: WatchLayout.tightSpacing) {
+                Image(systemName: "ladybug.fill")
+                    .foregroundStyle(WatchColor.textSecondary)
+                    .accessibilityHidden(true)
+                Text("폴백 하네스")
+                    .font(.watch(.cardValue))
+                    .foregroundStyle(WatchColor.textSecondary)
+                Spacer(minLength: 0)
+            }
+            .watchCard()
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        #endif
+    }
+
     /// The Ping 강조는 브랜드 액센트다 — 상태 색이 아니라 미확인 여부만 신호한다.
     private var pingAccentColor: Color {
         viewModel.hasUnreadPing ? WatchColor.brandAccent : WatchColor.textSecondary
@@ -160,6 +185,7 @@ struct HomeGlanceView: View {
     }
     .environment(WatchRouter())
     .environment(WatchSessionCoordinator())
+    .environment(WatchMandatoryNoticeCenter())
 }
 
 #Preview("HomeGlanceView — 세션 없음") {
@@ -168,6 +194,7 @@ struct HomeGlanceView: View {
     }
     .environment(WatchRouter())
     .environment(WatchSessionCoordinator())
+    .environment(WatchMandatoryNoticeCenter())
 }
 
 #Preview("HomeGlanceView — A11y 크기") {
@@ -176,6 +203,7 @@ struct HomeGlanceView: View {
     }
     .environment(WatchRouter())
     .environment(WatchSessionCoordinator())
+    .environment(WatchMandatoryNoticeCenter())
     .dynamicTypeSize(.accessibility3)
 }
 #endif
