@@ -1,17 +1,18 @@
-//
-//  UMCWatchApp.swift
-//  UMCWatchApp
-//
-//  Created by euijjang97 on 4/24/26.
-//
-
 import SwiftUI
 
 @main
 struct UMCWatchApp: App {
+
+    // MARK: - Property
+
+    @State private var router = WatchRouter()
+
+    // MARK: - Body
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            WatchRootView()
+                .environment(router)
         }
     }
 }
