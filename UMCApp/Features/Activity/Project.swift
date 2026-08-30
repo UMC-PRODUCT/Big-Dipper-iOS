@@ -12,22 +12,13 @@ let project = featureProject(
         // #981 에서 최종 확정했다: 전용 Schedule 모듈은 신설하지 않고 Home* 이 단일 소유자다.
         // (docs/claude/build-and-modules.md "경계 정책 — 일정(Schedule)")
         //
-        // HomeDomain 은 iOS 전용이라 watchOS 까지 확장된 ActivityDomain 의 destination 을
-        // 그대로 두려면 의존을 iOS 로 한정해야 한다. 현재 UMCWatchApp 은 CoreWatchConnectivity
-        // 만 링크하므로 watch 빌드에 영향이 없다. watch 가 출석 도메인을 쓰게 되는 시점에
-        // 일정 모델의 공용 위치(Core 승격 등)를 다시 판단한다.
-        .project(
-            target: "HomeDomain",
-            path: .relativeToRoot("Features/Home"),
-            condition: .when([.ios])
-        ),
+        // #1212 에서 확정: 일정 모델은 옮기지 않는다. HomeDomain(+NoticeDomain)·CoreDomain 의
+        // Domain 타겟을 [.iPhone, .appleWatch] 로 열어 watch 가 canonical 자산을 그대로 재사용한다.
+        // #981 의 "Home* 단일 소유자" 경계는 그대로 유지되며 지원 플랫폼만 넓어졌다.
+        // 세 Domain 타겟 모두 Foundation/UMCFoundation/SwiftData 만 사용해 watchOS 제약이 없다.
+        .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
         // 챌린저 검색 결과(ChallengerSearchPage)가 Core canonical ChallengerInfo 를 담는다.
-        // CoreDomain 은 iOS 전용이므로 HomeDomain 과 같은 이유로 조건부 의존이다.
-        .project(
-            target: "CoreDomain",
-            path: .relativeToRoot("Core/Domain"),
-            condition: .when([.ios])
-        ),
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
     ],
     dataExtraDependencies: [
         // 출석 응답 DTO 가 HomeDomain 의 일정 장소/출석 정책 모델로 매핑한다.
@@ -51,18 +42,9 @@ let project = featureProject(
     includesDomainTests: true,
     domainTestDependencies: [
         // UseCase 테스트가 ScheduleDetailData 픽스처를 직접 만든다.
-        // 테스트 타겟도 domainDestinations 를 물려받으므로 메인 타겟과 같은 iOS 한정 조건이 필요하다.
-        .project(
-            target: "HomeDomain",
-            path: .relativeToRoot("Features/Home"),
-            condition: .when([.ios])
-        ),
+        .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
         // UseCase 테스트가 ChallengerSearchPage 픽스처의 ChallengerInfo 를 직접 만든다.
-        .project(
-            target: "CoreDomain",
-            path: .relativeToRoot("Core/Domain"),
-            condition: .when([.ios])
-        ),
+        .project(target: "CoreDomain", path: .relativeToRoot("Core/Domain")),
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ],
     includesDataTests: true,

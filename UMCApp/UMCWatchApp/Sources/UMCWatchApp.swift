@@ -7,7 +7,11 @@ struct UMCWatchApp: App {
     // MARK: - Property
 
     @State private var router = WatchRouter()
-    @State private var sessionCoordinator = WatchSessionCoordinator()
+
+    /// 세션은 앱 수명 하나다. 화면이 소유하면 화면 전환마다 새 코디네이터가 생기고
+    /// `WCSession.default.delegate` 는 옛 인스턴스를 가리킨 채로 남는다.
+    @State private var coordinator = WatchSessionCoordinator()
+
     @State private var noticeCenter = WatchMandatoryNoticeCenter()
 
     // MARK: - Body
@@ -16,13 +20,9 @@ struct UMCWatchApp: App {
         WindowGroup {
             WatchRootView()
                 .environment(router)
-                .environment(sessionCoordinator)
+                .environment(coordinator)
                 .environment(noticeCenter)
-                .task {
-                    // 앱 생명주기 동안 한 번만 활성화한다. 반복 호출해도 안전하지만
-                    // 델리게이트 재할당이 매번 일어나 상태 전이 타이밍이 흔들릴 수 있다.
-                    sessionCoordinator.activate()
-                }
+                .task { coordinator.activate() }
         }
     }
 }
