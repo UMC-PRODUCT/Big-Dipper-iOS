@@ -9,5 +9,11 @@
         <string>$(AppIdentifierPrefix)com.umc.product.shared</string>
         <string>$(AppIdentifierPrefix)com.umc.product.watchkitapp</string>
     </array>
+    <!-- Complication 익스텐션과 스냅샷을 공유하는 워치 전용 App Group. -->
+    <!-- 익스텐션 entitlements 와 값이 어긋나면 저장은 성공한 듯 보이는데 워치페이스가 빈다. -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.com.umc.product.watch</string>
+    </array>
 </dict>
 </plist>

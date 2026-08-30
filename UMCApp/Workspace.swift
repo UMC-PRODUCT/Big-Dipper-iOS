@@ -8,5 +8,6 @@ let workspace = Workspace(
         "Features/*",
         "UMCAppWidget",
         "UMCWatchApp",
+        "UMCWatchComplication",
     ]
 )
