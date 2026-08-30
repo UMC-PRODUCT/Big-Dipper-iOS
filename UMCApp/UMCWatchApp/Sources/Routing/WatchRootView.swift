@@ -10,6 +10,7 @@ struct WatchRootView: View {
 
     @Environment(WatchRouter.self) private var router
     @Environment(WatchMandatoryNoticeCenter.self) private var noticeCenter
+    @Environment(WatchAttendanceViewModel.self) private var attendance
 
     // MARK: - Body
 
@@ -33,11 +34,35 @@ struct WatchRootView: View {
 
     // MARK: - Function
 
+    /// 일정 식별자를 실제 일정으로 풀지 못하면 플레이스홀더로 떨어진다 — 딥링크나 푸시로
+    /// 먼저 도착했는데 iPhone 이 아직 일정을 밀어주지 않은 경우다.
+    /// The Ping(#1208)은 아직 플레이스홀더가 정상이다.
     @ViewBuilder
     private func destination(for route: WatchRoute) -> some View {
         switch route {
-        case .attendanceList, .attendanceSession, .attendanceResult, .pingList, .pingDetail:
+        case .attendanceList:
+            WatchAttendanceListView()
+
+        case .attendanceSession(let scheduleID):
+            if let schedule = attendance.schedule(id: scheduleID) {
+                WatchAttendanceSessionView(schedule: schedule)
+            } else {
+                WatchRoutePlaceholderView(route: route)
+            }
+
+        case .attendanceResult(let scheduleID):
+            if let schedule = attendance.schedule(id: scheduleID) {
+                WatchAttendanceResultView(
+                    schedule: schedule,
+                    outcome: attendance.outcome(for: scheduleID)
+                )
+            } else {
+                WatchRoutePlaceholderView(route: route)
+            }
+
+        case .pingList, .pingDetail:
             WatchRoutePlaceholderView(route: route)
+
         case .fallback(let reason):
             WatchFallbackView(reason: reason)
         }
@@ -53,5 +78,6 @@ struct WatchRootView: View {
         .environment(WatchRouter())
         .environment(WatchSessionCoordinator())
         .environment(noticeCenter)
+        .environment(WatchAttendanceViewModel())
 }
 #endif

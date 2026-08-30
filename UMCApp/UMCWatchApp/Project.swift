@@ -12,6 +12,9 @@ let project = watchAppProject(
         .project(target: "ActivityDomain", path: .relativeToRoot("Features/Activity")),
         // 같은 화면이 일정 모델(ScheduleDetailData)을 직접 다루므로 HomeDomain 도 명시 링크한다.
         .project(target: "HomeDomain", path: .relativeToRoot("Features/Home")),
+        // 출석 화면 상태를 Loadable/AppError 로 표현한다. HomeDomain 경유 전파에 기대지 않고
+        // 직접 쓰는 모듈이므로 명시 링크한다.
+        .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
     ],
     includesTests: true
 )
