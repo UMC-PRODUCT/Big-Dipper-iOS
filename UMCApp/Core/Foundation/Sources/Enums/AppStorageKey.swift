@@ -36,6 +36,11 @@ public enum AppStorageKey {
     /// - Note: 키 문자열은 레거시 앱(`AppProduct`)과 동일하게 유지한다. 이미 리뷰 요청을 받은
     ///   사용자가 앱 업데이트 직후 다시 요청받지 않도록 기존 저장값을 그대로 승계해야 한다.
     public static let lastReviewRequestDate: String = "lastReviewRequestDate"
+    /// 3D 명함 자이로 회전 사용 여부 (기본 false — #1247)
+    ///
+    /// - Note: `sessionScopedKeys`에 넣지 않는다. 기기 단위 표현 선호이지 세션 데이터가
+    ///   아니다 — 로그아웃했다고 모션 취향이 초기화될 이유가 없다.
+    public static let businessCardGyroEnabled: String = "businessCardGyroEnabled"
 
     // MARK: - Profile (최신 기수 기준)
 
