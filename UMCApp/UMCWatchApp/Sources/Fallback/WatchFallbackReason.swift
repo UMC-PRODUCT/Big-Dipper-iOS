@@ -79,8 +79,19 @@ extension WatchFallbackReason {
         switch error {
         case let connectivityError as WatchConnectivityError:
             switch connectivityError {
-            case .notReachable, .sessionNotActivated:
+            case .notSupported, .notReachable, .sessionNotActivated:
                 self = .phoneDisconnected
+
+            // 전송 계층이 감싼 에러는 껍질을 벗겨 원래 원인으로 분류한다 —
+            // 안 그러면 위치·네트워크 실패가 전부 서버 실패 화면으로 흘러 안내가 틀린다.
+            case .transportFailure(let underlying):
+                self.init(classifying: underlying)
+
+            // 페이로드·스키마·응답 불일치는 사용자가 원인을 구분해도 할 수 있는 일이 같다.
+            // 재시도와 iPhone 대체 경로를 모두 가진 화면으로 보낸다.
+            case .payloadTooLarge, .replyTimedOut, .malformedPayload,
+                 .unsupportedSchemaVersion, .unexpectedReply, .unsupportedChannel, .remote:
+                self = .checkInRequestFailed
             }
 
         case let locationError as CLError where locationError.code == .denied:
