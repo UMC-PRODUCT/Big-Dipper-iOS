@@ -34,6 +34,10 @@ struct ActivityView: View {
     @State private var viewModel: ActivityViewModel
     @State private var selectedSection: ActivitySection?
 
+    /// 출석 푸시가 지목한 일정 식별자. 여기서는 섹션만 옮기고, 비우는 책임은 세션을 실제로
+    /// 펼치는 말단(``ChallengerAttendanceSessionView``)에 있다.
+    @Binding private var focusedScheduleId: String?
+
     /// 출석 목록·상세가 공유하는 단일 ViewModel.
     ///
     /// 상세의 승인/반려가 목록 배지에 즉시 반영되려면 두 화면이 같은 인스턴스를 봐야 한다.
@@ -54,16 +58,19 @@ struct ActivityView: View {
     ///   - container: 자식 화면이 UseCase·세션을 resolve 할 DI 컨테이너
     ///   - errorHandler: 흐름 중단형 전역 에러 처리기
     ///   - pendingEntry: 다른 탭에서 넘어온 진입 요청. 처리 후 `nil` 로 비운다.
+    ///   - focusedScheduleId: 딥링크가 지목한 일정. 출석 섹션으로 옮겨 그 세션을 펼친다.
     ///   - viewModel: 프리뷰/테스트용 주입 지점 (기본값: container 로 생성)
     init(
         container: DIContainer,
         errorHandler: ErrorHandler,
         pendingEntry: Binding<ActivityEntry?>,
+        focusedScheduleId: Binding<String?> = .constant(nil),
         viewModel: ActivityViewModel? = nil
     ) {
         self.container = container
         self.errorHandler = errorHandler
         _pendingEntry = pendingEntry
+        _focusedScheduleId = focusedScheduleId
         self.userSession = container.resolve(UserSessionManager.self)
         _viewModel = State(
             initialValue: viewModel ?? ActivityViewModel(
@@ -144,6 +151,14 @@ struct ActivityView: View {
             .onChange(of: mode) { oldMode, newMode in
                 let previous = selectedSection ?? ActivitySection.defaultSection(for: oldMode)
                 selectedSection = previous.mapped(to: newMode)
+            }
+            .onChange(of: focusedScheduleId, initial: true) { _, scheduleId in
+                guard scheduleId != nil else { return }
+                // 현재 모드로 번역해서 옮긴다 — 운영진 모드에서 `.attendanceCheck` 를 그대로
+                // 넣으면 `sectionContent` 의 `default` 로 떨어져 빈 화면이 된다. 운영진은
+                // 출석 관리 화면까지만 착지하고 세션 펼침은 적용되지 않는다(푸시를 받는 쪽은
+                // 챌린저 본인이라 정상 경로가 아니다).
+                selectedSection = ActivitySection.attendanceCheck.mapped(to: mode)
             }
     }
 
@@ -244,7 +259,8 @@ struct ActivityView: View {
                     errorHandler: errorHandler,
                     sessions: sessions,
                     schedules: viewModel.schedules,
-                    userId: userId
+                    userId: userId,
+                    focusedScheduleId: $focusedScheduleId
                 )
                 .task {
                     await viewModel.startPollingIfNeeded()

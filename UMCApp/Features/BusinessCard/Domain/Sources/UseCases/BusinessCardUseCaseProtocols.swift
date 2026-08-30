@@ -80,6 +80,15 @@ public protocol DeleteReceivedCardUseCaseProtocol: Sendable {
     func executeAll() async throws
 }
 
+/// 명함첩을 서버 집합으로 재조정한다.
+///
+/// ``FetchReceivedCardsUseCaseProtocol`` 과 나누는 이유는 실패의 처리가 다르기 때문이다 —
+/// 동기화가 실패해도 캐시로 목록은 떠야 한다. 실패를 여기서 삼키지 않고 그대로 던지는
+/// 것은 호출부(명함첩 화면·검증 하네스)가 각자 다르게 다루기 때문이다.
+public protocol SyncReceivedCardsUseCaseProtocol: Sendable {
+    func execute() async throws
+}
+
 /// 마이페이지 행 우측 숫자 일괄 공급 (MP-F07~F09).
 public protocol FetchActivityStatUseCaseProtocol: Sendable {
     /// 던지지 않는다 — 소스별 실패는 "0" 폴백 (MP-F07).

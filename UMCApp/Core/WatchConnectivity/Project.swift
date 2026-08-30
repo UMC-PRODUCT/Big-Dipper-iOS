@@ -8,5 +8,6 @@ let project = coreProject(
     deploymentTargets: .multiplatform(iOS: "26.4", watchOS: "26.4"),
     dependencies: [
         .sdk(name: "WatchConnectivity", type: .framework, status: .required),
-    ]
+    ],
+    includesTests: true
 )

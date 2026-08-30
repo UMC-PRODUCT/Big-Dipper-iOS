@@ -16,6 +16,8 @@ public protocol BusinessCardUseCaseProviding {
     /// QR 딥링크 스캔이 memberId로 상대 명함을 복원할 때 쓴다.
     var fetchPeerCardUseCase: FetchPeerCardUseCaseProtocol { get }
     var fetchReceivedCardsUseCase: FetchReceivedCardsUseCaseProtocol { get }
+    /// 명함첩 서버 재조정. 조회와 나뉜 이유는 실패 처리가 다르기 때문이다.
+    var syncReceivedCardsUseCase: SyncReceivedCardsUseCaseProtocol { get }
     var saveReceivedCardUseCase: SaveReceivedCardUseCaseProtocol { get }
     var deleteReceivedCardUseCase: DeleteReceivedCardUseCaseProtocol { get }
     var updateExchangeContextUseCase: UpdateExchangeContextUseCaseProtocol { get }
@@ -31,6 +33,7 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
     public let fetchMyCardUseCase: FetchMyCardUseCaseProtocol
     public let fetchPeerCardUseCase: FetchPeerCardUseCaseProtocol
     public let fetchReceivedCardsUseCase: FetchReceivedCardsUseCaseProtocol
+    public let syncReceivedCardsUseCase: SyncReceivedCardsUseCaseProtocol
     public let saveReceivedCardUseCase: SaveReceivedCardUseCaseProtocol
     public let deleteReceivedCardUseCase: DeleteReceivedCardUseCaseProtocol
     public let updateExchangeContextUseCase: UpdateExchangeContextUseCaseProtocol
@@ -53,6 +56,9 @@ public final class BusinessCardUseCaseProvider: BusinessCardUseCaseProviding {
         self.fetchMyCardUseCase = FetchMyCardUseCase(repository: businessCardRepository)
         self.fetchPeerCardUseCase = FetchPeerCardUseCase(repository: peerCardRepository)
         self.fetchReceivedCardsUseCase = FetchReceivedCardsUseCase(
+            repository: receivedCardRepository
+        )
+        self.syncReceivedCardsUseCase = SyncReceivedCardsUseCase(
             repository: receivedCardRepository
         )
         self.saveReceivedCardUseCase = save

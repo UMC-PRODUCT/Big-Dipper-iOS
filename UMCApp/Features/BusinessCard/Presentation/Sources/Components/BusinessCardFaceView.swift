@@ -182,22 +182,20 @@ public struct BusinessCardFaceView: View {
         .accessibilityLabel(isFlipped ? Constants.flipToFront : Constants.flipToBack)
     }
 
-    /// 시안 더미 `이름/닉네임` 규칙 — 닉네임이 비어 있으면 이름만 싣는다
-    /// (명함_m·명함_s 와 같은 규칙).
-    private var displayName: String {
-        let nickname = card.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        return nickname.isEmpty ? card.name : "\(card.name)/\(nickname)"
-    }
-
     private var frontFace: some View {
         HStack(alignment: .top, spacing: Metrics.contentSpacing) {
             avatar
 
             VStack(alignment: .leading, spacing: Metrics.contentSpacing) {
                 HStack(alignment: .lastTextBaseline, spacing: Metrics.nameSpacing) {
-                    Text(displayName)
+                    // 표기 규칙은 ``MyCard/nameWithNickname`` 한 곳에 있다 — 명함_l·_m·_s
+                    // 공통이고 원출처는 명함_s 시안(`12657:35806`)이다.
+                    // 둘 다 `lineLimit(1)` 이라 폭이 모자라면 어느 쪽이 잘릴지 규칙이
+                    // 없었다. 이름이 1차 식별자라 학교가 먼저 말줄임되게 못 박는다 (#1236).
+                    Text(card.nameWithNickname)
                         .appFont(.title3, weight: .semibold, color: Color.white)
                         .lineLimit(1)
+                        .layoutPriority(1)
 
                     Text(card.university)
                         .appFont(.footnote, color: Color.white)
@@ -219,8 +217,12 @@ public struct BusinessCardFaceView: View {
 
     /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
     private var frontAccessibilityLabel: String {
-        [displayName, card.university, "\(card.partDisplayName) 파트", "\(card.generation)기"]
-            .joined(separator: ", ")
+        [
+            card.nameWithNickname,
+            card.university,
+            "\(card.partDisplayName) 파트",
+            "\(card.generation)기",
+        ].joined(separator: ", ")
     }
 
     /// 뒷면은 아바타 자리에 QR 이 오고, 이름·칩 자리에 링크 3줄이 온다.

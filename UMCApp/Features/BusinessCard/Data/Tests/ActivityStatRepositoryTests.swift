@@ -150,6 +150,29 @@ struct ActivityStatRepositoryTests {
         }
     }
 
+    // MARK: - 통합 카운트
+
+    /// 서버에 `/me/stats` 가 배포되기 전까지 릴리스가 지나는 경로다. 세 소스 중 성공한
+    /// 것만 담고 실패는 `nil` 로 남긴다 — 받은 명함 수는 이 조합이 알 수 없어 항상 `nil`.
+    @Test("조합 구현의 통합 카운트는 성공한 소스만 담고 받은 명함 수는 비운다")
+    func memberStatsFromCombinedSources() async throws {
+        let stub = StubRequesting()
+        stub.responsesByPath["/api/v1/posts/scrapped"] = Data("""
+        {"success":true,"code":"200","message":"ok",
+         "result":{"content":[],"page":"0","size":"1",
+                   "totalElements":"7","totalPages":"7","hasNext":false,"hasPrevious":false}}
+        """.utf8)
+        let sut = ActivityStatRepository(
+            networkRequesting: stub, memberProfileRepository: StubProfileRepository()
+        )
+
+        let stats = try await sut.fetchMemberStats()
+
+        #expect(stats.bookmarkCount == "7")
+        #expect(stats.studyCount == nil)          // 빈 본문 — 조회 실패
+        #expect(stats.receivedCardCount == nil)   // 이 조합이 셀 수 없는 값
+    }
+
     @Test("프로필 조회 실패는 활동 카운트 0이 아니라 에러로 올라온다")
     func activityCountPropagatesProfileError() async throws {
         let profileStub = StubProfileRepository()

@@ -59,7 +59,12 @@ public final class HomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
 
     public func registerFCMToken(fcmToken: String) async throws {
         let response = try await networkRequesting.request(
-            HomeRouter.putFCMToken(fcmToken: fcmToken)
+            HomeRouter.postFCMInstallation(
+                installationId: AppStorageKey.fcmInstallationIdValue(),
+                fcmToken: fcmToken,
+                platform: "iOS",
+                appVersion: appVersion
+            )
         )
         let apiResponse = try JSONDecoder().decode(
             APIResponse<EmptyResult>.self,
@@ -69,6 +74,11 @@ public final class HomeRepository: HomeRepositoryProtocol, @unchecked Sendable {
     }
 
     // MARK: - Private Function
+
+    /// 앱 마케팅 버전. 서버 제약이 `@Size(max = 50)`뿐이라 조회 실패 시 빈 문자열로 보낸다.
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
 
     /// 소속 기수 목록과, 가장 이른 기수 시작일 기준 누적 활동일을 시즌 카드 값으로 구성한다.
     private func makeSeasonTypes(profile: Profile) async throws -> [SeasonType] {

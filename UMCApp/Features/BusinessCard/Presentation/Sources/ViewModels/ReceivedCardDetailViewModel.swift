@@ -19,8 +19,9 @@ private enum Constants {
     static let deleteConfirm = "삭제"
     static let deleteCancel = "취소"
 
+    /// 앱 전반이 해요체라 「지웁니다」만 합쇼체로 어긋나 있었다 (#1236 확정).
     static func deleteMessage(name: String) -> String {
-        "\(name) 님의 명함을 명함첩에서 지웁니다. 다시 교환하기 전까지 되돌릴 수 없어요."
+        "\(name) 님의 명함을 명함첩에서 지워요. 다시 교환하기 전까지 되돌릴 수 없어요."
     }
 }
 
