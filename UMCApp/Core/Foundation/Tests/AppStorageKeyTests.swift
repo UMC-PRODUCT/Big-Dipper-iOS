@@ -99,3 +99,50 @@ struct AppStorageKeyIdentifierTests {
         #expect(AppStorageKey.gisuIdString(in: defaults) == "7")
     }
 }
+
+// MARK: - Suite: FCM 설치 식별자
+
+@Suite("AppStorageKey — FCM 설치 식별자 (기기 단위 안정성)")
+struct AppStorageKeyFCMInstallationIdTests {
+
+    /// 식별자 헬퍼가 저장까지 하므로, 테스트마다 고유 suite로 격리하고 끝나면 지웁니다.
+    private func withDefaults(_ name: String, _ body: (UserDefaults) -> Void) throws {
+        let suiteName = "test.foundation.appStorageKey.fcmInstallationId.\(name)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        body(defaults)
+    }
+
+    /// 서버가 이 값으로 (멤버, 설치) 행을 upsert 하므로, 값이 매번 달라지면 설치 행이 무한히
+    /// 늘고 이전 설치로만 푸시가 나간다. "한 번 만들고 계속 같은 값"이 계약의 전부다.
+    @Test("첫 호출은 비어 있지 않은 식별자를 만들어 저장한다")
+    func generatesIdentifierOnFirstCall() throws {
+        try withDefaults("generate") { defaults in
+            let value = AppStorageKey.fcmInstallationIdValue(in: defaults)
+
+            #expect(!value.isEmpty)
+            #expect(defaults.string(forKey: AppStorageKey.fcmInstallationId) == value)
+        }
+    }
+
+    @Test("두 번째 호출은 같은 값을 돌려준다")
+    func returnsSameIdentifierOnSubsequentCalls() throws {
+        try withDefaults("stable") { defaults in
+            let first = AppStorageKey.fcmInstallationIdValue(in: defaults)
+            let second = AppStorageKey.fcmInstallationIdValue(in: defaults)
+
+            #expect(first == second)
+        }
+    }
+
+    @Test("빈 문자열이 남아 있으면 미설정으로 보고 새로 만든다")
+    func regeneratesWhenStoredValueIsEmpty() throws {
+        try withDefaults("empty") { defaults in
+            defaults.set("", forKey: AppStorageKey.fcmInstallationId)
+
+            #expect(!AppStorageKey.fcmInstallationIdValue(in: defaults).isEmpty)
+        }
+    }
+}

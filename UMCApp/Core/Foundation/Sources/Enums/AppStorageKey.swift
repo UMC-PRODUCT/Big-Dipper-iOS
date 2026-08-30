@@ -21,6 +21,8 @@ public enum AppStorageKey {
     public static let uploadedFCMToken: String = "UploadedFCMToken"
     /// 서버에 마지막으로 등록한 멤버 ID
     public static let uploadedFCMMemberId: String = "UploadedFCMMemberId"
+    /// FCM 설치 식별자 (`POST /api/v1/notifications/fcm/installations`)
+    public static let fcmInstallationId: String = "fcmInstallationId"
     /// 최근 검색 장소 목록
     public static let recentSearchPlaces: String = "recentSearchPlaces"
     /// 커뮤니티 스레드 최근 검색어 목록 (`[String]`)
@@ -160,5 +162,22 @@ extension AppStorageKey {
             return intValue
         }
         return defaults.integer(forKey: memberId)
+    }
+
+    /// FCM 설치 식별자를 조회합니다. 없으면 새로 만들어 저장하고 돌려줍니다.
+    ///
+    /// 서버는 이 값으로 (멤버, 설치) 행을 upsert 하므로 기기마다 하나여야 하고 앱 실행 간
+    /// 유지돼야 해 `UserDefaults`에 심습니다. 앱을 지웠다 깔면 새 값이 생기는데, 그것이
+    /// 서버가 기대하는 "새 설치"의 의미와 정확히 맞습니다.
+    ///
+    /// - Note: `identifierForVendor` 대신 `UUID`를 쓰는 이유는 `UMCFoundation`이 watchOS도
+    ///   겸하는 leaf 모듈이라 UIKit에 의존할 수 없기 때문입니다. 36자로 서버 제한(100자) 안입니다.
+    public static func fcmInstallationIdValue(in defaults: UserDefaults = .standard) -> String {
+        if let stored = defaults.string(forKey: fcmInstallationId), !stored.isEmpty {
+            return stored
+        }
+        let generated = UUID().uuidString
+        defaults.set(generated, forKey: fcmInstallationId)
+        return generated
     }
 }

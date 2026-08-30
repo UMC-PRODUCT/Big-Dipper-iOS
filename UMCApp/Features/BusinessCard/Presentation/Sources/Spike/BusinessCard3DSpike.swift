@@ -7,10 +7,12 @@
 
 #if DEBUG
 import BusinessCardDomain
+import CoreDesignSystem
 import CoreGraphics
 import Foundation
 import Metal
 import RealityKit
+import SwiftUI
 import UIKit
 import UMCFoundation
 
@@ -79,7 +81,10 @@ public enum BusinessCard3DSpike {
                 depth: CardGeometry.depth,
                 cornerRadius: CardGeometry.cornerRadius
             ),
-            materials: [UnlitMaterial(color: accentColor(for: card.part))]
+            // 파트 악센트로 몸통을 칠하던 경쟁 색 테이블(accentColor(for:))은 #1246 에서 지웠다.
+            // 파트 색의 단일 진실 원천은 `UMCPartType.seedColor` 이고, 시안 명함_l 의 카드 면에는
+            // 파트색이 없다 — 몸통은 CardSurface 기본색인 인디고다.
+            materials: [UnlitMaterial(color: UIColor(Color.indigo500))]
         )
         body.name = "CardBody"
 
@@ -248,25 +253,6 @@ public enum BusinessCard3DSpike {
         var material = UnlitMaterial()
         material.color = .init(tint: .white, texture: .init(texture))
         return material
-    }
-
-    /// 파트별 악센트 컬러. 설계서 §6-4 룩업 테이블의 최소 형태다.
-    ///
-    /// 미정의 파트(`partRaw` 가 살아 있는 크로스 플랫폼 값)는 `.admin` 으로 떨어지므로 회색이
-    /// 폴백이 된다 — 실제 색 매핑표는 #1246 에서 디자인팀이 확정한다.
-    private static func accentColor(for part: UMCPartType) -> UIColor {
-        switch part {
-        case .admin:
-            return .systemGray
-        case .pm:
-            return .systemPurple
-        case .design:
-            return .systemPink
-        case .server:
-            return .systemGreen
-        case .front:
-            return UIColor(red: 84 / 255, green: 104 / 255, blue: 252 / 255, alpha: 1)
-        }
     }
 
     private static func vertexCount(of mesh: MeshResource) -> Int {

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 배열 첫 항목이 SecItemAdd 의 기본 access group 이므로 순서를 바꾸면 -->
+    <!-- 토큰 저장 위치가 달라진다. 공유 그룹명은 iOS 앱 타겟과 동일하게 유지한다. -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.umc.product.shared</string>
+        <string>$(AppIdentifierPrefix)com.umc.product.watchkitapp</string>
+    </array>
+</dict>
+</plist>

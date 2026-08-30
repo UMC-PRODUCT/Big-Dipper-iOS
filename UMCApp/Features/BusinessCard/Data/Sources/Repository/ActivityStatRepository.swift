@@ -13,8 +13,12 @@ import BusinessCardDomain
 
 /// 마이페이지 행 카운트 저장소 (MP-F07~F09).
 ///
-/// 통합 stat API 부재로 기존 소스 3개를 조합한다. 실패는 그대로 throw — 조회 실패를
-/// "0"으로 바꾸지 않는다 (#1222). 서버 stat API가 생기면 이 구현체만 교체한다.
+/// 통합 stat API 부재로 기존 소스 3개를 조합한다. 실패는 소스별로 격리해 `nil` 로 남긴다
+/// — 조회 실패를 "0"으로 바꾸지 않는다 (#1222).
+///
+/// 서버에 `GET /api/v2/member/me/stats` 가 배포되면 ``MemberStatsRepository`` 로 갈아
+/// 끼우고 이 구현을 지운다. 그 전까지는 **릴리스 기본 구현**이다 — 지금 지우면 릴리스의
+/// 카운트가 전부 "-"로 퇴행한다.
 public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unchecked Sendable {
 
     // MARK: - Property
@@ -44,6 +48,21 @@ public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unch
 
     // MARK: - Function
 
+    /// 세 소스 중 **성공한 것만** 담는다. 소스별 실패를 여기서 격리하지 않으면 스터디
+    /// 조회 하나가 죽었을 때 스크랩 숫자까지 같이 사라진다.
+    ///
+    /// `receivedCardCount` 는 `nil` 이다 — 서버에 명함첩이 없으니 셀 방법이 없고, 로컬
+    /// 캐시로 메우는 판단은 UseCase가 한다.
+    public func fetchMemberStats() async throws -> MemberStats {
+        async let study = try? fetchStudyCount()
+        async let bookmark = try? fetchBookmarkCount()
+        return await MemberStats(
+            receivedCardCount: nil,
+            studyCount: study,
+            bookmarkCount: bookmark
+        )
+    }
+
     /// 커서 응답에는 총개수가 없다 — 한 페이지(50) 를 받아 항목 수를 센다.
     ///
     /// 50건을 다 채우고 `hasNext` 가 참이면 **실제 수는 더 많다.** 예전에는 그 상태에서도
@@ -53,7 +72,7 @@ public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unch
         let response = try await networkRequesting.request(
             BusinessCardRouter.getMyStudyGroups(query: StudyCountQueryDTO())
         )
-        let page: StudyCountPageDTO = try decodeAbsorbingWrapper(from: response.data)
+        let page = try decoder.decodeAbsorbingWrapper(StudyCountPageDTO.self, from: response.data)
         return page.hasNext ? "\(page.itemCount)+" : "\(page.itemCount)"
     }
 
@@ -64,7 +83,9 @@ public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unch
         let response = try await networkRequesting.request(
             BusinessCardRouter.getScrappedPosts(query: ScrappedCountQueryDTO())
         )
-        let page: ScrappedCountPageDTO = try decodeAbsorbingWrapper(from: response.data)
+        let page = try decoder.decodeAbsorbingWrapper(
+            ScrappedCountPageDTO.self, from: response.data
+        )
         return page.totalElements
     }
 
@@ -76,16 +97,5 @@ public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unch
     public func fetchActivityCount() async throws -> Int {
         let profile = try await memberProfileRepository.fetchMyProfile(forceRefresh: false)
         return profile.activityLogs().count
-    }
-
-    // MARK: - Private Function
-
-    /// `APIResponse` 래핑·raw 양쪽 응답을 흡수한다 (MyPageRepository.fetchMemberProfile 선례).
-    private func decodeAbsorbingWrapper<T: Codable>(from data: Data) throws -> T {
-        if let wrapped = try? decoder.decode(APIResponse<T>.self, from: data),
-           let result = try? wrapped.unwrap() {
-            return result
-        }
-        return try decoder.decode(T.self, from: data)
     }
 }
