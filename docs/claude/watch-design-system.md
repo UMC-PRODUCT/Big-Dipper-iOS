@@ -14,6 +14,15 @@
   - `UMCApp/Core/WatchDesignSystem/Sources/Components/WatchStatusBadge.swift`
   - `UMCApp/Core/WatchDesignSystem/Tests/WatchColorTokenTests.swift`
   - `UMCApp/UMCWatchApp/Project.swift`
+  - `UMCApp/UMCWatchApp/Sources/Fallback/WatchFallbackReason.swift`
+  - `UMCApp/UMCWatchApp/Sources/Fallback/WatchFallbackPresentation.swift`
+  - `UMCApp/UMCWatchApp/Sources/Fallback/WatchFallbackScene.swift`
+  - `UMCApp/UMCWatchApp/Sources/Fallback/WatchFallbackView.swift`
+  - `UMCApp/UMCWatchApp/Sources/Fallback/WatchOfflineQueue.swift`
+  - `UMCApp/UMCWatchApp/Sources/Fallback/WatchMandatoryNotice.swift`
+  - `UMCApp/UMCWatchApp/Sources/Routing/WatchRoute.swift`
+  - `UMCApp/UMCWatchApp/Sources/Routing/WatchRootView.swift`
+  - `UMCApp/UMCWatchApp/Tests/WatchFallbackReasonTests.swift`
 
 ## 1) 모듈 분리 근거 — 왜 `CoreDesignSystem` 확장이 아닌가
 
@@ -292,7 +301,91 @@ Image(uiImage: thumbnail)
 
 visionOS 전용이다. 대형 지표는 `.largeTitle` 을 쓴다 — `WatchTextRole.metric` 이 이미 그렇게 매핑돼 있으므로 (`WatchTypography.swift:29-35`) 화면 코드에서 텍스트 스타일을 직접 고르지 말고 `.font(.watch(.metric))` 을 쓰면 된다.
 
-## 9) 체크리스트 — 워치 화면을 올릴 때
+## 9) 폴백(에러·오프라인) 계약
+
+#1209 가 구현한 P0 실패·오프라인 처리 8종 화면의 계약. 화면 목록보다 **왜 무음 실패가 구조적으로 불가능한지**, **표시 형태가 왜 3가지로 갈리는지**에 초점을 둔다. 기준 코드는 `UMCApp/UMCWatchApp/Sources/Fallback/` 전체와 `Sources/Routing/WatchRoute.swift`·`WatchRootView.swift`.
+
+### 9-1) 실패 원인 4축과 9개 `WatchFallbackReason`
+
+`WatchFailureCategory`(`WatchFallbackReason.swift:9-18`)는 화면을 고르는 축이 아니라 **원인을 진단하는 축**이다 — 같은 축이어도 사용자가 할 수 있는 행동이 다르면 화면은 갈라진다(`WatchFallbackReason.swift:7-8`).
+
+| P0 | `WatchFallbackReason` | `WatchFailureCategory` | 설명 |
+|----|------------------------|-------------------------|------|
+| P0-1 | `.locationPermissionDenied` | `.permission` | 위치 권한 거부 |
+| P0-2 | `.locationUnavailable` | `.connectivity` | 위치 확인 실패(GPS 타임아웃 등) |
+| P0-3 | `.phoneDisconnected` | `.connectivity` | iPhone 연결 끊김 |
+| P0-4 | `.checkInRequestFailed` | `.server` | 출석 요청 실패 |
+| P0-5 | `.alreadyCheckedIn` | `.session` | 이미 출석 처리됨 |
+| P0-6 | `.checkInWindowClosed` | `.session` | 출석 인정 시간 마감 |
+| P0-7 | `.offlineQueued` | `.connectivity` | 전송 대기 중(유효 시간 이내) |
+| P0-7 | `.offlineQueueExpired` | `.connectivity` | 전송 유효 시간 초과 |
+| P0-8 | `.mandatoryNoticeUnread` | `.session` | 필수 확인 공지 미확인 |
+
+화면은 8종인데 `WatchFallbackReason` 은 9개인 이유: P0-7 대기/만료는 스펙상 "한 프레임 두 상태"라 컴포넌트(`WatchOfflineQueueCard`)는 하나지만, `reason` 은 둘로 갈라져 문구·아이콘·CTA 를 통째로 바꿔 낀다(`WatchOfflineQueue.swift:38-39`, §9-5).
+
+### 9-2) 무음 실패 금지 3중 잠금
+
+`WatchFallbackReason` 은 연관값 없는 enum 이다. 이 설계 자체가 세 겹의 안전장치를 건다.
+
+**(a) `CaseIterable` 이 공짜로 합성된다.** 연관값이 없는 enum 은 Swift 가 `allCases` 를 자동으로 만들어 준다(`WatchFallbackReason.swift:24-30`). 새 케이스를 추가하면 `WatchFallbackReasonTests` 가 별도 등록 없이 그 케이스를 바로 검사한다 — 제목·설명이 비어있지 않은지(`Tests/WatchFallbackReasonTests.swift:12-18`), 4축이 전부 커버되는지(`:26-30`), 비활성 CTA 는 반드시 사유를 가지는지(`:101-107`). `WatchFallbackScene` 의 "9종 갤러리" 프리뷰도 같은 `allCases` 를 돈다(`WatchFallbackScene.swift:90`).
+
+**(b) `category`·`presentation` 스위치에 `default:` 가 없다.** 케이스를 추가하면 두 스위치(`WatchFallbackReason.swift:52-68`, `WatchFallbackPresentation.swift:74-197`) 모두 분기 누락으로 **컴파일 에러**가 난다 — 새 실패 원인이 분류·문구 없이 조용히 묻히는 경로 자체가 없다.
+
+**(c) `init(classifying:)` 이 Optional 이 아니다.** 어떤 `Error` 를 넣어도 반드시 `WatchFallbackReason` 하나가 나온다(`WatchFallbackReason.swift:78-101`). 분류할 수 없는 에러는 `.checkInRequestFailed` 로 보낸다 — 재시도와 iPhone 대체 경로를 모두 가진 유일한 복구 가능 화면이라, 원인을 몰라도 사용자가 막히지 않는다(`:98-99`).
+
+### 9-3) 동작 없는 CTA 금지 규약
+
+`WatchFallbackScene.onPrimaryAction`/`onSecondaryAction` 은 옵셔널 클로저다(`WatchFallbackScene.swift:14-17`).
+
+```swift
+var onPrimaryAction: (() -> Void)?
+var onSecondaryAction: (() -> Void)?
+```
+
+핸들러를 안 넘기면 해당 CTA 는 **아예 렌더되지 않는다** — 눌러도 아무 일도 없는 버튼이 곧 무음 실패이기 때문이다(`WatchFallbackScene.swift:66-82`). `disabledAction` 이 있으면 그것만 그리고 primary/secondary 는 무시한다 — 비활성인 이상 활성 CTA 와 공존할 이유가 없다(`:59-64`).
+
+`WatchActionButton(disabledReason:)` 의 "사유 없는 비활성 버튼은 만들 수 없다" 규약(§6-1)과 같은 계열이다. 둘 다 값 레벨(옵셔널 `nil`)로 "동작 없는 버튼"을 애초에 만들 수 없게 막는다 — `disabledActionsAlwaysCarryAReason` 테스트(`Tests/WatchFallbackReasonTests.swift:101-107`)가 이 계약을 검사한다.
+
+### 9-4) 표시 형태 3종
+
+같은 `WatchFallbackScene`(심볼+제목+설명+힌트+CTA)을 배경만 바꿔 세 곳에 재사용한다(`WatchFallbackScene.swift:6-8`).
+
+| 형태 | 컴포넌트 | 배경 | 쓰임 |
+|------|----------|------|------|
+| 전체화면 | `WatchFallbackView` | `watchScreenBackground()` | `WatchRoute.fallback(reason)` 라우팅 목적지(`WatchRoute.swift:23-25`, `WatchFallbackView.swift:10-34`) |
+| 인라인 카드 | `WatchOfflineQueueCard` | `watchCard(.standard/.danger)` | 화면 안에 직접 박히는 P0-7(`WatchOfflineQueue.swift:40-52`) |
+| 상단 고정 배너 | `WatchMandatoryNoticeBanner` | `watchCard(leadingAccent:)` | P0-8, `WatchRootView` 최상위(`WatchMandatoryNotice.swift:40-56`) |
+
+배너가 `NavigationStack` **바깥** `safeAreaInset(edge: .top)` 에 붙는 이유(`WatchRootView.swift:25-31`): 스택 **안**에 두면 좌측 엣지 스와이프가 pop 으로 소비돼 "확인 전까지 무시 불가" 계약이 깨진다(`WatchMandatoryNotice.swift:38-39`). `WatchMandatoryNoticeCenter.confirm()` 을 사용자가 직접 호출하는 경로만 배너를 닫는다 — 스와이프·무시 경로는 없다(`WatchMandatoryNotice.swift:30-33`).
+
+### 9-5) 오프라인 큐 3시간 유효창
+
+서버는 수신 시각 기준 **과거 180분(3시간) 이내**만 출석 판정에 쓴다(`WatchOfflineQueue.swift:7-8`). 워치는 같은 값을 `WatchOfflineQueueWindow.validity`(`WatchOfflineQueue.swift:12`)로 들고 있다가, 측정 시각으로부터 3시간이 지난 항목은 **보내기 전에 스스로 버린다** — 서버가 어차피 거부할 요청을 굳이 네트워크로 왕복시키지 않는다.
+
+```swift
+static let validity: TimeInterval = 3 * 60 * 60
+
+static func state(measuredAt: Date, now: Date) -> WatchOfflineQueueState {
+    let elapsed = now.timeIntervalSince(measuredAt)
+    let remaining = validity - max(elapsed, 0)
+    guard remaining > 0 else { return .expired }
+    return .waiting(remaining: remaining)
+}
+```
+
+`state(measuredAt:now:)` 는 `Date.now` 를 직접 읽지 않는 순수 함수다(`WatchOfflineQueue.swift:14`) — 임의 시각을 주입해 경계값을 검증할 수 있다. 대기 중에는 "남은 유효 시간 N시간 M분"을 `replacing(hint:)` 로 꽂고(`WatchOfflineQueue.swift:60-67, 69-74`), 만료되면 `.offlineQueueExpired` 화면으로 전환해 공결 사유 제출(iPhone)로 안내한다(`WatchFallbackPresentation.swift:172-182`).
+
+`presentation` 은 순수 정적 값이라 화면을 그리는 시점에만 알 수 있는 문구는 `replacing(title:message:hint:)` 로 꽂는다 — P0-5 출석 시각(`· HH:MM`), P0-7 남은 유효 시간, P0-8 공지 제목이 전부 이 경로를 쓴다. 넘기지 않은 항목은 원래 문구를 그대로 둔다.
+
+### 9-6) 아이콘 대체 기록
+
+스펙의 "bt-slash" 에 대응하는 Bluetooth 글리프가 SF Symbols 에 없어 `iphone.slash` 를 쓴다(`WatchFallbackPresentation.swift:100-103`). 대체 근거는 디자인 절충이 아니라 **문구 정합**이다 — 화면 문구가 "iPhone 과 연결이 끊겼습니다"라 `iphone.slash` 가 오히려 더 정확하다.
+
+### 9-7) DEBUG 폴백 하네스
+
+`WatchFallbackDebugMenu`(`Fallback/WatchFallbackDebugMenu.swift`, 파일 전체가 `#if DEBUG`)는 폴백 9종·오프라인 큐 카드·필수 확인 배너를 실기기에서 띄워 보는 검수용 진입점이다. 홈 글랜스의 "폴백 하네스" 행으로 들어간다(`HomeGlanceView.swift`). 실제 실패 신호(위치 권한·GPS 타임아웃·출석 API 응답·공지 수신)는 #1207·#1210 이 붙이므로, 그 전까지 이 하네스가 없으면 P0-3 을 뺀 8종은 코드를 고쳐야만 볼 수 있어 디자인·QA 검수가 불가능하다. 릴리스 빌드에는 포함되지 않는다(절대 규칙 #5).
+
+## 10) 체크리스트 — 워치 화면을 올릴 때
 
 - [ ] `NavigationStack` destination 최상위 콘텐츠에 `watchScreenBackground()` 적용
 - [ ] 좌우 인셋은 `WatchLayout.screenHorizontalPadding`, 세로 간격은 `stackSpacing`/`tightSpacing`
@@ -303,8 +396,10 @@ visionOS 전용이다. 대형 지표는 `.largeTitle` 을 쓴다 — `WatchTextR
 - [ ] 카드 내 중첩 clip 은 `WatchLayout.cardShape` (§8-1)
 - [ ] iOS 브랜드 팔레트를 건드렸다면 `make test SCHEME=CoreWatchDesignSystem` 으로 드리프트 확인
 - [ ] 프리뷰를 46mm·40mm 와 `.dynamicTypeSize(.accessibility3)` 에서 확인 (갤러리: 각 컴포넌트 파일의 `#Preview`)
+- [ ] 새 실패 원인은 `WatchFallbackReason` 케이스로 추가하고 `category`/`presentation` 스위치를 전부 채운다 — `default:` 없이 컴파일 에러로 강제된다 (§9-2)
+- [ ] 폴백 CTA 는 `onPrimaryAction`/`onSecondaryAction` 핸들러를 실제로 넘겼는지 확인 — 안 넘기면 버튼이 그려지지 않는다 (§9-3)
 
-## 10) 트러블슈팅
+## 11) 트러블슈팅
 
 - 증상: `WatchColorTokenTests` 실패 — "브랜드 토큰 드리프트 — WatchColorHex.… ≠ ….colorset universal"
   - 원인: iOS `Colors.xcassets` 의 브랜드/회색 팔레트가 바뀌었는데 워치 리터럴이 안 따라갔다 (`Tests/WatchColorTokenTests.swift:13-25`).
@@ -324,3 +419,15 @@ visionOS 전용이다. 대형 지표는 `.largeTitle` 을 쓴다 — `WatchTextR
 - 증상: pending 배지가 회색 점 + 인디고 링이 아니라 뒤집혀/단색으로 보인다
   - 원인: 팔레트 렌더링 레이어 순서 — `foregroundStyle(status.tint, status.ringTint)` 의 인자 순서가 레이어 0(점)·레이어 1(링)에 대응한다 (`WatchStatusBadge.swift:111-116`).
   - 해결: 인자 순서를 유지하고, SF Symbols 버전 변경이 의심되면 `WatchStatusSymbolTests` 를 돌려 심볼 존재부터 확인한다.
+- 증상: 새 `WatchFallbackReason` 케이스를 추가했더니 빌드가 깨진다
+  - 원인: `category`(`WatchFallbackReason.swift:52-68`)와 `presentation`(`WatchFallbackPresentation.swift:74-197`) 스위치에 `default:` 가 없다 — 의도된 설계다 (§9-2).
+  - 해결: 두 스위치 모두에 새 케이스 분기를 채운다.
+- 증상: 폴백 화면에서 "다시 시도"/"iPhone 에서 시도" 버튼이 하나도 안 보인다
+  - 원인: `WatchFallbackScene.onPrimaryAction`/`onSecondaryAction` 핸들러를 호출부에서 안 넘겼다 — nil 이면 해당 CTA 자체를 그리지 않는다 (`WatchFallbackScene.swift:14-17, 66-82`).
+  - 해결: 핸들러를 전달하거나, 애초에 눌러도 할 일이 없다면 `presentation.primaryAction`/`secondaryAction` 을 `nil` 로 둔다.
+- 증상: 필수 확인 배너가 화면 전환 중 스와이프로 사라진다
+  - 원인: `WatchMandatoryNoticeBanner` 를 `NavigationStack` 안에 배치했다 — 좌측 엣지 스와이프가 pop 으로 소비된다 (§9-4).
+  - 해결: `WatchRootView` 최상위 `safeAreaInset(edge: .top)` 에서만 렌더한다 (`WatchRootView.swift:25-31`).
+- 증상: 오프라인 큐 카드가 3시간이 지나도 계속 "전송 대기 중"으로 보인다
+  - 원인: `measuredAt`/`now` 를 갱신하지 않아 `WatchOfflineQueueWindow.state(measuredAt:now:)` 가 매번 같은 경과 시간을 계산한다 (`WatchOfflineQueue.swift:15-22`).
+  - 해결: 카드에 실제 현재 시각을 흘려보내 만료 판정을 다시 계산하게 한다.

@@ -79,16 +79,14 @@ final class PingInbox {
 
     // MARK: - Init
 
-    init() {
-        self.coordinator = WatchSessionCoordinator()
+    /// 코디네이터는 앱 셸이 소유한 **앱 수명 하나짜리** 인스턴스를 주입받는다.
+    /// 여기서 새로 만들면 `WCSession.default.delegate` 를 가로채 셸 쪽 코디네이터가
+    /// 콜백을 잃는다 — 활성화·수신 상태가 조용히 죽는다.
+    init(coordinator: WatchSessionCoordinator) {
+        self.coordinator = coordinator
     }
 
     // MARK: - Function
-
-    /// WCSession 을 활성화한다. 앱 시작 시 한 번 호출한다.
-    func activate() {
-        coordinator.activate()
-    }
 
     /// 최신 스냅샷을 요청한다. 실패해도 이미 가진 스냅샷은 버리지 않는다.
     func refresh() async {
@@ -200,7 +198,7 @@ extension PingInbox {
         syncFailure: AppError? = nil,
         readReceiptIDs: Set<String> = []
     ) -> PingInbox {
-        let inbox = PingInbox()
+        let inbox = PingInbox(coordinator: WatchSessionCoordinator())
         inbox.syncedSnapshot = snapshot
         inbox.syncFailure = syncFailure
         inbox.readReceiptIDs = readReceiptIDs

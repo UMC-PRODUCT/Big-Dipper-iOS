@@ -17,9 +17,11 @@ private enum Constants {
     static let title = "받은 명함"
     static let searchPrompt = "이름, 파트 검색"
 
+    /// 시안 `12639:33678` 확정값 — 문구·심벌 그대로 두고 CTA 만 얹었다 (#1236).
     static let emptyTitle = "아직 받은 명함이 없어요"
     static let emptyDescription = "가까이 있는 멤버와 명함을 교환하면 여기에 모여요."
     static let emptyImage = "person.crop.rectangle.stack"
+    static let emptyActionLabel = "명함 교환하기"
 
     static let failureTitle = "명함첩을 열 수 없어요"
     static let failureDescription = "잠시 후 다시 시도해 주세요."
@@ -42,6 +44,12 @@ private enum Metrics {
     static let cardHeight: CGFloat = 124
     static let cardRadius: CGFloat = 34
     static let skeletonOpacity: Double = 0.35
+
+    /// 빈 상태 CTA 의 최소 히트 타깃. 같은 화면의 실패 상태가 쓰는
+    /// ``RetryContentUnavailableView`` 재시도 버튼과 같은 값으로 맞춘다 — 두 빈 상태의
+    /// 버튼이 서로 다른 크기로 잡히면 안 된다.
+    static let emptyActionMinWidth: CGFloat = 72
+    static let emptyActionMinHeight: CGFloat = 20
 }
 
 /// 명함첩 (MP-F05) — 시안 `12639:33678`(목록) / `12640:35886`(검색).
@@ -124,7 +132,7 @@ public struct ReceivedCardsView: View {
     /// 시안에 삭제 동선이 없어 둔 임시 자리였고, 이제 눌러서 들어가는 화면이 있다.
     private func cell(_ card: ReceivedCard) -> some View {
         NavigationLink(value: BusinessCardDestination.receivedCardDetail(card)) {
-            ReceivedCardCell(card: card)
+            ReceivedCardSnapshotCell(card: card)
         }
         .buttonStyle(.plain)
         // 카드는 이미 한 덩어리로 읽히지만(`children: .ignore`) 눌러서 무엇이 열리는지는
@@ -134,14 +142,29 @@ public struct ReceivedCardsView: View {
 
     /// 검색 중인지에 따라 빈 화면의 뜻이 다르다 — 「아직 한 장도 없음」과 「이 검색어에
     /// 걸리는 게 없음」을 같은 문구로 덮으면 사용자가 명함첩이 비었다고 오해한다.
+    ///
+    /// 명함첩이 통째로 빈 쪽에만 CTA 를 둔다 (시안 `12639:33678` 확정, #1236). 신규
+    /// 사용자의 첫 화면이라 다음 행동이 화면에 없으면 막다른 길로 읽힌다. 검색 0건은
+    /// 검색어를 지우면 곧장 복귀하는 상태라 시스템 관용구에 맡기고 CTA 를 두지 않는다.
+    /// QR 스캔은 툴바에 상존하므로 본문 CTA 는 교환 하나로 둔다 — 같은 목적지를 화면에
+    /// 두 번 두지 않는다.
     @ViewBuilder
     private var emptyState: some View {
         if viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            ContentUnavailableView(
-                Constants.emptyTitle,
-                systemImage: Constants.emptyImage,
-                description: Text(Constants.emptyDescription)
-            )
+            ContentUnavailableView {
+                Label(Constants.emptyTitle, systemImage: Constants.emptyImage)
+            } description: {
+                Text(Constants.emptyDescription)
+            } actions: {
+                NavigationLink(value: BusinessCardDestination.exchange) {
+                    Text(Constants.emptyActionLabel)
+                        .frame(
+                            minWidth: Metrics.emptyActionMinWidth,
+                            minHeight: Metrics.emptyActionMinHeight
+                        )
+                }
+                .buttonStyle(.glassProminent)
+            }
         } else {
             ContentUnavailableView.search(text: viewModel.searchText)
         }
