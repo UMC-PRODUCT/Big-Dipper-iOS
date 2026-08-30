@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreWatchConnectivity
 import CoreWatchDesignSystem
 
 // MARK: - HomeGlanceView
@@ -9,6 +10,7 @@ struct HomeGlanceView: View {
     // MARK: - Property
 
     @Environment(WatchRouter.self) private var router
+    @Environment(WatchSessionCoordinator.self) private var sessionCoordinator
     @State private var viewModel: HomeGlanceViewModel
 
     // MARK: - Init
@@ -25,11 +27,18 @@ struct HomeGlanceView: View {
                 attendanceChip
                 pingChip
                 pendingApprovalBadge
+                phoneDisconnectedRow
+                fallbackDebugRow
             }
             .padding(.horizontal, WatchLayout.screenHorizontalPadding)
         }
         .navigationTitle("홈")
         .watchScreenBackground()
+        // P0-3 이 이 이슈에서 실제로 살아 있는 유일한 원인 신호다 — 위치 권한·GPS 타임아웃·
+        // 출석 API 실패는 #1207/#1210 이 신호를 붙인다.
+        .onChange(of: sessionCoordinator.isReachable, initial: true) { _, isReachable in
+            viewModel.setPhoneReachable(isReachable)
+        }
     }
 
     // MARK: - Function
@@ -104,6 +113,59 @@ struct HomeGlanceView: View {
         }
     }
 
+    /// P0-3 폴백 진입 행. 연결이 끊긴 동안에만 노출하고, 탭하면 같은 원인 신호로 라우팅한다 —
+    /// 글랜스에서부터 "왜 정보가 오래됐는지" 바로 설명할 수 있게 한다.
+    @ViewBuilder
+    private var phoneDisconnectedRow: some View {
+        if viewModel.showsPhoneDisconnectedRow {
+            let presentation = WatchFallbackReason.phoneDisconnected.presentation
+            Button {
+                router.push(.fallback(.phoneDisconnected))
+            } label: {
+                HStack(spacing: WatchLayout.tightSpacing) {
+                    Image(systemName: presentation.symbolName)
+                        .foregroundStyle(presentation.status.tint)
+                        .accessibilityHidden(true)
+                    Text(presentation.title)
+                        .font(.watch(.cardValue))
+                        .foregroundStyle(WatchColor.textPrimary)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.forward")
+                        .font(.watch(.cardLabel))
+                        .foregroundStyle(WatchColor.textSecondary)
+                        .accessibilityHidden(true)
+                }
+                .watchCard(leadingAccent: presentation.status.tint)
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// 폴백 9종 검수용 DEBUG 진입점. 실제 실패 신호가 붙기 전(#1207·#1210)까지
+    /// 디자인·QA 가 실기기에서 화면을 확인할 수 있는 유일한 경로다.
+    @ViewBuilder
+    private var fallbackDebugRow: some View {
+        #if DEBUG
+        NavigationLink {
+            WatchFallbackDebugMenu()
+        } label: {
+            HStack(spacing: WatchLayout.tightSpacing) {
+                Image(systemName: "ladybug.fill")
+                    .foregroundStyle(WatchColor.textSecondary)
+                    .accessibilityHidden(true)
+                Text("폴백 하네스")
+                    .font(.watch(.cardValue))
+                    .foregroundStyle(WatchColor.textSecondary)
+                Spacer(minLength: 0)
+            }
+            .watchCard()
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        #endif
+    }
+
     /// The Ping 강조는 브랜드 액센트다 — 상태 색이 아니라 미확인 여부만 신호한다.
     private var pingAccentColor: Color {
         viewModel.hasUnreadPing ? WatchColor.brandAccent : WatchColor.textSecondary
@@ -122,6 +184,8 @@ struct HomeGlanceView: View {
         HomeGlanceView(glance: .sample)
     }
     .environment(WatchRouter())
+    .environment(WatchSessionCoordinator())
+    .environment(WatchMandatoryNoticeCenter())
 }
 
 #Preview("HomeGlanceView — 세션 없음") {
@@ -129,6 +193,8 @@ struct HomeGlanceView: View {
         HomeGlanceView(glance: .noSession)
     }
     .environment(WatchRouter())
+    .environment(WatchSessionCoordinator())
+    .environment(WatchMandatoryNoticeCenter())
 }
 
 #Preview("HomeGlanceView — A11y 크기") {
@@ -136,6 +202,8 @@ struct HomeGlanceView: View {
         HomeGlanceView(glance: .pending)
     }
     .environment(WatchRouter())
+    .environment(WatchSessionCoordinator())
+    .environment(WatchMandatoryNoticeCenter())
     .dynamicTypeSize(.accessibility3)
 }
 #endif

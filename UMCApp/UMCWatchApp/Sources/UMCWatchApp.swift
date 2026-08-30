@@ -1,10 +1,3 @@
-//
-//  UMCWatchApp.swift
-//  UMCWatchApp
-//
-//  Created by euijjang97 on 4/24/26.
-//
-
 import CoreWatchConnectivity
 import SwiftUI
 
@@ -19,6 +12,8 @@ struct UMCWatchApp: App {
     /// `WCSession.default.delegate` 는 옛 인스턴스를 가리킨 채로 남는다.
     @State private var coordinator = WatchSessionCoordinator()
 
+    @State private var noticeCenter = WatchMandatoryNoticeCenter()
+
     // MARK: - Body
 
     var body: some Scene {
@@ -26,6 +21,7 @@ struct UMCWatchApp: App {
             WatchRootView()
                 .environment(router)
                 .environment(coordinator)
+                .environment(noticeCenter)
                 .task { coordinator.activate() }
         }
     }

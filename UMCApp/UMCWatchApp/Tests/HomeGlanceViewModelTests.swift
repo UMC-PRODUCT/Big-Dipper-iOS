@@ -67,6 +67,31 @@ struct HomeGlanceViewModelTests {
         #expect(viewModel.unreadPingLabel == "새 공지 없음")
     }
 
+    @Test("iPhone 연결이 살아 있으면 폴백 진입 행을 감춘다")
+    func hidesPhoneDisconnectedRowWhenReachable() {
+        let viewModel = HomeGlanceViewModel(glance: .empty, isPhoneReachable: true)
+
+        #expect(viewModel.showsPhoneDisconnectedRow == false)
+        #expect(viewModel.emptySessionMessage == "오늘 세션 없음")
+    }
+
+    @Test("iPhone 연결이 끊기면 폴백 진입 행을 보이고 캐시 문구를 붙인다")
+    func showsPhoneDisconnectedRowWhenUnreachable() {
+        let viewModel = HomeGlanceViewModel(glance: .empty, isPhoneReachable: false)
+
+        #expect(viewModel.showsPhoneDisconnectedRow)
+        #expect(viewModel.emptySessionMessage == "오늘 세션 없음 (마지막 동기화 기준)")
+    }
+
+    @Test("setPhoneReachable 은 연결 상태를 즉시 반영한다")
+    func setPhoneReachableUpdatesDerivedState() {
+        let viewModel = HomeGlanceViewModel(glance: .empty, isPhoneReachable: true)
+
+        viewModel.setPhoneReachable(false)
+
+        #expect(viewModel.showsPhoneDisconnectedRow)
+    }
+
     // MARK: - Function
 
     private static func glance(
