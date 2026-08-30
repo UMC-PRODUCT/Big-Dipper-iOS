@@ -20,39 +20,19 @@ public enum WatchRoute: Hashable, Sendable {
     case pingList
     /// #1208 The Ping 읽기·수신 확인.
     case pingDetail(noticeID: String)
-    /// #1209 폴백 화면.
-    case fallback(WatchFallbackRoute)
+    /// #1209 폴백 화면. 워치 단독으로는 진행할 수 없는 상태를 설명한다 — 실패 원인 taxonomy
+    /// 전체(`WatchFallbackReason`)를 라우팅 계층까지 그대로 흘려보낸다.
+    case fallback(WatchFallbackReason)
 
     /// 화면 제목. 플레이스홀더 화면과 접근성 낭독에 함께 쓴다.
     public var title: String {
         switch self {
-        case .attendanceList:    "출석"
-        case .attendanceSession: "출석 체크"
-        case .attendanceResult:  "출석 결과"
-        case .pingList:          "공지"
-        case .pingDetail:        "공지 상세"
-        case .fallback(let route): route.title
-        }
-    }
-}
-
-// MARK: - WatchFallbackRoute
-
-/// #1209 폴백 경로. 워치 단독으로는 진행할 수 없는 상태를 사용자에게 설명하는 화면들이다.
-public enum WatchFallbackRoute: Hashable, Sendable, CaseIterable {
-    /// P0-1 위치 권한 거부.
-    case locationPermissionDenied
-    /// P0-3 iPhone 연결 끊김.
-    case phoneDisconnected
-    /// P0-7 오프라인 큐잉.
-    case offlineQueue
-
-    /// 화면 제목.
-    public var title: String {
-        switch self {
-        case .locationPermissionDenied: "위치 권한 필요"
-        case .phoneDisconnected:        "iPhone 연결 끊김"
-        case .offlineQueue:             "전송 대기 중"
+        case .attendanceList:      "출석"
+        case .attendanceSession:   "출석 체크"
+        case .attendanceResult:    "출석 결과"
+        case .pingList:            "공지"
+        case .pingDetail:          "공지 상세"
+        case .fallback(let reason): reason.presentation.title
         }
     }
 }

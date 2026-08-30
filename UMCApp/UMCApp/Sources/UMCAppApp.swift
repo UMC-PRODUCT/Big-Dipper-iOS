@@ -61,6 +61,7 @@ struct UMCAppApp: App {
         container.registerMyPageDependencies()
         container.registerBusinessCardDependencies()
         container.registerMaintenanceDependencies()
+        container.registerWatchConnectivityDependencies()
         #if DEBUG
         // 카카오 로그인 서버 미등록 기간 한정 stub 세션 (StubSessionMode.swift 단일 토글).
         // 실제 등록 뒤 · 최초 resolve 전에 호출해야 오버라이드가 안전하다 (last-wins).
@@ -68,6 +69,11 @@ struct UMCAppApp: App {
             container.registerStubSessionOverrides()
         }
         #endif
+        // 활성화는 모든 등록이 끝난 뒤 한 번. `.task` 가 아니라 `init()` 인 이유는 시스템이
+        // 워치 메시지를 배달하려고 앱을 백그라운드로 깨울 때 SwiftUI body 가 그려지지 않을 수
+        // 있어서다 — 컨테이너가 존재하는 가장 이른 시점이 여기다.
+        // (`SwiftUI.App` 은 `@MainActor` 라 `init()` 도 MainActor 격리다)
+        container.activateWatchSession()
         _container = State(initialValue: container)
         // RemoteConfig 접근은 lazy이므로, FirebaseApp.configure() 이전에 이 ViewModel을
         // 만들어도 실제 RemoteConfig 인스턴스는 생성되지 않는다.
@@ -94,7 +100,8 @@ struct UMCAppApp: App {
                 .task {
                     appDelegate.configure(
                         container: container,
-                        modelContext: sharedModelContainer.mainContext
+                        modelContext: sharedModelContainer.mainContext,
+                        deepLinkStore: deepLinkStore
                     )
                     await maintenanceViewModel.check()
                 }

@@ -111,7 +111,9 @@ Core Modules          (Foundation / Network / DesignSystem / UIComponents / DI)
 External Packages     (Moya 15.0.3 / Kingfisher 8.6.1)
 ```
 
-> **경계 정책 — BusinessCard**: MyPage·Home·Community·Activity·Auth 등 명함을 노출하는 Feature는 `BusinessCardPresentation`만 링크해 카드 UI(`BusinessCardFaceView` 등)를 재사용하며, 카드 화면을 자체 구현하지 않는다. 렌더링은 2D SwiftUI로 확정 — 초기 구상이던 RealityKit(3D) 렌더링은 폐기됐고(#1196에서 ARKit·RealityKit 링크 해제) UMCApp에 RealityKit 참조가 없다.
+> **경계 정책 — BusinessCard**: MyPage·Home·Community·Activity·Auth 등 명함을 노출하는 Feature는 `BusinessCardPresentation`만 링크해 카드 UI(`BusinessCardFaceView` 등)를 재사용하며, 카드 화면을 자체 구현하지 않는다. 2D SwiftUI(`BusinessCardFaceView`)는 여전히 정본 카드 UI이고, 이 경계 자체는 렌더링 방식과 무관하게 유효하다.
+>
+> 렌더링 이력: 초기 구상이던 RealityKit(3D)은 한 차례 폐기됐다(#1196에서 ARKit·RealityKit 링크 해제). 이후로는 2D SwiftUI가 유일한 렌더링 경로였다. 그런데 #1245 Phase 0 스파이크가 3D 명함을 "조건부 Go"로 되살렸다 — 온디바이스 합성·한글 텍스트 메시·2D 스냅샷은 전부 기준을 넘겼고, 유일한 미해결 항목인 첫 진입 지연(시뮬레이터 실측 9.42~11.62s)은 #1249 착수 전 실기기 재측정을 조건으로 건다(`docs/claude/business-card-3d-spike.md`). #1246이 베이스 USDZ 템플릿과 앵커 바인딩 규약을 정했고(`docs/claude/business-card-3d-anchor-contract.md`), #1247(회전)·#1248(온디바이스 합성)이 뒤따른다. 스파이크 하네스는 `#if DEBUG` 가드 아래에 있고(`Presentation/Sources/Spike/BusinessCard3DSpike.swift`), 템플릿 규약과 USDZ 에셋은 프로덕션 코드지만(`Presentation/Sources/Card3D/BusinessCardTemplate.swift` · `Presentation/Resources/BusinessCardTemplate.usdz`) 아직 어떤 화면에도 연결되지 않는다 — #1247·#1248 이 붙인다. **따라서 "UMCApp에 RealityKit 참조가 없다"는 더 이상 사실이 아니다** — `import RealityKit`이 `BusinessCardPresentation`에 이미 있다.
 
 > **경계 정책 — 일정(Schedule) (#981 확정 · #1212 갱신)**: 전용 Schedule Feature 모듈은 **신설하지 않는다.**
 > 일정 도메인의 단일 소유자는 `HomeDomain`(모델·Repository/UseCase Protocol) + `HomeData`(`ScheduleV2Router`·`ScheduleRepository`·일정 DTO) + `HomePresentation`(일정 화면)이다.
@@ -166,6 +168,11 @@ featureProject(
 )
 ```
 
+두 헬퍼 모두 리소스 파라미터(`dataResources`/`presentationResources`)를 선택적으로 받는다.
+`staticFramework`는 Compile Sources 산출물이 소비 타겟까지 전파되지 않으므로, 런타임에 필요한
+자산은 별도 리소스 번들로 명시해야 한다 — 예: `HomeData`의 CoreML 모델(`dataResources`),
+`BusinessCardPresentation`의 3D 명함 베이스 USDZ 템플릿(`presentationResources`, #1246).
+
 ### 외부 의존성
 
 | 패키지 | 버전 | 사용처 |
@@ -182,3 +189,38 @@ featureProject(
 - **Product Type**: 모든 모듈 `.staticFramework`
 - **Bundle ID**: Core → `dev.umc.core.*` / Feature → `dev.umc.feature.*.*`
 - **Workspace**: glob(`Core/*`, `Features/*`) + `UMCAppWidget`, `UMCWatchApp` 명시 포함
+
+### 공유 Keychain Access Group
+
+iOS 앱과 watchOS 앱은 로그인 토큰용 공유 그룹 `$(AppIdentifierPrefix)com.umc.product.shared` 를
+`keychain-access-groups` entitlement 의 **첫 항목**으로 선언합니다. 팀 ID(`8B8B4462NV`)를 문자열로
+박지 않고 `$(AppIdentifierPrefix)` 를 쓰는 것이 레포 관례입니다
+(`UMCApp/Core/Network/Tests/CoreNetworkTests.entitlements` 동일).
+
+| 타겟 | entitlements 파일 | 배선 위치 |
+|------|------------------|----------|
+| iOS 앱 | `UMCApp/UMCApp.entitlements:27-31` | `UMCApp/Project.swift:85` |
+| watchOS 앱 | `UMCApp/UMCWatchApp/UMCWatchApp.entitlements:7-11` | `UMCApp/UMCWatchApp/Project.swift:7` |
+
+- **배열 순서가 계약이다.** `kSecAttrAccessGroup` 을 지정하지 않은 `SecItemAdd` 는 배열 **첫 항목**에
+  저장한다. `UMCApp/Core/Network/Sources/Auth/KeychainTokenStore.swift` 는 저장(104-110행) ·
+  조회(120-126행) · 삭제(141-145행) 쿼리 어디에도 access group 을 지정하지 않으므로 이 기본값 규칙에
+  전적으로 의존한다. 그래서 공유 그룹이 첫 번째다.
+- **두 번째 항목(각 타겟 자기 App ID 그룹)은 안전장치다.** 검색·삭제는 access group 미지정 시 앱이 가진
+  모든 그룹을 대상으로 하므로, 기존 배포판이 기본 그룹(`$(AppIdentifierPrefix)com.umc.product`)에 저장해 둔
+  토큰이 계속 읽힌다. 이 줄을 빼면 업데이트 즉시 전 사용자 강제 로그아웃이다.
+- **워치는 배선까지 확인한다.** `watchAppProject(entitlements: .file(path: "UMCWatchApp.entitlements"))` 로
+  인자를 넘겨야 실제로 적용된다. 파일만 만들고 인자를 안 넘기면 무효다 — #1147 유실이 정확히 이 형태였다.
+- **watchOS 는 keychain 을 공유하지 않는다.** Apple Watch 는 자체 keychain 을 가진 별개 기기라 access
+  group 을 맞춰도 워치가 iPhone 의 항목을 읽지 못한다. access group 은 동일 기기 내 동일 팀 서명 타겟
+  (앱·확장) 간 공유 메커니즘이다. 워치 토큰은 WatchConnectivity 로 iPhone→Watch 전송 후 워치 자체
+  keychain 에 저장하는 경로이며 #1210/#1211 범위다. 또한 `KeychainTokenStore` 는
+  `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`(109행)라 iCloud Keychain 동기화 대상도 아니다.
+- **서명 주의**: 두 App ID(`com.umc.product` · `com.umc.product.watchkitapp`)에 Keychain Sharing
+  capability 가 없으면 실기기/아카이브 서명 단계에서 실패하고, 런타임 증상은 `SecItemAdd` 의
+  `errSecMissingEntitlement(-34018)` 다.
+
+> **유실 이력**: PR #627(`744ad80b`)이 공유 그룹(`$(AppIdentifierPrefix)dev.umc.shared`)을 추가했으나,
+> #1147(`a68f93c2`) 번들 ID 정렬 커밋이 "미사용 keychain-access-groups 제거" 사유로 iOS·watch 양쪽에서
+> 걷어냈다(워치 entitlements 는 파일째 삭제). 이미 **두 번 유실된** entitlement 다 — "미사용"으로 보여도
+> 제거하지 않는다.

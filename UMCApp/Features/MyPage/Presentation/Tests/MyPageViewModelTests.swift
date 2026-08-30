@@ -140,10 +140,10 @@ struct MyPageViewModelTests {
         let viewModel = makeViewModel(repository: repository)
 
         let first = Task { await viewModel.fetchProfile() }
-        // 첫번째 호출이 .loading 세팅까지 진행되도록 양보
+        // 첫번째 호출이 인플라이트 플래그 세팅까지 진행되도록 양보
         await Task.yield()
 
-        await viewModel.fetchProfile()  // isLoading 체크로 즉시 return
+        await viewModel.fetchProfile()  // 인플라이트 가드로 즉시 return
         await first.value
 
         #expect(repository.callCount == 1)
@@ -223,6 +223,26 @@ struct MyPageViewModelCardEditPendingTests {
 
         await viewModel.fetchProfile()
 
+        #expect(viewModel.isCardEditPending == false)
+    }
+
+    @Test("이미 로드된 뒤의 재조회(pop 복귀)는 pending을 다시 켜지 않는다")
+    func reloadOnPopKeepsPendingResolved() async {
+        let repository = SlowStubRepository(
+            profile: makeProfileData(challengeId: 1),
+            delayNanoseconds: 100_000_000  // 0.1s
+        )
+        let viewModel = makeViewModel(
+            repository: repository,
+            previewProfileData: makeProfileData(challengeId: 1)
+        )
+
+        let task = Task { await viewModel.fetchProfile() }
+        await Task.yield()
+
+        #expect(viewModel.isCardEditPending == false, "재조회 중에도 로드된 프로필을 유지한다")
+
+        await task.value
         #expect(viewModel.isCardEditPending == false)
     }
 }

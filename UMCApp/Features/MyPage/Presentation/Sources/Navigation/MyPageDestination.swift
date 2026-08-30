@@ -5,6 +5,7 @@
 //  Created by euijjang97 on 8/10/26.
 //
 
+import CoreDomain
 import MyPageDomain
 
 /// MyPage 탭 안에서 push 되는 화면 목적지.
@@ -26,6 +27,13 @@ enum MyPageDestination: Hashable {
     ///   편집 시작점으로 삼으므로 목적지가 직접 싣는다 — 재조회하면 카드에 보이던 값과
     ///   어긋난 상태로 편집이 시작될 수 있다.
     case cardEdit(profileData: ProfileData)
+
+    /// 「나의 활동 ・프로젝트」가 여는 활동 이력 목록 (MP-F11, #1228).
+    ///
+    /// - Parameter activityLogs: 탭 루트가 이미 조회해 둔 `Profile.activityLogs()`. 행 우측
+    ///   카운트(`ActivityStat.activityCount`)도 같은 파생을 세므로 목적지가 그 값을 그대로
+    ///   싣는다 — 여기서 다시 조회하면 숫자와 목록이 어긋난다(`cardEdit`과 같은 이유).
+    case activityLogs([ActivityLog])
 
     /// 내 활동 게시글 목록 (내가 쓴 글 / 댓글 단 글 / 스크랩).
     ///

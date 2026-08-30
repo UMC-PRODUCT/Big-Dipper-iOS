@@ -119,6 +119,11 @@ cd UMCApp && make doctor    # 환경 진단
 | 프로젝트 구조(AppProduct) | `docs/claude/project-structure.md` | 레거시 디렉터리 탐색 |
 | PR 리뷰 규칙 & 체크리스트 | `docs/claude/pr-review.md` | PR 리뷰 작성 시 |
 | 3D 명함 Phase 0 검증 결과 | `docs/claude/business-card-3d-spike.md` | 3D 명함(#1246~#1249) 착수 전, 스파이크 실측치 확인 |
+| 3D 명함 베이스 템플릿 · 앵커 규약 | `docs/claude/business-card-3d-anchor-contract.md` | #1247·#1248 구현 시, `BusinessCardTemplate` 앵커·머티리얼 슬롯 참조 및 계약 테스트 확인 |
+| 3D 명함 렌더러 — 회전·인터랙션·접근성 | `docs/claude/business-card-3d-renderer.md` | #1248·#1249 착수 전, `makeEntity` seam·회전 아키텍처·접근성 정책·튜닝 손잡이 확인 |
+| 근거리 교환 실기기 검증 | `docs/claude/nearby-exchange-device-verification.md` | 근거리 명함 교환을 실기기 2대로 검증할 때, 조직 팀 App ID capability·서명 문제를 풀 때 |
+| 3D 명함 온디바이스 합성 파이프라인 | `docs/claude/business-card-3d-composition.md` | #1247·#1249 구현 시, `BusinessCardComposer.compose` 호출·동시성 경계·`ComposedPrim` 결과 트리 확인 |
+| 명함첩 그리드 2D 스냅샷 캐시 | `docs/claude/business-card-snapshot-cache.md` | 스냅샷 캐시 키·무효화·상한을 만지거나 #1248 머지 후 합성기를 교체할 때 |
 
 Apple 프레임워크 API — 신규 Apple API를 다룰 때:
 

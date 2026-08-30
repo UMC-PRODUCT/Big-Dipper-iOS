@@ -60,15 +60,15 @@ struct WatchRouterTests {
         #expect(WatchRoute.pingDetail(noticeID: "42") != .attendanceResult(scheduleID: "42"))
     }
 
-    @Test("폴백 3종이 모두 라우트로 감싸져 스택에 쌓인다")
+    @Test("폴백 9종이 모두 라우트로 감싸져 스택에 쌓인다")
     func fallbackRoutesArePushable() {
         let router = WatchRouter()
 
-        for fallback in WatchFallbackRoute.allCases {
-            router.push(.fallback(fallback))
+        for reason in WatchFallbackReason.allCases {
+            router.push(.fallback(reason))
         }
 
-        #expect(router.path == WatchFallbackRoute.allCases.map(WatchRoute.fallback))
-        #expect(router.path.count == 3)
+        #expect(router.path == WatchFallbackReason.allCases.map(WatchRoute.fallback))
+        #expect(router.path.count == 9)
     }
 }
