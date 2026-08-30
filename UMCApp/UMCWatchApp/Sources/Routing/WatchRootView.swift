@@ -36,7 +36,6 @@ struct WatchRootView: View {
 
     /// 일정 식별자를 실제 일정으로 풀지 못하면 플레이스홀더로 떨어진다 — 딥링크나 푸시로
     /// 먼저 도착했는데 iPhone 이 아직 일정을 밀어주지 않은 경우다.
-    /// The Ping(#1208)은 아직 플레이스홀더가 정상이다.
     @ViewBuilder
     private func destination(for route: WatchRoute) -> some View {
         switch route {
@@ -60,8 +59,11 @@ struct WatchRootView: View {
                 WatchRoutePlaceholderView(route: route)
             }
 
-        case .pingList, .pingDetail:
-            WatchRoutePlaceholderView(route: route)
+        case .pingList:
+            PingListView()
+
+        case .pingDetail(let noticeID):
+            PingDetailView(noticeID: noticeID)
 
         case .fallback(let reason):
             WatchFallbackView(reason: reason)
@@ -71,13 +73,15 @@ struct WatchRootView: View {
 
 #if DEBUG
 #Preview("WatchRootView — P0-8 배너가 홈 위에 고정") {
+    let coordinator = WatchSessionCoordinator()
     let noticeCenter = WatchMandatoryNoticeCenter()
     noticeCenter.present(WatchMandatoryNotice(id: "1", title: "8월 정기 모임 필수 공지"))
 
     return WatchRootView()
         .environment(WatchRouter())
-        .environment(WatchSessionCoordinator())
+        .environment(coordinator)
         .environment(noticeCenter)
         .environment(WatchAttendanceViewModel())
+        .environment(PingInbox(coordinator: coordinator))
 }
 #endif

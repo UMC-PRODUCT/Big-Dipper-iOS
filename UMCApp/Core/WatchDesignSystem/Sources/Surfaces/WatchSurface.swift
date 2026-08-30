@@ -125,16 +125,25 @@ public extension View {
     /// `List` 행 배경. 기본 시스템 행 배경(반투명)을 불투명 solid 로 교체한다 —
     /// 리스트 행은 Glass 금지 구역이다.
     ///
-    /// - Parameter isSelected: `true`면 Hero 표면(인디고 tint) + 좌측 색바로 선택을 표현한다.
-    ///   Hero fill 단독은 standard 대비 명암비가 1.13:1 에 그쳐 저시력·야외에서 식별되지
-    ///   않으므로, 색과 분리된 위치 신호를 함께 준다 (#1207 선택행).
-    func watchListRowBackground(isSelected: Bool = false) -> some View {
-        listRowBackground(
+    /// - Parameters:
+    ///   - isSelected: `true`면 Hero 표면(인디고 tint) + 좌측 색바로 선택을 표현한다.
+    ///     Hero fill 단독은 standard 대비 명암비가 1.13:1 에 그쳐 저시력·야외에서 식별되지
+    ///     않으므로, 색과 분리된 위치 신호를 함께 준다 (#1207 선택행).
+    ///   - leadingAccent: 선택과 무관한 좌측 색바 색. 긴급 공지처럼 **행 자체의 성질**을
+    ///     알리는 신호에 쓴다 (#1208). 색바는 행 콘텐츠 인셋 밖 배경에 그려져야 가장자리에
+    ///     닿으므로 행 내용이 아니라 배경이 그린다.
+    ///     선택 표시와 자리를 공유하므로 `isSelected` 가 우선한다 — 한 행에 색바 두 개를
+    ///     겹쳐 그리면 어느 쪽 신호인지 읽히지 않는다.
+    func watchListRowBackground(
+        isSelected: Bool = false,
+        leadingAccent: Color? = nil
+    ) -> some View {
+        let accent = isSelected ? WatchColor.brandPrimary : leadingAccent
+        return listRowBackground(
             WatchSurface(style: isSelected ? .hero : .standard)
                 .overlay(alignment: .leading) {
-                    if isSelected {
-                        WatchColor.brandPrimary
-                            .frame(width: WatchLayout.accentBarWidth)
+                    if let accent {
+                        accent.frame(width: WatchLayout.accentBarWidth)
                     }
                 }
                 .clipShape(WatchSurfaceShape.shape)
