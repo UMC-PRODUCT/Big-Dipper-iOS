@@ -58,11 +58,15 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     @ObservationIgnored
     private let userInfoContinuation: AsyncStream<WatchMessage>.Continuation
 
-    private var session: WCSession { .default }
+    /// `WCSession` 은 싱글턴이라 직접 만들 수 없다. 상태 전이를 테스트에서 재현하려면
+    /// 이 표면만 대역으로 바꿀 수 있어야 해서 ``WatchSessionProviding`` 을 거친다.
+    @ObservationIgnored
+    private let session: any WatchSessionProviding
 
     // MARK: - Init
 
-    public override init() {
+    public init(session: any WatchSessionProviding = WCSession.default) {
+        self.session = session
         let (stream, continuation) = AsyncStream<WatchMessage>.makeStream()
         userInfoStream = stream
         userInfoContinuation = continuation
@@ -73,9 +77,9 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
 
     /// WCSession 을 활성화한다. 앱 시작 시 한 번 호출한다.
     public func activate() {
-        guard WCSession.isSupported() else { return }
-        session.delegate = self
-        session.activate()
+        guard session.isSupported else { return }
+        session.attach(delegate: self)
+        session.startActivation()
     }
 
     /// 최신 스냅샷을 요청한다.
@@ -125,7 +129,7 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         try requireActivated()
         do {
             let payload = try WatchEnvelope.encode(WatchMessage.sessionState(state))
-            try session.updateApplicationContext(payload)
+            try session.apply(applicationContext: payload)
         } catch let error as WatchConnectivityError {
             throw error
         } catch {
@@ -144,7 +148,7 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
             throw WatchConnectivityError.unsupportedChannel(message)
         }
         try requireActivated()
-        session.transferUserInfo(try WatchEnvelope.encode(message))
+        session.transfer(userInfo: try WatchEnvelope.encode(message))
     }
 
     /// 아직 전송되지 않은 큐 항목.
@@ -153,7 +157,7 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     ///   추적하지 못해, SwiftUI 가 바인딩해도 한 번 그린 뒤 영원히 갱신되지 않는다. 호출 시점의
     ///   스냅샷이므로 화면 캡션은 ``purgeExpiredQueue(now:)`` 의 반환값이나 타이머로 갱신한다.
     public var pendingMessages: [WatchMessage] {
-        session.outstandingUserInfoTransfers.compactMap {
+        session.outstandingTransfers.compactMap {
             try? WatchEnvelope.decode(WatchMessage.self, from: $0.userInfo)
         }
     }
@@ -166,7 +170,7 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     @discardableResult
     public func purgeExpiredQueue(now: Date = Date()) -> [WatchAttendanceRequest] {
         var purged: [WatchAttendanceRequest] = []
-        for transfer in session.outstandingUserInfoTransfers {
+        for transfer in session.outstandingTransfers {
             guard
                 let message = try? WatchEnvelope.decode(
                     WatchMessage.self, from: transfer.userInfo
@@ -199,10 +203,10 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     // MARK: - Private
 
     private func requireActivated() throws {
-        guard WCSession.isSupported() else {
+        guard session.isSupported else {
             throw WatchConnectivityError.notSupported
         }
-        guard session.activationState == .activated else {
+        guard session.isActivated else {
             throw WatchConnectivityError.sessionNotActivated
         }
     }
@@ -217,63 +221,65 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         let payload = try WatchEnvelope.encode(message)
 
         return try await withCheckedThrowingContinuation { continuation in
-            session.sendMessage(payload) { raw in
+            session.send(payload) { raw in
                 do {
                     let reply = try WatchEnvelope.decode(WatchReply.self, from: raw)
                     continuation.resume(returning: reply)
                 } catch {
                     continuation.resume(throwing: error)
                 }
-            } errorHandler: { error in
+            } onError: { error in
                 continuation.resume(throwing: WatchConnectivityError.from(error))
             }
         }
     }
 
-    // MARK: - WCSessionDelegate
+    // MARK: - Internal
 
-    public nonisolated func session(
-        _ session: WCSession,
-        activationDidCompleteWith activationState: WCSessionActivationState,
-        error: Error?
-    ) {
-        // WCSession 은 Sendable 이 아니다. hop 하기 전에 값만 읽어 둔다.
-        let activated = activationState == .activated
-        let reachable = session.isReachable
-        // `receivedApplicationContext` 는 활성화가 끝난 뒤에야 채워진다. 활성화는 비동기라
-        // `activate()` 직후에 읽으면 빈 딕셔너리를 받아 시딩이 조용히 무산된다.
-        let context: [String: Any] = activated ? session.receivedApplicationContext : [:]
-        let seeded = try? WatchEnvelope.decode(WatchMessage.self, from: context)
-        Task { @MainActor in
-            self.isActivated = activated
-            self.isReachable = reachable
-            // 델리게이트 콜백이 이미 더 최신 컨텍스트를 넣었다면 덮어쓰지 않는다.
-            if case .sessionState(let state)? = seeded, self.receivedState == nil {
-                self.receivedState = state
-            }
+    /// 활성화 콜백이 실어 온 값을 상태에 반영한다.
+    ///
+    /// 델리게이트 콜백에서 갈라낸 이유는 `WCSession` 인스턴스를 테스트에서 만들 수 없기
+    /// 때문이다. 콜백은 값만 뽑아 이 함수로 hop 하고, 테스트는 값을 직접 넣는다.
+    func applyActivation(_ activated: Bool, reachable: Bool, seeded: WatchMessage?) {
+        isActivated = activated
+        isReachable = activated && reachable
+        // 델리게이트 콜백이 이미 더 최신 컨텍스트를 넣었다면 덮어쓰지 않는다.
+        if case .sessionState(let state)? = seeded, receivedState == nil {
+            receivedState = state
         }
     }
 
-    public nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
-        let reachable = session.isReachable
-        Task { @MainActor in
-            self.isReachable = reachable
+    /// 활성화 전 도달성은 의미가 없다 — 「도달 가능」인데 전송이 `.sessionNotActivated`
+    /// 로 실패하는 상태를 만들지 않는다.
+    func applyReachability(_ reachable: Bool) {
+        isReachable = isActivated && reachable
+    }
+
+    func applyReceivedContext(_ message: WatchMessage?) {
+        guard case .sessionState(let state)? = message else { return }
+        receivedState = state
+    }
+
+    nonisolated func ingest(userInfo: [String: Any]) {
+        guard let message = try? WatchEnvelope.decode(WatchMessage.self, from: userInfo) else {
+            return
         }
+        // hop 하지 않는다 — continuation 은 Sendable 이고 yield 순서를 그대로 보존한다.
+        userInfoContinuation.yield(message)
     }
 
     /// `replyHandler` 는 송신자의 타임아웃(7012) 안에 **정확히 한 번** 호출돼야 한다.
     /// early return 과 `Task` 가 상호 배타적인 형태라 「한 번만 호출」 장치가 따로 필요 없다.
-    public nonisolated func session(
-        _ session: WCSession,
-        didReceiveMessage message: [String: Any],
-        replyHandler: @escaping ([String: Any]) -> Void
+    nonisolated func handle(
+        request: [String: Any],
+        reply replyHandler: @escaping ([String: Any]) -> Void
     ) {
         nonisolated(unsafe) let reply = replyHandler
 
         // 실패는 hop 없이 즉시 응답한다.
         let decoded: WatchMessage
         do {
-            decoded = try WatchEnvelope.decode(WatchMessage.self, from: message)
+            decoded = try WatchEnvelope.decode(WatchMessage.self, from: request)
         } catch WatchConnectivityError.unsupportedSchemaVersion(let version) {
             // 손상이 아니라 상대가 더 새로운 스키마를 쓴다는 신호다. 「손상」으로 뭉개면
             // 상대는 업데이트가 필요하다는 사실을 알 수 없다.
@@ -299,18 +305,50 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         }
     }
 
+    // MARK: - WCSessionDelegate
+
+    public nonisolated func session(
+        _ session: WCSession,
+        activationDidCompleteWith activationState: WCSessionActivationState,
+        error: Error?
+    ) {
+        // WCSession 은 Sendable 이 아니다. hop 하기 전에 값만 읽어 둔다.
+        // `.activated` 라도 에러가 함께 오면 전송은 전부 실패한다 — 에러를 무시하면
+        // 화면은 「연결됨」인데 모든 요청이 조용히 죽는다.
+        let activated = activationState == .activated && error == nil
+        // `receivedApplicationContext` 는 활성화가 끝난 뒤에야 채워진다. 활성화는 비동기라
+        // `activate()` 직후에 읽으면 빈 딕셔너리를 받아 시딩이 조용히 무산된다.
+        let context: [String: Any] = activated ? session.receivedApplicationContext : [:]
+        let seeded = try? WatchEnvelope.decode(WatchMessage.self, from: context)
+        let reachable = session.isReachable
+        Task { @MainActor in
+            self.applyActivation(activated, reachable: reachable, seeded: seeded)
+        }
+    }
+
+    public nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        let reachable = session.isReachable
+        Task { @MainActor in
+            self.applyReachability(reachable)
+        }
+    }
+
+    public nonisolated func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any],
+        replyHandler: @escaping ([String: Any]) -> Void
+    ) {
+        handle(request: message, reply: replyHandler)
+    }
+
     public nonisolated func session(
         _ session: WCSession,
         didReceiveApplicationContext applicationContext: [String: Any]
     ) {
-        guard
-            let message = try? WatchEnvelope.decode(
-                WatchMessage.self, from: applicationContext
-            ),
-            case .sessionState(let state) = message
-        else { return }
+        // `[String: Any]` 는 Sendable 이 아니다. hop 전에 봉투를 벗겨 값만 넘긴다.
+        let message = try? WatchEnvelope.decode(WatchMessage.self, from: applicationContext)
         Task { @MainActor in
-            self.receivedState = state
+            self.applyReceivedContext(message)
         }
     }
 
@@ -318,11 +356,7 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         _ session: WCSession,
         didReceiveUserInfo userInfo: [String: Any]
     ) {
-        guard let message = try? WatchEnvelope.decode(WatchMessage.self, from: userInfo) else {
-            return
-        }
-        // hop 하지 않는다 — continuation 은 Sendable 이고 yield 순서를 그대로 보존한다.
-        userInfoContinuation.yield(message)
+        ingest(userInfo: userInfo)
     }
 
 #if os(iOS)
@@ -330,8 +364,7 @@ public final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     /// 남겨 두면 화면은 「연결됨」인데 전송만 조용히 실패한다.
     public nonisolated func sessionDidBecomeInactive(_ session: WCSession) {
         Task { @MainActor in
-            self.isActivated = false
-            self.isReachable = false
+            self.applyActivation(false, reachable: false, seeded: nil)
         }
     }
 

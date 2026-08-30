@@ -58,9 +58,33 @@ make open        # Xcode 실행
 | `make test-network` | CoreNetwork 단위+통합 테스트 (`TEST_SERVER_URL` 자동 전달) | 네트워크 레이어 변경 후 |
 | `make build` | Debug 빌드 | 빌드 가능 여부만 확인할 때 |
 | `make build SCHEME=…` | 특정 스킴(모듈)만 빌드 | 한 모듈만 빠르게 검증할 때 |
+| `make build-watch` | watchOS 앱(`UMCWatchApp`) 빌드 | 워치 타겟·`CoreWatchConnectivity` 변경 후 |
 | `make pick` | 스킴 목록에서 골라 빌드 (대화형) | 스킴 이름이 안 떠오를 때 |
 | `make doctor` | 환경 진단 (mise/tuist/xcode 버전) | 다른 팀원과 증상이 다를 때 |
 | `make help` | 전체 타겟 목록 | 까먹었을 때 |
+
+### watchOS 타겟 빌드·테스트
+
+`make build` / `make test` 의 기본 목적지는 iOS 시뮬레이터라 **워치 타겟은 하나도 건드리지
+않습니다.** 워치 코드를 바꿨다면 아래 두 개를 따로 돌려야 합니다 (CI 도 같은 명령을 씁니다).
+
+```bash
+# watchOS 앱 컴파일 검증
+make build-watch
+
+# WatchConnectivity 계약·상태 전이 테스트 (iOS 시뮬레이터에서 로직 테스트로 실행)
+make test SCHEME=CoreWatchConnectivity
+```
+
+> **왜 목적지에 워치 기종을 안 박나**: 설치된 워치 시뮬레이터 기종은 머신마다 다릅니다
+> (로컬에 `Apple Watch Series 11` 만 있는데 러너엔 다른 세대가 깔려 있는 식). 기종을 고정하면
+> 한쪽이 반드시 깨지므로 `WATCH_DESTINATION` 기본값을 `generic/platform=watchOS Simulator`
+> 로 두고 **컴파일만** 검증합니다. 특정 기종에서 실행까지 보려면 아래처럼 덮어쓰세요.
+>
+> ```bash
+> xcrun simctl list devices watchOS     # 설치된 기종 확인
+> make build-watch WATCH_DESTINATION='platform=watchOS Simulator,name=Apple Watch Series 11 (46mm)'
+> ```
 
 ---
 
@@ -95,6 +119,8 @@ make open
 | `CONFIGURATION` | `Debug` | `make build CONFIGURATION=Release` |
 | `DESTINATION` | `platform=iOS Simulator,name=iPhone 17 Pro` | `make test DESTINATION='platform=iOS Simulator,name=iPhone 17'` |
 | `TEST_SERVER_URL` | `http://127.0.0.1:8080` | `make test-network TEST_SERVER_URL=http://127.0.0.1:9090` |
+| `WATCH_SCHEME` | `UMCWatchApp` | `make build-watch WATCH_SCHEME=CoreWatchConnectivity` |
+| `WATCH_DESTINATION` | `generic/platform=watchOS Simulator` | `make build-watch WATCH_DESTINATION='platform=watchOS Simulator,name=Apple Watch Ultra 3 (49mm)'` |
 
 예시:
 

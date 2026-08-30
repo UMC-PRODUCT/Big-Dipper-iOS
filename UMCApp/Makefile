@@ -18,6 +18,11 @@ ROOT := ..
 DESTINATION ?= platform=iOS Simulator,name=iPhone 17 Pro
 CONFIGURATION ?= Debug
 
+WATCH_SCHEME ?= UMCWatchApp
+# 워치 시뮬레이터 디바이스 목록은 머신마다 다르므로(로컬 Series 11 / CI 러너는 다른 세대)
+# 디바이스명을 박으면 한쪽이 반드시 깨진다 → generic 목적지로 컴파일만 검증한다.
+WATCH_DESTINATION ?= generic/platform=watchOS Simulator
+
 MISE ?= mise
 TUIST := $(MISE) exec -- tuist
 
@@ -38,6 +43,7 @@ help: ## 이 도움말 출력
 	@echo "  make test  SCHEME=AuthDomain                  # 모듈 단위 테스트"
 	@echo "  make test  DESTINATION='platform=iOS Simulator,name=iPhone 17'"
 	@echo "  make build CONFIGURATION=Release"
+	@echo "  make build-watch                              # watchOS 앱 빌드 (generic 목적지)"
 	@echo ""
 	@echo "사용 가능한 스킴 목록:"
 	@echo "  xcodebuild -workspace $(WORKSPACE) -list"
@@ -121,6 +127,15 @@ build: ## 빌드 ($(CONFIGURATION))
 		-scheme $(SCHEME) \
 		-configuration $(CONFIGURATION) \
 		-destination "$(DESTINATION)" \
+		build
+
+.PHONY: build-watch
+build-watch: ## watchOS 앱 빌드 ($(WATCH_SCHEME))
+	@xcodebuild \
+		-workspace $(WORKSPACE) \
+		-scheme $(WATCH_SCHEME) \
+		-configuration $(CONFIGURATION) \
+		-destination "$(WATCH_DESTINATION)" \
 		build
 
 .PHONY: pick
