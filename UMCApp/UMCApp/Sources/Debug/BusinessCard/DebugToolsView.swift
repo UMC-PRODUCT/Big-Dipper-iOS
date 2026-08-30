@@ -54,6 +54,7 @@ struct DebugToolsView: View {
             myCardRawSection
             activityStatRawSection
             payloadSection
+            watchConnectivitySection
         }
         .navigationTitle("검증 도구")
         .navigationBarTitleDisplayMode(.inline)
@@ -216,6 +217,21 @@ struct DebugToolsView: View {
             Text("ExchangePayload v2 왕복")
         } footer: {
             Text("내 명함 → 페이로드 → JSON → 디코딩 → 명함 복원까지 실제로 돌린 결과다.")
+        }
+    }
+
+    /// 명함 전용 하네스는 아니지만, `-bcHarness` 실행 인자
+    /// (``RootTabView/openBusinessCardHarnessIfRequested()``)로 시뮬레이터에서 한 번에 들어올 수
+    /// 있는 유일한 검증 입구라 여기에 붙인다.
+    private var watchConnectivitySection: some View {
+        Section {
+            NavigationLink {
+                WatchConnectivityDebugView(container: container)
+            } label: {
+                Label("워치 연동", systemImage: "applewatch.radiowaves.left.and.right")
+            }
+        } footer: {
+            Text("WCSession 활성화·스냅샷 퍼블리시·동기화 왕복이 실제로 성립하는지 확인한다.")
         }
     }
 
