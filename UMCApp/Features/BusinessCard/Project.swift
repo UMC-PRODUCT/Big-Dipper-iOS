@@ -17,6 +17,9 @@ let project = featureProject(
         // (선례: Features/Community/Project.swift, Features/Auth/Project.swift).
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
+        // 명함첩 그리드의 2D 스냅샷 캐시가 Kingfisher `ImageCache` 를 직접 쓴다 (#1249).
+        // CoreUIComponents 가 이미 링크하지만 전이 의존에 기대지 않는다 (위 규약).
+        .external(name: "Kingfisher"),
     ],
     includesDomainTests: true,
     domainTestDependencies: [
@@ -39,5 +42,7 @@ let project = featureProject(
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         // 교환 세션 테스트가 DiscoveredPeer·NearbyError 를 직접 만든다.
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
+        // 스냅샷 테스트가 ImageCache 를 직접 만들어 상한·트리밍을 검사한다 (#1249).
+        .external(name: "Kingfisher"),
     ]
 )

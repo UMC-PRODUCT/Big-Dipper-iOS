@@ -118,6 +118,7 @@ cd UMCApp && make doctor    # 환경 진단
 | 프로젝트 구조(AppProduct) | `docs/claude/project-structure.md` | 레거시 디렉터리 탐색 |
 | PR 리뷰 규칙 & 체크리스트 | `docs/claude/pr-review.md` | PR 리뷰 작성 시 |
 | 3D 명함 Phase 0 검증 결과 | `docs/claude/business-card-3d-spike.md` | 3D 명함(#1246~#1249) 착수 전, 스파이크 실측치 확인 |
+| 명함첩 그리드 2D 스냅샷 캐시 | `docs/claude/business-card-snapshot-cache.md` | 스냅샷 캐시 키·무효화·상한을 만지거나 #1248 머지 후 합성기를 교체할 때 |
 
 Apple 프레임워크 API — 신규 Apple API를 다룰 때:
 
