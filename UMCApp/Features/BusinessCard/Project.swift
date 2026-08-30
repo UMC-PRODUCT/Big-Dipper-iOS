@@ -44,5 +44,7 @@ let project = featureProject(
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),
         // 교환 세션 테스트가 DiscoveredPeer·NearbyError 를 직접 만든다.
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
+        // 합성 테스트가 UMCPartType.seedColor 로 파트 tint 폴백을 검증한다.
+        .project(target: "CoreUIComponents", path: .relativeToRoot("Core/UIComponents")),
     ]
 )

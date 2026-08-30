@@ -90,7 +90,7 @@ struct BusinessCardTemplateContractTests {
         let slot = sample.slot
         let mesh = MeshResource.generateText(
             sample.text,
-            extrusionDepth: slot.fontSize * 0.05,
+            extrusionDepth: slot.extrusionDepth,
             font: .systemFont(ofSize: CGFloat(slot.fontSize), weight: slot.weight),
             containerFrame: slot.containerFrame,
             alignment: .left,
@@ -119,6 +119,22 @@ struct BusinessCardTemplateContractTests {
             #expect(abs(position.x) <= halfWidth, "\(prim.rawValue) x")
             #expect(abs(position.y) <= halfHeight, "\(prim.rawValue) y")
         }
+    }
+
+    // MARK: - 7. 텍스처 주입면
+
+    @Test(
+        "텍스처를 받는 면은 메시다",
+        arguments: [BusinessCardTemplate.RequiredPrim.portrait, .qrSurface]
+    )
+    func textureSurfacesAreModelEntities(_ prim: BusinessCardTemplate.RequiredPrim) async throws {
+        let root = try await BusinessCardTemplate.load()
+
+        // 이름만 맞고 메시가 아니면 합성이 텍스처를 붙일 자리를 잃는다.
+        // 템플릿을 `def Xform` 으로 바꾸면 여기서 먼저 깨진다.
+        let surface = try BusinessCardTemplate.entity(prim, in: root)
+
+        #expect(surface is ModelEntity)
     }
 
     // MARK: - Fixture

@@ -72,8 +72,9 @@ public struct MyCard: Equatable, Hashable, Sendable {
     /// 카드에 싣는 표시 이름 — 시안 더미 `이름/닉네임` 을 그대로 따른다.
     ///
     /// 명함_l(`12639:33234`)·명함_m(`12639:33316`)·명함_s(`12657:35806`) 공통 규칙이고
-    /// 더미가 처음 나온 원출처는 명함_s 다. 닉네임이 공백뿐이면 이름만 싣는다. 표기가
-    /// 바뀌면 이 한 곳만 고친다 (#1236 확정).
+    /// 더미가 처음 나온 원출처는 명함_s 다. 닉네임이 공백뿐이면 이름만 싣는다. 2D
+    /// (`BusinessCardFaceView`)와 3D(`BusinessCardComposer`)가 이 하나를 함께 쓰므로,
+    /// 표기가 바뀌면 이 한 곳만 고친다 (#1236 확정).
     public var nameWithNickname: String {
         let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? name : "\(name)/\(trimmed)"
