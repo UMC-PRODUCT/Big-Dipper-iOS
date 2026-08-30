@@ -37,14 +37,14 @@ struct BusinessCardComposerTests {
 
     // MARK: - 1. 이름
 
-    @Test("이름 앵커에 displayName 이 붙는다")
+    @Test("이름 앵커에 nameWithNickname 이 붙는다")
     func bindsDisplayNameToNameAnchor() async throws {
         let card = Self.card()
         let root = try await BusinessCardComposer.compose(card)
 
         let mesh = try #require(Self.mesh(of: .name, in: root))
 
-        #expect(Self.fingerprint(mesh) == Self.fingerprint(card.displayName, .name))
+        #expect(Self.fingerprint(mesh) == Self.fingerprint(card.nameWithNickname, .name))
         // 닉네임을 흘리면 `name` 만 그려진다 — 지문이 다르다는 것으로 잡는다.
         #expect(Self.fingerprint(mesh) != Self.fingerprint(card.name, .name))
     }

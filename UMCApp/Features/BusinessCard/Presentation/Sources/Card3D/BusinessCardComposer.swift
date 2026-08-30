@@ -129,7 +129,7 @@ public enum BusinessCardComposer {
         partTint: Color?,
         into root: Entity
     ) async throws {
-        try attachText(card.displayName, slot: .name, as: .name, to: .anchorName, in: root)
+        try attachText(card.nameWithNickname, slot: .name, as: .name, to: .anchorName, in: root)
         try await breathe()
 
         try attachText(

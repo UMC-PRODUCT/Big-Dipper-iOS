@@ -22,11 +22,19 @@ public enum HomeRouter: BaseTargetType {
     /// 기수 상세 조회 (시즌 카드의 활동일 계산용 시작일 조회)
     case getGisuDetail(gisuId: String)
 
-    /// FCM 토큰 등록/갱신
+    /// FCM 설치 등록/갱신 (설치 단위 upsert)
     ///
+    /// - Note: 토큰만 보내던 `PUT /api/v1/notification/fcm/token` 은 서버에서 제거돼 404를
+    ///   반환한다(서버 회귀 테스트 `FcmControllerTest.token_only_등록_API_비활성화`). 그래서
+    ///   이 기기로는 푸시가 전혀 도착하지 않았고, 설치 단위 등록 엔드포인트로 대체한다.
     /// - Note: 요청 바디 DTO(``RegisterFCMTokenRequestDTO``)는 모듈 내부 타입이라 연관값으로
-    ///   노출할 수 없어, 토큰 문자열만 받아 ``task`` 에서 DTO로 감싼다.
-    case putFCMToken(fcmToken: String)
+    ///   노출할 수 없어, 필드를 문자열로 받아 ``task`` 에서 DTO로 감싼다.
+    case postFCMInstallation(
+        installationId: String,
+        fcmToken: String,
+        platform: String,
+        appVersion: String
+    )
 
     // MARK: - Path
 
@@ -34,8 +42,8 @@ public enum HomeRouter: BaseTargetType {
         switch self {
         case .getGisuDetail(let gisuId):
             return "/api/v1/gisu/\(gisuId)"
-        case .putFCMToken:
-            return "/api/v1/notification/fcm/token"
+        case .postFCMInstallation:
+            return "/api/v1/notifications/fcm/installations"
         }
     }
 
@@ -45,8 +53,8 @@ public enum HomeRouter: BaseTargetType {
         switch self {
         case .getGisuDetail:
             return .get
-        case .putFCMToken:
-            return .put
+        case .postFCMInstallation:
+            return .post
         }
     }
 
@@ -56,8 +64,15 @@ public enum HomeRouter: BaseTargetType {
         switch self {
         case .getGisuDetail:
             return .requestPlain
-        case .putFCMToken(let fcmToken):
-            return .requestJSONEncodable(RegisterFCMTokenRequestDTO(fcmToken: fcmToken))
+        case let .postFCMInstallation(installationId, fcmToken, platform, appVersion):
+            return .requestJSONEncodable(
+                RegisterFCMTokenRequestDTO(
+                    installationId: installationId,
+                    fcmToken: fcmToken,
+                    platform: platform,
+                    appVersion: appVersion
+                )
+            )
         }
     }
 }

@@ -47,6 +47,9 @@ final class BusinessCardDebugViewModel {
 
     private(set) var scanLog: [String] = []
 
+    /// 동기화 시도 기록. 재조정이 무엇을 지웠는지는 목록 장수 변화로만 보인다.
+    private(set) var syncLog: [String] = []
+
     /// 딥링크 조회가 진행 중인지. 스캐너는 프레임마다 같은 코드를 다시 올리므로 가드가 없으면
     /// 네트워크 요청이 중복으로 나가고 저장 순서도 보장되지 않는다.
     private var isResolvingDeepLink = false
@@ -210,6 +213,20 @@ final class BusinessCardDebugViewModel {
         }
     }
 
+    /// 명함첩을 서버와 맞춘다. `off` 백엔드면 저장소가 첫 줄에서 그대로 돌아온다.
+    func syncNow() async {
+        let before = receivedCardCount
+        let startedAt = Date()
+        do {
+            try await provider.syncReceivedCardsUseCase.execute()
+            let elapsed = Int(Date().timeIntervalSince(startedAt) * 1000)
+            await reloadReceivedCards()
+            syncNote("완료 \(elapsed)ms · \(before)장 → \(receivedCardCount)장")
+        } catch {
+            syncNote("실패: \(error)")
+        }
+    }
+
     func delete(id: String) async {
         note("삭제 시작 id=\(id.prefix(8)) (main=\(pthread_main_np() != 0))")
         do {
@@ -260,6 +277,11 @@ final class BusinessCardDebugViewModel {
     private func scanNote(_ message: String) {
         scanLog.insert(message, at: 0)
         DebugFileLog.append("[스캔] \(message)")
+    }
+
+    private func syncNote(_ message: String) {
+        syncLog.insert(message, at: 0)
+        DebugFileLog.append("[동기화] \(message)")
     }
 
     private func startExchange() async {

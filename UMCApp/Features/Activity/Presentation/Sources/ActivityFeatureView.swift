@@ -25,13 +25,23 @@ public struct ActivityFeatureView: View {
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
 
+    /// 출석 푸시가 지목한 일정 식별자. 출석 화면이 해당 세션을 펼친 뒤 비운다.
+    @Binding private var focusedScheduleId: String?
+
     // MARK: - Init
 
-    public init() {}
+    /// - Parameter focusedScheduleId: 딥링크로 지목된 일정. 기본값은 지목 없음.
+    public init(focusedScheduleId: Binding<String?> = .constant(nil)) {
+        _focusedScheduleId = focusedScheduleId
+    }
 
     // MARK: - Body
 
     public var body: some View {
-        ActivityView(container: di, errorHandler: errorHandler)
+        ActivityView(
+            container: di,
+            errorHandler: errorHandler,
+            focusedScheduleId: $focusedScheduleId
+        )
     }
 }

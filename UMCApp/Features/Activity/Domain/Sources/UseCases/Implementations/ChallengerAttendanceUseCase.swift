@@ -164,38 +164,19 @@ public final class ChallengerAttendanceUseCase: ChallengerAttendanceUseCaseProto
     // MARK: - 시간 윈도우
 
     /// 기준 시각(`now`)이 어느 출석 시간대에 속하는지 판정
+    ///
+    /// 판정 규칙 자체는 `AttendanceTimeWindow` 의 순수 이니셜라이저가 소유한다.
+    /// 전송 계층 없이 시간대만 필요한 호출부(워치 등)가 UseCase 조립 없이 같은 규칙을 쓴다.
     public func isWithinAttendanceTime(
         info: SessionInfo,
         now: Date
     ) -> AttendanceTimeWindow {
-        let onTimeThreshold = TimeInterval(
-            AttendancePolicy.onTimeThresholdMinutes * 60
+        AttendanceTimeWindow(
+            startsAt: info.startTime,
+            endsAt: info.endTime,
+            isAllDay: info.isAllDay,
+            now: now
         )
-        let lateThreshold = TimeInterval(
-            AttendancePolicy.lateThresholdMinutes * 60
-        )
-        let startTime = info.startTime
-
-        if info.isAllDay {
-            if now < startTime.addingTimeInterval(-onTimeThreshold) {
-                return .tooEarly
-            }
-            if now <= info.endTime {
-                return .onTime
-            }
-            return .expired
-        }
-
-        if now < startTime.addingTimeInterval(-onTimeThreshold) {
-            return .tooEarly
-        }
-        if now <= startTime.addingTimeInterval(onTimeThreshold) {
-            return .onTime
-        }
-        if now <= startTime.addingTimeInterval(lateThreshold) {
-            return .lateWindow
-        }
-        return .expired
     }
 
     // MARK: - 위치/지오펜스

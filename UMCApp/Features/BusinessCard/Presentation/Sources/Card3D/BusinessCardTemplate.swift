@@ -117,7 +117,7 @@ public enum BusinessCardTemplate {
             self.weight = weight
         }
 
-        /// `displayName` — 닉네임이 있으면 `"이름/닉네임"`. 한글 8자까지 안 잘린다.
+        /// `nameWithNickname` — 닉네임이 있으면 `"이름/닉네임"`. 한글 8자까지 안 잘린다.
         public static let name = TextSlot(
             fontSize: millimeters(4.878),
             width: millimeters(34.000),

@@ -146,7 +146,7 @@ private static func breathe() async throws {
 
 | ComposedPrim | 엔티티 이름 | 붙는 앵커 | 내용 |
 |--------------|------------|-----------|------|
-| `.name` | `Text_Name` | `Anchor_Name` | `MyCard.displayName` |
+| `.name` | `Text_Name` | `Anchor_Name` | `MyCard.nameWithNickname` |
 | `.university` | `Text_University` | `Anchor_University` | `university` |
 | `.partChipCapsule` | `Capsule_PartChip` | `Anchor_PartChip` | 캡슐 평면 (§4) |
 | `.partChipLabel` | `Text_PartChip` | `Anchor_PartChip` | `MyCard.partDisplayName` |
@@ -162,7 +162,7 @@ private static func breathe() async throws {
 문자열 규칙은 전부 2D(`BusinessCardFaceView`)와 공유한다. 다르게 쓰면 같은 명함이 2D 와 3D
 에서 다르게 읽히기 때문이다:
 
-- 이름은 `MyCard.displayName` — 닉네임이 있으면 `"이름/닉네임"` (`MyCard.swift:76-79`).
+- 이름은 `MyCard.nameWithNickname` — 닉네임이 있으면 `"이름/닉네임"` (`MyCard.swift:78-81`).
 - 파트는 `MyCard.partDisplayName` — 못 읽은 파트면 서버 원본 문자열 그대로 (`MyCard.swift:83-85`).
 - 기수는 「12」가 아니라 「12기」 (`BusinessCardComposer.swift:155-164`).
 - 링크 3줄은 `github → linkedIn → blog` 순으로 **값이 있는 것만 위에서부터 당겨 채운다**
