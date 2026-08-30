@@ -11,25 +11,48 @@ import SwiftUI
 
 /// v3 루트의 「나의 활동」 섹션 — 나의 스터디 / 나의 활동・프로젝트.
 ///
-/// - Important: 두 행 모두 탭 목적지가 아직 명세에 없다(MP-F10·F11 미정). 죽은 탭 제스처를
-///   만들지 않기 위해 두 행 모두 액션을 달지 않고 카운트만 표시한다. 목적지 연결은 후속 작업.
+/// - 나의 스터디(MP-F10): 스터디 화면의 정본 소유자가 Activity 피처라 그 탭으로 옮긴다.
+///   스터디 상세 목적지는 아직 없어 탭 전환까지만 하고 push 는 하지 않는다.
+/// - 나의 활동・프로젝트(MP-F11): MyPage 안의 활동 이력 목록으로 push 한다. 「프로젝트」 축은
+///   서버·도메인·DTO 에 엔티티가 없어 그릴 값 자체가 없다 — 행 제목만 시안대로 두고 목록은
+///   활동 이력만 담는다.
+///
+/// 액션이 `nil`이면 ``MyPageListRow``가 탭 제스처를 아예 달지 않는다.
 public struct MyActivitySection: View {
 
     // MARK: - Property
 
     private let sectionType: MyPageSectionType
     private let studyCount: String?
+    private let activityCount: String?
+    private let onStudyTap: (() -> Void)?
+    private let onActivityTap: (() -> Void)?
+    private let isActivityPending: Bool
 
     // MARK: - Init
 
-    /// - Parameter studyCount: 나의 스터디 수(서버 정수는 절대규칙 #2에 따라 String).
-    ///   아직 못 세었으면(조회 전·실패) `nil` — "0건"이 아니라 "-"로 그린다 (#1222).
+    /// - Parameters:
+    ///   - studyCount: 나의 스터디 수(서버 정수는 절대규칙 #2에 따라 String).
+    ///     아직 못 세었으면(조회 전·실패) `nil` — "0건"이 아니라 "-"로 그린다 (#1222).
+    ///   - activityCount: 활동 이력 수. `studyCount`와 같은 `nil` 규칙을 따른다.
+    ///   - onStudyTap: 나의 스터디 진입. 목적지가 준비되지 않았으면 `nil`.
+    ///   - onActivityTap: 활동 이력 진입. 프로필 스냅샷이 아직 없으면 `nil`.
+    ///   - isActivityPending: `true`면 목적지는 있는데 스냅샷을 기다리는 중이라는 뜻 —
+    ///     행이 chevron 대신 진행 표시를 보여주고 탭을 막는다.
     public init(
         sectionType: MyPageSectionType = .myActivity,
-        studyCount: String?
+        studyCount: String?,
+        activityCount: String?,
+        onStudyTap: (() -> Void)? = nil,
+        onActivityTap: (() -> Void)? = nil,
+        isActivityPending: Bool = false
     ) {
         self.sectionType = sectionType
         self.studyCount = studyCount
+        self.activityCount = activityCount
+        self.onStudyTap = onStudyTap
+        self.onActivityTap = onActivityTap
+        self.isActivityPending = isActivityPending
     }
 
     // MARK: - Body
@@ -44,7 +67,8 @@ public struct MyActivitySection: View {
                     systemIcon: "books.vertical",
                     iconColor: MyPageListIconColor.orange,
                     title: "나의 스터디",
-                    value: studyCount.map { "\($0)건" } ?? "-"
+                    value: studyCount.map { "\($0)건" } ?? "-",
+                    action: onStudyTap
                 )
 
                 MyPageListDivider()
@@ -52,7 +76,10 @@ public struct MyActivitySection: View {
                 MyPageListRow(
                     systemIcon: "folder",
                     iconColor: MyPageListIconColor.teal,
-                    title: "나의 활동 ・프로젝트"
+                    title: "나의 활동 ・프로젝트",
+                    value: activityCount.map { "\($0)건" } ?? "-",
+                    action: onActivityTap,
+                    isPending: isActivityPending
                 )
             }
         }

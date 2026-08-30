@@ -25,13 +25,23 @@ public struct ActivityFeatureView: View {
     @Environment(\.di) private var di
     @Environment(ErrorHandler.self) private var errorHandler
 
+    /// 다른 탭이 올린 진입 요청. 탭 루트가 처리한 뒤 비운다.
+    @Binding private var pendingEntry: ActivityEntry?
+
     /// 출석 푸시가 지목한 일정 식별자. 출석 화면이 해당 세션을 펼친 뒤 비운다.
     @Binding private var focusedScheduleId: String?
 
     // MARK: - Init
 
-    /// - Parameter focusedScheduleId: 딥링크로 지목된 일정. 기본값은 지목 없음.
-    public init(focusedScheduleId: Binding<String?> = .constant(nil)) {
+    /// - Parameters:
+    ///   - pendingEntry: 다른 탭에서 넘어온 진입 요청(예: 마이페이지 「나의 스터디」).
+    ///     탭 루트 ``ActivityView`` 가 해당 섹션으로 옮긴 뒤 `nil` 로 비운다.
+    ///   - focusedScheduleId: 딥링크로 지목된 일정. 기본값은 지목 없음.
+    public init(
+        pendingEntry: Binding<ActivityEntry?>,
+        focusedScheduleId: Binding<String?> = .constant(nil)
+    ) {
+        _pendingEntry = pendingEntry
         _focusedScheduleId = focusedScheduleId
     }
 
@@ -41,6 +51,7 @@ public struct ActivityFeatureView: View {
         ActivityView(
             container: di,
             errorHandler: errorHandler,
+            pendingEntry: $pendingEntry,
             focusedScheduleId: $focusedScheduleId
         )
     }

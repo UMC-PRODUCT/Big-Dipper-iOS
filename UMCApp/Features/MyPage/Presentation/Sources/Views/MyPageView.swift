@@ -34,20 +34,24 @@ struct MyPageView: View {
 
     private let container: DIContainer
     private let onOpenBusinessCard: (BusinessCardEntry) -> Void
+    private let onOpenStudy: () -> Void
 
     // MARK: - Init
 
     /// - Parameters:
     ///   - container: 섹션·목적지 화면이 UseCase를 resolve할 DI 컨테이너
     ///   - onOpenBusinessCard: 명함 카드 버튼·「받은 명함」 행이 App 셸에 명함 진입을 요청한다.
+    ///   - onOpenStudy: 「나의 스터디」 행이 App 셸에 스터디 화면 진입을 요청한다.
     ///   - viewModel: 프리뷰/테스트용 주입 지점 (기본값: container로 생성)
     init(
         container: DIContainer,
         onOpenBusinessCard: @escaping (BusinessCardEntry) -> Void,
+        onOpenStudy: @escaping () -> Void,
         viewModel: MyPageViewModel? = nil
     ) {
         self.container = container
         self.onOpenBusinessCard = onOpenBusinessCard
+        self.onOpenStudy = onOpenStudy
         _viewModel = State(initialValue: viewModel ?? MyPageViewModel(container: container))
     }
 
@@ -66,7 +70,14 @@ struct MyPageView: View {
                         isCardEditPending: viewModel.isCardEditPending
                     )
 
-                    MyActivitySection(studyCount: viewModel.activityStat.studyCount)
+                    MyActivitySection(
+                        studyCount: viewModel.activityStat.studyCount,
+                        activityCount: viewModel.activityStat.activityCount,
+                        onStudyTap: onOpenStudy,
+                        onActivityTap: activityLogsAction,
+                        // 활동 이력도 「명함 편집」과 같은 프로필 스냅샷을 기다린다.
+                        isActivityPending: viewModel.isCardEditPending
+                    )
                 }
             }
             .padding(.horizontal, Metrics.contentHorizontalPadding)
@@ -150,6 +161,16 @@ struct MyPageView: View {
     private var cardEditAction: (() -> Void)? {
         guard let profile = viewModel.profileData.value else { return nil }
         return { pathStore.push(MyPageDestination.cardEdit(profileData: profile), on: .mypage) }
+    }
+
+    /// 활동 이력 목록으로 이동하는 액션. ``cardEditAction``과 같은 규칙 — 스냅샷이 없으면
+    /// `nil`이고, 있으면 루트가 이미 로드해 둔 배열을 그대로 싣는다. 행 우측 카운트가
+    /// 세는 것과 **같은 파생**이어야 숫자와 목록이 어긋나지 않기 때문이다.
+    private var activityLogsAction: (() -> Void)? {
+        guard let profile = viewModel.profileData.value else { return nil }
+        return {
+            pathStore.push(MyPageDestination.activityLogs(profile.activityLogs), on: .mypage)
+        }
     }
 
     /// 명함 카드 로드 실패 후 재시도. 진입 시 네트워크 장애로 `profileData`도 함께
