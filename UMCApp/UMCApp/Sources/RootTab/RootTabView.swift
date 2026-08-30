@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+import ActivityDomain
 import ActivityPresentation
 import BusinessCardDomain
 import BusinessCardPresentation
@@ -39,6 +40,9 @@ struct RootTabView: View {
 
     /// 딥링크로 받은 명함 링크. 수신 모디파이어가 처리 후 비운다.
     @State private var pendingCardLink: CardLink?
+
+    /// 출석 푸시가 지목한 일정 식별자. 활동 탭 말단이 해당 세션을 펼친 뒤 비운다.
+    @State private var focusedAttendanceScheduleId: String?
 
     @Environment(\.di) private var di
     @Environment(DeepLinkStore.self) private var deepLinkStore
@@ -176,7 +180,7 @@ struct RootTabView: View {
                 }
             )
         case .activity:
-            ActivityFeatureView()
+            ActivityFeatureView(focusedScheduleId: $focusedAttendanceScheduleId)
         case .community:
             CommunityFeatureView(
                 onNoticeSelected: { detailItem in
@@ -209,6 +213,9 @@ struct RootTabView: View {
     /// 판정하므로(`CommunityThreadRoomViewModel.load()`) 여기서 미리 막지 않는다 — 링크
     /// 하나 열자고 App 이 커뮤니티 멤버십 규칙을 알 이유가 없다.
     ///
+    /// 출석 링크는 push 없이 활동 탭으로 옮기고 해당 세션 카드를 펼치는 것으로 끝난다 —
+    /// 출석 화면은 탭 루트라 밀어 넣을 목적지가 따로 없다.
+    ///
     /// - Note: 공지 링크(`umc://notice/{id}`)는 딥링크로 들어오지 않는다. 메시지 안의 링크
     ///   카드로만 열리고, 그 경로는 `CommunityFeatureView` 가 맡는다.
     private func consumePendingDeepLink() {
@@ -225,6 +232,10 @@ struct RootTabView: View {
             // 조회·저장·완료 화면은 `businessCardLinkReceiver` 가 맡는다.
             pathStore.selectedTab = .mypage
             pendingCardLink = link
+
+        case .attendance(let link):
+            pathStore.selectedTab = .activity
+            focusedAttendanceScheduleId = link.scheduleId
 
         case .message(.notice), .none:
             return
