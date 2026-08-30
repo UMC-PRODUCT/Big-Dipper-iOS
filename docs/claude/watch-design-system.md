@@ -373,11 +373,17 @@ static func state(measuredAt: Date, now: Date) -> WatchOfflineQueueState {
 }
 ```
 
-`state(measuredAt:now:)` 는 `Date.now` 를 직접 읽지 않는 순수 함수다(`WatchOfflineQueue.swift:14`) — 임의 시각을 주입해 경계값을 검증할 수 있다. 대기 중에는 "남은 유효 시간 N시간 M분"을 `replacingHint(_:)` 로 꽂고(`WatchOfflineQueue.swift:60-67, 69-74`), 만료되면 `.offlineQueueExpired` 화면으로 전환해 공결 사유 제출(iPhone)로 안내한다(`WatchFallbackPresentation.swift:172-182`).
+`state(measuredAt:now:)` 는 `Date.now` 를 직접 읽지 않는 순수 함수다(`WatchOfflineQueue.swift:14`) — 임의 시각을 주입해 경계값을 검증할 수 있다. 대기 중에는 "남은 유효 시간 N시간 M분"을 `replacing(hint:)` 로 꽂고(`WatchOfflineQueue.swift:60-67, 69-74`), 만료되면 `.offlineQueueExpired` 화면으로 전환해 공결 사유 제출(iPhone)로 안내한다(`WatchFallbackPresentation.swift:172-182`).
+
+`presentation` 은 순수 정적 값이라 화면을 그리는 시점에만 알 수 있는 문구는 `replacing(title:message:hint:)` 로 꽂는다 — P0-5 출석 시각(`· HH:MM`), P0-7 남은 유효 시간, P0-8 공지 제목이 전부 이 경로를 쓴다. 넘기지 않은 항목은 원래 문구를 그대로 둔다.
 
 ### 9-6) 아이콘 대체 기록
 
 스펙의 "bt-slash" 에 대응하는 Bluetooth 글리프가 SF Symbols 에 없어 `iphone.slash` 를 쓴다(`WatchFallbackPresentation.swift:100-103`). 대체 근거는 디자인 절충이 아니라 **문구 정합**이다 — 화면 문구가 "iPhone 과 연결이 끊겼습니다"라 `iphone.slash` 가 오히려 더 정확하다.
+
+### 9-7) DEBUG 폴백 하네스
+
+`WatchFallbackDebugMenu`(`Fallback/WatchFallbackDebugMenu.swift`, 파일 전체가 `#if DEBUG`)는 폴백 9종·오프라인 큐 카드·필수 확인 배너를 실기기에서 띄워 보는 검수용 진입점이다. 홈 글랜스의 "폴백 하네스" 행으로 들어간다(`HomeGlanceView.swift`). 실제 실패 신호(위치 권한·GPS 타임아웃·출석 API 응답·공지 수신)는 #1207·#1210 이 붙이므로, 그 전까지 이 하네스가 없으면 P0-3 을 뺀 8종은 코드를 고쳐야만 볼 수 있어 디자인·QA 검수가 불가능하다. 릴리스 빌드에는 포함되지 않는다(절대 규칙 #5).
 
 ## 10) 체크리스트 — 워치 화면을 올릴 때
 
