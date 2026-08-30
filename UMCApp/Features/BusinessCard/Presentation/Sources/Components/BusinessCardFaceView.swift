@@ -38,6 +38,7 @@ public struct BusinessCardFaceView: View {
         static let qrTitle = "QR 코드"
         static let qrLabel = "내 명함 QR 코드"
         static let qrUnavailable = "QR 코드를 만들지 못했어요"
+        static let flipIcon = "arrow.2.squarepath"
         static let flipToBack = "명함 뒷면 보기"
         static let flipToFront = "명함 앞면 보기"
     }
@@ -60,8 +61,6 @@ public struct BusinessCardFaceView: View {
         static let avatarSize: CGFloat = 70
         static let nameSpacing: CGFloat = 8
         static let chipSpacing: CGFloat = 5
-        static let flipButtonSize: CGFloat = 32
-        static let flipIconSize: CGFloat = 15
         static let logoWidth: CGFloat = 47
         static let logoHeight: CGFloat = 15.16
         static let buttonSpacing: CGFloat = 10
@@ -169,24 +168,13 @@ public struct BusinessCardFaceView: View {
     }
 
     private var flipButtonBody: some View {
-        Button {
+        CardGlassCircleButton(
+            systemName: Constants.flipIcon,
+            label: isFlipped ? Constants.flipToFront : Constants.flipToBack
+        ) {
             onFlip?()
-        } label: {
-            Image(systemName: "arrow.2.squarepath")
-                .font(.system(size: Metrics.flipIconSize))
-                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-                .foregroundStyle(Color.white)
-                .frame(minWidth: Metrics.flipButtonSize, minHeight: Metrics.flipButtonSize)
-                .glassEffect(.clear, in: Circle())
         }
         .accessibilityLabel(isFlipped ? Constants.flipToFront : Constants.flipToBack)
-    }
-
-    /// 시안 더미 `이름/닉네임` 규칙 — 닉네임이 비어 있으면 이름만 싣는다
-    /// (명함_m·명함_s 와 같은 규칙).
-    private var displayName: String {
-        let nickname = card.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-        return nickname.isEmpty ? card.name : "\(card.name)/\(nickname)"
     }
 
     private var frontFace: some View {
@@ -195,9 +183,14 @@ public struct BusinessCardFaceView: View {
 
             VStack(alignment: .leading, spacing: Metrics.contentSpacing) {
                 HStack(alignment: .lastTextBaseline, spacing: Metrics.nameSpacing) {
-                    Text(displayName)
+                    // 표기 규칙은 ``MyCard/nameWithNickname`` 한 곳에 있다 — 명함_l·_m·_s
+                    // 공통이고 원출처는 명함_s 시안(`12657:35806`)이다.
+                    // 둘 다 `lineLimit(1)` 이라 폭이 모자라면 어느 쪽이 잘릴지 규칙이
+                    // 없었다. 이름이 1차 식별자라 학교가 먼저 말줄임되게 못 박는다 (#1236).
+                    Text(card.nameWithNickname)
                         .appFont(.title3, weight: .semibold, color: Color.white)
                         .lineLimit(1)
+                        .layoutPriority(1)
 
                     Text(card.university)
                         .appFont(.footnote, color: Color.white)
@@ -214,13 +207,7 @@ public struct BusinessCardFaceView: View {
         }
         // 아바타·이름·학교·칩 4개가 따로 읽히면 누구 명함인지 조립해야 알 수 있다.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(frontAccessibilityLabel)
-    }
-
-    /// 「홍길동/길동, ○○대학교, iOS 파트, 12기」.
-    private var frontAccessibilityLabel: String {
-        [displayName, card.university, "\(card.partDisplayName) 파트", "\(card.generation)기"]
-            .joined(separator: ", ")
+        .accessibilityLabel(card.frontFaceAccessibilityLabel)
     }
 
     /// 뒷면은 아바타 자리에 QR 이 오고, 이름·칩 자리에 링크 3줄이 온다.

@@ -14,6 +14,7 @@ SHELL := /bin/bash
 
 SCHEME ?= UMCApp
 WORKSPACE := UMCApp.xcworkspace
+ROOT := ..
 DESTINATION ?= platform=iOS Simulator,name=iPhone 17 Pro
 CONFIGURATION ?= Debug
 
@@ -96,6 +97,12 @@ graph: ## 의존성 그래프(graph.png) 생성
 .PHONY: cache-warm
 cache-warm: ## Tuist 바이너리 캐시 워밍업
 	@$(TUIST) cache
+
+##@ 에셋
+
+.PHONY: card-template
+card-template: ## 3D 명함 베이스 USDZ 템플릿 재생성 (#1246 규약)
+	@python3 $(ROOT)/tools/card-template/build_template.py
 
 ##@ Xcode
 

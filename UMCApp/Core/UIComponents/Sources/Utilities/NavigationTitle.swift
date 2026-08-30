@@ -69,6 +69,9 @@ public enum NavigationTitle {
         case root = "마이페이지"
         /// 「명함 관리 › 명함 편집」이 여는 프로필 편집 폼 — 시안 `12804:30498` 의 타이틀.
         case cardEdit = "명함 편집"
+        /// 「나의 활동 ・프로젝트」 행이 여는 활동 이력 목록 (MP-F11).
+        /// 문자열은 행 레이블과 정확히 같아야 한다 — 누른 이름과 도착한 화면 이름이 갈린다.
+        case activityLogs = "나의 활동 ・프로젝트"
         case settings = "설정"
         case writtenPosts = "내가 쓴 글"
         case commentedPosts = "댓글 단 글"

@@ -33,8 +33,9 @@ public final class MyPageViewModel {
     ///
     /// `myCard`는 프로필 응답이 도착하는 즉시 `.loaded`가 되지만, `profileData`는 이어지는
     /// `/member-oauth/me` 왕복(``syncConnectedSocials``)까지 끝나야 `.loaded`가 된다 —
-    /// 그래서 매 진입마다 "명함 카드는 떠 있는데 편집 스냅샷은 아직"인 구간이 생긴다. 이
+    /// 그래서 처음 진입에 "명함 카드는 떠 있는데 편집 스냅샷은 아직"인 구간이 생긴다. 이
     /// 구간에는 명함 편집 행을 비활성화해 조용히 씹히는 탭을 막는다(뷰가 소비).
+    /// pop 복귀 재조회는 로드된 프로필을 유지하므로(``fetchProfile``) 다시 켜지지 않는다.
     public var isCardEditPending: Bool {
         switch profileData {
         case .idle, .loading: return true
@@ -69,6 +70,10 @@ public final class MyPageViewModel {
     /// `loadBusinessCard` 중복 호출 가드. 로드된 카드를 유지한 채 재조회하는 동안에는
     /// `myCard`가 `.loading`이 아니라서 상태만으로는 인플라이트를 알 수 없다.
     private var isCardLoadInFlight = false
+
+    /// `fetchProfile` 중복 호출 가드. 위와 같은 이유 — 로드된 프로필을 유지한 채
+    /// 재조회하는 동안 `profileData`는 `.loading`이 아니다.
+    private var isProfileLoadInFlight = false
 
     private let container: DIContainer
     private let myPageProvider: MyPageUseCaseProviding
@@ -111,7 +116,12 @@ public final class MyPageViewModel {
 
     /// 내 프로필을 조회합니다.
     ///
-    /// 이미 로딩 중이면 중복 호출을 무시합니다. 에러 분기:
+    /// 이미 로드된 프로필이 있으면 그대로 둔 채 재조회합니다(stale-while-revalidate,
+    /// ``loadBusinessCard``와 같은 정책) — pop 복귀 재조회마다 `.loading`으로 밀면
+    /// ``isCardEditPending``이 다시 켜져 「명함 편집」·「나의 활동 ・프로젝트」 행이 함께
+    /// 스피너를 돌린다. 처음 진입·실패 후 재시도만 로딩 상태를 그립니다.
+    ///
+    /// 이미 조회가 진행 중이면 중복 호출을 무시합니다. 에러 분기:
     /// - `CancellationError` / `NSURLErrorCancelled` → 이전 상태 복원
     /// - `AppError` → `.failed(error)`
     /// - 그 외 → `.failed(.unknown(message:))`
@@ -119,10 +129,14 @@ public final class MyPageViewModel {
     /// - Parameter forceRefresh: `true`이면 세션 프로필 캐시를 우회해 서버 최신으로 갱신한다.
     @MainActor
     public func fetchProfile(forceRefresh: Bool = false) async {
-        if profileData.isLoading { return }
+        if isProfileLoadInFlight { return }
+        isProfileLoadInFlight = true
+        defer { isProfileLoadInFlight = false }
 
         let previousState = profileData
-        profileData = .loading
+        if profileData.value == nil {
+            profileData = .loading
+        }
 
         do {
             var profile = try await myPageProvider.fetchMyPageProfileUseCase.execute(
