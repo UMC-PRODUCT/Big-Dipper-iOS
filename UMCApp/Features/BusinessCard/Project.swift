@@ -18,6 +18,11 @@ let project = featureProject(
         .project(target: "CoreNearbyExchange", path: .relativeToRoot("Core/NearbyExchange")),
         .project(target: "CoreDI", path: .relativeToRoot("Core/DI")),
     ],
+    presentationResources: [
+        // 3D 명함 베이스 USDZ 템플릿 (#1246). 같은 폴더의 `.usda`·`.png` 는 리뷰용 생성물이라
+        // 번들에 싣지 않는다 — 런타임이 읽는 것은 usdz 하나뿐이다.
+        "Presentation/Resources/*.usdz",
+    ],
     includesDomainTests: true,
     domainTestDependencies: [
         .project(target: "UMCFoundation", path: .relativeToRoot("Core/Foundation")),

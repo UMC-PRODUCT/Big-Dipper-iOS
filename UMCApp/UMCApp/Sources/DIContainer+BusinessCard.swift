@@ -44,13 +44,40 @@ extension DIContainer {
             PeerCardRepository(adapter: self.resolve(MoyaNetworkAdapter.self))
         }
         register(ReceivedCardRepositoryProtocol.self) {
+            // 서버에 명함 API 가 아직 없다 — 릴리스는 remote 없이(로컬 전용) 돈다.
+            // 검증 화면에서만 Mock/실서버로 바꿔 낀다(절대 규칙 #5).
+            #if DEBUG
+            ReceivedCardRepository(
+                modelContext: self.resolve(ModelContext.self),
+                remote: CardSyncBackendChoice.current.makeRemote(
+                    adapter: self.resolve(MoyaNetworkAdapter.self)
+                )
+            )
+            #else
             ReceivedCardRepository(modelContext: self.resolve(ModelContext.self))
+            #endif
         }
         register(ActivityStatRepositoryProtocol.self) {
+            // 서버 `GET /api/v1/members/me/stats` 가 아직 없어 3소스 조합이 릴리스 기본이다.
+            // 검증 화면에서 단일 엔드포인트 구현으로 바꿔 낀다.
+            #if DEBUG
+            if CardSyncBackendChoice.current == .live {
+                MemberStatsRepository(
+                    adapter: self.resolve(MoyaNetworkAdapter.self),
+                    memberProfileRepository: self.resolve(MemberProfileRepositoryProtocol.self)
+                )
+            } else {
+                ActivityStatRepository(
+                    adapter: self.resolve(MoyaNetworkAdapter.self),
+                    memberProfileRepository: self.resolve(MemberProfileRepositoryProtocol.self)
+                )
+            }
+            #else
             ActivityStatRepository(
                 adapter: self.resolve(MoyaNetworkAdapter.self),
                 memberProfileRepository: self.resolve(MemberProfileRepositoryProtocol.self)
             )
+            #endif
         }
         register(QRCodeGenerating.self) {
             CoreImageQRCodeGenerator()
