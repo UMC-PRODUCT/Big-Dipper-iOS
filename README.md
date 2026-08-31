@@ -30,20 +30,18 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 ## 🛠️ 기술 스택
 
 <div align="center">
-<img src="https://github.com/user-attachments/assets/a9e5f0bc-53f2-4650-b66f-7ef1c82a6eb0" width="100%" alt="기술 스택">
+<img width="1696" height="1021" alt="Image" src="https://github.com/user-attachments/assets/d683ff7d-0d4f-419a-92c1-4bd81510e0b3" />
 </div>
 
 ## 🏢 iOS 팀 조직도
-<div align="center">
 
-| 🥇 1기 · 2025.12.27 – 2026.02.20 | 🥈 2기 · 진행 중 |
-|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/04b68ba4-27ab-4c0c-9f72-9a2c4c6e3f9e" width="400" alt="iOS 1기 조직도"> | <img src="https://github.com/user-attachments/assets/de36bd93-9c6d-44cd-bbd1-2843103e878f" width="400" alt="iOS 2기 조직도"> |
+| 기수 | 기간 | 상태 | 조직도 · 팀원 |
+|:---:|:---:|:---:|:---:|
+| 🥇 1기 | 2025.12.27 – 2026.02.20 | 종료 | [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team) |
+| 🥈 2기 | 2026.03 – 2026.08.22 | 종료 | [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team) |
 
-</div>
-
-> 기수별 팀원 구성(사진·역할·GitHub)은 [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team)에서,
-> 신규 기능·운영 기록은 [Wiki › Release History](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Release-History)에서 확인하세요.
+> 기수별 조직도 이미지와 팀원 구성(사진·역할·GitHub)은 [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team)에 누적 관리합니다.
+> 새 기수는 Wiki에 추가하고 위 표에 한 줄만 더합니다. 기수별 기능·운영 기록은 [Wiki › Release History](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Release-History)에서 확인하세요.
 
 ## 📚 개발 문서 (Wiki)
 
