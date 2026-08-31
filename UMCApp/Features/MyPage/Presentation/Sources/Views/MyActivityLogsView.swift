@@ -2,7 +2,7 @@
 //  MyActivityLogsView.swift
 //  MyPagePresentation
 //
-//  Created by JEONG on 8/29/26.
+//  Created by euijjang97 on 8/29/26.
 //
 
 import CoreDomain

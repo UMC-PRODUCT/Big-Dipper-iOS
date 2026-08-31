@@ -77,6 +77,9 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
 - View 내부 전용 상수는 `fileprivate enum Constants`
 - 약어 금지(`id`/`URL`/`API` 등 도메인 표준만 허용) · 타입명을 이름에 박지 않기
 - MARK: `// MARK: - Property` / `// MARK: - Body` / `// MARK: - Function`
+- 작성자 표기는 `euijjang97` 로 통일 — 소스 파일 헤더는 `//  Created by euijjang97 on {날짜}.`,
+  스크립트(`.sh`/`.py`/`Makefile`/워크플로 `.yml`)는 같은 블록을 `#` 주석으로,
+  문서(`.md`)·위키의 작성자 필드는 `제옹(euijjang97)`
 - 상세 + 안티패턴 예시: `docs/claude/coding-style.md`
 
 ## 에러 처리 (요약)

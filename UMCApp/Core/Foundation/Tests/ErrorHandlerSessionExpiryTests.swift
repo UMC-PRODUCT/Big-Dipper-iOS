@@ -2,7 +2,7 @@
 //  ErrorHandlerSessionExpiryTests.swift
 //  UMCFoundationTests
 //
-//  Created by JEONG on 8/12/26.
+//  Created by euijjang97 on 8/12/26.
 //
 
 import Foundation

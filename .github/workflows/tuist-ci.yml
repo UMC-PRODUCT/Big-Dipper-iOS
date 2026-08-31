@@ -1,3 +1,10 @@
+#
+#  tuist-ci.yml
+#  umc-product-iOS
+#
+#  Created by euijjang97 on 7/5/26.
+#
+
 name: Tuist CI
 
 # 저장소의 단일 빌드/테스트 게이트 (이슈 #1128).

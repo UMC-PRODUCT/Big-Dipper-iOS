@@ -2,7 +2,7 @@
 //  Error+TransportFailure.swift
 //  UMCFoundation
 //
-//  Created by JEONG on 8/12/26.
+//  Created by euijjang97 on 8/12/26.
 //
 //  요청이 서버에 도달하지 못한 실패를 판별하기 위한 공용 헬퍼.
 //  세션 만료(서버의 토큰 거부)와 구분해야 하는 지점에서 사용합니다.

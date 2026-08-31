@@ -2,7 +2,7 @@
 
 공지 생성 화면에서 역할별 타겟(지부/학교/파트) 선택 규칙과 API 요청 매핑을 정리한 문서입니다.
 
-- 작성자: euijjang97
+- 작성자: 제옹(euijjang97)
 - 기준 코드:
   - `AppProduct/AppProduct/Features/Notice/Presentation/ViewModels/NoticeEditor/NoticeEditorViewModel+Targeting.swift`
   - `AppProduct/AppProduct/Features/Notice/Presentation/ViewModels/NoticeEditor/NoticeEditorViewModel+Submit.swift`

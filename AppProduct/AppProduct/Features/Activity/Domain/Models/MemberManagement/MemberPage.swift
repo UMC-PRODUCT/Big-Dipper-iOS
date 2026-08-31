@@ -2,7 +2,7 @@
 //  MemberPage.swift
 //  AppProduct
 //
-//  Created by JEONG on 5/17/26.
+//  Created by euijjang97 on 5/17/26.
 //
 
 import Foundation

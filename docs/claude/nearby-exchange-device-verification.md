@@ -8,7 +8,7 @@
 > 있는 **메인테이너가 직접 수행해야 한다** — 코드로 끝낼 수 없는 blocked 항목이다. 이 문서의
 > 3장 체크리스트가 그 작업 목록이고, 포털 화면에서의 실제 확인이 필요한 부분은 본문에 표시했다.
 
-- 작성자: euijjang97
+- 작성자: 제옹(euijjang97)
 - 기준 코드:
   - `UMCApp/Project.swift`
   - `UMCApp/UMCApp.entitlements`

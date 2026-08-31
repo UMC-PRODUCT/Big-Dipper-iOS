@@ -2,7 +2,7 @@
 //  ReviewRequestPolicyTests.swift
 //  UMCFoundationTests
 //
-//  Created by JEONG on 7/30/26.
+//  Created by euijjang97 on 7/30/26.
 //
 
 import Foundation

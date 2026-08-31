@@ -1,3 +1,10 @@
+#
+#  Makefile
+#  UMCApp
+#
+#  Created by euijjang97 on 4/24/26.
+#
+
 # UMCApp Tuist Makefile
 #
 # 팀 전원이 동일한 Tuist 버전(mise.toml 고정)으로 작업하기 위한 래퍼입니다.

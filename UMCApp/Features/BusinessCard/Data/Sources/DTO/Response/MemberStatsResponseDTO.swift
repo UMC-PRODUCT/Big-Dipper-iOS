@@ -2,7 +2,7 @@
 //  MemberStatsResponseDTO.swift
 //  BusinessCardData
 //
-//  Created by JEONG on 8/30/26.
+//  Created by euijjang97 on 8/30/26.
 //
 
 import Foundation

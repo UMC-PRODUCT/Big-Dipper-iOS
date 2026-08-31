@@ -1,4 +1,10 @@
 #!/bin/sh
+#
+#  ci_post_clone.sh
+#  AppProduct
+#
+#  Created by euijjang97 on 3/5/26.
+#
 
 set -e
 

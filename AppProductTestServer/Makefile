@@ -1,3 +1,10 @@
+#
+#  Makefile
+#  AppProductTestServer
+#
+#  Created by euijjang97 on 4/25/26.
+#
+
 # AppProductTestServer Makefile
 #
 # CoreNetwork / 앱 통합 테스트용 로컬 Vapor 서버를 손쉽게 띄우고 내릴 수 있는 래퍼입니다.

@@ -3,7 +3,7 @@
 > 워치페이스 accessory 위젯 3종(#1215)의 데이터 흐름·모듈 배치·App Group·갱신 정책 레퍼런스.
 > 워치 토큰·Glass 절제 규칙은 `docs/claude/watch-design-system.md`, WC 통신 계약은 `UMCApp/Core/WatchConnectivity` 소스 주석 참고.
 
-- 작성자: euijjang97
+- 작성자: 제옹(euijjang97)
 - 기준 코드:
   - `UMCApp/Core/WatchConnectivity/Sources/Complication/ComplicationSnapshot.swift`
   - `UMCApp/Core/WatchConnectivity/Sources/Complication/ComplicationStore.swift`

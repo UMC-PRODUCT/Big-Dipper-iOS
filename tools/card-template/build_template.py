@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+#
+#  build_template.py
+#  umc-product-iOS
+#
+#  Created by euijjang97 on 8/31/26.
+#
+
 """3D 명함 베이스 USDZ 템플릿 빌더 (#1246).
 
 이 스크립트가 앵커 규약의 **진실 원천**이다. 좌표를 고치는 곳은 여기 한 곳이고,

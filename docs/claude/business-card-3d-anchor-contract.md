@@ -5,7 +5,7 @@
 합성)을 구현할 때 실제로 열어 보게 되는 Swift 심볼·테스트·재생성 커맨드가 이 문서의 범위다.
 Phase 0(#1245) 스파이크 실측치는 `docs/claude/business-card-3d-spike.md` 를 본다.
 
-- 작성자: euijjang97
+- 작성자: 제옹(euijjang97)
 - 기준 코드:
   - `UMCApp/Features/BusinessCard/Presentation/Sources/Card3D/BusinessCardTemplate.swift`
   - `UMCApp/Features/BusinessCard/Presentation/Resources/BusinessCardTemplate.usdz`

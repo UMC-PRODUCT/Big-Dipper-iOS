@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+#
+#  build-app.sh
+#  Stella
+#
+#  Created by euijjang97 on 4/29/26.
+#
+
 # Wraps the SwiftPM `stella` executable into a macOS .app bundle.
 #
 # Output: dist/Stella.app

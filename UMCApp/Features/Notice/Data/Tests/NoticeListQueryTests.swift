@@ -2,7 +2,7 @@
 //  NoticeListQueryTests.swift
 //  NoticeDataTests
 //
-//  Created by JEONG on 8/7/26.
+//  Created by euijjang97 on 8/7/26.
 //
 
 import Testing

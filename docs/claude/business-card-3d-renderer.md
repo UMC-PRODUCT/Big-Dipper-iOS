@@ -6,7 +6,7 @@
 `docs/claude/business-card-3d-anchor-contract.md` 를 본다 — 이 문서에서 반복하지 않는다.
 Phase 0 스파이크 실측치(첫 진입 지연, 스냅샷 비용)는 `docs/claude/business-card-3d-spike.md`.
 
-- 작성자: euijjang97
+- 작성자: 제옹(euijjang97)
 - 기준 코드:
   - `UMCApp/Features/BusinessCard/Presentation/Sources/Card3D/BusinessCard3DView.swift`
   - `UMCApp/Features/BusinessCard/Presentation/Sources/Card3D/BusinessCard3DScene.swift`

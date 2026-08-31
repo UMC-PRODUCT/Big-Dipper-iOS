@@ -2,7 +2,7 @@
 
 공지 작성 화면(`NoticeEditorView`)의 두 축인 **리치 텍스트 / 마크다운 파이프라인**과 **Apple Intelligence(FoundationModels) 기반 본문 개선 기능**을 한 문서에 정리합니다. 두 기능은 동일한 `NoticeEditorViewModel`을 공유하며, AI 결과물이 다시 마크다운 파이프라인으로 흘러 들어가 왕복(round-trip)을 이룹니다.
 
-- 작성자: euijjang97
+- 작성자: 제옹(euijjang97)
 - 기준 코드:
   - `AppProduct/AppProduct/Features/Notice/Presentation/Views/NoticeEditor/RichTextEditor/NoticeRichTextView.swift`
   - `AppProduct/AppProduct/Features/Notice/Presentation/Views/NoticeEditor/RichTextEditor/Serializer/MarkdownSerializer.swift`

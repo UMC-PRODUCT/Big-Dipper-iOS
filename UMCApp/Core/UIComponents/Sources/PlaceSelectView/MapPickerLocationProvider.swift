@@ -2,7 +2,7 @@
 //  MapPickerLocationProvider.swift
 //  CoreUIComponents
 //
-//  Created by JEONG EUI CHAN on 7/27/26.
+//  Created by euijjang97 on 7/27/26.
 //
 
 import CoreLocation

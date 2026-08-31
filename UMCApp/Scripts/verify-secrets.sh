@@ -1,6 +1,11 @@
 #!/bin/sh
 #
-# verify-secrets.sh
+#  verify-secrets.sh
+#  UMCApp
+#
+#  Created by euijjang97 on 8/13/26.
+#
+
 # UMCApp 앱 타겟의 Pre-action Run Script (Project.swift 의 scripts: 참고)
 #
 # 목적: 서드파티 시크릿이 빠진 채로 Release 빌드가 나가서 런타임에만 조용히 깨지는 상황을 막는다.

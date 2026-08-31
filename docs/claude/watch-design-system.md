@@ -3,7 +3,7 @@
 > 워치 화면(#1206~#1209·#1215)이 사용하는 토큰·표면·컴포넌트 레퍼런스와 **Glass 허용/금지 매트릭스**.
 > 핵심 요약은 `CLAUDE.md` 참고. iOS 디자인 시스템은 `docs/claude/design-system.md` 참고 — 워치는 그 규칙을 따르지 않는다.
 
-- 작성자: euijjang97
+- 작성자: 제옹(euijjang97)
 - 기준 코드:
   - `UMCApp/Core/WatchDesignSystem/Project.swift`
   - `UMCApp/Core/WatchDesignSystem/Sources/Tokens/WatchColor.swift`

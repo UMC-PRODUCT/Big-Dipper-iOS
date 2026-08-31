@@ -1363,4 +1363,4 @@ func withdraw(amount: Int) async {
 | | | - `NetworkError`에 `noNetwork`, `timeout` 케이스 추가 |  |
 | | | - `unwrap()` 메서드 사용법 문서화 |  |
 | | | - FAQ Q6 추가: NetworkError/RepositoryError/DomainError 차이점 |  |
-| 2026-01-09 | 1.0.0 | 최초 작성 | euijjang97 |
+| 2026-01-09 | 1.0.0 | 최초 작성 | 제옹(euijjang97) |

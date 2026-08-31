@@ -6,7 +6,7 @@
 `docs/claude/business-card-3d-spike.md` 다. 이 문서의 독자는 #1247(회전·상호작용 뷰)과
 #1249(2D 스냅샷 캐시)를 구현하며 `compose` 를 실제로 호출하게 될 사람이다.
 
-- 작성자: euijjang97
+- 작성자: 제옹(euijjang97)
 - 기준 코드:
   - `UMCApp/Features/BusinessCard/Presentation/Sources/Card3D/BusinessCardComposer.swift`
   - `UMCApp/Features/BusinessCard/Presentation/Sources/Card3D/BusinessCardTemplate.swift`

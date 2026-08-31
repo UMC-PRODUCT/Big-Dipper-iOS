@@ -2,7 +2,7 @@
 //  MPCTransportDiscoveryTests.swift
 //  CoreNearbyExchangeTests
 //
-//  Created by JEONG on 8/28/26.
+//  Created by euijjang97 on 8/28/26.
 //
 
 import Foundation
