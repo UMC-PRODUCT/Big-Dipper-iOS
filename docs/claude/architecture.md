@@ -3,6 +3,8 @@
 > 아키텍처 계층, ViewModel/View 패턴, 에러 처리 시스템에 대한 상세 레퍼런스.
 > 핵심 요약은 `CLAUDE.md` 참고.
 
+- 작성자: 제옹(euijjang97)
+
 ## Architecture
 
 **Feature-Based Modular + Clean Architecture + Observation**

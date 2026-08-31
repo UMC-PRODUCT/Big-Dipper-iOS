@@ -5,6 +5,8 @@
 
 토큰 정의: `DefaultConstant.swift`, `DefaultSpacing.swift`
 
+- 작성자: 제옹(euijjang97)
+
 ## 레이아웃 상수 (`DefaultConstant`)
 
 | 상수 | 값 | 용도 |

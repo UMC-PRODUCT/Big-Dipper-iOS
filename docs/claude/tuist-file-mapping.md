@@ -11,6 +11,8 @@
 | 잔여 판단 | 7 — 목적지는 정했으나 신규 모듈/의존성/파일분할 등 메인테이너 최종 승인 필요 |
 | 분류 근거 | 레거시가 이미 `Domain/Data/Presentation` 구조라 대부분 기계적으로 결정 |
 
+- 작성자: 제옹(euijjang97)
+
 ## 규칙 요약 (표 읽는 법)
 
 - `Features/{X}/Presentation/**` → **{X}Presentation** · `Domain/**` → **{X}Domain** · `Data|DTO/**` → **{X}Data**

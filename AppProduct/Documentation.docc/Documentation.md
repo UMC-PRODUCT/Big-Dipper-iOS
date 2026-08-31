@@ -2,6 +2,8 @@
 
 <!--@START_MENU_TOKEN@-->Summary<!--@END_MENU_TOKEN@-->
 
+- 작성자: 제옹(euijjang97)
+
 ## Overview
 
 <!--@START_MENU_TOKEN@-->Text<!--@END_MENU_TOKEN@-->

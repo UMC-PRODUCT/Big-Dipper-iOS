@@ -3,6 +3,8 @@
 > 빌드 명령, Tuist 모듈화 구조, 의존성 방향에 대한 상세 레퍼런스.
 > 핵심 요약은 `CLAUDE.md` 참고.
 
+- 작성자: 제옹(euijjang97)
+
 ## Build & Run
 
 프로젝트는 `AppProduct/`(레거시 xcodeproj)와 `UMCApp/`(Tuist 기반) **두 축**으로 관리됩니다.

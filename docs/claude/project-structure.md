@@ -3,6 +3,8 @@
 > 레거시 `AppProduct/` 디렉터리 구조 레퍼런스. (Tuist `UMCApp/` 구조는 `docs/claude/build-and-modules.md` 참고)
 > 핵심 요약은 `CLAUDE.md` 참고.
 
+- 작성자: 제옹(euijjang97)
+
 ```
 AppProduct/AppProduct/
 ├── Core/

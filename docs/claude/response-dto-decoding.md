@@ -8,6 +8,8 @@ JSON Number 가 아닌 String 으로 오므로, Response DTO 가 `Int` 로
 선언된 필드를 그대로 디코딩하면 런타임 `DecodingError.typeMismatch`
 가 발생합니다.
 
+- 작성자: 제옹(euijjang97)
+
 ## 원칙
 
 1. **Response DTO 의 모든 `Int` 필드는 String 폴백을 보장한다**

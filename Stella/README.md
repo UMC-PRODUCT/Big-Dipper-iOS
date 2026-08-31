@@ -2,6 +2,8 @@
 
 UMC PRODUCT API와 iOS 코드베이스(`AppProduct/`, `UMCApp/`)의 Moya Router 연결 상태를 추적하는 SwiftPM 도구입니다.
 
+- 작성자: 제옹(euijjang97)
+
 ## Build
 
 ```bash

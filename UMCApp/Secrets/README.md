@@ -2,6 +2,8 @@
 
 앱 타겟의 `BASE_URL`·`KAKAO_KEY`·`TMAP_SECRET_KEY` 를 빌드 설정(xcconfig) → `Info.plist` → `Config`(UMCFoundation) 경로로 주입합니다.
 
+- 작성자: 제옹(euijjang97)
+
 ## 파일 구성
 
 | 파일 | 배치 경로 | 커밋 | 역할 |

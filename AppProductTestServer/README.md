@@ -2,6 +2,8 @@
 
 💧 A project built with the Vapor web framework.
 
+- 작성자: 제옹(euijjang97)
+
 ## Getting Started
 
 To build the project using the Swift Package Manager, run the following command in the terminal from the root of the project:
