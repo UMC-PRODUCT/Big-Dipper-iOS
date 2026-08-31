@@ -49,7 +49,7 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 ## 🛠️ 기술 스택
 
 <div align="center">
-<img width="1696" height="1021" alt="Image" src="https://github.com/user-attachments/assets/d683ff7d-0d4f-419a-92c1-4bd81510e0b3" />
+<img width="1696" height="1557" alt="Image" src="https://github.com/user-attachments/assets/23926cd3-b215-41f3-9174-458b1c884d81" />
 </div>
 
 ## 🏢 iOS 팀 조직도
@@ -58,6 +58,7 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 |:---:|:---:|:---:|:---:|
 | 🥇 1기 | 2025.12.27 – 2026.02.20 | 종료 | [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team) |
 | 🥈 2기 | 2026.03.10 – 2026.08.22 | 종료 | [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team) |
+| 🥉 3기 | 2026.09.05 – | 진행 중 | [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team) |
 
 > 기수별 조직도 이미지와 팀원 구성(사진·역할·GitHub)은 [Wiki › Team](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Team)에 누적 관리합니다.
 > 새 기수는 Wiki에 추가하고 위 표에 한 줄만 더합니다. 기수별 기능·운영 기록은 [Wiki › Release History](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Release-History)에서 확인하세요.
