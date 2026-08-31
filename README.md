@@ -59,9 +59,13 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 | 🧱 모듈 구조 (Tuist) | [Module Structure](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Module-Structure) |
 | ⚙️ 빌드 & 실행 | [Build & Run](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Build-and-Run) |
 | 🔀 Git 워크플로우 | [Git Workflow](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Git-Workflow) |
+| 🔒 보호 경로 (CODEOWNERS) | [Protected Paths](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Protected-Paths) |
 | 🛰️ API 커버리지 (Stella) | [Stella](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Stella) |
 
 > 신규 합류자는 [Wiki Home](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki) → **빌드 & 실행** 순서로 시작하세요.
+>
+> 일부 경로(`Core/Foundation`·`Core/DesignSystem`·`UMCApp/Tuist/` 등)는 PR에 **소유자 승인**이 필요합니다.
+> 대상 경로와 이유는 [Protected Paths](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Protected-Paths)를 참고하세요.
 
 ## 🔑 시크릿 설정
 
