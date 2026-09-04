@@ -8,7 +8,7 @@ struct WatchGlance: Equatable, Sendable {
 
     /// `nil` 이면 오늘 세션이 없다.
     let session: GlanceSession?
-    /// 승인 대기 건수. 서버가 정수를 String 으로 내려주므로 그대로 String 이다 (절대 규칙 #2).
+    /// 승인 대기 건수. 서버가 정수를 String 으로 내려주므로 그대로 String 이다 (핵심 규칙 #2).
     let pendingApprovalCount: String
     /// 미확인 The Ping 건수.
     let unreadPingCount: String
@@ -24,7 +24,7 @@ struct WatchGlance: Equatable, Sendable {
 
 struct GlanceSession: Equatable, Sendable, Identifiable {
 
-    /// 스케줄 식별자 (절대 규칙 #2 — 서버 정수는 전 레이어 String).
+    /// 스케줄 식별자 (핵심 규칙 #2 — 서버 정수는 전 레이어 String).
     let id: String
     let title: String
     let startsAt: Date

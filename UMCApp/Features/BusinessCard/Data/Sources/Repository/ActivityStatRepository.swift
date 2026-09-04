@@ -76,7 +76,7 @@ public final class ActivityStatRepository: ActivityStatRepositoryProtocol, @unch
         return page.hasNext ? "\(page.itemCount)+" : "\(page.itemCount)"
     }
 
-    /// 서버 `totalElements`를 **변환 없이 그대로** 돌려준다 (절대 규칙 #2).
+    /// 서버 `totalElements`를 **변환 없이 그대로** 돌려준다 (핵심 규칙 #2).
     /// Int로 바꾸면 Repository 경계를 서버 정수가 Int로 건너고, `?? 0`이 비정상 값을
     /// 조용히 0으로 삼킨다. 표시 문자열은 UseCase가 그대로 쓴다.
     public func fetchBookmarkCount() async throws -> String {

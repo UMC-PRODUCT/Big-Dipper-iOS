@@ -34,7 +34,7 @@ public protocol ScheduleRepositoryProtocol {
 
     /// 일정을 생성하고 생성된 일정 식별자를 돌려준다.
     ///
-    /// - Returns: 생성된 일정 식별자 (서버 정수를 절대 규칙 #2 에 따라 `String` 으로 보존)
+    /// - Returns: 생성된 일정 식별자 (서버 정수를 핵심 규칙 #2 에 따라 `String` 으로 보존)
     func createSchedule(_ request: ScheduleCreationRequest) async throws -> String
 
     /// 일정을 부분 수정한다.

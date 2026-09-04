@@ -41,7 +41,7 @@ public struct ScrappedCountQueryDTO {
 
 // MARK: - Response
 
-/// 스크랩 페이지 응답에서 totalElements만 취하는 얇은 DTO (절대규칙 #3 custom Codable).
+/// 스크랩 페이지 응답에서 totalElements만 취하는 얇은 DTO (핵심규칙 #3 custom Codable).
 struct ScrappedCountPageDTO: Codable {
     let totalElements: String
 
@@ -73,7 +73,7 @@ struct StudyCountPageDTO: Codable {
         case cursor, content, studyGroups, hasNext
     }
 
-    /// 중첩 DTO도 synthesized Codable 금지 (절대 규칙 #3) — hasNext는 서버가 "true"
+    /// 중첩 DTO도 synthesized Codable 금지 (핵심 규칙 #3) — hasNext는 서버가 "true"
     /// 문자열로 직렬화해도 흡수해야 하므로 `decodeBoolFlexibleIfPresent`를 쓴다
     /// (선례: Activity `MyStudyGroupsPageDTO`, 헬퍼: KeyedDecodingContainer+FlexibleNumber).
     private struct CursorEnvelope: Codable {

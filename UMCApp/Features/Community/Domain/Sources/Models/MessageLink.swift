@@ -133,7 +133,7 @@ public enum MessageLink: Hashable, Sendable {
 
     // MARK: - Private
 
-    /// 서버 식별자는 정수를 String 으로 직렬화한 값이다(절대 규칙 #2). 숫자로 좁혀 두면 문장
+    /// 서버 식별자는 정수를 String 으로 직렬화한 값이다(핵심 규칙 #2). 숫자로 좁혀 두면 문장
     /// 부호가 링크 뒤에 붙어 있어도 식별자에 딸려 들어가지 않는다.
     private static func isValidIdentifier(_ value: String) -> Bool {
         !value.isEmpty && value.allSatisfy(\.isNumber)

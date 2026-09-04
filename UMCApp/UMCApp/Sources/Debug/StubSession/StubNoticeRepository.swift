@@ -23,7 +23,7 @@ enum StubSessionError: LocalizedError {
     }
 }
 
-/// 카카오 로그인 서버 미등록 기간 한정 공지 Repository stub (절대규칙 #5).
+/// 카카오 로그인 서버 미등록 기간 한정 공지 Repository stub (핵심규칙 #5).
 ///
 /// 홈 최근 공지 5건(`FetchRecentNoticesUseCase` → `getAllNotices`)과 공지 상세
 /// (`NoticeUseCase` → `getDetailNotice`)가 같은 프로토콜을 공유하므로 이 stub 하나로

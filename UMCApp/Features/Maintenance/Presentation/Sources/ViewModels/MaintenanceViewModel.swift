@@ -11,7 +11,7 @@ import MaintenanceDomain
 
 /// 앱 루트에서 원격 킬스위치(점검)·강제 업데이트 오버레이를 판정하는 ViewModel.
 ///
-/// 절대 규칙 #1에 따라 `@Observable`을 사용한다. 이 화면은 `AppFlowState`와 무관하게
+/// 핵심 규칙 #1에 따라 `@Observable`을 사용한다. 이 화면은 `AppFlowState`와 무관하게
 /// 앱 생명주기 내내 지속적으로 재확인되어야 하므로, `AppFlowViewModel`과 동일하게
 /// `UMCAppApp`이 Scene 레벨에서 직접 소유하는 예외로 취급한다(그래서 `public`).
 @MainActor

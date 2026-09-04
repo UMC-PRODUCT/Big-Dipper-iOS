@@ -4,7 +4,7 @@ import SwiftUI
 
 // MARK: - WatchMandatoryNotice
 
-/// 필수 확인 공지. 식별자는 서버 정수를 String 으로 받는다 (절대 규칙 #2).
+/// 필수 확인 공지. 식별자는 서버 정수를 String 으로 받는다 (핵심 규칙 #2).
 struct WatchMandatoryNotice: Equatable, Sendable, Identifiable {
     let id: String
     let title: String
@@ -13,7 +13,7 @@ struct WatchMandatoryNotice: Equatable, Sendable, Identifiable {
 // MARK: - WatchMandatoryNoticeCenter
 
 /// 필수 확인 공지의 확인 여부를 앱 생명주기 동안 들고 있는 전역 관리자.
-/// 절대 규칙 #1 의 예외(앱 생명주기 전역 관리자)라 `@Observable` 을 쓴다.
+/// 핵심 규칙 #1 의 예외(앱 생명주기 전역 관리자)라 `@Observable` 을 쓴다.
 @Observable
 final class WatchMandatoryNoticeCenter {
 

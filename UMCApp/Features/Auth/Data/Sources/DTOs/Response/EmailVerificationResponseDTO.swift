@@ -10,7 +10,7 @@ import UMCFoundation
 /// 이메일 인증 발송/재전송 API 응답 DTO
 ///
 /// `emailVerificationId`는 서버가 String("51")로 내려주지만 Int로 흔들릴 수 있어
-/// flexible String 디코딩(절대 규칙 #2/#3)을 적용한다.
+/// flexible String 디코딩(핵심 규칙 #2/#3)을 적용한다.
 public struct EmailVerificationResponseDTO: Codable, Sendable, Equatable {
 
     // MARK: - Property

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **구조 안내**: 이 파일은 **핵심 요약 + 절대 규칙 + 레퍼런스 인덱스**만 담는 허브입니다.
+> **구조 안내**: 이 파일은 **프로젝트 요약 + 핵심 규칙 + 레퍼런스 인덱스**만 담는 허브입니다.
 > 주제별 상세 내용은 `docs/claude/` 로 분리되어 있으며, **필요할 때 해당 파일을 `Read` 로 열어** 참고합니다.
 > (컨텍스트 절약을 위해 `@import` 로 전체를 인라인하지 않습니다.)
 
@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **주요 모듈**: 인증/온보딩, 홈 대시보드, 공지사항, 운영/학교 관리, 스터디/활동, 커뮤니티, 마이페이지
 - **Killer Features**: The Ping (공지 수신 확인), Mobile-First Admin, GPS 기반 스마트 출석
 - **현재 버전**: 2.2.0 (최신 릴리즈 태그 `v2.2.0`)
-- **두 빌드 축**: `AppProduct/`(레거시 xcodeproj, **`v2.2.0`에 동결 — 수정 금지**) + `UMCApp/`(Tuist) — **모든 신규·유지보수·이식 작업은 `UMCApp/`에서만 수행** (절대 규칙 #9 참조)
+- **두 빌드 축**: `AppProduct/`(레거시 xcodeproj, **`v2.2.0`에 동결 — 수정 금지**) + `UMCApp/`(Tuist) — **모든 신규·유지보수·이식 작업은 `UMCApp/`에서만 수행** (핵심 규칙 #9 참조)
 
 ## 아키텍처 한눈에
 
@@ -30,7 +30,7 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
 - **Router**: AppRouter(모듈 간/딥링크) + Feature Router(내부 화면). Tab별 독립 `NavigationStack`
 - 상세: `docs/claude/architecture.md`
 
-## 절대 규칙 (항상 적용)
+## 핵심 규칙 (항상 적용)
 
 이 항목들은 위반 시 컴파일 에러·런타임 크래시·리뷰 반려로 이어지므로 **예외 없이 지킵니다.**
 
@@ -49,7 +49,7 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
    PR·이슈 제목/본문의 `🤖 Generated with [Claude Code](...)` 푸터 등 AI가 작성했음을 드러내는 문구 일체 추가 금지.
 9. **`AppProduct/`(레거시)는 `v2.2.0` 릴리즈 상태로 동결 — 절대 수정 금지.**
    PR 피드백 반영·버그 수정·리팩터·이식·마이그레이션 등 **어떤 작업에서도 `AppProduct/` 하위 파일을 절대 건드리지 않는다.** 모든 작업은 `UMCApp/`(Tuist)에서만 수행한다.
-   - 위 절대 규칙·코딩 규약(특히 #2 서버 정수 `String` 통일 등)은 **`UMCApp/`(활성 코드베이스)에만** 적용된다. AppProduct는 동결 상태이므로 이런 규칙을 소급 적용하려고 손대서도 안 된다.
+   - 위 핵심 규칙·코딩 규약(특히 #2 서버 정수 `String` 통일 등)은 **`UMCApp/`(활성 코드베이스)에만** 적용된다. AppProduct는 동결 상태이므로 이런 규칙을 소급 적용하려고 손대서도 안 된다.
    - 실수로 `AppProduct/`가 변경되면 즉시 `git restore --source=v2.2.0 -- AppProduct/<경로>` 로 릴리즈 상태로 되돌린다.
    - 유일한 예외: 메인테이너가 **명시적으로 AppProduct 수정을 지시한 경우에만** 진행. 그 외에는 예외 없음.
 
@@ -92,7 +92,7 @@ View ←→ ViewModel(@Observable) → UseCase(Protocol) → Repository → Data
 ## 빌드 명령 (요약)
 
 ```bash
-# AppProduct (xcodeproj) — v2.2.0 동결. 열람/참고 전용, 수정 금지 (절대 규칙 #9)
+# AppProduct (xcodeproj) — v2.2.0 동결. 열람/참고 전용, 수정 금지 (핵심 규칙 #9)
 open AppProduct/AppProduct.xcodeproj
 
 # UMCApp (Tuist) — 표준 진입점은 Makefile. 모든 작업은 여기서.
@@ -162,4 +162,4 @@ Apple 프레임워크 API — 신규 Apple API를 다룰 때:
 
 - 조회 수단: `gh` CLI(`gh api repos/UMC-PRODUCT/cygnus-server/contents/...`, `gh search code --repo UMC-PRODUCT/cygnus-server ...`) 또는 `WebFetch`.
 - **읽기 전용으로만 사용** — 서버 레포에 커밋·PR·이슈를 만들지 않는다(메인테이너가 명시적으로 지시한 경우 제외).
-- 스펙 추측 금지: 필드명·타입·nullable 여부는 서버의 컨트롤러/DTO 실제 코드로 확인한 뒤 iOS Response DTO에 반영한다(절대 규칙 #2·#3과 함께 적용).
+- 스펙 추측 금지: 필드명·타입·nullable 여부는 서버의 컨트롤러/DTO 실제 코드로 확인한 뒤 iOS Response DTO에 반영한다(핵심 규칙 #2·#3과 함께 적용).

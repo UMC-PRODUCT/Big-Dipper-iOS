@@ -29,7 +29,7 @@ public struct ScheduleDetailData: Equatable, Identifiable, Sendable {
     /// 일정 장소 (`nil` = 비대면)
     public let location: ScheduleLocation?
     public let participants: [ScheduleParticipant]
-    /// 작성자 멤버 식별자. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    /// 작성자 멤버 식별자. 서버 정수를 핵심 규칙 #2에 따라 `String`으로 보존한다.
     public let authorMemberId: String
     /// 출석 정책 (`nil` = 출석 비필수)
     public let attendancePolicy: ScheduleAttendancePolicy?

@@ -13,7 +13,7 @@ import CoreNetwork
 /// - 기존 회원: `accessToken` + `refreshToken` 반환
 /// - 신규 회원: `oAuthVerificationToken`만 반환
 ///
-/// - Note: 정수 필드가 없어 절대규칙 #3의 `decodeIntFlexibleIfPresent` 적용 대상이 아니다
+/// - Note: 정수 필드가 없어 핵심규칙 #3의 `decodeIntFlexibleIfPresent` 적용 대상이 아니다
 ///   (`docs/claude/response-dto-decoding.md` 원칙 2 — Int 필드가 있을 때만 custom Codable 필수).
 public struct OAuthLoginResponseDTO: Codable, Sendable, Equatable {
 

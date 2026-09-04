@@ -748,7 +748,7 @@ private struct AIAutofillSheet: View {
 // MARK: - Preview
 
 #if DEBUG
-/// 네트워크 없이 화면을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+/// 네트워크 없이 화면을 확인하기 위한 프리뷰 전용 UseCase (핵심규칙 #5)
 private struct PreviewGenerateScheduleUseCase: GenerateScheduleUseCaseProtocol {
     @discardableResult
     func execute(request: ScheduleCreationRequest) async throws -> String { "1" }

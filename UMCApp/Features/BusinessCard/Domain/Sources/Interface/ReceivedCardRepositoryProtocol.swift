@@ -24,7 +24,7 @@ public protocol ReceivedCardRepositoryProtocol: Sendable {
     func delete(id: String) async throws
     /// 현재 계정의 명함 전량 삭제 — 회원 탈퇴 전용.
     func deleteAll() async throws
-    /// 로컬 집계라 Int (절대규칙 #2의 서버 정수 대상 아님).
+    /// 로컬 집계라 Int (핵심규칙 #2의 서버 정수 대상 아님).
     func count() async throws -> Int
 
     /// 서버 집합으로 로컬 캐시를 재조정한다. 원격이 없으면 아무 일도 하지 않는다.

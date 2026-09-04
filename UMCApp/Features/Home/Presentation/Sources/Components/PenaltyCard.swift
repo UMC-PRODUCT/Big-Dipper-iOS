@@ -306,7 +306,7 @@ fileprivate struct GenTabBar: View {
 
     // MARK: - Property
 
-    /// 표시할 기수 목록 (서버 정수는 절대규칙 #2에 따라 `String`으로 유지)
+    /// 표시할 기수 목록 (서버 정수는 핵심규칙 #2에 따라 `String`으로 유지)
     let generations: [String]
     /// 현재 선택된 인덱스 바인딩
     @Binding var currentIndex: Int

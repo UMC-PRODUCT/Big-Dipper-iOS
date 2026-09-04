@@ -15,7 +15,7 @@ import UMCFoundation
 /// `encodeIfPresent` 로 본문에서 통째로 빠지므로, 서버는 해당 필드를 기존 값으로 유지한다.
 ///
 /// - Note: 서버 request 계약이 참여자 식별자를 `Set<Long>` 으로 받으므로 생성 요청과 동일하게
-///   `participantMemberIds` 만 `Int` 로 직렬화한다 (절대 규칙 #2 는 응답 한정).
+///   `participantMemberIds` 만 `Int` 로 직렬화한다 (핵심 규칙 #2 는 응답 한정).
 struct ScheduleUpdateRequestDTO: Encodable, Sendable, Equatable {
 
     // MARK: - Property

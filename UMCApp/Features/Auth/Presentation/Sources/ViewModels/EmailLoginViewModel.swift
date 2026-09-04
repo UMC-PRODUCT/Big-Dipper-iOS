@@ -13,7 +13,7 @@ import UMCFoundation
 
 /// 이메일(ID/PW) 로그인 화면의 상태 및 액션을 관리하는 ViewModel.
 ///
-/// 절대규칙 #1에 따라 `@Observable`을 사용한다. 로그인 성공 이후의 승인 상태 확인은
+/// 핵심규칙 #1에 따라 `@Observable`을 사용한다. 로그인 성공 이후의 승인 상태 확인은
 /// 소셜 로그인(`LoginViewModel.resolveApprovalStatus()`)과 동일한 규약을 따른다.
 /// 인증 실패(잘못된 이메일/비밀번호)는 화면 내에서 해결 가능한 상태이므로 `ErrorHandler`
 /// Alert이 아닌 인라인 메시지 + `Loadable.failed`로 표현한다.

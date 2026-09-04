@@ -65,7 +65,7 @@ SwiftUI 상태가 바뀔 때마다 호출되므로 관측 프로퍼티를 쓰는
 (`BusinessCard3DScene.swift:18-19`). `RealityView`(`BusinessCard3DView.swift:118-120`)는
 `make:` 클로저에서 `scene.attach(to:)` 를 한 번만 부른다.
 
-절대 규칙 #1(`@Observable` 강제)과 충돌하지 않는 근거: 그 규칙이 막으려는 것은 Combine 시대의
+핵심 규칙 #1(`@Observable` 강제)과 충돌하지 않는 근거: 그 규칙이 막으려는 것은 Combine 시대의
 관측 래퍼(`@StateObject`/`@ObservedObject`/`@Published`)이고, `BusinessCard3DScene` 은 그중
 어느 것도 아니며 화면 상태를 들고 있는 ViewModel도 아니다 — 씬 그래프의 핸들이다
 (`BusinessCard3DScene.swift:20-23`).

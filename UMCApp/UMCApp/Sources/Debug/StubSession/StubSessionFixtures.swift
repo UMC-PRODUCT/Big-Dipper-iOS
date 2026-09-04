@@ -15,7 +15,7 @@ import UMCFoundation
 
 /// stub 세션에서 사용하는 픽스처 데이터 모음 (단일 파일 집약).
 ///
-/// 서버 정수 필드는 절대규칙 #2에 따라 전부 `String`으로 유지한다.
+/// 서버 정수 필드는 핵심규칙 #2에 따라 전부 `String`으로 유지한다.
 /// UI 확인용 데이터를 조정할 때는 이 파일만 수정하면 된다.
 enum StubSessionFixtures {
 

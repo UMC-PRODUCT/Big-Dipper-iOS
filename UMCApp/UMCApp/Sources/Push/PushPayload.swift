@@ -12,7 +12,7 @@ import ActivityDomain
 /// `userInfo` 는 `[AnyHashable: Any]` 라 Decodable 경로가 아예 없어 Codable 로 만들지 않는다
 /// (Response DTO 규약의 적용 대상이 아니다). FCM 은 `data` 맵을 전부 String 으로 직렬화해
 /// APNs `userInfo` 최상위에 평평하게 깔아 주므로, 정수인 `scheduleId` 도 String 그대로 나른다
-/// (절대 규칙 #2).
+/// (핵심 규칙 #2).
 struct PushPayload: Equatable {
 
     // MARK: - Kind

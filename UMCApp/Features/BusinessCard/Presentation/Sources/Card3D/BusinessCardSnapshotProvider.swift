@@ -234,7 +234,7 @@ extension BusinessCardSnapshotProvider {
                 card.nickname,
                 // `part`(열거형)가 아니라 이 값이어야 우리가 못 읽은 파트(`partRaw`)가 구분된다.
                 card.partAPIValue,
-                // 절대 규칙 #2 — 서버 정수는 Int 변환 없이 String 그대로 키에 넣는다.
+                // 핵심 규칙 #2 — 서버 정수는 Int 변환 없이 String 그대로 키에 넣는다.
                 card.generation,
                 card.university,
                 card.avatarURL ?? "",

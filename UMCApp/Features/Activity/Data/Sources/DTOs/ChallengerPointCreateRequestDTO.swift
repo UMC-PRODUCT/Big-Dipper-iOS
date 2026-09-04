@@ -13,7 +13,7 @@ import UMCFoundation
 /// `POST /api/v1/challenger/{challengerId}/points`
 ///
 /// - Note: Request(Encodable) DTO 이므로 배점(`pointValue`)은 정수 그대로 직렬화합니다.
-///   절대 규칙 #2(서버 응답 정수 String 통일)는 식별자에 적용되며, 배점은 식별자가 아닙니다.
+///   핵심 규칙 #2(서버 응답 정수 String 통일)는 식별자에 적용되며, 배점은 식별자가 아닙니다.
 ///   `pointType` 은 서버 문자열 rawValue 로 직렬화됩니다(``UMCFoundation/ChallengerPointType``).
 struct ChallengerPointCreateRequestDTO: Encodable, Sendable, Equatable {
 

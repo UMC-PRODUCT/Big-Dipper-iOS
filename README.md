@@ -70,7 +70,7 @@ UMC(University MakeUs Challenge) 동아리 운영을 하나의 앱으로 통합�
 | 주제 | 문서 |
 |------|------|
 | 🏗️ 아키텍처 | [Architecture](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Architecture) |
-| 📐 절대 규칙 & 코딩 컨벤션 | [Coding Conventions](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Coding-Conventions) |
+| 📐 핵심 규칙 & 코딩 컨벤션 | [Coding Conventions](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Coding-Conventions) |
 | ⚠️ 에러 처리 | [Error Handling](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Error-Handling) |
 | 🌐 네트워크 & DTO 디코딩 | [Networking](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Networking) |
 | 🎨 디자인 시스템 | [Design System](https://github.com/UMC-PRODUCT/Big-Dipper-iOS/wiki/Design-System) |

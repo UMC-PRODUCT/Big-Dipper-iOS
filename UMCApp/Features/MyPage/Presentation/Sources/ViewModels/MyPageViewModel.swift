@@ -248,7 +248,7 @@ public final class MyPageViewModel {
 
     /// 로그아웃을 수행합니다.
     ///
-    /// 화면 전환(`AppFlow`)은 절대규칙 #1에 따라 View가 담당하므로, 여기서는 세션 정리까지만
+    /// 화면 전환(`AppFlow`)은 핵심규칙 #1에 따라 View가 담당하므로, 여기서는 세션 정리까지만
     /// 책임지고 실패는 그대로 던져 호출자가 `ErrorHandler`로 넘기게 한다.
     @MainActor
     public func logout() async throws {

@@ -14,7 +14,7 @@
 /// `CoreRouting.PathStore` 는 타입 소거 경로를 제공하므로, 각 Feature 가 자기 목적지 타입을
 /// 자기 모듈에 두고도 같은 탭 스택에 실릴 수 있다.
 ///
-/// - Important: 식별자는 전 레이어 `String` 이다(절대 규칙 #2). 레거시는 `Int` 로 들고 다녔고,
+/// - Important: 식별자는 전 레이어 `String` 이다(핵심 규칙 #2). 레거시는 `Int` 로 들고 다녔고,
 ///   push 직전의 `Int(group.serverID)` 변환은 **타입 변환만이 아니라 낙관적 삽입 placeholder
 ///   (`new_` 접두사) 를 걸러내는 필터이기도 했다**. `String` 통일로 그 변환이 사라졌으므로,
 ///   걸러내는 책임은 `OperatorStudyManagementViewModel.canRegisterSchedule(for:)` 의

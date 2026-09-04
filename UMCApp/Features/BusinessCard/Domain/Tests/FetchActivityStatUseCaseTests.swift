@@ -145,7 +145,7 @@ struct FetchActivityStatUseCaseTests {
         #expect(result.receivedCardCount == "12")
     }
 
-    @Test("서버가 준 비정상 문자열도 변환 없이 통과시킨다 (절대규칙 #2)")
+    @Test("서버가 준 비정상 문자열도 변환 없이 통과시킨다 (핵심규칙 #2)")
     func passesServerValueThrough() async {
         let stat = MockActivityStatRepository()
         stat.studyCountResult = .success("0")

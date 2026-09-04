@@ -23,7 +23,7 @@ public struct BusinessCardSection: View {
     // MARK: - Init
 
     /// - Parameters:
-    ///   - receivedCardCount: 받은 명함 수(서버 정수는 절대규칙 #2에 따라 String).
+    ///   - receivedCardCount: 받은 명함 수(서버 정수는 핵심규칙 #2에 따라 String).
     ///     아직 못 세었으면(조회 전·실패) `nil` — "0장"이 아니라 "-"로 그린다 (#1222).
     ///   - onReceivedCards: 명함첩(받은 명함 그리드)으로 이동.
     ///   - onCardEdit: 명함 편집으로 이동. 편집에 필요한 프로필 스냅샷이 아직 없으면

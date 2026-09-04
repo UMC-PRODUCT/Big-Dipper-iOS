@@ -52,7 +52,7 @@ final class HomeGlanceViewModel {
 
     // MARK: - Function
 
-    /// 카운트는 전 레이어 String 이고(절대 규칙 #2), Int 변환은 이 비교 시점에서만 한다.
+    /// 카운트는 전 레이어 String 이고(핵심 규칙 #2), Int 변환은 이 비교 시점에서만 한다.
     /// 숫자가 아니거나 음수인 값은 0건으로 취급한다 — 글랜스가 빈 문자열 하나로 깨지면 안 된다.
     private static func count(_ rawValue: String) -> Int {
         max(Int(rawValue) ?? 0, 0)

@@ -62,7 +62,7 @@ public final class FetchActivityStatUseCase:
     }
 
     /// 조회 실패·빈 문자열이면 `nil`. 값은 변환 없이 통과시킨다
-    /// (절대 규칙 #2 — Int 왕복은 비정상 값을 조용히 0으로 삼킨다).
+    /// (핵심 규칙 #2 — Int 왕복은 비정상 값을 조용히 0으로 삼킨다).
     private func value(_ fetch: () async throws -> String) async -> String? {
         nonEmpty(try? await fetch())
     }

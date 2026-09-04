@@ -22,7 +22,7 @@ public struct ScheduleCapabilitiesDTO: Codable, Sendable, Equatable {
     /// 출석 정책을 포함한 일정을 만들 수 있는지 여부 (운영진 `true` / 일반 챌린저 `false`)
     public let canCreateAttendanceRequiredSchedule: Bool
 
-    /// 직책별 최대 초대 가능 인원. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    /// 직책별 최대 초대 가능 인원. 서버 정수를 핵심 규칙 #2에 따라 `String`으로 보존한다.
     public let maxParticipantCount: String
 
     private enum CodingKeys: String, CodingKey {

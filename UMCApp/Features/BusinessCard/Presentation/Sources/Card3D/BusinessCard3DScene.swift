@@ -18,7 +18,7 @@ import SwiftUI
 /// 아무리 자주 써도 `body` 는 돌지 않는다. 같은 이유로 `RealityView` 의 `update:` 도 쓰지
 /// 않는다(상태가 바뀔 때마다 호출되므로 결국 같은 비용이다).
 ///
-/// 절대 규칙 #1(`@Observable` 강제)이 막으려는 것은 Combine 시대의 관측 래퍼
+/// 핵심 규칙 #1(`@Observable` 강제)이 막으려는 것은 Combine 시대의 관측 래퍼
 /// (`@StateObject`/`@ObservedObject`/`@Published`)다. 이 타입은 셋 중 어느 것도 아니고
 /// 뷰 상태를 들고 있는 ViewModel 도 아니다 — 씬 그래프의 핸들이다.
 @MainActor

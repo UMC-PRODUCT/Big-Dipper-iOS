@@ -21,7 +21,7 @@ public final class AITokenDailyUsageRecord {
     ///
     /// - Note: 레거시(v2.2.0)가 `memberId: Int`로 프로덕션 CloudKit 스키마에 배포해
     ///   `CD_memberId`가 Int64로 확정돼 있다. 배포된 필드는 타입을 바꿀 수 없으므로
-    ///   `String` 통일(절대 규칙 #2)은 새 필드(`CD_memberKey`)로 분리해 적용한다.
+    ///   `String` 통일(핵심 규칙 #2)은 새 필드(`CD_memberKey`)로 분리해 적용한다.
     public var memberKey: String = ""
     public var date: Date = Date()
     public var usedTokens: Int = 0

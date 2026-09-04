@@ -12,7 +12,7 @@ import UMCFoundation
 
 /// 비밀번호 변경 화면의 상태 및 액션을 관리하는 ViewModel.
 ///
-/// 절대규칙 #1에 따라 `@Observable`을 사용한다. 현재 비밀번호 불일치는 화면 안에서 다시
+/// 핵심규칙 #1에 따라 `@Observable`을 사용한다. 현재 비밀번호 불일치는 화면 안에서 다시
 /// 입력해 해결할 수 있는 상태라 `EmailLoginViewModel`과 동일하게 인라인 메시지로 표시하고,
 /// 그 밖의 실패(네트워크·세션 등)만 흐름 중단형으로 보고 `ErrorHandler`에 넘긴다.
 @Observable

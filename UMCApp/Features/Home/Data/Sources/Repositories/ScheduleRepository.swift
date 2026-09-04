@@ -87,7 +87,7 @@ public final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Se
 
     /// 일정을 생성하고 서버가 돌려준 식별자를 반환한다.
     ///
-    /// 서버는 생성 결과로 일정 ID 스칼라 하나만 내려준다. 절대 규칙 #2 에 따라 정수를
+    /// 서버는 생성 결과로 일정 ID 스칼라 하나만 내려준다. 핵심 규칙 #2 에 따라 정수를
     /// 문자열로 직렬화하므로 `String` 으로 받되, 숫자 리터럴로 오는 경우도 함께 흡수한다.
     public func createSchedule(_ request: ScheduleCreationRequest) async throws -> String {
         let response = try await networkRequesting.request(
@@ -216,7 +216,7 @@ public final class ScheduleRepository: ScheduleRepositoryProtocol, @unchecked Se
 
 /// 스칼라 하나로 내려오는 식별자 응답을 문자열로 흡수하는 래퍼.
 ///
-/// 서버는 정수를 문자열로 직렬화하지만(절대 규칙 #2), 생성 응답은 `result` 가 객체가 아닌
+/// 서버는 정수를 문자열로 직렬화하지만(핵심 규칙 #2), 생성 응답은 `result` 가 객체가 아닌
 /// 스칼라라 키 기반 flexible 헬퍼를 쓸 수 없다. 문자열/숫자 어느 쪽으로 와도 같은 값으로
 /// 읽히도록 단일 값 컨테이너에서 직접 처리한다.
 struct FlexibleIdentifier: Codable, Sendable, Equatable {

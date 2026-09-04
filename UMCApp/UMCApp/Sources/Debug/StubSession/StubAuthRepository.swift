@@ -8,7 +8,7 @@
 #if DEBUG
 import AuthDomain
 
-/// 카카오 로그인 서버 미등록 기간 한정 인증 Repository stub (절대규칙 #5).
+/// 카카오 로그인 서버 미등록 기간 한정 인증 Repository stub (핵심규칙 #5).
 ///
 /// `hasSession()`이 항상 `true`이므로 부트스트랩(`CheckAuthStatusUseCase`)이 토큰 검사를
 /// 통과하고, stub 프로필 조회 → 승인 판정을 거쳐 로그인 화면 없이 홈으로 직행한다.

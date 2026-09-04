@@ -32,7 +32,7 @@ public struct MyActivitySection: View {
     // MARK: - Init
 
     /// - Parameters:
-    ///   - studyCount: 나의 스터디 수(서버 정수는 절대규칙 #2에 따라 String).
+    ///   - studyCount: 나의 스터디 수(서버 정수는 핵심규칙 #2에 따라 String).
     ///     아직 못 세었으면(조회 전·실패) `nil` — "0건"이 아니라 "-"로 그린다 (#1222).
     ///   - activityCount: 활동 이력 수. `studyCount`와 같은 `nil` 규칙을 따른다.
     ///   - onStudyTap: 나의 스터디 진입. 목적지가 준비되지 않았으면 `nil`.

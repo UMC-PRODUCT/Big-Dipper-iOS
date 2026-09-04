@@ -10,7 +10,7 @@ import UMCFoundation
 
 /// 앱 생명주기 전역 상태머신.
 ///
-/// 절대규칙 #1의 명시적 예외(앱 생명주기 전역 관리자)로 `@Observable`을 사용한다.
+/// 핵심규칙 #1의 명시적 예외(앱 생명주기 전역 관리자)로 `@Observable`을 사용한다.
 /// `AppRootView`가 이 ViewModel을 소유하고, 하위 Feature에는 `AppFlow` 환경값을 통해서만
 /// 전환 액션을 노출해 구체 타입 의존을 끊는다.
 @Observable

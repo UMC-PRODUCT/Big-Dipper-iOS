@@ -12,7 +12,7 @@ import Testing
 @Suite("MemberStatsResponseDTO — 통합 카운트 디코딩")
 struct MemberStatsResponseDTOTests {
 
-    @Test("숫자로 내려와도 String으로 실린다 (절대규칙 #2·#3)")
+    @Test("숫자로 내려와도 String으로 실린다 (핵심규칙 #2·#3)")
     func absorbsNumberShape() throws {
         let dto = try JSONDecoder().decode(
             MemberStatsResponseDTO.self,

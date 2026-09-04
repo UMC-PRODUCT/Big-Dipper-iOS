@@ -11,10 +11,10 @@ import Foundation
 ///
 /// `GET /api/v1/challenger/search/offset`
 ///
-/// 라우터 `task` 에 인라인 딕셔너리를 두지 않도록 쿼리 파라미터를 캡슐화합니다(절대 규칙 #6).
+/// 라우터 `task` 에 인라인 딕셔너리를 두지 않도록 쿼리 파라미터를 캡슐화합니다(핵심 규칙 #6).
 ///
 /// - Note: `page`/`size` 는 클라이언트 페이지네이션 수치라 `Int`, `schoolId` 는 서버 식별자라
-///   `String` 입니다(절대 규칙 #2).
+///   `String` 입니다(핵심 규칙 #2).
 struct ChallengerSearchQuery: Sendable, Equatable {
 
     // MARK: - Property

@@ -58,7 +58,7 @@ public struct AttendanceLink: Hashable, Sendable {
 
     // MARK: - Private Static Function
 
-    /// 서버 식별자는 정수를 String 으로 직렬화한 값이다(절대 규칙 #2). 숫자로 좁혀 두면
+    /// 서버 식별자는 정수를 String 으로 직렬화한 값이다(핵심 규칙 #2). 숫자로 좁혀 두면
     /// 같은 host 아래에 다른 표기가 생겨도 일정 링크로 오인해 열지 않는다.
     private static func isValidIdentifier(_ value: String) -> Bool {
         !value.isEmpty && value.allSatisfy(\.isNumber)

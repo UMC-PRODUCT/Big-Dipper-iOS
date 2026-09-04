@@ -17,7 +17,7 @@ import UMCFoundation
 /// 워치 출석 데이터 스토어 + 목록 표시 로직.
 ///
 /// 앱 셸(`UMCWatchApp`)이 소유하고 `.environment` 로 주입하는 **앱 생명주기 전역 관리자**라
-/// `WatchRouter` 와 마찬가지로 절대 규칙 #1 의 예외에 해당한다. 목록·세션·결과 세 화면이
+/// `WatchRouter` 와 마찬가지로 핵심 규칙 #1 의 예외에 해당한다. 목록·세션·결과 세 화면이
 /// 같은 일정 집합과 같은 결과 캐시를 봐야 해서 화면마다 소유하면 상태가 갈라진다.
 ///
 /// 시간대 판정은 직접 계산하지 않고 `ActivityDomain` 의 `AttendanceTimeWindow` 규칙에 위임한다.

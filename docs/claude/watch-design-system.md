@@ -63,7 +63,7 @@ asset catalog 없이 `WatchColorHex`(internal, `WatchColor.swift:75-93`)의 `0xR
 
 - `brandAccent` 는 상태(성공/경고/실패) 표현에 **절대 쓰지 않는다** — 상태는 `status*` 축 (`WatchColor.swift:39-41`).
 - `statusActive` 는 `brandPrimary` 와 같은 값이지만 의미가 다르므로 별도 이름으로 참조한다 (`WatchColor.swift:45-46`).
-- 색 이름은 역할 기반이다 — iOS 팔레트 번호(`indigo500`)를 워치 API 에 노출하지 않는다 (절대 규칙 #7).
+- 색 이름은 역할 기반이다 — iOS 팔레트 번호(`indigo500`)를 워치 API 에 노출하지 않는다 (핵심 규칙 #7).
 
 ### 2-2) iOS 와의 정합은 테스트가 잠근다
 
@@ -383,7 +383,7 @@ static func state(measuredAt: Date, now: Date) -> WatchOfflineQueueState {
 
 ### 9-7) DEBUG 폴백 하네스
 
-`WatchFallbackDebugMenu`(`Fallback/WatchFallbackDebugMenu.swift`, 파일 전체가 `#if DEBUG`)는 폴백 9종·오프라인 큐 카드·필수 확인 배너를 실기기에서 띄워 보는 검수용 진입점이다. 홈 글랜스의 "폴백 하네스" 행으로 들어간다(`HomeGlanceView.swift`). 실제 실패 신호(위치 권한·GPS 타임아웃·출석 API 응답·공지 수신)는 #1207·#1210 이 붙이므로, 그 전까지 이 하네스가 없으면 P0-3 을 뺀 8종은 코드를 고쳐야만 볼 수 있어 디자인·QA 검수가 불가능하다. 릴리스 빌드에는 포함되지 않는다(절대 규칙 #5).
+`WatchFallbackDebugMenu`(`Fallback/WatchFallbackDebugMenu.swift`, 파일 전체가 `#if DEBUG`)는 폴백 9종·오프라인 큐 카드·필수 확인 배너를 실기기에서 띄워 보는 검수용 진입점이다. 홈 글랜스의 "폴백 하네스" 행으로 들어간다(`HomeGlanceView.swift`). 실제 실패 신호(위치 권한·GPS 타임아웃·출석 API 응답·공지 수신)는 #1207·#1210 이 붙이므로, 그 전까지 이 하네스가 없으면 P0-3 을 뺀 8종은 코드를 고쳐야만 볼 수 있어 디자인·QA 검수가 불가능하다. 릴리스 빌드에는 포함되지 않는다(핵심 규칙 #5).
 
 ## 10) 체크리스트 — 워치 화면을 올릴 때
 

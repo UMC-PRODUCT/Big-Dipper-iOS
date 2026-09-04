@@ -13,7 +13,7 @@ import UMCFoundation
 
 /// 이메일(ID/PW) 신규회원 가입 화면의 상태 및 액션을 관리하는 ViewModel.
 ///
-/// 절대규칙 #1에 따라 `@Observable`을 사용한다. `SignUpViewModel`(소셜)과 대부분의 흐름을
+/// 핵심규칙 #1에 따라 `@Observable`을 사용한다. `SignUpViewModel`(소셜)과 대부분의 흐름을
 /// 공유하되, 비밀번호 검증과 이메일 인증 완료 이후의 중복 확인(debounce) 로직이 추가된다.
 @Observable
 final class SignUpByIdPwViewModel {

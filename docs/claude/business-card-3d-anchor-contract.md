@@ -80,7 +80,7 @@ guard let anchor = root.findEntity(named: BusinessCardTemplate.RequiredPrim.anch
 `RequiredPrim`·`MaterialSlot` 처럼 상수만 쓰는 곳까지 격리할 근거는 아직 없어 열지 않는다 —
 필요해지면 그때 `nonisolated` 를 붙인다.
 
-`public` 인 이유는 절대 규칙 #4(모듈 간 노출 타입은 `public`)와, `#1249` 의 썸네일 캐시가
+`public` 인 이유는 핵심 규칙 #4(모듈 간 노출 타입은 `public`)와, `#1249` 의 썸네일 캐시가
 `Geometry` 의 종횡비를 다른 모듈에서 읽어야 하기 때문이다. `BusinessCardDomain` 은 이 enum 을
 모른다 — 밀리미터·앵커 이름·머티리얼은 렌더링 관심사라 Presentation 레이어(`BusinessCardPresentation`)
 에만 둔다. Domain 이 RealityKit 을 알게 되는 순간 Clean Architecture 경계가 깨진다.
