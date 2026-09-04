@@ -68,7 +68,7 @@ ReceivedCardSnapshotCell ──(120ms 정착)──▶ SnapshotProvider ──�
   `@MainActor` 다(`ReceivedCardSnapshotCell.swift:39-43`).
 - **`partAPIValue` 이지 `part` 열거형이 아니다** (`:235-236`). 우리가 못 읽은 파트(`partRaw`)도
   키에서 구분되어야 한다.
-- **`generation` 은 `String` 그대로** (`:237-238`). 절대 규칙 #2 — 서버 정수는 Int 변환 없이 쓴다.
+- **`generation` 은 `String` 그대로** (`:237-238`). 핵심 규칙 #2 — 서버 정수는 Int 변환 없이 쓴다.
 - **`displayName` 같은 파생 값이 아니라 `name`·`nickname` 원본 필드** (`:220-222`).
   그 computed property 를 #1247/#1248 이 각자 추가 중이라 셋째 사본을 만들지 않는다.
 

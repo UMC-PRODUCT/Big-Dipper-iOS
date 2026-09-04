@@ -108,7 +108,7 @@ struct MyPageSettingsView: View {
 
     /// 세션을 끝내는 액션(로그아웃·탈퇴)을 수행하고 로그인 화면으로 되돌린다.
     ///
-    /// ViewModel은 절대규칙 #1에 따라 `AppFlow`를 들고 있지 않으므로 전환은 여기서 한다.
+    /// ViewModel은 핵심규칙 #1에 따라 `AppFlow`를 들고 있지 않으므로 전환은 여기서 한다.
     private func endSession(
         _ actionName: String,
         perform: @MainActor @escaping () async throws -> Void

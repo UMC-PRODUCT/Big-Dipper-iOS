@@ -25,7 +25,7 @@ struct SignUpDestination: Equatable {
 
 /// 소셜 로그인 화면의 상태 및 액션을 관리하는 ViewModel.
 ///
-/// 절대규칙 #1에 따라 `@Observable`을 사용한다. 신규 회원 결과는 `signUpDestination`을 통해
+/// 핵심규칙 #1에 따라 `@Observable`을 사용한다. 신규 회원 결과는 `signUpDestination`을 통해
 /// 노출되어 `LoginView`가 회원가입 화면으로 전환하고, 승인 대기 회원은
 /// `Loadable.failed(.auth(.pendingApproval))`로 화면에 머무르며 안내 문구를 노출한다.
 @Observable

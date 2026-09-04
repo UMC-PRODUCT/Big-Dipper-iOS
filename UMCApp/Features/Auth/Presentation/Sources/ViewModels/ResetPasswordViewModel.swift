@@ -12,7 +12,7 @@ import UMCFoundation
 
 /// 비밀번호 재설정 화면의 상태 및 액션을 관리하는 ViewModel.
 ///
-/// 절대규칙 #1에 따라 `@Observable`을 사용한다. 흐름: 이메일 인증(`PASSWORD_RESET` 목적) →
+/// 핵심규칙 #1에 따라 `@Observable`을 사용한다. 흐름: 이메일 인증(`PASSWORD_RESET` 목적) →
 /// 새 비밀번호 입력 → 재설정 요청. 이메일 인증 처리(재진입 방지, 이메일 변경 시 인증 상태 리셋)는
 /// `SignUpByIdPwViewModel`과 공유하는 `EmailVerificationFlow`에 위임하며, 재설정 실패는
 /// 흐름 중단형 에러이므로 `SignUpByIdPwViewModel.register()`와 동일하게 `ErrorHandler`로 처리한다.

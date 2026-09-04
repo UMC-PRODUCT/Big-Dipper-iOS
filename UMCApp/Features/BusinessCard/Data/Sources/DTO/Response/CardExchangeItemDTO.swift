@@ -10,7 +10,7 @@ import UMCFoundation
 
 /// 명함첩 항목 한 장 (`GET /api/v1/cards/exchanges` 의 `content` 원소).
 ///
-/// 서버 정수(`cardMemberId`·`generation`)는 전 레이어 `String` 이다 (절대 규칙 #2).
+/// 서버 정수(`cardMemberId`·`generation`)는 전 레이어 `String` 이다 (핵심 규칙 #2).
 /// 서버 `JacksonConfig` 가 `WRITE_NUMBERS_AS_STRINGS` 를 전역 활성화해 두었지만, 설정이
 /// 바뀌어 숫자로 내려와도 흡수해야 하므로 `decodeFlexibleString` 을 쓴다.
 ///

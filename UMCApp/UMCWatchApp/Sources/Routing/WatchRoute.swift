@@ -12,7 +12,7 @@ public enum WatchRoute: Hashable, Sendable {
     /// #1207 출석 목록.
     case attendanceList
     /// #1207 출석 진행(정시·지각·지오펜스 이탈).
-    /// 서버가 정수 식별자를 String 으로 내려주므로 전 레이어 String 이다 (절대 규칙 #2).
+    /// 서버가 정수 식별자를 String 으로 내려주므로 전 레이어 String 이다 (핵심 규칙 #2).
     case attendanceSession(scheduleID: String)
     /// #1207 출석 결과(출석·지각·공결·결석).
     case attendanceResult(scheduleID: String)

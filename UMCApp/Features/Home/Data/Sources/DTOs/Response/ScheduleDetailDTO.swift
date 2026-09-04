@@ -20,7 +20,7 @@ public struct ScheduleDetailDTO: Codable, Sendable, Equatable {
 
     // MARK: - Property
 
-    /// 일정 고유 식별자. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    /// 일정 고유 식별자. 서버 정수를 핵심 규칙 #2에 따라 `String`으로 보존한다.
     public let scheduleId: String
     public let name: String
     public let description: String
@@ -34,7 +34,7 @@ public struct ScheduleDetailDTO: Codable, Sendable, Equatable {
     /// 장소 객체 (`nil` = 비대면)
     public let location: ScheduleLocationDTO?
     public let participants: [ScheduleParticipantDTO]
-    /// 작성자 멤버 식별자. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    /// 작성자 멤버 식별자. 서버 정수를 핵심 규칙 #2에 따라 `String`으로 보존한다.
     public let authorMemberId: String
     /// 출석 정책 객체 (`nil` = 출석 비필수)
     public let attendancePolicy: ScheduleAttendancePolicyDTO?

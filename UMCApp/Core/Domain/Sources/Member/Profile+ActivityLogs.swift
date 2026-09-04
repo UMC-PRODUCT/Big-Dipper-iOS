@@ -80,6 +80,6 @@ private extension Profile {
 }
 
 private extension String {
-    /// 서버가 String으로 주는 기수를 정렬·병합 키로 쓸 Int로 읽는다 (절대 규칙 #2).
+    /// 서버가 String으로 주는 기수를 정렬·병합 키로 쓸 Int로 읽는다 (핵심 규칙 #2).
     var generationValue: Int { Int(self) ?? 0 }
 }

@@ -21,7 +21,7 @@ import Moya
 /// (``StudyRouter/getChallengerProfile(challengerId:)``)로 처리한다. 출석 이력은
 /// ``AttendanceRouter/fetchAttendanceList(query:)`` 응답에서 멤버를 필터링한다.
 ///
-/// - Note: 서버 식별자는 전 레이어 `String` 으로 통일된다(절대 규칙 #2). 멤버 조회에 필요한
+/// - Note: 서버 식별자는 전 레이어 `String` 으로 통일된다(핵심 규칙 #2). 멤버 조회에 필요한
 ///   `schoolId`·`currentMemberId`·`gisuId` 는 ``MemberContextProviding`` 에서 읽는다(신규
 ///   모듈에는 레거시 `AppStorageKey` 세션 저장소가 아직 없어 컨텍스트 제공자를 주입한다).
 /// - Note: 레거시는 오프셋 검색 실패(404/405) 시 스터디 그룹 전수 열거로 폴백했으나, 본 모듈은

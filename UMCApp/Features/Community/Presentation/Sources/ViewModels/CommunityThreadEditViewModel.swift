@@ -179,7 +179,7 @@ public final class CommunityThreadEditViewModel {
         }
     }
 
-    /// 삭제는 되돌릴 수 없어 확인을 먼저 받는다 (절대 규칙 — 파괴적 작업은 AlertPrompt).
+    /// 삭제는 되돌릴 수 없어 확인을 먼저 받는다 (핵심 규칙 — 파괴적 작업은 AlertPrompt).
     public func confirmDelete() {
         alertPrompt = AlertPrompt(
             title: "'\(original.title)' 스레드를 삭제할까요?",

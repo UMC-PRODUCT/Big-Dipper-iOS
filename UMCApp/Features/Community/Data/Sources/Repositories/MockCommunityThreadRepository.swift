@@ -9,7 +9,7 @@ import CommunityDomain
 
 /// 네트워크 없이 리스트·채팅방 UI 를 돌려 보기 위한 Mock.
 ///
-/// 릴리스 빌드에는 포함되지 않는다(절대 규칙 #5).
+/// 릴리스 빌드에는 포함되지 않는다(핵심 규칙 #5).
 public struct MockCommunityThreadRepository: CommunityThreadRepositoryProtocol {
 
     // MARK: - Init

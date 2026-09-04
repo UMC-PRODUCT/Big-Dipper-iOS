@@ -10,7 +10,7 @@ import Foundation
 import UMCFoundation
 import BusinessCardData
 
-/// 서버 명함 API 대체 응답 (절대 규칙 #5 — 릴리스 빌드 미포함).
+/// 서버 명함 API 대체 응답 (핵심 규칙 #5 — 릴리스 빌드 미포함).
 ///
 /// 실제 서버가 없어서 재조정 규칙을 눈으로 확인할 방법이 이것뿐이다. 시나리오는
 /// UserDefaults에 두어 검증 화면이 앱 재시작 없이 갈아 끼운다.

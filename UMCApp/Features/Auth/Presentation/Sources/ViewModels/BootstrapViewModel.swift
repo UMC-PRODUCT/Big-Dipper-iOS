@@ -11,7 +11,7 @@ import Foundation
 
 /// 부트스트랩 화면 ViewModel.
 ///
-/// 절대규칙 #1에 따라 `@Observable`을 사용한다.
+/// 핵심규칙 #1에 따라 `@Observable`을 사용한다.
 @Observable
 final class BootstrapViewModel {
 

@@ -20,7 +20,7 @@ struct CardExchangeItemDTOTests {
 
     /// 서버 `JacksonConfig` 가 숫자를 문자열로 직렬화한다. 설정이 바뀌어 숫자로 내려와도
     /// 흡수해야 한다 — 그때 앱이 통째로 빈 명함첩이 되면 안 된다.
-    @Test("정수 필드는 문자열로도 숫자로도 읽힌다 (절대규칙 #2·#3)")
+    @Test("정수 필드는 문자열로도 숫자로도 읽힌다 (핵심규칙 #2·#3)")
     func absorbsBothNumberShapes() throws {
         let asString = try decode("""
         {"cardMemberId":"42","name":"정의찬","nickname":"제옹","part":"IOS",

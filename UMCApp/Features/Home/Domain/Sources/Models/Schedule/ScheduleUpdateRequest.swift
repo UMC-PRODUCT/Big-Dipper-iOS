@@ -12,7 +12,7 @@ import Foundation
 /// `PATCH /api/v2/schedules/{id}` 로 보낼 값을 도메인 어휘로 표현한다. 부분 수정이므로 모든
 /// 필드가 Optional 이고, `nil` 은 "변경하지 않음"을 뜻한다 (요청 본문에서 생략된다).
 ///
-/// - Note: `participantMemberIds` 는 생성 입력과 마찬가지로 절대 규칙 #2 에 따라 `String` 으로
+/// - Note: `participantMemberIds` 는 생성 입력과 마찬가지로 핵심 규칙 #2 에 따라 `String` 으로
 ///   다루며, 서버 request 계약(`Set<Long>`)에 맞춘 `Int` 변환은 Data 레이어가 수행한다.
 public struct ScheduleUpdateRequest: Equatable, Sendable {
 

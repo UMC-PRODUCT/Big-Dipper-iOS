@@ -11,7 +11,7 @@ import Foundation
 
 /// 파일 업로드 준비 요청 DTO (Presigned URL 발급용)
 ///
-/// Request(Encodable) DTO이므로 synthesized Codable을 사용합니다. (절대 규칙 #3 예외)
+/// Request(Encodable) DTO이므로 synthesized Codable을 사용합니다. (핵심 규칙 #3 예외)
 public struct StoragePrepareUploadRequestDTO: Codable {
     public let fileName: String
     public let contentType: String
@@ -35,9 +35,9 @@ public struct StoragePrepareUploadRequestDTO: Codable {
 
 /// 파일 업로드 준비 응답 DTO (Presigned URL + 헤더 포함)
 ///
-/// 서버 응답 DTO이므로 custom `init(from:)` + `encode(to:)`를 사용합니다. (절대 규칙 #3)
+/// 서버 응답 DTO이므로 custom `init(from:)` + `encode(to:)`를 사용합니다. (핵심 규칙 #3)
 /// 서버가 식별자(`fileId`)를 정수/문자열 어느 쪽으로 직렬화해도 흡수하도록
-/// `decodeFlexibleString`으로 디코딩합니다. (절대 규칙 #2)
+/// `decodeFlexibleString`으로 디코딩합니다. (핵심 규칙 #2)
 public struct StoragePrepareUploadResponseDTO: Codable {
     public let fileId: String
     public let uploadUrl: String

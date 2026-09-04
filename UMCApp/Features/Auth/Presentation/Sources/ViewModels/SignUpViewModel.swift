@@ -12,7 +12,7 @@ import UMCFoundation
 
 /// 소셜 신규회원 가입 화면의 상태 및 액션을 관리하는 ViewModel.
 ///
-/// 절대규칙 #1에 따라 `@Observable`을 사용한다. 이메일 인증 발송/검증/재발송 실패
+/// 핵심규칙 #1에 따라 `@Observable`을 사용한다. 이메일 인증 발송/검증/재발송 실패
 /// (`EmailVerificationError` 등)는 `FormEmailField`가 자체적으로 인라인 표시하므로
 /// 그대로 rethrow하고, 그 외(학교/약관 조회 실패, 회원가입 실패)는 `LoginViewModel`과
 /// 동일한 패턴(`Loadable` 또는 `ErrorHandler`)으로 처리한다.

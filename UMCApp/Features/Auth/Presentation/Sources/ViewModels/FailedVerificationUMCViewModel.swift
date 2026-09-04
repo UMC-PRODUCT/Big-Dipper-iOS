@@ -15,7 +15,7 @@ import UMCFoundation
 
 /// 승인 대기 화면(`FailedVerificationUMC`)에서 완료된 액션이 향할 다음 화면.
 ///
-/// 절대규칙에 따라 ViewModel은 `AppFlow`를 직접 들고 있지 않는다. `FailedVerificationUMC`가
+/// 핵심규칙에 따라 ViewModel은 `AppFlow`를 직접 들고 있지 않는다. `FailedVerificationUMC`가
 /// 이 값을 관찰해 실제 전환 클로저(`appFlow.showLogin()`/`appFlow.showMain()`)를 호출한다
 /// (`LoginViewModel.signUpDestination`과 동일한 패턴).
 enum FailedVerificationDestination: Equatable {

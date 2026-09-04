@@ -10,8 +10,8 @@ import Foundation
 /// 명함첩 전량 조회 커서 쿼리 (`GET /api/v1/cards/exchanges`).
 ///
 /// `cursor` 는 마지막으로 받은 `member_card_exchange.id`(exclusive)다. 서버가 `Long` 을
-/// 문자열로 직렬화하므로 앱도 `String` 으로 왕복한다 (절대 규칙 #2).
-/// `size` 는 Request 라 `Int` 그대로 둔다 (절대 규칙 #3 예외).
+/// 문자열로 직렬화하므로 앱도 `String` 으로 왕복한다 (핵심 규칙 #2).
+/// `size` 는 Request 라 `Int` 그대로 둔다 (핵심 규칙 #3 예외).
 public struct CardExchangePageQueryDTO: Equatable, Sendable {
 
     // MARK: - Property

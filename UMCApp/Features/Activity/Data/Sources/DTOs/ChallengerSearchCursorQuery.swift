@@ -11,11 +11,11 @@ import Foundation
 ///
 /// `GET /api/v1/challenger/search/cursor`
 ///
-/// 라우터 `task` 에 인라인 딕셔너리를 두지 않도록 쿼리 파라미터를 캡슐화합니다(절대 규칙 #6).
+/// 라우터 `task` 에 인라인 딕셔너리를 두지 않도록 쿼리 파라미터를 캡슐화합니다(핵심 규칙 #6).
 ///
 /// - Note: `cursor` 는 서버 `SearchChallengerCursorRequest.cursor` 가 `Long` 이라 `Int?` 로
-///   보냅니다. 응답 식별자를 `String` 으로 통일하는 절대 규칙 #2 는 **응답** 한정이며,
-///   Request/Query DTO 는 서버 계약 타입을 그대로 따릅니다(절대 규칙 #3 예외).
+///   보냅니다. 응답 식별자를 `String` 으로 통일하는 핵심 규칙 #2 는 **응답** 한정이며,
+///   Request/Query DTO 는 서버 계약 타입을 그대로 따릅니다(핵심 규칙 #3 예외).
 /// - Note: `keyword` 는 이름·닉네임 통합 검색어입니다. 값이 없으면 파라미터에서 제외해
 ///   서버가 전체 검색으로 처리하게 둡니다.
 struct ChallengerSearchCursorQuery: Sendable, Equatable {

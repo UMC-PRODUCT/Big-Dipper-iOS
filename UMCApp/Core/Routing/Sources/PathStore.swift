@@ -9,7 +9,7 @@ import SwiftUI
 
 /// 탭별 네비게이션 경로를 한 곳에서 관리하는 전역 Store.
 ///
-/// 절대규칙 #1의 명시적 예외(앱 생명주기 전역 관리자)로 `@Observable`을 사용한다.
+/// 핵심규칙 #1의 명시적 예외(앱 생명주기 전역 관리자)로 `@Observable`을 사용한다.
 /// App 셸이 소유해 `.environment`로 주입하고, 각 탭의 `NavigationStack`이 path 바인딩
 /// 소스로 쓴다.
 ///

@@ -25,7 +25,7 @@ public struct PeerPreview: Codable, Sendable, Equatable {
 
     public let name: String
     public let nickname: String
-    /// `UMCPartType.apiValue` 문자열. 서버 유래 값이라 String 유지 (절대규칙 #2).
+    /// `UMCPartType.apiValue` 문자열. 서버 유래 값이라 String 유지 (핵심규칙 #2).
     public let part: String
     public let generation: String
     public let avatarURL: String?

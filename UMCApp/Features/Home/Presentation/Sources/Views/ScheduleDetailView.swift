@@ -397,7 +397,7 @@ private struct SchedulePlaceDateInfo: View, Equatable {
 // MARK: - Preview
 
 #if DEBUG
-/// 네트워크 없이 화면을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+/// 네트워크 없이 화면을 확인하기 위한 프리뷰 전용 UseCase (핵심규칙 #5)
 private struct PreviewFetchScheduleDetailUseCase: FetchScheduleDetailUseCaseProtocol {
     func execute(scheduleId: String) async throws -> ScheduleDetailData {
         let startsAt = Date.now
@@ -424,7 +424,7 @@ private struct PreviewFetchScheduleDetailUseCase: FetchScheduleDetailUseCaseProt
     }
 }
 
-/// 수정·삭제 액션을 노출하기 위한 프리뷰 전용 권한 스텁 (절대규칙 #5)
+/// 수정·삭제 액션을 노출하기 위한 프리뷰 전용 권한 스텁 (핵심규칙 #5)
 private struct PreviewAuthorizationUseCase: AuthorizationUseCaseProtocol {
     func getResourcePermission(
         resourceType: AuthorizationResourceType,

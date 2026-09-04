@@ -290,7 +290,7 @@ public final class CommunityThreadListViewModel {
         }
     }
 
-    /// 나가기는 되돌릴 수 없어 확인을 먼저 받는다 (절대 규칙 — 파괴적 작업은 AlertPrompt).
+    /// 나가기는 되돌릴 수 없어 확인을 먼저 받는다 (핵심 규칙 — 파괴적 작업은 AlertPrompt).
     public func confirmLeave(_ thread: CommunityThread) {
         // #1131 결정 2: 개설자는 위임 전까지 나갈 수 없다. 서버 409 를 알림으로 되돌려 주는 것보다
         // 여기서 막고 다음 행동을 알려 주는 편이 빠르다 — 위임은 참여자 목록의 ⋯ 메뉴에 있다.

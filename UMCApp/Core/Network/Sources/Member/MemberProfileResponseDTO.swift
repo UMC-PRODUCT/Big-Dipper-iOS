@@ -18,7 +18,7 @@ import UMCFoundation
 /// 내 프로필 조회 응답 DTO
 ///
 /// 부트스트랩 승인 판정(Auth) + 시즌/세대 카드 구성(Home) + 프로필 화면 전체 항목(MyPage)에
-/// 필요한 필드를 모두 디코딩한다. 서버 정수 필드(멤버/학교/지부 ID, 기수 번호)는 절대규칙 #2에
+/// 필요한 필드를 모두 디코딩한다. 서버 정수 필드(멤버/학교/지부 ID, 기수 번호)는 핵심규칙 #2에
 /// 따라 `String`으로 통일한다.
 public struct MemberProfileResponseDTO: Codable {
 

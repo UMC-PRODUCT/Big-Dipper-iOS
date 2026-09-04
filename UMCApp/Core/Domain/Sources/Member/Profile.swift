@@ -9,7 +9,7 @@ import UMCFoundation
 
 /// Auth/Home/MyPage가 공유하는 정본 프로필 애그리게이트.
 ///
-/// 서버 정수 필드(멤버/학교/지부 ID, 기수 번호)는 절대규칙 #2에 따라 전 레이어 `String`으로 유지한다.
+/// 서버 정수 필드(멤버/학교/지부 ID, 기수 번호)는 핵심규칙 #2에 따라 전 레이어 `String`으로 유지한다.
 /// 필드 구성은 Auth(부트스트랩 승인 판정), Home(`seasonTypes`/`generations` 파생), MyPage(프로필 화면
 /// 전체 항목 + 챌린저 기록)가 각각 필요로 하는 항목의 합집합이다.
 public struct Profile: Equatable, Hashable, Sendable {

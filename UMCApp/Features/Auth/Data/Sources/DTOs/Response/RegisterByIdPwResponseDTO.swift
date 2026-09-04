@@ -11,7 +11,7 @@ import UMCFoundation
 ///
 /// 이메일 가입은 서버가 가입과 동시에 항상 토큰을 발급하므로 `accessToken`/`refreshToken`이
 /// 필수 필드다. 레거시(`RegisterByIdPwResponseDTO`)는 synthesized `Codable`이었으나,
-/// `memberId`의 flexible String 디코딩을 위해 custom `init(from:)`으로 재작성한다(절대 규칙 #3).
+/// `memberId`의 flexible String 디코딩을 위해 custom `init(from:)`으로 재작성한다(핵심 규칙 #3).
 public struct RegisterByIdPwResponseDTO: Codable, Sendable, Equatable {
 
     // MARK: - Property

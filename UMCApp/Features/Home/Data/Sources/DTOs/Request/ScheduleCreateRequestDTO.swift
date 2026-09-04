@@ -15,7 +15,7 @@ import UMCFoundation
 ///
 /// - Note: 서버 request 계약(`CreateScheduleRequest`)이 참여자 식별자를 `Set<Long>` 으로
 ///   받으므로 `participantMemberIds` 는 `Int` 로 직렬화한다. 응답의 정수를 `String` 으로
-///   다루는 규칙(절대 규칙 #2)은 응답 한정이며, 요청 본문에는 적용하지 않는다.
+///   다루는 규칙(핵심 규칙 #2)은 응답 한정이며, 요청 본문에는 적용하지 않는다.
 struct ScheduleCreateRequestDTO: Encodable, Sendable, Equatable {
 
     // MARK: - Property

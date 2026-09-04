@@ -16,13 +16,13 @@ public struct ScheduleParticipantDTO: Codable, Sendable, Equatable {
 
     // MARK: - Property
 
-    /// 멤버 식별자. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    /// 멤버 식별자. 서버 정수를 핵심 규칙 #2에 따라 `String`으로 보존한다.
     public let memberId: String
     public let name: String
     public let nickname: String
     /// 프로필 이미지 URL (서버가 `null` 로 내려줄 수 있음)
     public let profileImageUrl: String?
-    /// 학교 식별자. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    /// 학교 식별자. 서버 정수를 핵심 규칙 #2에 따라 `String`으로 보존한다.
     public let schoolId: String
     public let schoolName: String
 

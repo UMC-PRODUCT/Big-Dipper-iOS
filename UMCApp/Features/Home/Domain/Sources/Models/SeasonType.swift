@@ -11,6 +11,6 @@
 public enum SeasonType: Equatable, Sendable {
     /// 누적 활동일 (기수 미배정 상태)
     case days(Int)
-    /// 소속 기수 번호 목록 (서버 정수는 절대규칙 #2에 따라 `String`으로 유지)
+    /// 소속 기수 번호 목록 (서버 정수는 핵심규칙 #2에 따라 `String`으로 유지)
     case gens([String])
 }

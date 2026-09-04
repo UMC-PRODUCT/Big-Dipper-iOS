@@ -29,7 +29,7 @@ final class WatchAttendanceResultViewModel {
     /// 공결 사유 요약. iPhone 이 함께 밀어주면 채워지고, 없으면 감춘다.
     let excuseReason: String?
 
-    /// 누적 출석 횟수. 서버 정수라 전 레이어 String 이다 (절대 규칙 #2).
+    /// 누적 출석 횟수. 서버 정수라 전 레이어 String 이다 (핵심 규칙 #2).
     private let cumulativePresentCount: String
 
     /// 출석 확정일 때만 노출한다 — 지각·공결·결석 화면에 누적 출석을 붙이면 방금 받은 결과가

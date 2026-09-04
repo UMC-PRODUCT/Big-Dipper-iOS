@@ -4,7 +4,7 @@
 > **현재 잔여 범위**를 파일·라인 단위로 확정한 문서입니다.
 > 조사 시점: `develop` (`fa6c7237`, 2026-08-09).
 >
-> - `AppProduct/` 는 v2.2.0 동결 — **열람만 했고 수정하지 않았습니다** (절대 규칙 #9).
+> - `AppProduct/` 는 v2.2.0 동결 — **열람만 했고 수정하지 않았습니다** (핵심 규칙 #9).
 > - 인용은 `path:line` 형식입니다. 확정 근거가 없는 판단은 **추정**으로 표기했습니다.
 
 - 작성자: 제옹(euijjang97)
@@ -34,7 +34,7 @@ CoreUIComponents 29. `git status AppProduct/` 무변경.
 ### 원안과 달라진 판단 4건
 
 1. **`PointLog.point` 은 `String` 이 아니라 `Double` 유지 + 절삭 제거.**
-   원본 `ProfileChallengerPoint.point` 자체가 `Double`(`decodeDoubleFlexible`) 이라 절대 규칙 #2
+   원본 `ProfileChallengerPoint.point` 자체가 `Double`(`decodeDoubleFlexible`) 이라 핵심 규칙 #2
    ("서버 응답 **정수**") 범위 밖입니다. `String` 전환은 숫자 리터럴 생성부 4곳을 깨뜨리기만 하고
    얻는 게 없습니다. 표시는 `.number.precision(.fractionLength(0...1))`.
 2. **Activity Challenger 컴포넌트는 `SelectedChallengerView` 1개만 `public` 승격.**
@@ -220,7 +220,7 @@ UMCApp 에서 이 동작은 **로그인 시점에만** 일어납니다
 
 ## 3. P2 — 규약 위반 · 부채
 
-### 3-1. 절대 규칙 #2 위반 (서버 정수 `String` 통일)
+### 3-1. 핵심 규칙 #2 위반 (서버 정수 `String` 통일)
 
 | 위치 | 위반 | 조치 |
 |---|---|---|
@@ -234,12 +234,12 @@ UMCApp 에서 이 동작은 **로그인 시점에만** 일어납니다
 > `gisuId`/`gen` 은 `Int` 이지만 SwiftData 로컬 레코드이고 경계에서 변환됩니다
 > (`ChallengerGenRepository.swift:41-42`). 서버 응답 타입이 아니므로 위반 아님.
 
-### 3-2. 절대 규칙 #3 — **위반 없음**
+### 3-2. 핵심 규칙 #3 — **위반 없음**
 
 `UMCApp/Features/Home/Data/Sources/DTOs/Response/` 6개 파일 전부 custom `init(from:)` + `encode(to:)` 보유.
 `ScheduleRepository.swift:236` 의 `decode(Int.self)` 는 `FlexibleIdentifier` 의 single-value 폴백으로 정당(`:217-221` 에 문서화).
 
-### 3-3. 절대 규칙 #5 위반 — Preview 11개가 `#if DEBUG` 미가드
+### 3-3. 핵심 규칙 #5 위반 — Preview 11개가 `#if DEBUG` 미가드
 
 ```
 Components/PenaltyCard.swift:350              (HomeGeneration 3 + PointLog 4 — 최대 픽스처)
@@ -350,7 +350,7 @@ Components/Calendar/ScheduleHeader.swift:157     DatePill.swift:91   DateCell.sw
   - `ScheduleRegistrationViewModel` — `searchChallengersUseCase` 주입, 참여자 상태, `sanitizedParticipantMemberIds()`(본인 강제 포함), 편집 prefill(`fetchPrefillParticipants` 상당), `EditFormSnapshot` 에 `participantMemberIds` 추가
   - `ScheduleRegistrationView` — 참여자 섹션 + 시트
   - 생성 `participantMemberIds: []` → 실제 값, 수정 `nil` → 변경 시에만 전송
-- **적용 절대 규칙**: #2(`ChallengerInfo.memberId` 는 이미 `String`), #4 `public`, #7
+- **적용 핵심 규칙**: #2(`ChallengerInfo.memberId` 는 이미 `String`), #4 `public`, #7
 - **검수 기준**: 생성된 일정에 **작성자 본인이 항상 포함**. 편집 진입 시 기존 참여자 prefill. 참여자만 바꿔도 저장 버튼 활성화.
 - **순환 의존 확인 필수** — `Features/Activity/Project.swift` 가 Home 을 참조하지 않는지 `tuist generate` 로 검증
 - **크기**: **M**
@@ -360,7 +360,7 @@ Components/Calendar/ScheduleHeader.swift:157     DatePill.swift:91   DateCell.sw
 
 - **선행**: #J
 - **범위**
-  - `ScheduleCapabilities.swift:25` · `ScheduleCapabilitiesDTO.swift:26` — `Int` → `String` (절대 규칙 #2)
+  - `ScheduleCapabilities.swift:25` · `ScheduleCapabilitiesDTO.swift:26` — `Int` → `String` (핵심 규칙 #2)
   - `ScheduleRegistrationViewModel` — `loadCapabilities()` 추가, `.task` 호출, 출석 토글 게이트, 참여자 상한 경고 + 등록 차단
   - `ScheduleRegistrationView:183-187` — stale 주석 제거, 토글 조건부 노출
   - `DIContainer+StubSession.swift` — `ScheduleCapabilitiesRepositoryProtocol` 등록 **(누락 시 스텁 세션이 실네트워크를 탐)**

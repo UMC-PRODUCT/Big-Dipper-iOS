@@ -55,7 +55,7 @@
 | `unreadPingCount` | `notices` 중 `!isRead` 개수. 상한 없음 — `99+` 절단은 뷰의 책임 | `ComplicationSnapshot.swift:26-27, 54` |
 | `generatedAt` | 원본 스냅샷 생성 시각 그대로 — 「N분 전 기준」 신선도 표시용 | `ComplicationSnapshot.swift:28-29`, `PingCountComplication.swift:101-104` |
 
-`scheduleId` 는 서버 정수를 `String` 으로 보존한다 (절대 규칙 #2, `ComplicationSnapshot.swift:124-125`).
+`scheduleId` 는 서버 정수를 `String` 으로 보존한다 (핵심 규칙 #2, `ComplicationSnapshot.swift:124-125`).
 
 ## 3) 모듈·타겟 배치
 
@@ -84,7 +84,7 @@
 
 ## 5) 출석 상태 매핑
 
-서버 `AttendanceStatus` 원본 문자열(`WatchSchedule.attendanceStatus`, 절대 규칙 #2 로 String 보존)을 `ComplicationAttendanceState.from(rawStatus:)` 가 표시 상태로 바꾼다 (`ComplicationSnapshot.swift:232-241`). 색 토큰은 익스텐션 쪽 `fullColorTint` 다 (`UMCWatchComplication/Sources/ComplicationStyle.swift:21-30`).
+서버 `AttendanceStatus` 원본 문자열(`WatchSchedule.attendanceStatus`, 핵심 규칙 #2 로 String 보존)을 `ComplicationAttendanceState.from(rawStatus:)` 가 표시 상태로 바꾼다 (`ComplicationSnapshot.swift:232-241`). 색 토큰은 익스텐션 쪽 `fullColorTint` 다 (`UMCWatchComplication/Sources/ComplicationStyle.swift:21-30`).
 
 | 서버 원본 | 상태 | SF Symbol | 라벨 | 링 | `.fullColor` 색 |
 |-----------|------|-----------|------|:--:|-----------------|

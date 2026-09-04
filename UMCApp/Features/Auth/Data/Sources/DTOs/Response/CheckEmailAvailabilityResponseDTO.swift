@@ -12,7 +12,7 @@ import UMCFoundation
 /// `GET /api/v1/auth/email/availability`
 ///
 /// 레거시(`CheckEmailAvailabilityResponseDTO`)는 synthesized `Codable`이었으나,
-/// `available`의 flexible Bool 디코딩을 위해 custom `init(from:)`으로 재작성한다(절대 규칙 #3).
+/// `available`의 flexible Bool 디코딩을 위해 custom `init(from:)`으로 재작성한다(핵심 규칙 #3).
 public struct CheckEmailAvailabilityResponseDTO: Codable, Sendable, Equatable {
 
     // MARK: - Property

@@ -341,7 +341,7 @@ private struct ScheduleCardPressStyle: ButtonStyle {
 // MARK: - Preview
 
 #if DEBUG
-/// 네트워크 없이 화면을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+/// 네트워크 없이 화면을 확인하기 위한 프리뷰 전용 UseCase (핵심규칙 #5)
 private struct PreviewFetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol {
     func execute(forceRefresh: Bool) async throws -> HomeProfileResult {
         HomeProfileResult(
@@ -364,7 +364,7 @@ private struct PreviewFetchHomeProfileUseCase: FetchHomeProfileUseCaseProtocol {
     }
 }
 
-/// 네트워크 없이 최근 공지 화면을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+/// 네트워크 없이 최근 공지 화면을 확인하기 위한 프리뷰 전용 UseCase (핵심규칙 #5)
 private struct PreviewFetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProtocol {
     func execute(gisuId: String) async throws -> [NoticeItemModel] {
         [
@@ -403,7 +403,7 @@ private struct PreviewFetchRecentNoticesUseCase: FetchRecentNoticesUseCaseProtoc
     }
 }
 
-/// 네트워크 없이 일정 캘린더를 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+/// 네트워크 없이 일정 캘린더를 확인하기 위한 프리뷰 전용 UseCase (핵심규칙 #5)
 private struct PreviewFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol {
     func execute(from: Date, to: Date, isAttendanceRequired: Bool) async throws -> [Date: [ScheduleDetailData]] {
         let calendar = Calendar.kstGregorian
@@ -421,14 +421,14 @@ private struct PreviewFetchSchedulesUseCase: FetchSchedulesUseCaseProtocol {
     }
 }
 
-/// CoreML 로드 없이 카드 아이콘을 확인하기 위한 프리뷰 전용 UseCase (절대규칙 #5)
+/// CoreML 로드 없이 카드 아이콘을 확인하기 위한 프리뷰 전용 UseCase (핵심규칙 #5)
 private struct PreviewClassifyScheduleUseCase: ClassifyScheduleUseCaseProtocol {
     func execute(title: String) async -> ScheduleIconCategory {
         .study
     }
 }
 
-/// 네트워크 없이 정본 프로필을 제공하는 프리뷰 전용 UseCase (절대규칙 #5)
+/// 네트워크 없이 정본 프로필을 제공하는 프리뷰 전용 UseCase (핵심규칙 #5)
 private struct PreviewFetchMemberProfileUseCase: FetchMemberProfileUseCaseProtocol {
     func execute() async throws -> Profile {
         Profile(
@@ -441,12 +441,12 @@ private struct PreviewFetchMemberProfileUseCase: FetchMemberProfileUseCaseProtoc
     }
 }
 
-/// 실제 `UserDefaults`를 건드리지 않기 위한 프리뷰 전용 no-op 동기화 UseCase (절대규칙 #5)
+/// 실제 `UserDefaults`를 건드리지 않기 위한 프리뷰 전용 no-op 동기화 UseCase (핵심규칙 #5)
 private struct PreviewSyncProfileStorageUseCase: SyncProfileStorageUseCaseProtocol {
     func execute(profile: Profile) {}
 }
 
-/// SwiftData 저장소 없이 화면을 그리기 위한 프리뷰 전용 기수 매핑 저장소 (절대규칙 #5)
+/// SwiftData 저장소 없이 화면을 그리기 위한 프리뷰 전용 기수 매핑 저장소 (핵심규칙 #5)
 private struct PreviewChallengerGenRepository: ChallengerGenRepositoryProtocol {
     func replaceMappings(_ pairs: [(gen: String, gisuId: String)]) throws {}
 

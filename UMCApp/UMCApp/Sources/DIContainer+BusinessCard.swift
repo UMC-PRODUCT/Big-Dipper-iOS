@@ -15,7 +15,7 @@ import BusinessCardDomain
 import BusinessCardPresentation
 
 // BusinessCard(명함) 의존성 등록 — Repository 4종 + Transport + UseCase Provider.
-// Transport: 실기기는 MPCTransport, 시뮬레이터 DEBUG는 Mock(절대규칙 #5).
+// Transport: 실기기는 MPCTransport, 시뮬레이터 DEBUG는 Mock(핵심규칙 #5).
 //
 // ⚠️ `DIContainer.resolve`는 인스턴스를 캐싱한다 — 여기 등록되는 transport는 앱 수명
 // 싱글톤이다. 그래서 실기기 transport 구현은 세션 상태(교환 완료 플래그·발견 endpoint
@@ -45,7 +45,7 @@ extension DIContainer {
         }
         register(ReceivedCardRepositoryProtocol.self) {
             // 서버에 명함 API 가 아직 없다 — 릴리스는 remote 없이(로컬 전용) 돈다.
-            // 검증 화면에서만 Mock/실서버로 바꿔 낀다(절대 규칙 #5).
+            // 검증 화면에서만 Mock/실서버로 바꿔 낀다(핵심 규칙 #5).
             #if DEBUG
             ReceivedCardRepository(
                 modelContext: self.resolve(ModelContext.self),

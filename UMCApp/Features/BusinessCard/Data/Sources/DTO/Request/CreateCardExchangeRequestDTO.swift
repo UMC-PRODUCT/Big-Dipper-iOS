@@ -16,7 +16,7 @@ import Foundation
 /// 수 있다. 서버가 도착 시각을 찍으면 「OT에서 만난 사람」이 사흘 뒤로 기록되고, 기존
 /// 로컬 명함첩 이행분은 전부 이행 당일로 뭉친다.
 ///
-/// - Note: Request(Encodable)라 custom Codable 대상이 아니다 (절대 규칙 #3 예외).
+/// - Note: Request(Encodable)라 custom Codable 대상이 아니다 (핵심 규칙 #3 예외).
 ///   합성 인코딩은 옵셔널을 `encodeIfPresent` 로 처리하므로 `nil` 필드는 키가 생략된다.
 public struct CreateCardExchangeRequestDTO: Encodable, Equatable, Sendable {
 

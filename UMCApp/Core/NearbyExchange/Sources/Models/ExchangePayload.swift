@@ -18,7 +18,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
     /// 실명. v1 수신 시 `ownerName` 값이 여기로 매핑된다.
     public let name: String
     public let nickname: String
-    /// `UMCPartType.apiValue` 문자열 (예: "IOS"). 서버 유래 값이라 String 유지 (절대규칙 #2).
+    /// `UMCPartType.apiValue` 문자열 (예: "IOS"). 서버 유래 값이라 String 유지 (핵심규칙 #2).
     public let part: String
     public let generation: String
     public let university: String
@@ -40,7 +40,7 @@ public struct ExchangePayload: Codable, Sendable, Equatable {
     /// 있던 필드라 수신 호환을 위해 남으며, v2 에서 옵셔널로 완화됐다.
     public let usdzURL: URL?
     public let timestamp: Date
-    /// 스키마 버전. 프로토콜 메타라 Int (서버 무관 — 절대규칙 #2 대상 아님).
+    /// 스키마 버전. 프로토콜 메타라 Int (서버 무관 — 핵심규칙 #2 대상 아님).
     public let version: Int
 
     public static let currentVersion = 2

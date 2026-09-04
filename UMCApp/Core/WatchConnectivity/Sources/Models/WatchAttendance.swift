@@ -17,7 +17,7 @@ public struct WatchAttendanceRequest: Codable, Sendable, Equatable {
 
     // MARK: - Property
 
-    /// 서버 정수 식별자를 String 으로 보존한다 (절대 규칙 #2 · `ScheduleDetailData.scheduleId` 와 동형).
+    /// 서버 정수 식별자를 String 으로 보존한다 (핵심 규칙 #2 · `ScheduleDetailData.scheduleId` 와 동형).
     public let scheduleId: String
     public let latitude: Double
     public let longitude: Double

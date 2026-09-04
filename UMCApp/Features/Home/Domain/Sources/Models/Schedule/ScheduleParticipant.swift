@@ -17,7 +17,7 @@ public struct ScheduleParticipant: Equatable, Sendable, Identifiable {
 
     public var id: String { memberId }
 
-    /// 멤버 식별자. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    /// 멤버 식별자. 서버 정수를 핵심 규칙 #2에 따라 `String`으로 보존한다.
     public let memberId: String
 
     /// 본명
@@ -29,7 +29,7 @@ public struct ScheduleParticipant: Equatable, Sendable, Identifiable {
     /// 프로필 이미지 URL (없으면 빈 문자열)
     public let profileImageUrl: String
 
-    /// 학교 식별자. 서버 정수를 절대 규칙 #2에 따라 `String`으로 보존한다.
+    /// 학교 식별자. 서버 정수를 핵심 규칙 #2에 따라 `String`으로 보존한다.
     public let schoolId: String
 
     /// 학교명

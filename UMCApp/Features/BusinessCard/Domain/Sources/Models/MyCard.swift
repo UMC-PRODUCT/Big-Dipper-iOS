@@ -10,7 +10,7 @@ import UMCFoundation
 
 /// 내 디지털 명함 (마이페이지 v3 명세 MP-F01·F02).
 ///
-/// 서버 유래 정수(`generation`)는 전 레이어 String (절대규칙 #2).
+/// 서버 유래 정수(`generation`)는 전 레이어 String (핵심규칙 #2).
 /// `qrPayload`는 저장 필드가 아니라 `cardLink` 파생 — 서버가 주지 않는 값을 필드로 두면
 /// 빈 상태가 생기므로 computed로 일원화한다 (설계 문서의 의도적 편차).
 public struct MyCard: Equatable, Hashable, Sendable {
@@ -27,7 +27,7 @@ public struct MyCard: Equatable, Hashable, Sendable {
     /// 그때 ``part`` 는 관례대로 `.admin` 으로 떨어지는데, 앱 안에서 `.admin` 은
     /// **「파트 없는 운영진」이라는 진짜 역할**이라 상대를 운영진으로 잘못 표시하게 된다.
     /// 원본을 함께 실어 화면은 서버가 준 값을 그대로 보여주고, 저장소에도 원본이 남아
-    /// 나중에 파싱 규칙이 늘면 되살아난다 (절대규칙 #2 — 서버 값은 String 유지).
+    /// 나중에 파싱 규칙이 늘면 되살아난다 (핵심규칙 #2 — 서버 값은 String 유지).
     public let partRaw: String?
     public let generation: String
     public let university: String

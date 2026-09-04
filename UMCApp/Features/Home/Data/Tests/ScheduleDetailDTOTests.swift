@@ -4,7 +4,7 @@
 //
 //  Created by euijjang97 on 8/1/26.
 //
-//  서버가 정수를 String/Number 어느 쪽으로 내려주든 동일한 도메인 값이 나오는지(절대 규칙 #2),
+//  서버가 정수를 String/Number 어느 쪽으로 내려주든 동일한 도메인 값이 나오는지(핵심 규칙 #2),
 //  옵셔널 객체(`location`/`attendancePolicy`)와 누락 키가 크래시 없이 흡수되는지,
 //  출석 상태 raw 문자열이 ``ScheduleAttendanceStatus`` 로 올바르게 매핑되는지 검증한다.
 //

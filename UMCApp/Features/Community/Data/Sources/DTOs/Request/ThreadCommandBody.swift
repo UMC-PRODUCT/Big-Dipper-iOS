@@ -55,7 +55,7 @@ enum ThreadCommandID {
 ///
 /// `replyToId`/`mentionedMemberIds` 는 서버가 **숫자**로 받는다(양수 Long, 초과 시 프레임 거절).
 /// 도메인은 서버 정수를 전 레이어 `String` 으로 들고 있으므로 여기 이니셜라이저에서만 숫자로
-/// 바꾼다 — Request DTO 의 Int 는 절대 규칙 #3 의 예외다. 숫자가 아닌 값은 서버가 어차피
+/// 바꾼다 — Request DTO 의 Int 는 핵심 규칙 #3 의 예외다. 숫자가 아닌 값은 서버가 어차피
 /// 거절하므로 싣지 않고 버린다(전체 프레임이 죽는 것보다 인용/멘션 하나가 빠지는 게 낫다).
 public struct SendMessageBody: Encodable {
 

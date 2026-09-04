@@ -292,7 +292,7 @@ public struct BootstrapView: View {
     #if DEBUG
     /// `MOCK_AUTH_BYPASS=1` 환경변수(스킴의 Arguments > Environment Variables)를 설정하면
     /// 실제 토큰/서버 상태와 무관하게 즉시 메인으로 진입한다. 시네마틱을 기다리지 않고 Home을
-    /// 단독으로 테스트하기 위한 개발 전용 우회 경로다 (절대규칙 #5).
+    /// 단독으로 테스트하기 위한 개발 전용 우회 경로다 (핵심규칙 #5).
     private static var isMockAuthBypassEnabled: Bool {
         ProcessInfo.processInfo.environment["MOCK_AUTH_BYPASS"] == "1"
     }

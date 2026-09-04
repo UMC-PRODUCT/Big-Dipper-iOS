@@ -17,7 +17,7 @@ import UMCFoundation
 /// 지오펜스 1회 측정 결과.
 struct WatchGeofenceReading: Equatable, Sendable {
 
-    /// 출석 장소로부터의 거리(m). 기기 측정값이라 서버 정수 String 규칙(절대 규칙 #2) 대상이 아니다.
+    /// 출석 장소로부터의 거리(m). 기기 측정값이라 서버 정수 String 규칙(핵심 규칙 #2) 대상이 아니다.
     let distanceMeters: Double
 
     /// 허용 반경은 앱 전역 상수를 그대로 쓴다 — 워치가 iPhone 과 다른 반경으로 판정하면

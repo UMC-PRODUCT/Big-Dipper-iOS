@@ -121,7 +121,7 @@ public struct ComplicationSession: Codable, Sendable, Equatable {
 
     // MARK: - Property
 
-    /// 서버 정수 식별자를 String 으로 보존한다 (절대 규칙 #2).
+    /// 서버 정수 식별자를 String 으로 보존한다 (핵심 규칙 #2).
     public let scheduleId: String
     public let name: String
     public let startsAt: Date
